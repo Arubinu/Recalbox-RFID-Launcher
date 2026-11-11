@@ -13,11 +13,11 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="1.2.0"
+VERSION="1.3.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
-BOOTSTRAP_USERSCRIPT_NAME="recalbox-rfid-autoinstall(permanent).py3"
+AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
@@ -76,7 +76,7 @@ Options :
   --home <dossier>   dossier d'installation (defaut : $DEFAULT_HOME)
   --upgrade          mise a jour : conserve configuration et badges
   --start            demarre le service a la fin de l'installation
-  --no-restart       ne redemarre pas le service (utilise par l'interface web)
+  --no-restart       ne redemarre pas le service (utilise par l'agent)
   --no-spi           n'active pas le bus SPI automatiquement
   --from-url <url>   telecharge et installe le fichier ZIP indique
   --uninstall        desinstalle (equivalent a uninstall.sh)
@@ -234,7 +234,7 @@ else
         rm -rf "$HOME_DIR/docs"
         cp -R "$SCRIPT_DIR/docs" "$HOME_DIR/docs"
     fi
-    for extra in install.sh uninstall.sh VERSION README.md CHANGELOG.md; do
+    for extra in install.sh uninstall.sh VERSION README.md CHANGELOG.md installer.html; do
         if [ -f "$SCRIPT_DIR/$extra" ]; then
             cp -f "$SCRIPT_DIR/$extra" "$HOME_DIR/$extra"
         fi
@@ -281,13 +281,13 @@ if [ "$IS_ROOT" = "1" ] && [ -f "$TEMPLATE" ]; then
     chmod +x "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     ok "Script de demarrage : $USERSCRIPTS_DIR/$USERSCRIPT_NAME"
 
-    # Installation et mise a jour automatiques au demarrage + interface web de secours.
-    BOOTSTRAP_TEMPLATE="$HOME_DIR/bootstrap/$BOOTSTRAP_USERSCRIPT_NAME"
-    [ -f "$BOOTSTRAP_TEMPLATE" ] || BOOTSTRAP_TEMPLATE="$SCRIPT_DIR/bootstrap/$BOOTSTRAP_USERSCRIPT_NAME"
-    if [ -f "$BOOTSTRAP_TEMPLATE" ]; then
-        cp -f "$BOOTSTRAP_TEMPLATE" "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
-        chmod +x "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
-        ok "Auto-installation : $USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
+    # Agent WebSocket : installation, mise a jour et gestion depuis installer.html.
+    AGENT_TEMPLATE="$HOME_DIR/bootstrap/$AGENT_USERSCRIPT_NAME"
+    [ -f "$AGENT_TEMPLATE" ] || AGENT_TEMPLATE="$SCRIPT_DIR/bootstrap/$AGENT_USERSCRIPT_NAME"
+    if [ -f "$AGENT_TEMPLATE" ]; then
+        cp -f "$AGENT_TEMPLATE" "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
+        chmod +x "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
+        ok "Agent WebSocket : $USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
     fi
 else
     warn "Script de demarrage non installe (droits root necessaires)."
@@ -345,7 +345,7 @@ fi
 step "Service"
 if [ "$NO_RESTART" = "1" ]; then
     say "Redemarrage du service non demande (--no-restart)."
-    say "Utilisez le bouton « Redemarrer » de l'interface web."
+    say "Utilisez le bouton « Redemarrer Recalbox » de installer.html."
 elif [ "$NEED_REBOOT" = "1" ]; then
     say "Redemarrage de Recalbox necessaire pour activer le SPI."
     say "Le service demarrera tout seul apres le redemarrage."
@@ -363,20 +363,23 @@ fi
 # --------------------------------------------------------------------------- #
 # Resume
 # --------------------------------------------------------------------------- #
-# Adresse de l'interface web (premiere adresse IP du Raspberry Pi).
+# Adresse de l'agent (premiere adresse IP du Raspberry Pi).
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 [ -n "$LOCAL_IP" ] || LOCAL_IP="recalbox.local"
-WEB_URL="http://$LOCAL_IP:8080"
+AGENT_URL="ws://$LOCAL_IP:8765"
 
 step "Termine"
 say "Programme     : $HOME_DIR/app"
 say "Configuration : $HOME_DIR/config.ini"
 say "Badges        : $HOME_DIR/tags.json"
 say "Journal       : $HOME_DIR/logs/rfid.log"
-say "Interface web : $WEB_URL"
+say "Agent WebSocket: $AGENT_URL"
+say "Jeton         : $HOME_DIR/token.txt"
 say ""
-say "Tout se gere depuis un navigateur : $WEB_URL"
-say "(installation, mise a jour, badges, redemarrage)."
+say "Tout se gere depuis installer.html (ouvert sur votre PC) :"
+say "  1. ouvrez installer.html (livre avec le projet) ;"
+say "  2. adresse $LOCAL_IP, port 8765, jeton lu dans token.txt ;"
+say "  3. installez, mettez a jour et gerez les badges."
 say ""
 say "Prochaines etapes :"
 STEP=1
@@ -384,11 +387,11 @@ if [ "$NEED_REBOOT" = "1" ]; then
     say "  $STEP. Redemarrez Recalbox (menu > QUITTER > REDEMARRER) pour activer le SPI."
     STEP=$((STEP + 1))
 fi
-say "  $STEP. Ouvrez $WEB_URL (ou verifiez avec : $HOME_DIR/rfidctl test)"
+say "  $STEP. Connectez installer.html (jeton : $HOME_DIR/token.txt)"
+STEP=$((STEP + 1))
+say "  $STEP. Cliquez sur « Installer », puis redemarrez si le SPI etait inactif."
 STEP=$((STEP + 1))
 say "  $STEP. Choisissez un jeu dans Recalbox, appuyez sur le bouton, scannez un badge."
-STEP=$((STEP + 1))
-say "  $STEP. Scannez a nouveau le badge : le jeu se lance."
 say ""
 say "Aide : $HOME_DIR/rfidctl help   --   Mise a jour : $HOME_DIR/install.sh --upgrade"
 if [ "$WARN_FRONTEND" = "1" ]; then

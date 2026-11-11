@@ -63,7 +63,7 @@ Commandes :
   logs                     Affiche les dernieres lignes du journal
   frontend                 Verifie que Recalbox sait lancer un jeu par script
   self-update [URL]        Met a jour le programme (ZIP en ligne ou dossier copie)
-  web                      Demarre l'interface web (installation et gestion)
+  agent                    Demarre l'agent WebSocket (utilise par installer.html)
   simulate                 Mode simulation (test sur PC, sans Raspberry Pi)
   config                   Affiche la configuration effective
   config-init              Ecrit le fichier de configuration par defaut
@@ -555,30 +555,24 @@ def cmd_self_update(options) -> int:
     return subprocess.call(command)
 
 
-def cmd_web(options) -> int:
-    """Demarre l'interface web (utilisee avant installation, ou manuellement)."""
-    from rfid.webui import WebUI
+def cmd_agent(options) -> int:
+    """Demarre l'agent WebSocket (utilise par installer.html)."""
+    from rfid.wsagent import Agent
 
     config = load_config(options)
-    log = make_logger(options, echo=True)
-    os.makedirs(options.home, exist_ok=True)
-    ui = WebUI(config, log, home=options.home, source=options.source, db=options.db)
-    if not ui.start():
-        print("Impossible de demarrer l'interface web (port deja utilise ?).")
-        return 1
-    print("")
-    print(LINE)
-    print(" Interface web : ouvrez %s dans un navigateur" % ui.url())
-    print(" (Ctrl+C pour arreter)")
-    print(LINE)
-    try:
-        while True:
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        print()
-    finally:
-        ui.stop()
-    return 0
+    os.makedirs(os.path.join(options.home, consts.LOG_DIRNAME), exist_ok=True)
+    log = Logger(
+        os.path.join(options.home, consts.LOG_DIRNAME, "agent.log"),
+        "DEBUG" if options.verbose else config.get("general", "log_level", "INFO"),
+        config.get_int("general", "log_max_bytes", 1048576),
+        echo=options.verbose,
+    )
+    agent = Agent(config, log, home=options.home, source=options.source, db=options.db)
+    print(
+        "Agent WebSocket : ws://%s:%d  (jeton : %s)"
+        % ("<ip-de-la-recalbox>", agent.port, agent.token_path)
+    )
+    return agent.serve_forever()
 
 
 def cmd_simulate(options) -> int:
@@ -705,7 +699,7 @@ COMMANDS = {
     "test": cmd_test,
     "frontend": cmd_frontend,
     "self-update": cmd_self_update,
-    "web": cmd_web,
+    "agent": cmd_agent,
     "simulate": cmd_simulate,
 }
 

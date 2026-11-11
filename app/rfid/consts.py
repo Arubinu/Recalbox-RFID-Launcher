@@ -27,6 +27,15 @@ DB_FILENAME = "tags.json"
 #: Dossier des journaux.
 LOG_DIRNAME = "logs"
 
+#: Jeton d'acces de l'agent WebSocket (dans le dossier d'installation).
+TOKEN_FILENAME = "token.txt"
+
+#: File de commandes entre l'agent WebSocket et le service RFID.
+AGENT_COMMAND_FILENAME = "agent-command.json"
+
+#: Port par defaut de l'agent WebSocket.
+AGENT_PORT = 8765
+
 
 def home_dir() -> str:
     """Retourne le dossier de travail (surchargeable avec RFID_HOME)."""

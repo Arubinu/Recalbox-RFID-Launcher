@@ -11,7 +11,7 @@ import time
 
 from . import __version__
 from .config import Config
-from .consts import LOCK_FILE, db_path, home_dir
+from .consts import AGENT_COMMAND_FILENAME, LOCK_FILE, db_path, home_dir
 from .controller import Controller
 from .esbridge import EsLauncher, supports_start_command
 from .feedback import Feedback
@@ -152,7 +152,6 @@ class Service:
         self.controller = None
         self.feedback = None
         self.launcher = None
-        self.webui = None
         self._web_command_signature = None
         self.last_error_at = 0.0
         self.last_uid = ""
@@ -194,18 +193,6 @@ class Service:
             self.log,
         )
         self._build_controller()
-
-        # Interface web (facultative : le service fonctionne sans elle).
-        if self.cfg.get_bool("web", "enabled", True):
-            try:
-                from .webui import WebUI
-
-                self.webui = WebUI(self.cfg, self.log, home=self.home, db=self.db_path)
-                if not self.webui.start():
-                    self.webui = None
-            except Exception as exc:  # noqa: BLE001 - jamais bloquant
-                self.webui = None
-                self.log.warning("Interface web indisponible : %s" % exc)
         return True
 
     def _build_controller(self) -> None:
@@ -260,7 +247,7 @@ class Service:
                 now = time.monotonic()
 
                 # Le lecteur peut arriver plus tard (SPI active apres coup) : on
-                # reessaie regulierement sans bloquer le bouton ni l'interface web.
+                # reessaie regulierement sans bloquer le bouton ni l'agent.
                 if self.reader is None and now >= next_reader:
                     next_reader = now + 2.0
                     self._open_reader()
@@ -284,7 +271,7 @@ class Service:
                     if gesture:
                         self.controller.on_button(gesture)
 
-                self._consume_web_command()
+                self._consume_agent_command()
 
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
@@ -303,10 +290,10 @@ class Service:
             self._shutdown(lock)
         return 0
 
-    # ------------------------------------------------------------- commandes web
-    def _consume_web_command(self) -> None:
-        """Execute une commande deposee par l'interface web (fichier JSON)."""
-        path = os.path.join(self.home, "web-command.json")
+    # ----------------------------------------------------------- commandes agent
+    def _consume_agent_command(self) -> None:
+        """Execute une commande deposee par l'agent WebSocket (fichier JSON)."""
+        path = os.path.join(self.home, AGENT_COMMAND_FILENAME)
         try:
             info = os.stat(path)
         except OSError:
@@ -319,7 +306,7 @@ class Service:
             with open(path, "r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except (OSError, ValueError) as exc:
-            self.log.warning("Commande web illisible : %s" % exc)
+            self.log.warning("Commande agent illisible : %s" % exc)
             return
         finally:
             try:
@@ -339,15 +326,10 @@ class Service:
             if uid:
                 self.controller.on_badge(uid)
         else:
-            self.log.warning("Commande web inconnue : %s" % command)
+            self.log.warning("Commande agent inconnue : %s" % command)
 
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")
-        if self.webui is not None:
-            try:
-                self.webui.stop()
-            except Exception:  # noqa: BLE001
-                pass
         if self.reader is not None:
             try:
                 self.reader.close()

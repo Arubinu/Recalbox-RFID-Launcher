@@ -16,6 +16,14 @@ for path in (HERE, os.path.join(PROJECT, "app")):
 
 
 def main() -> int:
+    # RFID_DUMP_STACKS=15 permet d'obtenir une trace de tous les threads si la
+    # suite se bloque (diagnostic uniquement).
+    dump_after = os.environ.get("RFID_DUMP_STACKS")
+    if dump_after:
+        import faulthandler
+
+        faulthandler.dump_traceback_later(int(dump_after), exit=True)
+
     suite = unittest.TestLoader().discover(HERE, pattern="test_*.py", top_level_dir=HERE)
     print("=" * 70)
     print(" Tests unitaires -- Recalbox RFID Launcher")

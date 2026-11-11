@@ -9,43 +9,34 @@ Le programme est installé dans un dossier **avec** ses données :
 ├── app/         <- programme (remplacé à chaque mise à jour)
 ├── config.ini   <- VOTRE configuration (conservée)
 ├── tags.json    <- VOS badges (conservés)
+├── token.txt    <- jeton de l'agent (conservé)
 ├── logs/
 ├── rfidctl
-├── install.sh   <- copie de l'installateur (pour la mise à jour en ligne)
+├── installer.html
+├── install.sh   <- copie de l'installateur
 ├── uninstall.sh
 └── VERSION      <- version installée
 ```
 
 La mise à jour **remplace uniquement `app/`** (et les fichiers de programme),
-puis redémarre le service. Configuration et badges ne sont jamais touchés.
+puis l'agent se recharge et redémarre le service. Configuration, badges et jeton
+ne sont jamais touchés.
 
-## Méthode automatique — copier un dossier plus récent puis redémarrer
+## Méthode 1 — depuis `installer.html` (aucune ligne de commande)
 
-1. Copiez le dossier de la nouvelle version (par exemple
-   `recalbox-rfid-1.3.0`) sur `\\RECALBOX\share`.
-2. Redémarrez Recalbox.
+1. Double-cliquez sur `installer.html`, connectez-vous (adresse, port `8765`,
+   jeton de `\\RECALBOX\share\system\rfid\token.txt`).
+2. **« Mettre à jour depuis un fichier ZIP »** : l'archive est envoyée par
+   WebSocket depuis le PC, installée sur la Recalbox, et le journal s'affiche ;
+3. ou collez une URL dans « Mettre à jour depuis cette URL ».
 
-Au démarrage, le script d'amorçage compare la version du dossier copié à celle
-qui est installée : si elle est **plus récente**, il l'installe tout seul, puis
-démarre le service. Les versions identiques ou plus anciennes sont ignorées
-(pas de rétrogradation accidentelle). Le détail est dans
-`/recalbox/share/system/rfid/logs/auto-install.log`.
-
-## Méthode 0 — depuis le navigateur (aucune ligne de commande)
-
-Ouvrez `http://recalbox.local:8080`, puis :
-
-* **« Mettre à jour depuis un fichier ZIP »** : l'archive est envoyée depuis le
-  PC, installée sur la Recalbox, et le journal s'affiche dans la page ;
-* ou collez une URL dans « Mettre à jour depuis cette URL ».
-
-Ensuite, cliquez sur **« Redémarrer »** dans la section Service (ou redémarrez
-Recalbox si le SPI vient d'être activé). C'est la méthode la plus simple pour un
-débutant : rien à copier sur le partage, rien à taper.
+L'agent se recharge tout seul avec la nouvelle version (la page se reconnecte),
+puis il suffit de cliquer sur **« Redémarrer »** dans la section Service si le
+SPI vient d'être activé.
 
 Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
 
-## Méthode 1 — nouvelle version copiée sur le partage (recommandée pour tester)
+## Méthode 2 — nouvelle version copiée sur le partage
 
 1. Copiez le nouveau dossier (par exemple `recalbox-rfid-1.1.0`) sur
    `\\RECALBOX\share`.
@@ -64,20 +55,20 @@ Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
 Le service redémarre automatiquement s'il tournait (aucun redémarrage de
 Recalbox nécessaire, sauf si le SPI vient d'être activé).
 
-## Méthode 2 — depuis une URL (mise à jour à distance)
+## Méthode 3 — depuis une URL (mise à jour à distance)
 
 Hébergez un ZIP du projet (contenu du dossier `recalbox-rfid`, avec `install.sh`
 à la racine), par exemple sur GitHub Releases, sur un serveur web personnel ou
-sur un NAS.
+sur un NAS. Ensuite, soit dans `installer.html` (champ URL), soit en SSH :
 
 ```sh
-/recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid-1.1.0.zip
+/recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid-1.3.0.zip
 ```
 
 Ou :
 
 ```sh
-sh /recalbox/share/system/rfid/install.sh --from-url https://exemple.fr/recalbox-rfid-1.1.0.zip
+sh /recalbox/share/system/rfid/install.sh --from-url https://exemple.fr/recalbox-rfid-1.3.0.zip
 ```
 
 Le ZIP est téléchargé avec `curl` (présent dans Recalbox), décompressé avec
@@ -95,14 +86,14 @@ url = https://exemple.fr/recalbox-rfid.zip
 configurée, la commande réinstalle simplement la version locale (utile pour
 réparer une installation).
 
-## Méthode 3 — depuis la console Recalbox
+## Méthode 4 — depuis la console Recalbox
 
 ```sh
 sh /recalbox/share/system/rfid/install.sh --upgrade
 ```
 
 La copie de `install.sh` présente dans le dossier d'installation réinstalle la
-version… déjà installée. Pour une nouvelle version, utilisez la méthode 1 ou 2.
+version… déjà installée. Pour une nouvelle version, utilisez la méthode 2 ou 3.
 
 ## Fabriquer le ZIP de distribution
 
@@ -124,7 +115,7 @@ sous-dossier : l'installateur le retrouve).
 
 ## Retour arrière
 
-Réinstallez l'ancienne version avec la méthode 1 (`install.sh --upgrade`).
+Réinstallez l'ancienne version avec la méthode 2 (`install.sh --upgrade`).
 Les données restent compatibles : le format de `tags.json` est versionné
 (`"schema": 1`) et n'a pas changé.
 

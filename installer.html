@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recalbox RFID Launcher — installation</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1216;
+    --card: #171b22;
+    --card-2: #1e242d;
+    --line: #2a3240;
+    --text: #e6ebf2;
+    --muted: #93a0b4;
+    --accent: #4c8dff;
+    --ok: #37c98b;
+    --warn: #f0b429;
+    --err: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 18px 22px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #1a2029, #12161c);
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header .version { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1 1 auto; }
+  main { max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .item { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .item .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .item .value { font-size: 16px; margin-top: 4px; word-break: break-word; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.secondary { background: var(--card-2); border: 1px solid var(--line); color: var(--text); }
+  button.danger { background: #b23b3b; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  input[type=text], input[type=number], input[type=password] {
+    background: var(--card-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 9px 11px; font-size: 14px; min-width: 0;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  pre {
+    background: #0b0e12; border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; max-height: 320px; overflow: auto; font-size: 12.5px;
+    white-space: pre-wrap; word-break: break-word; margin: 10px 0 0;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
+    border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: var(--card-2); border: 1px solid var(--line);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .pill.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .pill.off .dot { background: var(--err); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+  .banner { border-radius: 12px; padding: 14px 16px; border: 1px solid; }
+  .banner.info { background: #14263f; border-color: #2b4c7e; }
+  .banner.warn { background: #2c2413; border-color: #6b5722; }
+  .banner.good { background: #12291f; border-color: #245b41; }
+  .banner.err { background: #331a1a; border-color: #6d2b2b; }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .grow { flex: 1 1 240px; }
+  footer { text-align: center; color: #5a6577; font-size: 12px; padding: 10px; }
+  .hidden { display: none !important; }
+  .connect-grid { display: grid; grid-template-columns: 2fr 90px 2fr; gap: 10px; }
+  @media (max-width: 700px) { .connect-grid { grid-template-columns: 1fr; } }
+  label.field { display: block; }
+  label.field span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recalbox RFID Launcher</h1>
+  <span class="version" id="version">—</span>
+  <span class="spacer"></span>
+  <span class="pill off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
+</header>
+
+<main>
+  <!-- Connexion -->
+  <section class="card" id="connect-card">
+    <h2>Connexion à la Recalbox</h2>
+    <div class="connect-grid">
+      <label class="field"><span>Adresse (IP ou nom)</span>
+        <input type="text" id="host" placeholder="recalbox.local" autocomplete="off">
+      </label>
+      <label class="field"><span>Port</span>
+        <input type="number" id="port" placeholder="8765" min="1" max="65535">
+      </label>
+      <label class="field"><span>Jeton (token.txt)</span>
+        <input type="password" id="token" placeholder="jeton de l'agent" autocomplete="off">
+      </label>
+    </div>
+    <div class="row">
+      <button id="btn-connect">Connecter</button>
+      <button class="secondary" id="btn-token-file">Charger token.txt…</button>
+      <input type="file" id="file-token" accept=".txt,text/plain" hidden>
+      <span class="muted small" id="connect-hint"></span>
+    </div>
+    <details>
+      <summary>Où trouver le jeton ?</summary>
+      <p class="small muted">
+        Sur le partage réseau de la Recalbox :
+        <code>\\RECALBOX\share\system\rfid\token.txt</code>. Ouvrez-le avec le
+        Bloc-notes et collez son contenu ci-dessus (ou utilisez
+        « Charger token.txt… »). Il est créé au premier démarrage de l'agent.
+      </p>
+    </details>
+  </section>
+
+  <div id="banner" class="banner info" hidden></div>
+
+  <!-- Application -->
+  <div id="app" class="hidden" style="display:grid;gap:16px">
+    <section class="card">
+      <h2>Installation &amp; mise à jour</h2>
+      <div class="grid" id="install-grid"></div>
+      <div class="row">
+        <button id="btn-install">Installer / mettre à jour maintenant</button>
+        <button class="secondary" id="btn-upload">Mettre à jour depuis un fichier ZIP</button>
+        <input type="file" id="file-update" accept=".zip" hidden>
+      </div>
+      <div class="row">
+        <input class="grow" type="text" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip">
+        <button class="secondary" id="btn-url">Mettre à jour depuis cette URL</button>
+      </div>
+      <details open>
+        <summary>Journal d'installation</summary>
+        <pre id="install-log">(aucune installation lancée)</pre>
+      </details>
+      <div class="row">
+        <button class="danger" id="btn-reboot">Redémarrer Recalbox</button>
+        <span class="muted small">Nécessaire après l'activation du bus SPI.</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Matériel</h2>
+      <div class="grid" id="hardware-grid"></div>
+    </section>
+
+    <section class="card">
+      <h2>Badges</h2>
+      <div class="grid" id="current-grid"></div>
+      <div class="row">
+        <button id="btn-associate">Associer le prochain badge scanné</button>
+        <button class="secondary" id="btn-associate-delete">Effacer le prochain badge scanné</button>
+        <span class="muted small" id="armed-text"></span>
+      </div>
+      <form class="row" id="form-add">
+        <input type="text" id="add-uid" placeholder="UID du badge (A1:B2:C3:D4)" size="22" required>
+        <input type="text" id="add-system" placeholder="Système (snes)" size="12" required>
+        <input class="grow" type="text" id="add-game" placeholder="Jeu (Super Mario World.smc)" required>
+        <input type="text" id="add-name" placeholder="Nom (facultatif)" size="18">
+        <button type="submit">Ajouter</button>
+      </form>
+      <div class="row">
+        <button class="ghost" id="btn-export">Exporter en CSV</button>
+        <button class="ghost" id="btn-import">Importer un CSV</button>
+        <input type="file" id="file-import" accept=".csv,text/csv" hidden>
+        <span class="muted small" id="tags-count"></span>
+      </div>
+      <table style="margin-top:14px">
+        <thead><tr><th>Badge</th><th>Système</th><th>Jeu</th><th>Scans</th><th>Dernier usage</th><th></th></tr></thead>
+        <tbody id="tags-body"></tbody>
+      </table>
+      <details>
+        <summary>Débogage</summary>
+        <form class="row" id="form-scan">
+          <input type="text" id="scan-uid" placeholder="Simuler le scan d'un UID" size="22">
+          <button class="secondary" type="submit">Simuler le scan</button>
+        </form>
+        <div class="row">
+          <button class="ghost" id="btn-logs">Afficher le journal du service</button>
+          <button class="ghost" id="btn-logs-agent">Journal de l'agent</button>
+        </div>
+        <pre id="service-log" hidden></pre>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Service</h2>
+      <div class="grid" id="service-grid"></div>
+      <div class="row">
+        <button class="secondary" id="btn-start">Démarrer</button>
+        <button class="secondary" id="btn-stop">Arrêter</button>
+        <button class="secondary" id="btn-restart">Redémarrer</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>Page locale — aucune donnée ne quitte votre réseau (WebSocket direct vers la Recalbox).</footer>
+
+<script>
+"use strict";
+
+const $ = (selector) => document.querySelector(selector);
+const STORAGE_KEY = "recalbox-rfid-agent";
+
+let state = null;
+let busy = false;
+let lastStatusJson = "";
+let lastTagsJson = "";
+let logLines = [];
+let connectedOnce = false;
+let retryTimer = null;
+
+/* ------------------------------------------------------------------ stockage */
+const store = {
+  read() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (error) { return {}; }
+  },
+  write(values) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(values)); } catch (error) { /* ignore */ }
+  },
+};
+
+/* --------------------------------------------------------------- WebSocket */
+class Agent {
+  constructor() {
+    this.socket = null;
+    this.pending = new Map();
+    this.counter = 0;
+    this.onEvent = null;
+    this.onClosed = null;
+  }
+
+  get isOpen() {
+    return this.socket && this.socket.readyState === WebSocket.OPEN;
+  }
+
+  connect(url, token, timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
+      let socket;
+      try {
+        socket = new WebSocket(url);
+      } catch (error) {
+        reject(new Error("adresse invalide : " + error.message));
+        return;
+      }
+      const timer = setTimeout(() => {
+        try { socket.close(); } catch (error) { /* ignore */ }
+        reject(new Error("délai dépassé : la Recalbox ne répond pas sur " + url));
+      }, timeoutMs);
+
+      socket.onopen = () => {
+        // Authentification obligatoire en premier message.
+        socket.send(JSON.stringify({ id: -1, cmd: "auth", token }));
+      };
+      socket.onmessage = (event) => {
+        let message;
+        try { message = JSON.parse(event.data); } catch (error) { return; }
+        if (message.event) {
+          if (this.onEvent) this.onEvent(message);
+          return;
+        }
+        if (message.id === -1) {
+          clearTimeout(timer);
+          if (message.ok) {
+            this.socket = socket;
+            socket.onmessage = (inner) => this.handle(inner);
+            socket.onclose = () => this.handleClose();
+            socket.onerror = () => {};
+            resolve(message.data || {});
+          } else {
+            try { socket.close(); } catch (error) { /* ignore */ }
+            reject(new Error(message.error || "jeton refusé"));
+          }
+          return;
+        }
+        this.dispatch(message);
+      };
+      socket.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error("connexion impossible (agent arrêté, mauvaise adresse ou port)"));
+      };
+      socket.onclose = () => {
+        clearTimeout(timer);
+        reject(new Error("connexion fermée par la Recalbox (jeton refusé ?)"));
+      };
+    });
+  }
+
+  handle(event) {
+    let message;
+    try { message = JSON.parse(event.data); } catch (error) { return; }
+    if (message.event) {
+      if (this.onEvent) this.onEvent(message);
+      return;
+    }
+    this.dispatch(message);
+  }
+
+  dispatch(message) {
+    const entry = this.pending.get(message.id);
+    if (!entry) return;
+    this.pending.delete(message.id);
+    clearTimeout(entry.timer);
+    if (message.ok) entry.resolve(message.data === undefined ? {} : message.data);
+    else entry.reject(new Error(message.error || "erreur inconnue"));
+  }
+
+  handleClose() {
+    this.socket = null;
+    for (const entry of this.pending.values()) {
+      clearTimeout(entry.timer);
+      entry.reject(new Error("connexion perdue"));
+    }
+    this.pending.clear();
+    if (this.onClosed) this.onClosed();
+  }
+
+  send(cmd, payload = {}, timeoutMs = 60000) {
+    return new Promise((resolve, reject) => {
+      if (!this.isOpen) { reject(new Error("non connecté à la Recalbox")); return; }
+      const id = ++this.counter;
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error("délai dépassé (" + cmd + ")"));
+      }, timeoutMs);
+      this.pending.set(id, { resolve, reject, timer });
+      this.socket.send(JSON.stringify(Object.assign({ id, cmd }, payload)));
+    });
+  }
+
+  close() {
+    if (this.socket) { try { this.socket.close(); } catch (error) { /* ignore */ } }
+    this.socket = null;
+  }
+}
+
+const agent = new Agent();
+
+/* ------------------------------------------------------------------- outils */
+function el(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+  if (options.className) node.className = options.className;
+  if (options.text !== undefined) node.textContent = options.text;
+  if (options.title) node.title = options.title;
+  if (options.onclick) node.addEventListener("click", options.onclick);
+  for (const child of children) if (child) node.appendChild(child);
+  return node;
+}
+
+function item(label, value, extraClass) {
+  return el("div", { className: "item" }, [
+    el("div", { className: "label", text: label }),
+    el("div", { className: "value " + (extraClass || ""), text: value }),
+  ]);
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return String(value).replace("T", " ");
+}
+
+function showBanner(kind, message) {
+  const banner = $("#banner");
+  if (!message) { banner.hidden = true; return; }
+  banner.hidden = false;
+  banner.className = "banner " + kind;
+  banner.textContent = message;
+}
+
+function setLink(on, label) {
+  const pill = $("#link-pill");
+  pill.className = "pill " + (on ? "on" : "off");
+  $("#link-text").textContent = label;
+}
+
+function setConnected(ui) {
+  setLink(true, "connecté");
+  $("#app").classList.remove("hidden");
+  $("#connect-card").classList.add("hidden");
+  $("#version").textContent = "v" + (ui.version || state?.app_version || "");
+}
+
+/* ------------------------------------------------------------------- rendu */
+function render(status) {
+  state = status;
+  $("#version").textContent = "v" + status.app_version +
+    (status.installed && status.installed_version ? " (installé : " + status.installed_version + ")" : "");
+
+  const running = status.service && status.service.running;
+  setLink(true, running ? "connecté · service actif" : "connecté · service arrêté");
+
+  if (!status.installed) {
+    showBanner("warn",
+      "Le lanceur n'est pas installé. Cliquez sur « Installer / mettre à jour maintenant » " +
+      "(le dossier du projet doit être présent sur le partage de la Recalbox).");
+  } else if (!status.spi) {
+    showBanner("warn",
+      "Le bus SPI n'est pas actif : redémarrez Recalbox pour que le lecteur soit reconnu " +
+      "(un redémarrage est nécessaire après l'activation du SPI).");
+  } else if (status.frontend === false) {
+    showBanner("warn",
+      "Recalbox ne sait pas lancer un jeu par script (version 9 minimum). Les badges seront lus, " +
+      "mais le lancement automatique ne fonctionnera pas.");
+  } else if (status.installed && !running) {
+    showBanner("info", "Le programme est installé mais le service n'est pas démarré. " +
+      "Démarrez-le ci-dessous (section Service).");
+  } else {
+    showBanner("good", "");
+  }
+
+  renderInstall(status);
+  renderHardware(status);
+  renderCurrent(status);
+  renderService(status);
+}
+
+function renderInstall(status) {
+  $("#install-grid").replaceChildren(
+    item("Version du programme", status.app_version),
+    item("Installation", status.installed ? "installée" : "absente", status.installed ? "ok" : "warn"),
+    item("Recalbox", status.recalbox || "inconnue"),
+    item("Dossier", status.home)
+  );
+  const install = status.install || {};
+  $("#btn-install").disabled = busy || install.running;
+  $("#btn-upload").disabled = busy || install.running;
+  $("#btn-url").disabled = busy || install.running || !$("#update-url").value.trim();
+  if (install.running) $("#install-log").textContent = "Installation en cours…\n" + logLines.join("\n");
+}
+
+function renderHardware(status) {
+  const service = status.service && status.service.status;
+  const reader = service && service.reader ? "0x" + String(service.reader).replace(/^0x/, "") : "";
+  $("#hardware-grid").replaceChildren(
+    item("Bus SPI", status.spi ? "actif" : "inactif", status.spi ? "ok" : "err"),
+    item("Lecteur RC522", reader || "non détecté", reader ? "ok" : "warn"),
+    item("Bouton poussoir", service && service.button ? "détecté" : "indisponible",
+         service && service.button ? "ok" : "warn"),
+    item("Dernier badge", service && service.last_uid ? service.last_uid : "—"),
+    item("Frontend Recalbox", status.frontend === null ? "hors Recalbox" :
+         (status.frontend ? "compatible" : "trop ancien"), status.frontend ? "ok" : "warn")
+  );
+}
+
+function renderCurrent(status) {
+  const current = status.current;
+  if (current) {
+    $("#current-grid").replaceChildren(
+      item("Jeu sélectionné", current.name || current.game),
+      item("Système", current.system),
+      item("Fichier", current.game)
+    );
+  } else {
+    $("#current-grid").replaceChildren(
+      item("Jeu sélectionné", "aucun (mettez un jeu en surbrillance dans Recalbox)")
+    );
+  }
+  const controller = status.service && status.service.status && status.service.status.controller;
+  const armed = controller && controller.mode;
+  $("#armed-text").textContent = armed
+    ? (armed === "associate" ? "Association armée : scannez un badge (" : "Suppression armée : scannez un badge (") +
+      Math.round(controller.seconds_left || 0) + " s)"
+    : "";
+  $("#btn-associate").disabled = busy || !status.service.running || !current;
+  $("#btn-associate-delete").disabled = busy || !status.service.running;
+  $("#add-system").value = $("#add-system").value || (current ? current.system : "");
+  $("#add-game").value = $("#add-game").value || (current ? current.game : "");
+}
+
+function renderService(status) {
+  const service = status.service || {};
+  const details = service.status || {};
+  $("#service-grid").replaceChildren(
+    item("État", service.running ? "en marche" : "arrêté", service.running ? "ok" : "err"),
+    item("PID", service.running ? String(service.pid) : "—"),
+    item("Depuis", details.started ? formatDate(details.started) : "—"),
+    item("Badges connus", String(status.tags))
+  );
+  $("#btn-start").disabled = busy || service.running;
+  $("#btn-stop").disabled = busy || !service.running;
+  $("#btn-restart").disabled = busy || !service.running;
+}
+
+async function renderTags(force) {
+  const payload = await agent.send("tags.list");
+  const json = JSON.stringify(payload);
+  if (!force && json === lastTagsJson) return;
+  lastTagsJson = json;
+  $("#tags-count").textContent = payload.count + " badge(s) enregistré(s)";
+  const body = $("#tags-body");
+  body.replaceChildren();
+  if (!payload.tags.length) {
+    body.appendChild(el("tr", {}, [el("td", { colspan: 6, className: "muted", text: "Aucun badge." })]));
+    return;
+  }
+  for (const tag of payload.tags) {
+    const row = el("tr", {}, [
+      el("td", { className: "mono", text: tag.pretty }),
+      el("td", { text: tag.system }),
+      el("td", { text: tag.game, title: tag.game }),
+      el("td", { text: String(tag.hits) }),
+      el("td", { text: formatDate(tag.last_used) }),
+    ]);
+    row.appendChild(el("td", {}, [
+      el("button", { className: "ghost", text: "Supprimer", onclick: () => removeTag(tag.uid) }),
+    ]));
+    body.appendChild(row);
+  }
+}
+
+/* ---------------------------------------------------------------- refresh */
+async function refresh() {
+  if (!agent.isOpen) return;
+  try {
+    const status = await agent.send("status");
+    const json = JSON.stringify(status);
+    if (json !== lastStatusJson) { lastStatusJson = json; render(status); }
+    else { state = status; renderCurrent(status); }
+    await renderTags(false);
+  } catch (error) {
+    /* la reconnexion est gérée par onClosed */
+  }
+}
+
+function scheduleRefresh() {
+  if (retryTimer) clearInterval(retryTimer);
+  retryTimer = setInterval(refresh, 2000);
+}
+
+/* ---------------------------------------------------------------- actions */
+async function run(action, options = {}) {
+  if (busy) return undefined;
+  busy = true;
+  try {
+    return await action();
+  } catch (error) {
+    if (!options.silent) alert("Erreur : " + error.message);
+    return undefined;
+  } finally {
+    busy = false;
+  }
+}
+
+async function removeTag(uid) {
+  if (!confirm("Supprimer le badge " + uid + " ?")) return;
+  await run(() => agent.send("tags.remove", { uid }));
+  lastTagsJson = "";
+  renderTags(true);
+}
+
+function appendLog(line) {
+  logLines.push(line);
+  if (logLines.length > 800) logLines = logLines.slice(-800);
+  const panel = $("#install-log");
+  panel.textContent = logLines.join("\n");
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function toBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(index, index + chunk));
+  }
+  return btoa(binary);
+}
+
+async function uploadZip(file) {
+  await run(async () => {
+    const buffer = await file.arrayBuffer();
+    await agent.send("upload.begin", { size: buffer.byteLength });
+    const step = 128 * 1024;
+    for (let offset = 0; offset < buffer.byteLength; offset += step) {
+      const slice = buffer.slice(offset, Math.min(offset + step, buffer.byteLength));
+      await agent.send("upload.chunk", { data: toBase64(slice) });
+    }
+    await agent.send("upload.end");
+  });
+}
+
+/* ------------------------------------------------------------- événements */
+agent.onEvent = (message) => {
+  if (message.event === "log") appendLog(message.line);
+  else if (message.event === "install") {
+    appendLog("== installation : " + message.state + " (code " + message.code + ") ==");
+    lastStatusJson = "";
+    refresh();
+  } else if (message.event === "restart_agent") {
+    appendLog("== redémarrage de l'agent dans " + message.in + " s ==");
+    setTimeout(() => tryReconnect(true), (message.in || 2) * 1000 + 800);
+  }
+};
+
+agent.onClosed = () => {
+  setLink(false, "connexion perdue");
+  showBanner("err",
+    "La connexion avec la Recalbox est perdue (agent redémarré ou Recalbox éteinte). " +
+    "Cliquez sur « Reconnecter ».");
+  $("#app").classList.add("hidden");
+  $("#connect-card").classList.remove("hidden");
+  $("#connect-hint").textContent = "Connexion perdue. Vérifiez la Recalbox puis reconnectez-vous.";
+  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+};
+
+/* ---------------------------------------------------------------- connexion */
+function currentSettings() {
+  return {
+    host: $("#host").value.trim() || "recalbox.local",
+    port: parseInt($("#port").value, 10) || 8765,
+    token: $("#token").value.trim(),
+  };
+}
+
+async function tryReconnect(silent) {
+  const settings = currentSettings();
+  if (!settings.token) { $("#connect-hint").textContent = "Jeton manquant."; return; }
+  const url = "ws://" + settings.host + ":" + settings.port;
+  $("#connect-hint").textContent = "Connexion à " + url + "…";
+  try {
+    await agent.connect(url, settings.token);
+    store.write(settings);
+    connectedOnce = true;
+    $("#connect-hint").textContent = "";
+    setConnected({});
+    lastStatusJson = "";
+    await refresh();
+    scheduleRefresh();
+  } catch (error) {
+    setLink(false, "déconnecté");
+    $("#connect-hint").textContent = error.message;
+    if (!silent) showBanner("err", error.message);
+  }
+}
+
+$("#btn-connect").addEventListener("click", () => tryReconnect(false));
+$("#token").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
+$("#host").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
+
+$("#btn-token-file").addEventListener("click", () => $("#file-token").click());
+$("#file-token").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  $("#token").value = text.trim();
+  event.target.value = "";
+  $("#connect-hint").textContent = "Jeton chargé, cliquez sur « Connecter ».";
+});
+
+/* ---------------------------------------------------------------- boutons */
+$("#btn-install").addEventListener("click", () => run(async () => {
+  logLines = [];
+  $("#install-log").textContent = "";
+  await agent.send("install");
+}));
+
+$("#btn-upload").addEventListener("click", () => $("#file-update").click());
+$("#file-update").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  logLines = [];
+  $("#install-log").textContent = "Envoi du fichier " + file.name + "…";
+  await uploadZip(file);
+  event.target.value = "";
+});
+
+$("#btn-url").addEventListener("click", () => {
+  const url = $("#update-url").value.trim();
+  if (!url) return;
+  run(async () => {
+    logLines = [];
+    $("#install-log").textContent = "Mise à jour depuis " + url + "…";
+    await agent.send("install", { url });
+  });
+});
+$("#update-url").addEventListener("input", () => {
+  $("#btn-url").disabled = !$("#update-url").value.trim();
+});
+
+$("#btn-reboot").addEventListener("click", () => {
+  if (!confirm("Redémarrer Recalbox maintenant ?")) return;
+  run(async () => { await agent.send("reboot"); alert("Recalbox redémarre."); });
+});
+
+$("#btn-associate").addEventListener("click", () =>
+  run(() => agent.send("associate", { mode: "associate" })));
+$("#btn-associate-delete").addEventListener("click", () =>
+  run(() => agent.send("associate", { mode: "delete" })));
+
+$("#form-add").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const payload = {
+    uid: $("#add-uid").value.trim(),
+    system: $("#add-system").value.trim(),
+    game: $("#add-game").value.trim(),
+    name: $("#add-name").value.trim(),
+  };
+  if (!payload.uid || !payload.system || !payload.game) {
+    alert("UID, système et jeu sont obligatoires.");
+    return;
+  }
+  const ok = await run(() => agent.send("tags.add", payload), { silent: true });
+  if (!ok) { alert("Ajout impossible (UID, système ou jeu invalide)."); return; }
+  $("#form-add").reset();
+  lastTagsJson = "";
+  renderTags(true);
+});
+
+$("#form-scan").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const uid = $("#scan-uid").value.trim();
+  if (!uid) return;
+  await run(() => agent.send("scan", { uid }));
+});
+
+$("#btn-export").addEventListener("click", async () => {
+  const payload = await run(() => agent.send("tags.export"));
+  if (payload) downloadText("badges-rfid.csv", payload.csv, "text/csv;charset=utf-8");
+});
+
+$("#btn-import").addEventListener("click", () => $("#file-import").click());
+$("#file-import").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const result = await run(() => agent.send("tags.import", { csv: text }), { silent: true });
+  if (result && result.stats) {
+    alert("Import : " + result.stats.ajoutes + " ajouté(s), " +
+      result.stats.mis_a_jour + " mis à jour, " + result.stats.ignores + " ignoré(s)");
+    lastTagsJson = "";
+    renderTags(true);
+  }
+  event.target.value = "";
+});
+
+$("#btn-start").addEventListener("click", () =>
+  run(() => agent.send("service", { action: "start" })));
+$("#btn-stop").addEventListener("click", () => {
+  if (!confirm("Arrêter le service RFID ?")) return;
+  run(() => agent.send("service", { action: "stop" }));
+});
+$("#btn-restart").addEventListener("click", () =>
+  run(() => agent.send("service", { action: "restart" })));
+
+async function showLog(name) {
+  const payload = await run(() => agent.send("log", { name }));
+  if (!payload) return;
+  const panel = $("#service-log");
+  panel.hidden = false;
+  panel.textContent = payload.text || "(vide)";
+}
+$("#btn-logs").addEventListener("click", () => showLog("service"));
+$("#btn-logs-agent").addEventListener("click", () => showLog("agent"));
+
+/* ------------------------------------------------------------------ départ */
+(function init() {
+  const saved = store.read();
+  $("#host").value = saved.host || "recalbox.local";
+  $("#port").value = saved.port || 8765;
+  $("#token").value = saved.token || "";
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("host")) $("#host").value = params.get("host");
+  if (params.get("port")) $("#port").value = params.get("port");
+  if (saved.token) {
+    $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Connecter ».";
+  } else {
+    $("#connect-hint").textContent = "Renseignez le jeton (fichier token.txt du partage).";
+  }
+  window.addEventListener("beforeunload", () => agent.close());
+})();
+</script>
+</body>
+</html>

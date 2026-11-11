@@ -63,14 +63,10 @@ sound = 1
 # auto, paplay, aplay ou none
 sound_player = auto
 
-[web]
-# Interface web de gestion : http://recalbox.local:8080
+[agent]
+# Agent WebSocket utilise par installer.html (ws://recalbox.local:8765)
 enabled = 1
-# 0.0.0.0 = accessible sur le reseau local
-host = 0.0.0.0
-port = 8080
-# Mot de passe facultatif (HTTP Basic). Vide = pas de mot de passe.
-password =
+port = 8765
 
 [update]
 # URL du fichier ZIP de mise a jour (voir docs/MISE-A-JOUR.md). Facultatif.

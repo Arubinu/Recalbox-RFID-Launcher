@@ -7,9 +7,8 @@
 #  Ce script :
 #    1. demande l'adresse de la Recalbox ;
 #    2. copie le programme sur le partage \\RECALBOX\share ;
-#    3. installe l'interface web d'installation (sans SSH) ;
-#    4. propose d'installer tout de suite par SSH, sinon indique l'adresse a
-#       ouvrir dans le navigateur.
+#    3. installe l'agent WebSocket (gestion depuis installer.html) ;
+#    4. propose d'installer tout de suite par SSH, sinon ouvre installer.html.
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -17,7 +16,7 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Items = @("app", "userscript", "bootstrap", "docs", "tests",
            "install.sh", "uninstall.sh", "VERSION", "README.md", "CHANGELOG.md",
-           "windows")
+           "installer.html", "windows")
 
 function Write-Info($message) { Write-Host "  $message" -ForegroundColor Gray }
 function Write-Ok($message) { Write-Host "  OK  $message" -ForegroundColor Green }
@@ -50,7 +49,6 @@ $target = Read-Host "Adresse de la Recalbox (IP ou nom, vide = recalbox.local)"
 if ([string]::IsNullOrWhiteSpace($target)) { $target = "recalbox.local" }
 
 $share = "\\$target\share"
-$webURL = "http://${target}:8080"
 
 Write-Host ""
 Write-Info "Verification du partage $share ..."
@@ -88,9 +86,9 @@ foreach ($script in $scripts) { Normalize-LineEndings $script.FullName }
 Write-Ok "Scripts compatibles Recalbox"
 
 # --------------------------------------------------------------------------- #
-# Auto-installation au demarrage (aucun SSH necessaire)
+# Agent WebSocket (installation et gestion depuis installer.html)
 # --------------------------------------------------------------------------- #
-$bootstrapName = "recalbox-rfid-autoinstall(permanent).py3"
+$bootstrapName = "recalbox-rfid-agent(permanent).py3"
 $bootstrap = Join-Path $destination "bootstrap\$bootstrapName"
 $userscripts = Join-Path $share "userscripts"
 if (Test-Path $bootstrap) {
@@ -98,9 +96,9 @@ if (Test-Path $bootstrap) {
     $installed = Join-Path $userscripts $bootstrapName
     Copy-Item $bootstrap $installed -Force
     Normalize-LineEndings $installed
-    Write-Ok "Auto-installation installee (au prochain demarrage de Recalbox)"
+    Write-Ok "Agent WebSocket installe (demarre avec Recalbox)"
 } else {
-    Write-Warn "bootstrap introuvable : l'installation automatique sera indisponible."
+    Write-Warn "bootstrap introuvable : l'agent WebSocket sera indisponible."
 }
 
 # --------------------------------------------------------------------------- #
@@ -111,15 +109,19 @@ $answer = Read-Host "Installer tout de suite par SSH ? (O/n)"
 $installNow = [string]::IsNullOrWhiteSpace($answer) -or ($answer -match '^[oOyY]')
 
 if (-not $installNow) {
+    $page = Join-Path $ProjectRoot "installer.html"
     Write-Host ""
     Write-Ok "Preparation terminee."
     Write-Host ""
-    Write-Host " Il ne reste qu'a redemarrer Recalbox :" -ForegroundColor Cyan
-    Write-Host "  1. Menu QUITTER > REDEMARRER."
-    Write-Host "     L'installation se fait toute seule au demarrage, et Recalbox"
-    Write-Host "     redemarre une fois de plus si le bus SPI vient d'etre active."
-    Write-Host "  2. Ouvrez $webURL dans un navigateur pour verifier et associer les badges."
+    Write-Host " Prochaines etapes :" -ForegroundColor Cyan
+    Write-Host "  1. Redemarrez Recalbox (menu QUITTER > REDEMARRER)."
+    Write-Host "  2. L'agent WebSocket demarre avec Recalbox (ws://$target`:8765)."
+    Write-Host "  3. Ouvrez installer.html (il s'ouvre automatiquement ci-dessous),"
+    Write-Host "     renseignez l'adresse $target et le jeton contenu dans :"
+    Write-Host "       \\$target\share\system\rfid\token.txt"
+    Write-Host "  4. Cliquez sur Â« Installer Â», puis redemarrez si le SPI etait inactif."
     Write-Host ""
+    if (Test-Path $page) { Start-Process $page }
     Read-Host "Appuyez sur Entree pour fermer"
     exit 0
 }
@@ -128,9 +130,10 @@ $ssh = Get-Command ssh -ErrorAction SilentlyContinue
 if (-not $ssh) {
     Write-Warn "La commande 'ssh' est introuvable sur ce PC."
     Write-Host ""
-    Write-Host " Utilisez plutot le navigateur :" -ForegroundColor Yellow
+    Write-Host " Utilisez plutot l'agent WebSocket :" -ForegroundColor Yellow
     Write-Host "  1. Redemarrez Recalbox."
-    Write-Host "  2. Ouvrez $webURL puis cliquez sur « Installer maintenant »."
+    Write-Host "  2. Ouvrez installer.html, connectez-vous a $target`:8765 avec le"
+    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis Â« Installer Â»."
     Write-Host ""
     Write-Host " (Ou installez OpenSSH : Parametres > Applications >"
     Write-Host "  Fonctionnalites facultatives > Client OpenSSH.)"
@@ -150,9 +153,10 @@ Write-Host ""
 if ($exitCode -ne 0) {
     Write-Err "L'installation par SSH a echoue (code $exitCode)."
     Write-Host ""
-    Write-Host " Pas de panique : l'interface web reste disponible." -ForegroundColor Yellow
+    Write-Host " Pas de panique : l'agent WebSocket reste disponible." -ForegroundColor Yellow
     Write-Host "  1. Redemarrez Recalbox."
-    Write-Host "  2. Ouvrez $webURL puis cliquez sur « Installer maintenant »."
+    Write-Host "  2. Ouvrez installer.html, connectez-vous a $target`:8765 avec le"
+    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis Â« Installer Â»."
     Write-Host ""
     Write-Host " A verifier si vous retentez par SSH : serveur SSH active"
     Write-Host " (RESEAU > SERVEUR SSH > ON), mot de passe, version de Recalbox."
@@ -161,7 +165,8 @@ if ($exitCode -ne 0) {
     Write-Host ""
     Write-Host " Prochaines etapes :" -ForegroundColor Cyan
     Write-Host "  1. Redemarrez Recalbox si l'installateur le demande (SPI)."
-    Write-Host "  2. Ouvrez $webURL pour verifier le materiel et associer les badges."
+    Write-Host "  2. Ouvrez installer.html (agent : ws://$target`:8765,"
+    Write-Host "     jeton : \\$target\share\system\rfid\token.txt)."
     Write-Host "  3. Ou : ssh root@$target `"/recalbox/share/system/rfid/rfidctl test`""
     Write-Host ""
     Write-Host " Documentation : docs/INSTALLATION.md et docs/UTILISATION.md"

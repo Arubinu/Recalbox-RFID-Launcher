@@ -4,6 +4,36 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.3.0]
+
+### Modifié
+
+* **Plus aucune interface hébergée sur la Recalbox** : le serveur HTTP et la page
+  servie par la Recalbox sont supprimés.
+* La gestion passe par un **agent WebSocket** (RFC 6455, bibliothèque standard)
+  protégé par un **jeton** (`token.txt`), et par un fichier **`installer.html`**
+  autonome ouvert sur le PC (`file://` → `ws://`), sans serveur local.
+* Le script permanent d'amorçage devient
+  `recalbox-rfid-agent(permanent).py3` : il démarre l'agent, depuis
+  l'installation ou depuis le dossier copié sur le partage (avant installation).
+* `install.sh` installe les deux scripts permanents et copie `installer.html`
+  dans le dossier d'installation ; il affiche l'URL de l'agent et le chemin du
+  jeton.
+* L'agent diffuse le journal d'installation en direct (flux d'événements), accepte
+  un ZIP envoyé par morceaux, et se recharge seul après une installation.
+* `installer.html` : connexion adresse/port/jeton (mémorisée), journal en direct,
+  badges, association, service, redémarrage, journaux.
+
+### Supprimé
+
+* `app/rfid/webui.py`, `app/web/index.html`, la commande `rfidctl web`, le
+  redémarrage automatique après installation et les tests associés.
+
+### Tests
+
+* 104 tests, dont 20 sur l'agent WebSocket (poignée de main, trames, jeton,
+  commandes, upload, flux d'installation).
+
 ## [1.2.0]
 
 ### Ajouté

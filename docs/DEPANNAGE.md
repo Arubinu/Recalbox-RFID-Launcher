@@ -233,96 +233,93 @@ En dernier recours, supprimez `/recalbox/share/system/rfid` et réinstallez.
 | Journal | Chemin |
 | --- | --- |
 | Service RFID | `/recalbox/share/system/rfid/logs/rfid.log` |
+| Agent WebSocket | `/recalbox/share/system/rfid/logs/agent.log` |
+| Installations | `/recalbox/share/system/rfid/logs/install.log` |
 | Sortie de `rfidctl start` | `/recalbox/share/system/rfid/logs/service.out` |
-| Installations (auto et web) | `/recalbox/share/system/rfid/logs/auto-install.log` et `logs/install.log` |
 | Frontend Recalbox | `/recalbox/share/system/logs/emulationstation.log` |
 | Lancement d'un jeu | `/recalbox/share/system/logs/es_launch_stdout.log` |
 | Démarrage système | commande `recallog` / `dmesg` pour le SPI |
 
 ---
 
-## 12. L'installation automatique ne se déclenche pas
+## 12. L'agent WebSocket ne démarre pas
 
-L'installation démarre au boot de Recalbox via le script permanent
-`recalbox-rfid-autoinstall(permanent).py3`. À vérifier :
+L'agent est lancé par le script permanent
+`recalbox-rfid-agent(permanent).py3`, au démarrage de l'interface Recalbox.
 
 1. **Le script est-il en place ?**
    `ls -l /recalbox/share/userscripts/` doit lister
-   `recalbox-rfid-autoinstall(permanent).py3` (et le fichier ne doit pas être
-   vide).
-2. **Le dossier du projet est-il sur le partage ?**
-   `ls /recalbox/share/recalbox-rfid/install.sh` (le dossier peut aussi être
-   jusqu'à trois niveaux plus bas).
-3. **Que dit le journal ?**
-   `cat /recalbox/share/system/rfid/logs/auto-install.log` (il n'existe qu'après
-   la première tentative).
-4. **Recalbox a-t-il redémarré ?** L'installation ne se déclenche qu'au démarrage
-   de l'interface ; un simple `rfidctl restart` ne la lance pas. Menu
-   `QUITTER` > `REDÉMARRER`.
-5. **Un jeu était-il en cours ?** Le redémarrage automatique est alors reporté :
-   quittez le jeu, puis redémarrez Recalbox.
-6. **Fins de ligne Windows (CRLF) ?** `install.sh` en CRLF échoue avec des
-   messages `: not found`. Utilisez l'assistant Windows (il convertit) ou
-   `sed -i 's/\r$//' /recalbox/share/recalbox-rfid/install.sh`.
-7. Si l'interface d'EmulationStation ne démarre pas (écran noir), aucun script
-   utilisateur ne tourne : passez par SSH
-   (`sh /recalbox/share/recalbox-rfid/install.sh --start`).
+   `recalbox-rfid(permanent).py3` **et**
+   `recalbox-rfid-agent(permanent).py3`.
+2. **Que dit son journal ?**
+   `cat /recalbox/share/system/rfid/logs/agent.log` : on doit y lire
+   « Agent WebSocket pret sur ws://…:8765 ».
+3. **Le port est-il occupé ?** `netstat -ltnp | grep 8765`. Si oui, changez
+   `port` dans `[agent]` de `config.ini` (et le port saisi dans `installer.html`).
+4. **L'agent est-il activé ?** `[agent] enabled = 1` dans `config.ini`.
+5. **Recalbox a-t-il redémarré ?** Le script n'est lu qu'au démarrage de
+   l'interface : après l'avoir copié, redémarrez (`QUITTER` > `REDÉMARRER`).
+6. **Test manuel** (SSH) :
 
-En cas d'échec, le script ouvre normalement l'interface web de secours :
-ouvrez `http://<ip>:8080`, lisez le journal d'installation et cliquez sur
-« Installer maintenant ».
-
----
-
-## 13. Interface web
-
-### La page ne répond pas
-
-1. **Le service tourne-t-il ?** `ps aux | grep rfid` ou `rfidctl status`. Sans
-   service, l'interface web de secours prend le relais **20 secondes** après le
-   démarrage de Recalbox (le temps de voir si le service démarre).
-2. **L'interface est-elle activée ?** dans `config.ini` :
-
-   ```ini
-   [web]
-   enabled = 1
+   ```sh
+   python3 /recalbox/share/system/rfid/app/main.py agent --home /recalbox/share/system/rfid
    ```
 
-3. **Le port 8080 est-il occupé ?** `netstat -ltnp | grep 8080` (ou essayez un
-   autre port : `port = 8081` dans `[web]`, puis redémarrez le service).
-4. **Bonne adresse ?** `http://<ip-de-la-recalbox>:8080` (l'IP est affichée dans
-   `RÉSEAU` > `INFORMATIONS`).
-5. **Le script d'amorçage est-il installé ?**
-   `ls -l /recalbox/share/userscripts/` doit lister
-   `recalbox-rfid(permanent).py3` et
-   `recalbox-rfid-autoinstall(permanent).py3`.
+   La commande affiche `ws://…:8765` et le chemin du jeton. `Ctrl+C` pour
+   arrêter.
+7. Si l'interface d'EmulationStation ne démarre pas (écran noir), aucun script
+   utilisateur ne tourne : utilisez SSH avec `install.sh --start`.
+
+## 13. `installer.html` ne se connecte pas
+
+| Symptôme | Cause probable |
+| --- | --- |
+| « connexion impossible » | agent arrêté, mauvaise IP, port différent de 8765 |
+| « jeton refusé » | jeton mal recopié (espaces, minuscules) ou `token.txt` supprimé puis recréé |
+| « délai dépassé » | adresse injoignable : testez `ping recalbox.local`, préférez l'IP |
+| rien ne se passe | la page doit être ouverte **depuis le disque** (`file://`) : ouverte depuis un site `https://`, le navigateur bloque `ws://` (mixed content) |
+
+À vérifier :
+
+1. **La page est-elle bien `installer.html` du projet ?** (pas une ancienne
+   copie ni l'ancienne interface web).
+2. **L'adresse** : `recalbox.local` ou l'IP affichée dans
+   `RÉSEAU` > `INFORMATIONS` ; le port `8765`.
+3. **Le jeton** : `\\RECALBOX\share\system\rfid\token.txt`. Utilisez le bouton
+   « Charger token.txt… » plutôt qu'un copier-coller.
+4. **Le jeton n'existe pas ?** Il est créé au premier démarrage de l'agent.
+   Redémarrez Recalbox puis rechargez la page.
+5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
+   un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
 
 ### « Le lanceur n'est pas installé » alors qu'il l'est
 
 La page indique l'état du dossier `/recalbox/share/system/rfid`. Si le programme
-a été installé ailleurs (variable `RFID_HOME`), l'interface web ne le voit pas :
-réinstallez avec le chemin par défaut, ou lancez l'interface avec
-`python3 /recalbox/share/system/rfid/app/main.py web --home <dossier>`.
+a été installé ailleurs (variable `RFID_HOME`), l'agent ne le voit pas :
+réinstallez avec le chemin par défaut, ou lancez l'agent avec
+`python3 <dossier>/app/main.py agent --home <dossier>`.
 
-### L'installation depuis la page échoue
+### L'installation échoue
 
-La page affiche le journal complet ; on le retrouve dans
-`logs/install.log`. Causes fréquentes :
+La page affiche le journal complet ; on le retrouve dans `logs/install.log`.
+Causes fréquentes :
 
 | Message | Cause / solution |
 | --- | --- |
 | `install.sh introuvable` | le dossier du projet n'a pas été copié sur `\\RECALBOX\share` |
-| `/bin/sh est necessaire` | la page tourne hors Recalbox (PC de test) |
-| `Permission denied` | l'interface web ne tourne pas en root : elle doit être lancée par Recalbox (userscript) |
+| `/bin/sh est necessaire` | l'agent tourne hors Recalbox (PC de test) |
+| `Permission denied` | l'agent ne tourne pas en root : il doit être lancé par Recalbox (userscript) |
 | installation OK mais lecteur absent | le SPI n'est pas encore actif : redémarrer Recalbox |
 
-### Mot de passe oublié
+### Jeton perdu ou à changer
 
-Éditez `\\RECALBOX\share\system\rfid\config.ini` (accessible sans mot de passe
-depuis le partage), videz la ligne `password =` puis redémarrez Recalbox.
+* Le lire sur le partage : `\\RECALBOX\share\system\rfid\token.txt` ;
+* pour le régénérer : supprimez ce fichier puis redémarrez Recalbox (il est
+  recréé au démarrage de l'agent) — pensez à ressaisir le nouveau jeton dans
+  `installer.html`.
 
 ### Faut-il l'exposer sur Internet ?
 
-**Non.** La page permet d'installer du code et de redémarrer la Recalbox : elle
+**Non.** L'agent permet d'installer du code et de redémarrer la Recalbox : il
 doit rester sur le réseau local. Pour un accès à distance, utilisez un VPN
-(WireGuard, Tailscale…), jamais une redirection de port.
+(WireGuard, Tailscale…), jamais une redirection du port 8765.

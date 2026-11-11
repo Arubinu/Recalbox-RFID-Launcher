@@ -12,8 +12,8 @@ APP_NAME="Recalbox RFID Launcher"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
-BOOTSTRAP_USERSCRIPT_NAME="recalbox-rfid-autoinstall(permanent).py3"
-LEGACY_BOOTSTRAP_NAME="recalbox-rfid-web(permanent).py3"
+AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
+LEGACY_USERSCRIPTS="recalbox-rfid-autoinstall(permanent).py3 recalbox-rfid-web(permanent).py3"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
@@ -66,14 +66,16 @@ if [ -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME" ]; then
     rm -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     say "  script de demarrage supprime"
 fi
-if [ -f "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME" ]; then
-    rm -f "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
-    say "  auto-installation supprimee"
+if [ -f "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME" ]; then
+    rm -f "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
+    say "  agent WebSocket supprime"
 fi
-if [ -f "$USERSCRIPTS_DIR/$LEGACY_BOOTSTRAP_NAME" ]; then
-    rm -f "$USERSCRIPTS_DIR/$LEGACY_BOOTSTRAP_NAME"
-    say "  ancienne interface web de secours supprimee"
-fi
+for legacy in $LEGACY_USERSCRIPTS; do
+    if [ -f "$USERSCRIPTS_DIR/$legacy" ]; then
+        rm -f "$USERSCRIPTS_DIR/$legacy"
+        say "  ancien script supprime : $legacy"
+    fi
+done
 
 # 3. SPI (optionnel)
 if [ "$REMOVE_SPI" = "1" ]; then
