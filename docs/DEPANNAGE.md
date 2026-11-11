@@ -346,11 +346,15 @@ uniquement dans **Edge et Chrome**. Causes fréquentes :
 
 | Symptôme | Cause / solution |
 | --- | --- |
-| Le bouton ne fait rien | navigateur non compatible (Firefox, Safari) : copiez le dossier à la main (méthode B) |
+| « Windows a protégé votre PC » au double-clic | fichier téléchargé : *Informations complémentaires* → *Exécuter quand même* (ou clic droit → Propriétés → Débloquer) |
+| `ECHEC : acces au partage impossible` | adresse/mot de passe : ouvrir le `.cmd` avec le Bloc-notes, corriger `set HOST=` et `set PASS=` ; ou autoriser les invités (voir plus bas) |
+| `ECHEC : decompression impossible` | `certutil`/`tar` absents : Windows 10 1803+ requis, sinon la page bascule sur PowerShell |
+| `ECHEC : copie vers le partage` | partage en lecture seule ou session expirée : relancer le `.cmd` |
+| Le bouton ne fait rien | navigateur non compatible (Firefox, Safari) : copiez le dossier à la main (méthode 2) |
 | « Sélection annulée » | boîte de dialogue fermée : recommencez et choisissez le partage |
 | « pas de dossier roms ici » | mauvais dossier choisi : sélectionnez `\\RECALBOX\share` (celui qui contient `roms`, `system`, `bios`…) |
 | « Erreur d'écriture » / permission | partage non monté ou en lecture seule : vérifiez `\\RECALBOX\share` dans l'Explorateur |
-| Aucun fichier écrit | antivirus/proxy bloquant l'API ; essayez un autre poste ou la méthode manuelle |
+| Aucun fichier écrit | antivirus/proxy bloquant l'API ; essayez l'installateur `.cmd` ou la méthode manuelle |
 
 Après une copie réussie, la page affiche
 `\\RECALBOX\share\recalbox-rfid` : redémarrez Recalbox pour que l'agent démarre.

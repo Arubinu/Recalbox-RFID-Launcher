@@ -1,5 +1,18 @@
 # Mise à jour
 
+## Méthode automatique — copier un dossier plus récent puis redémarrer
+
+1. Copiez le dossier de la nouvelle version (par exemple
+   `recalbox-rfid-1.7.0`) sur `\\RECALBOX\share` (ou laissez l'installateur
+   `.cmd` le faire).
+2. Redémarrez Recalbox.
+
+Au démarrage, le script permanent compare la version du dossier présent sur le
+partage à celle qui est installée : si elle est **plus récente**, il l'installe
+tout seul, puis redémarre le service. Les versions identiques ou plus anciennes
+sont ignorées (pas de rétrogradation). Détail :
+`/recalbox/share/system/rfid/logs/auto-install.log`.
+
 ## Régénérer l'installateur unique
 
 Après chaque modification d'un fichier du projet :

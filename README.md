@@ -54,33 +54,24 @@ programme.
 
 ## 3. Installation
 
-### Méthode A — le fichier unique (aucune copie manuelle)
+### Méthode A — l'installateur `.cmd` (aucune fenêtre, aucun choix de dossier)
 
-1. Ouvrez **`dist\recalbox-rfid-installer-<version>.html`** (fourni dans le
-   projet ; sinon `python tools/build_installer.py` le régénère).
-2. Cliquez sur **« Choisir `\\RECALBOX\share` et copier… »** puis sélectionnez le
-   partage Recalbox (le dossier qui contient `roms`, `system`…). La page écrit
-   elle-même `recalbox-rfid\` et le script de démarrage dans `userscripts\`.
-3. **Redémarrez Recalbox** : l'agent WebSocket démarre avec l'interface.
-4. Dans la même page, cliquez sur **« Connecter »** : le jeton est lu
-   automatiquement sur le partage (une seule autorisation de dossier, mémorisée
-   ensuite). Si Windows refuse l'accès au partage, utilisez le bouton
-   **« Autoriser Windows à accéder au partage »** (génère un `acces-recalbox.cmd`
-   avec `net use`).
-5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
-   **« Redémarrer Recalbox »** si le SPI vient d'être activé.
+1. Ouvrez **`dist\recalbox-rfid-installer-<version>.html`** (fourni ; sinon
+   `python tools/build_installer.py` le régénère) et renseignez l'adresse de la
+   Recalbox (`recalbox.local` ou son IP) dans la zone de connexion.
+2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
+3. **Double-cliquez** sur `recalbox-rfid-installation.cmd` (si Windows affiche
+   « Windows a protégé votre PC » : *Informations complémentaires* →
+   *Exécuter quand même*). Il se connecte au partage, copie les fichiers et le
+   script de démarrage — sans rien demander.
+4. **Redémarrez Recalbox.** L'installation se fait toute seule au démarrage
+   (SPI, service) et Recalbox redémarre une fois de plus si nécessaire.
+5. **Relancez le même `.cmd`** : il ouvre l'interface de gestion avec le jeton
+   déjà rempli (et le copie dans le presse-papiers).
 
-La copie depuis la page utilise l'API **File System Access** : elle fonctionne
-avec **Edge et Chrome** (Firefox et Safari ne permettent pas l'écriture locale —
-utilisez alors la méthode B).
-
-> Si Windows demande un identifiant pour `\\RECALBOX\share` (Windows 11 24H2 et
-> plus bloquent les accès « invité » par défaut) : utilisateur **`root`**, mot de
-> passe **`recalboxroot`**. Détails et alternatives :
-> [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), section 14.
-
-L'interface n'est **pas hébergée par la Recalbox** : le fichier est local et parle
-à l'agent par WebSocket, protégé par le jeton.
+> Le `.cmd` tente `root` / `recalboxroot`, puis l'accès invité. Mot de passe root
+> personnalisé ? Ouvrez le fichier avec le Bloc-notes et modifiez
+> `set PASS=...`. Dépannage : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), §14.
 
 ### Méthode B — copier le dossier à la main
 
@@ -89,8 +80,8 @@ L'interface n'est **pas hébergée par la Recalbox** : le fichier est local et p
 2. Copiez `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
    `\\RECALBOX\share\userscripts\`.
 3. **Redémarrez Recalbox.**
-4. Ouvrez `installer.html`, connectez-vous (adresse, `8765`, jeton), puis
-   « Installer / mettre à jour maintenant ».
+4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet) et
+   cliquez sur « Connecter ».
 
 > L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
 > place, propose l'installation par SSH et ouvre `installer.html` à la fin.

@@ -99,35 +99,45 @@
 </header>
 
 <main>
-  <!-- Copie des fichiers (uniquement dans l'installateur généré) -->
+  <!-- Installation en un seul fichier (.cmd) -->
   <section class="card" id="copy-card" hidden>
-    <h2>1. Copier les fichiers sur la Recalbox</h2>
+    <h2>1. Installer sur la Recalbox</h2>
     <div class="grid" id="payload-grid"></div>
     <div class="row">
-      <button id="btn-copy">Choisir \\RECALBOX\share et copier…</button>
-      <button class="secondary" id="btn-netuse">Autoriser Windows à accéder au partage</button>
-      <span class="muted small" id="copy-hint">
-        Navigateur Edge ou Chrome requis (écriture locale).
+      <button id="btn-download-cmd">Télécharger l'installateur Windows (.cmd)</button>
+      <span class="muted small">
+        Un seul fichier : double-clic, aucune fenêtre à remplir.
       </span>
     </div>
-    <pre id="copy-log" hidden></pre>
     <details>
       <summary>Comment faire ?</summary>
       <ol class="small muted">
-        <li>Cliquez sur le bouton, puis choisissez <code>\\RECALBOX\share</code>
-            (le dossier qui contient <code>roms</code>, <code>system</code>…).</li>
-        <li>La page crée <code>recalbox-rfid\</code> et le script de démarrage
-            dans <code>userscripts\</code>.</li>
-        <li>Redémarrez Recalbox, puis connectez-vous ci-dessous (étape 2).</li>
-        <li>Si Windows demande un identifiant :
-            <b>root</b> / <b>recalboxroot</b> (compte par défaut).</li>
+        <li>Cliquez sur le bouton : un fichier
+            <code>recalbox-rfid-installation.cmd</code> est téléchargé.</li>
+        <li>Double-cliquez dessus (« Informations complémentaires » →
+            « Exécuter quand même » si Windows prévient). Il se connecte au
+            partage, copie les fichiers et le script de démarrage.</li>
+        <li>Redémarrez Recalbox : l'installation se fait toute seule au
+            démarrage (et Recalbox redémarre une fois de plus pour le SPI).</li>
+        <li>Relancez le même fichier : il ouvre l'interface de gestion avec le
+            jeton déjà rempli (copié dans le presse-papiers).</li>
       </ol>
       <p class="small muted">
-        Windows 11 (24H2 et plus) bloque les accès « invité » : le partage demande
-        alors un mot de passe. Utilisez <b>root</b> / <b>recalboxroot</b>, ou
-        autorisez les ouvertures de session invité non sécurisées (voir
-        <code>docs/DEPANNAGE.md</code>, section 14).
+        Le fichier tente <b>root</b> / <b>recalboxroot</b>, puis l'accès invité.
+        Si votre mot de passe root est personnalisé, ouvrez le fichier avec le
+        Bloc-notes et remplacez la ligne <code>set PASS=recalboxroot</code>.
       </p>
+    </details>
+    <details>
+      <summary>Méthode alternative : choisir le dossier (Edge/Chrome)</summary>
+      <div class="row">
+        <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier…</button>
+        <button class="secondary" id="btn-netuse">Autoriser Windows à accéder au partage</button>
+        <span class="muted small" id="copy-hint">
+          Écriture directe depuis le navigateur.
+        </span>
+      </div>
+      <pre id="copy-log" hidden></pre>
     </details>
   </section>
 
@@ -284,6 +294,201 @@ function base64ToBytes(text) {
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
   return bytes;
+}
+
+/* ------------------------------------------------ archive ZIP (méthode "store") */
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let index = 0; index < 256; index++) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit++) {
+      value = (value & 1) ? (0xEDB88320 ^ (value >>> 1)) : (value >>> 1);
+    }
+    table[index] = value >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let index = 0; index < bytes.length; index++) {
+    crc = CRC_TABLE[(crc ^ bytes[index]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function dosStamp(date) {
+  const time = (date.getHours() << 11) | (date.getMinutes() << 5) | (date.getSeconds() >> 1);
+  const day = ((date.getFullYear() - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { time: time & 0xFFFF, date: day & 0xFFFF };
+}
+
+function buildZip(entries) {
+  const stamp = dosStamp(new Date());
+  const encoder = new TextEncoder();
+  const parts = [];
+  const directory = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = encoder.encode(entry.name);
+    const data = entry.data;
+    const crc = crc32(data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, stamp.time, true);
+    local.setUint16(12, stamp.date, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, name.length, true);
+    local.setUint16(28, 0, true);
+    parts.push(new Uint8Array(local.buffer), name, data);
+
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true);
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0x0800, true);
+    central.setUint16(10, 0, true);
+    central.setUint16(12, stamp.time, true);
+    central.setUint16(14, stamp.date, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, data.length, true);
+    central.setUint32(24, data.length, true);
+    central.setUint16(28, name.length, true);
+    central.setUint32(38, 0, true);
+    central.setUint32(42, offset, true);
+    directory.push(new Uint8Array(central.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const directorySize = directory.reduce((total, chunk) => total + chunk.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, directorySize, true);
+  end.setUint32(16, offset, true);
+
+  const chunks = parts.concat(directory, [new Uint8Array(end.buffer)]);
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const output = new Uint8Array(total);
+  let position = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, position);
+    position += chunk.length;
+  }
+  return output;
+}
+
+/* ------------------------------------- générateur de l'installateur .cmd */
+function buildInstallerCmd(host, zipBytes) {
+  const base64 = toBase64(zipBytes.buffer);
+  const wrapped = base64.match(/.{1,76}/g).join("\r\n");
+  const header = [
+    "@echo off",
+    "setlocal enabledelayedexpansion",
+    "title Recalbox RFID Launcher - installation",
+    "rem ============================================================",
+    "rem  Installeur autonome (genere par installer.html)",
+    "rem   - double-cliquez sur ce fichier, aucune fenetre a remplir",
+    "rem   - mot de passe root personnalise ? modifiez la ligne set PASS=",
+    "rem ============================================================",
+    "set HOST=" + (host || "recalbox.local"),
+    "set USER=root",
+    "set PASS=recalboxroot",
+    "set SHARE=\\\\%HOST%\\share",
+    "set WORK=%TEMP%\\recalbox-rfid-install",
+    "set SKIP=@@SKIP@@",
+    "",
+    "echo.",
+    "echo ================================================",
+    "echo  Recalbox RFID Launcher",
+    "echo ================================================",
+    "echo.",
+    "echo 1/4 Connexion au partage %SHARE% ...",
+    "net use \"%SHARE%\" /delete >nul 2>&1",
+    "net use \"%SHARE%\" /user:%USER% %PASS% >nul 2>&1",
+    "if errorlevel 1 net use \"%SHARE%\" >nul 2>&1",
+    "if errorlevel 1 goto echec_acces",
+    "echo    OK",
+    "",
+    "echo 2/4 Preparation des fichiers ...",
+    "if exist \"%WORK%\" rmdir /s /q \"%WORK%\" >nul 2>&1",
+    "mkdir \"%WORK%\" >nul 2>&1",
+    "more +%SKIP% \"%~f0\" > \"%WORK%\\payload.b64\"",
+    "certutil -f -decode \"%WORK%\\payload.b64\" \"%WORK%\\payload.zip\" >nul 2>&1",
+    "if not exist \"%WORK%\\payload.zip\" goto echec_extraction",
+    "where tar >nul 2>&1",
+    "if errorlevel 1 goto dezippowershell",
+    "tar -xf \"%WORK%\\payload.zip\" -C \"%WORK%\" >nul 2>&1",
+    "if errorlevel 1 goto dezippowershell",
+    "goto copie",
+    ":dezippowershell",
+    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Expand-Archive -LiteralPath '%WORK%\\payload.zip' -DestinationPath '%WORK%' -Force\" >nul 2>&1",
+    "if errorlevel 1 goto echec_extraction",
+    ":copie",
+    "echo    OK",
+    "",
+    "echo 3/4 Copie vers la Recalbox ...",
+    "robocopy \"%WORK%\\recalbox-rfid\" \"%SHARE%\\recalbox-rfid\" /E /NFL /NDL /NJH /NJS /R:2 /W:1 >nul",
+    "if errorlevel 8 goto echec_copie",
+    "mkdir \"%SHARE%\\userscripts\" >nul 2>&1",
+    "copy /y \"%SHARE%\\recalbox-rfid\\bootstrap\\recalbox-rfid-agent(permanent).py3\" \"%SHARE%\\userscripts\\\" >nul",
+    "if errorlevel 1 goto echec_copie",
+    "echo    OK",
+    "",
+    "echo 4/4 Termine.",
+    "if not exist \"%SHARE%\\system\\rfid\\token.txt\" goto redemarrer",
+    "set /p TOKEN=<\"%SHARE%\\system\\rfid\\token.txt\"",
+    "echo    Jeton : !TOKEN!  (copie dans le presse-papiers)",
+    "clip < \"%SHARE%\\system\\rfid\\token.txt\"",
+    "if not exist \"%~dp0installer.html\" copy /y \"%WORK%\\recalbox-rfid\\installer.html\" \"%~dp0\" >nul 2>&1",
+    "if exist \"%~dp0installer.html\" start \"\" \"%~dp0installer.html#host=%HOST%&port=8765&token=!TOKEN!\"",
+    "goto fin",
+    ":redemarrer",
+    "echo    Redemarrez la Recalbox : l'installation se fait toute seule.",
+    "echo    Relancez ensuite ce fichier pour ouvrir l'interface de gestion.",
+    "goto fin",
+    "",
+    ":echec_acces",
+    "echo.",
+    "echo ECHEC : acces au partage impossible (code %ERRORLEVEL%).",
+    "echo    - verifiez l'adresse (essayez l'IP) et le mot de passe (set PASS=...)",
+    "echo    - ou autorisez les invites : Set-SmbClientConfiguration -EnableInsecureGuestLogons $true",
+    "goto fin",
+    ":echec_extraction",
+    "echo.",
+    "echo ECHEC : decompression impossible (tar/certutil indisponibles ?).",
+    "goto fin",
+    ":echec_copie",
+    "echo.",
+    "echo ECHEC : copie vers le partage impossible (code %ERRORLEVEL%).",
+    "goto fin",
+    "",
+    ":fin",
+    "echo.",
+    "pause",
+    "exit /b",
+  ];
+  const skip = header.length;
+  return header.join("\r\n").replace("@@SKIP@@", String(skip)) + "\r\n" + wrapped + "\r\n";
+}
+
+function downloadInstallerCmd() {
+  const payload = readPayload();
+  if (!payload || !payload.files) return;
+  const project = payload.project || "recalbox-rfid";
+  const entries = Object.entries(payload.files).map(([path, content]) => ({
+    name: project + "/" + path,
+    data: base64ToBytes(content),
+  }));
+  const zip = buildZip(entries);
+  const cmd = buildInstallerCmd($("#host").value.trim(), zip);
+  downloadText("recalbox-rfid-installation.cmd", cmd, "application/octet-stream");
+  $("#copy-hint").textContent = "Fichier téléchargé : double-cliquez dessus.";
 }
 
 /* --------------------------------------------------------------- WebSocket */
@@ -1067,9 +1272,11 @@ async function copyPayload() {
       item("Dossier créé", "\\RECALBOX\\share\\" + (payload.project || "recalbox-rfid"))
     );
     $("#btn-copy").addEventListener("click", copyPayload);
+    $("#btn-download-cmd").addEventListener("click", downloadInstallerCmd);
   } else {
     $("#payload-grid").hidden = true;
     $("#btn-copy").hidden = true;
+    $("#btn-download-cmd").hidden = true;
     $("#copy-hint").textContent =
       "Version « dossier » : copiez recalbox-rfid à la main (ou utilisez le fichier unique).";
   }
@@ -1078,17 +1285,29 @@ async function copyPayload() {
   $("#host").value = saved.host || "recalbox.local";
   $("#port").value = saved.port || 8765;
   $("#token").value = saved.token || "";
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("host")) $("#host").value = params.get("host");
-  if (params.get("port")) $("#port").value = params.get("port");
+
+  // Paramètres passés dans l'URL (#host=…&port=…&token=…), par exemple par
+  // l'installateur .cmd : connexion immédiate, sans rien saisir.
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const search = new URLSearchParams(window.location.search);
+  for (const key of ["host", "port", "token"]) {
+    const value = hash.get(key) || search.get(key);
+    if (value) $("#" + key).value = value;
+  }
+  if (hash.get("token")) {
+    $("#connect-hint").textContent = "Connexion automatique…";
+    setTimeout(() => tryReconnect(true), 400);
+    return;
+  }
+
   if (saved.token) {
     $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Connecter ».";
   } else {
     $("#connect-hint").textContent =
       "Jeton vide : « Connecter » va le chercher sur le partage (une autorisation la première fois).";
   }
-  window.addEventListener("beforeunload", () => agent.close());
 })();
+window.addEventListener("beforeunload", () => agent.close());
 </script>
 </body>
 </html>

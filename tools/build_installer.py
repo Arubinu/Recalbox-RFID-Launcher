@@ -34,7 +34,14 @@ PROJECT_NAME = "recalbox-rfid"
 USERSCRIPT = "bootstrap/recalbox-rfid-agent(permanent).py3"
 
 #: Fichiers de la racine utiles sur la Recalbox.
-ROOT_FILES = ("install.sh", "uninstall.sh", "VERSION", "README.md", "CHANGELOG.md")
+ROOT_FILES = (
+    "install.sh",
+    "uninstall.sh",
+    "VERSION",
+    "README.md",
+    "CHANGELOG.md",
+    "installer.html",  # page « dossier » copiée sur la Recalbox et dans l'installateur .cmd
+)
 
 #: Dossiers embarqués (les tests ne servent pas sur la Recalbox).
 DIRECTORIES = ("app", "userscript", "bootstrap", "docs")

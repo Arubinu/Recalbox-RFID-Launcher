@@ -17,11 +17,35 @@ Mot de passe par défaut du compte `root` : `recalboxroot`.
 
 ---
 
-## Méthode 0 — le fichier unique (aucune copie manuelle)
+## Méthode 0 — l'installateur `.cmd` (le plus simple)
 
-Le fichier `dist\recalbox-rfid-installer-<version>.html` contient **tout** : la
-page de gestion et le contenu des fichiers à installer. Il se régénère avec
-`python tools/build_installer.py`.
+Le sélecteur de dossier de Windows ne sait pas atteindre un partage UNC : on
+l'évite complètement. La page génère un **fichier unique** qui fait tout.
+
+1. **Ouvrez `dist\recalbox-rfid-installer-<version>.html`** (ou régénérez-le :
+   `python tools/build_installer.py`) et indiquez l'adresse de la Recalbox.
+2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
+3. **Double-cliquez** sur le fichier téléchargé. Windows peut afficher
+   « Windows a protégé votre PC » : *Informations complémentaires* →
+   *Exécuter quand même*.
+   Le script (`recalbox-rfid-installation.cmd`) :
+   * se connecte au partage (`net use` : `root`/`recalboxroot`, puis invité) ;
+   * décompresse les fichiers embarqués (`certutil` + `tar`) ;
+   * copie `\\RECALBOX\share\recalbox-rfid\` et
+     `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`.
+4. **Redémarrez Recalbox.** Le script d'amorçage installe tout seul (programme,
+   SPI, service) et redémarre une fois de plus si le SPI vient d'être activé.
+   Le déroulé est dans `\\RECALBOX\share\system\rfid\logs\auto-install.log`.
+5. **Relancez le même `.cmd`** : il lit le jeton sur le partage, le copie dans
+   le presse-papiers et ouvre l'interface de gestion avec le jeton déjà rempli.
+
+Si le message est `ECHEC : acces au partage impossible`, le script affiche le
+code d'erreur et les pistes (adresse IP, mot de passe, accès invité).
+
+## Méthode 1 — copie depuis la page (sélecteur de dossier, Edge/Chrome)
+
+Le sélecteur de dossier de Windows ne sait pas toujours atteindre un partage
+UNC : c'est une méthode de repli, à utiliser si elle fonctionne chez vous.
 
 1. **Ouvrez le fichier** (double-clic) dans **Edge ou Chrome** — Firefox et
    Safari ne permettent pas l'écriture locale.
@@ -40,8 +64,7 @@ page de gestion et le contenu des fichiers à installer. Il se régénère avec
    **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
 
 En cas de navigateur non compatible (ou d'API d'écriture refusée), utilisez la
-méthode A ci-dessous : le résultat est identique, seules les copies sont
-manuelles.
+méthode 2 : le résultat est identique, seules les copies sont manuelles.
 
 ### Si `\\RECALBOX\share` demande un identifiant
 
@@ -92,7 +115,7 @@ personnalisé : réinitialisez le mot de passe Samba en SSH
 (`smbpasswd -a root`), ou utilisez la méthode A (copie manuelle) / la méthode C
 (SSH).
 
-## Méthode A — l'installateur HTML (la plus simple)
+## Méthode 2 — copie manuelle du dossier
 
 Aucune ligne de commande : une page locale (`installer.html`) parle à un agent
 WebSocket protégé qui tourne sur la Recalbox.
@@ -128,7 +151,7 @@ Tout est journalisé dans `/recalbox/share/system/rfid/logs/install.log` et
 > navigateur récent (Edge, Chrome, Firefox, Safari) suffit. Il mémorise
 > l'adresse et le jeton pour les fois suivantes.
 
-## Méthode B — assistant Windows
+## Méthode 3 — assistant Windows
 
 1. Téléchargez / décompressez le projet `recalbox-rfid` sur le PC.
 2. Double-cliquez sur **`windows\INSTALLER.cmd`**.
@@ -139,7 +162,7 @@ Tout est journalisé dans `/recalbox/share/system/rfid/logs/install.log` et
    `recalboxroot`) ; sinon il ouvre `installer.html` pour finir dans le
    navigateur après redémarrage.
 
-## Méthode C — Windows, macOS ou Linux, en ligne de commande (SSH)
+## Méthode 4 — Windows, macOS ou Linux, en ligne de commande (SSH)
 
 **Étape 1 — copier le dossier sur la Recalbox**
 
@@ -169,7 +192,7 @@ redémarrez Recalbox (`QUITTER` > `REDÉMARRER`), puis connectez `installer.html
 ssh root@recalbox.local "/recalbox/share/system/rfid/rfidctl test"
 ```
 
-## Méthode D — directement sur la Recalbox
+## Méthode 5 — directement sur la Recalbox
 
 Avec un clavier branché, quittez le frontend (`QUITTER` > `QUITTER
 EMULATIONSTATION`) pour obtenir une console, connectez-vous en `root`

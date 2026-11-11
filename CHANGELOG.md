@@ -4,6 +4,33 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.6.0]
+
+### Ajouté
+
+* **Installateur `.cmd` autonome, sans aucune boîte de dialogue** : le bouton
+  « Télécharger l'installateur Windows (.cmd) » produit un fichier unique qui
+  se connecte au partage (`net use`, avec repli invité), décompresse les fichiers
+  (ZIP embarqué, `certutil` + `tar`/PowerShell), les copie dans
+  `\\RECALBOX\share\recalbox-rfid\` et installe le script de démarrage dans
+  `userscripts\`. Fini le sélecteur de dossier Windows, qui ne sait pas atteindre
+  un partage UNC.
+* **Installation automatique rétablie** : le script permanent installe/actualise
+  au démarrage, active le SPI, redémarre Recalbox si nécessaire (jamais pendant
+  un jeu) puis démarre le service et l'agent.
+* **Mise à jour automatique** : copier un dossier de version plus récente sur le
+  partage puis redémarrer suffit (comparaison de versions, pas de rétrogradation).
+* Le `.cmd` relancé après redémarrage **ouvre la page avec le jeton déjà rempli**
+  (fragment d'URL `#host=…&port=…&token=…`) et le copie dans le presse-papiers.
+* La page accepte `#host=`, `#port=`, `#token=` et se connecte automatiquement.
+* L'installateur embarque désormais `installer.html` (page « dossier » copiée sur
+  la Recalbox).
+
+### Modifié
+
+* La copie par sélecteur de dossier (Edge/Chrome) passe en méthode alternative,
+  repliée dans un menu.
+
 ## [1.5.1]
 
 ### Ajouté

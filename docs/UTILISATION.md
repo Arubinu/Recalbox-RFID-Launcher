@@ -23,7 +23,11 @@ Champs de connexion :
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | inutile de le saisir : **« Connecter » le lit tout seul** dans `\\RECALBOX\share\system\rfid\token.txt` (une autorisation de dossier la première fois, mémorisée) |
+| Jeton | rempli automatiquement par l'installateur `.cmd`, sinon « Connecter » le lit sur le partage, sinon « Charger token.txt… » |
+
+L'installateur `.cmd` relancé après l'installation ouvre la page avec
+`#host=…&port=…&token=…` : la connexion est immédiate, sans rien saisir (le jeton
+est aussi copié dans le presse-papiers).
 
 Si le navigateur ne permet pas l'accès au dossier (Firefox, Safari), deux
 replis : **« Charger token.txt… »** (sélection du fichier) ou copier-coller le
