@@ -13,9 +13,11 @@ et affichée par `rfidctl version`.
   (`<nul`), si bien qu'une question de Windows (« des fichiers sont ouverts,
   continuer ? », demande de mot de passe) échoue au lieu d'attendre une réponse
   invisible pendant que la sortie était redirigée vers `nul`.
-* La connexion essaie maintenant **quatre méthodes** et affiche chaque essai :
-  `root`, `RECALBOX\root`, l'adresse IP résolue par ping, puis l'accès invité.
-  Le ping préalable indique tout de suite si la Recalbox répond au nom donné.
+* La connexion essaie maintenant **cinq méthodes** et affiche chaque essai :
+  `root`, `RECALBOX\root`, l'adresse IP résolue par ping, `root` **sans mot de
+  passe** (cas où Recalbox n'a pas créé le mot de passe Samba), puis l'accès
+  invité. Le ping préalable indique tout de suite si la Recalbox répond au nom
+  donné.
 * Après connexion, le partage est réutilisé via l'**adresse IP** si c'est elle
   qui a fonctionné (robuste aux noms NetBIOS/mDNS capricieux).
 * Le `.cmd` n'ouvre plus la page avec un chemin de fichier suivi d'un fragment

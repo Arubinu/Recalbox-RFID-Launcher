@@ -467,10 +467,17 @@ une réponse indéfiniment. Deux questions possibles :
 * `net use` demande un mot de passe quand Windows exige des identifiants.
 
 Depuis 1.6.1 : toutes les commandes sont lancées avec `<nul` (une question
-échoue au lieu d'attendre), chaque essai est affiché (`essai 1` = `root`,
-`essai 2` = `RECALBOX\root`, `essai 3` = IP résolue, `essai 4` = invité) et le
-ping de la Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle
-indique quel essai échoue et le code d'erreur.
+échoue au lieu d'attendre), chaque essai est affiché (`essai 1` = `root` avec
+`recalboxroot`, `essai 2` = `RECALBOX\root`, `essai 3` = adresse IP résolue,
+`essai 4` = `root` **sans** mot de passe, `essai 5` = invité) et le ping de la
+Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle indique quel
+essai échoue et le code d'erreur.
+
+> L'essai 4 (« `root` sans mot de passe ») couvre le cas où Recalbox n'a pas créé
+> le mot de passe Samba par défaut (voir « Mot de passe incorrect » plus bas).
+> Il échoue souvent quand même : Samba refuse les mots de passe vides
+> (`null passwords = no`) et Windows refuse une session SMB sans mot de passe.
+> Dans ce cas, la solution reste `smbpasswd -a root` en SSH.
 
 En cas d'échec, testez à la main dans une invite de commandes (les messages
 seront visibles) :
