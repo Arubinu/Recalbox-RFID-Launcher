@@ -387,6 +387,46 @@ net use \\RECALBOX\share /delete
 cmdkey /delete:RECALBOX
 ```
 
+### « Mot de passe incorrect » avec `root` / `recalboxroot`
+
+D'après le script de démarrage Recalbox (`S35securepasswd`), le compte Samba
+`root` reçoit :
+
+* `recalboxroot` **si** `system.default_password` est vide (cas par défaut) ;
+* un mot de passe **vide** si `system.default_password` est renseigné (bug du
+  script : la variable `MASTERPASSWD` n'est alors jamais définie) — Windows
+  refuse les mots de passe vides, donc la connexion échoue.
+
+Vérifier le réglage (SSH) :
+
+```sh
+grep default_password /recalbox/share/system/recalbox.conf
+```
+
+Puis, quelle que soit la valeur, définir un mot de passe Samba explicite :
+
+```sh
+smbpasswd -a root        # tape deux fois le mot de passe voulu
+pdbedit -L               # doit afficher : root:<uid>:...
+```
+
+et utiliser ce mot de passe (dans le `.cmd`, modifiez la ligne `set PASS=...`).
+
+Autres causes du même message :
+
+| Code `net use` | Signification |
+| --- | --- |
+| 1326 | identifiants refusés (mot de passe personnalisé, cache Windows) |
+| 53 | nom/adresse introuvable → essayez l'IP |
+| 67 | partage introuvable → `system.samba.enabled=1` dans `recalbox.conf` |
+| 1272 | bloqué par une stratégie (voir ci-dessus, accès invité) |
+
+Pour tester sans cache Windows, utilisez l'adresse **IP** plutôt que le nom :
+
+```cmd
+net use \\192.168.1.50\share /user:root recalboxroot
+```
+
 Pour supprimer les dialogues dans le sélecteur de dossier, montez le partage en
 lecteur avant de cliquer sur « Copier » :
 

@@ -4,6 +4,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.5.1]
+
+### Ajouté
+
+* `acces-recalbox.cmd` (généré par la page) devient **diagnostic** : il affiche
+  le code d'erreur `net use` et la cause probable (1326 mot de passe, 53 nom
+  introuvable, 67 partage absent, 1272 stratégie Windows), et rappelle les
+  commandes de nettoyage (`net use /delete`, `cmdkey /delete`).
+
+### Documenté
+
+* **« Mot de passe incorrect » avec `root` / `recalboxroot`** : le script Recalbox
+  `S35securepasswd` crée le compte Samba avec `recalboxroot` **uniquement si**
+  `system.default_password` est vide ; sinon la variable `MASTERPASSWD` n'est pas
+  définie et le mot de passe Samba devient **vide** (Windows le refuse).
+  Procédure : `grep default_password recalbox.conf`, puis `smbpasswd -a root`
+  (et `pdbedit -L` pour vérifier). Table des codes `net use` ajoutée dans
+  `docs/DEPANNAGE.md`.
+
 ## [1.5.0]
 
 ### Ajouté

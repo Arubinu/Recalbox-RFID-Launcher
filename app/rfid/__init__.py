@@ -8,4 +8,4 @@ Le projet n'utilise que la bibliotheque standard Python 3 : aucune installation
 de paquet n'est necessaire sur Recalbox.
 """
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
