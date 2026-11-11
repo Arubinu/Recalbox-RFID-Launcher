@@ -91,7 +91,9 @@ class WebUI:
         except OSError as exc:
             if self.log:
                 self.log.warning(
-                    "Interface web impossible sur le port %d : %s" % (self.port, exc)
+                    "Interface web impossible sur le port %d : %s "
+                    "(changez 'port' dans la section [web] de config.ini)"
+                    % (self.port, exc)
                 )
             return False
         server.daemon_threads = True
