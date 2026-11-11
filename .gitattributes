@@ -1,0 +1,18 @@
+# Recalbox execute les scripts shell avec /bin/sh : les fins de ligne
+# doivent etre en LF (Unix), sinon l'installation echoue avec des erreurs
+# "not found". Git doit donc toujours livrer ces fichiers en LF.
+*.sh            text eol=lf
+*.py            text eol=lf
+*.py3           text eol=lf
+rfidctl         text eol=lf
+userscript/*    text eol=lf
+
+*.md            text eol=lf
+*.ini           text eol=lf
+*.json          text eol=lf
+VERSION         text eol=lf
+
+# Fichiers Windows : conserver CRLF
+*.ps1           text eol=crlf
+*.cmd           text eol=crlf
+*.bat           text eol=crlf

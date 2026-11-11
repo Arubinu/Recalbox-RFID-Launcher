@@ -1,0 +1,16 @@
+# Dossiers d'analyse (sources Recalbox clonées pour étude, jamais livrées)
+.research/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Divers
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
