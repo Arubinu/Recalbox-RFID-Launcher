@@ -17,19 +17,49 @@ Mot de passe par défaut du compte `root` : `recalboxroot`.
 
 ---
 
-## Méthode A — Windows, assistant automatique (la plus simple)
+## Méthode A — dans le navigateur, sans SSH (la plus simple)
+
+Aucune ligne de commande, aucun mot de passe SSH : tout se fait dans le
+navigateur, y compris l'installation et les mises à jour suivantes.
+
+1. **Copiez le dossier du projet** sur le partage Recalbox : ouvrez
+   `\\RECALBOX\share` dans l'Explorateur et déposez-y le dossier
+   `recalbox-rfid` (celui qui contient `install.sh`).
+2. **Activez l'interface web** : copiez le fichier
+
+   ```
+   recalbox-rfid\web-bootstrap\recalbox-rfid-web(permanent).py3
+   ```
+
+   dans le dossier `userscripts` du partage, c'est-à-dire
+   `\\RECALBOX\share\userscripts\`.
+3. **Redémarrez Recalbox** (`QUITTER` > `REDÉMARRER`).
+4. Ouvrez **`http://recalbox.local:8080`** dans un navigateur (remplacez par
+   l'adresse IP si `recalbox.local` ne répond pas).
+5. Cliquez sur **« Installer maintenant »** : la page affiche le journal
+   d'installation en direct.
+6. Cliquez sur **« Redémarrer Recalbox »** (le SPI doit être activé par un
+   redémarrage).
+7. Rouvrez la page : tout est vert. Les badges s'associent depuis la page ou avec
+   le bouton.
+
+> Le script copié à l'étape 2 ne sert qu'à démarrer l'interface web : il ne fait
+> rien si le service tourne déjà, et il sert de secours si le service ne démarre
+> pas (configuration cassée, plantage). Il est inclus dans le projet, il n'y a
+> rien à télécharger.
+
+## Méthode B — assistant Windows
 
 1. Téléchargez / décompressez le projet `recalbox-rfid` sur le PC.
 2. Double-cliquez sur **`windows\INSTALLER.cmd`**.
 3. L'assistant demande l'adresse de la Recalbox (par défaut `recalbox.local`),
-   copie les fichiers sur le partage et lance l'installation par SSH.
-4. Tapez le mot de passe SSH quand il est demandé (`recalboxroot`).
-5. Redémarrez Recalbox si l'assistant le demande.
+   copie les fichiers sur le partage et y place aussi le script d'amorçage de
+   l'interface web.
+4. Il propose ensuite d'installer tout de suite par SSH (mot de passe
+   `recalboxroot`) ; si vous refusez, redémarrez Recalbox puis ouvrez
+   `http://recalbox.local:8080`.
 
-> Si `recalbox.local` ne répond pas, utilisez l'adresse IP affichée par Recalbox
-> (`RÉSEAU` > `INFORMATIONS`).
-
-## Méthode B — Windows, macOS ou Linux, à la main
+## Méthode C — Windows, macOS ou Linux, en ligne de commande (SSH)
 
 **Étape 1 — copier le dossier sur la Recalbox**
 
@@ -52,13 +82,14 @@ ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --start"
 **Étape 3 — redémarrer et vérifier**
 
 Si l'installateur indique qu'un redémarrage est nécessaire (activation du SPI),
-redémarrez Recalbox (`QUITTER` > `REDÉMARRER`), puis :
+redémarrez Recalbox (`QUITTER` > `REDÉMARRER`), puis ouvrez
+`http://recalbox.local:8080` ou lancez :
 
 ```sh
 ssh root@recalbox.local "/recalbox/share/system/rfid/rfidctl test"
 ```
 
-## Méthode C — directement sur la Recalbox
+## Méthode D — directement sur la Recalbox
 
 Avec un clavier branché, quittez le frontend (`QUITTER` > `QUITTER
 EMULATIONSTATION`) pour obtenir une console, connectez-vous en `root`
@@ -81,6 +112,8 @@ reboot
 | Journaux | `/recalbox/share/system/rfid/logs/rfid.log` |
 | Commande | `/recalbox/share/system/rfid/rfidctl` |
 | Démarrage auto | `/recalbox/share/userscripts/recalbox-rfid(permanent).py3` |
+| Interface web | servie par le service sur `http://<ip>:8080` (port et mot de passe dans `[web]` de `config.ini`) |
+| Interface web de secours | `/recalbox/share/userscripts/recalbox-rfid-web(permanent).py3` |
 | Bus SPI | ajoute `dtparam=spi=on` dans `/boot/recalbox-user-config.txt` (sauvegarde `.bak-rfid-launcher`) |
 
 Tout est dans le partage : **rien n'est écrit dans le système Recalbox**, une
@@ -97,6 +130,7 @@ conservant configuration et badges. C'est aussi la procédure de mise à jour.
 sh install.sh                 # installer / mettre a jour
 sh install.sh --start         # ... et demarrer le service tout de suite
 sh install.sh --upgrade       # mise a jour (conserve tout)
+sh install.sh --no-restart    # ne pas redemarrer le service (interface web)
 sh install.sh --no-spi        # ne pas toucher a la configuration du SPI
 sh install.sh --from-url URL  # installer un ZIP heberge en ligne
 sh install.sh --uninstall     # desinstaller

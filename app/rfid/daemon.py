@@ -152,6 +152,8 @@ class Service:
         self.controller = None
         self.feedback = None
         self.launcher = None
+        self.webui = None
+        self._web_command_signature = None
         self.last_error_at = 0.0
         self.last_uid = ""
         self.last_uid_at = 0.0
@@ -192,6 +194,18 @@ class Service:
             self.log,
         )
         self._build_controller()
+
+        # Interface web (facultative : le service fonctionne sans elle).
+        if self.cfg.get_bool("web", "enabled", True):
+            try:
+                from .webui import WebUI
+
+                self.webui = WebUI(self.cfg, self.log, home=self.home, db=self.db_path)
+                if not self.webui.start():
+                    self.webui = None
+            except Exception as exc:  # noqa: BLE001 - jamais bloquant
+                self.webui = None
+                self.log.warning("Interface web indisponible : %s" % exc)
         return True
 
     def _build_controller(self) -> None:
@@ -267,6 +281,8 @@ class Service:
                     if gesture:
                         self.controller.on_button(gesture)
 
+                self._consume_web_command()
+
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
 
@@ -284,8 +300,51 @@ class Service:
             self._shutdown(lock)
         return 0
 
+    # ------------------------------------------------------------- commandes web
+    def _consume_web_command(self) -> None:
+        """Execute une commande deposee par l'interface web (fichier JSON)."""
+        path = os.path.join(self.home, "web-command.json")
+        try:
+            info = os.stat(path)
+        except OSError:
+            return
+        signature = (info.st_mtime, info.st_size)
+        if signature == self._web_command_signature:
+            return
+        self._web_command_signature = signature
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except (OSError, ValueError) as exc:
+            self.log.warning("Commande web illisible : %s" % exc)
+            return
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+        if not isinstance(payload, dict):
+            return
+        command = payload.get("cmd")
+        if command == "arm_associate":
+            self.controller.on_button("short")
+        elif command == "arm_delete":
+            self.controller.on_button("long")
+        elif command == "simulate_scan":
+            uid = str(payload.get("uid") or "")
+            if uid:
+                self.controller.on_badge(uid)
+        else:
+            self.log.warning("Commande web inconnue : %s" % command)
+
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")
+        if self.webui is not None:
+            try:
+                self.webui.stop()
+            except Exception:  # noqa: BLE001
+                pass
         if self.reader is not None:
             try:
                 self.reader.close()

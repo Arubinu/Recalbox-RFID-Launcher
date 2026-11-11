@@ -234,6 +234,61 @@ En dernier recours, supprimez `/recalbox/share/system/rfid` et réinstallez.
 | --- | --- |
 | Service RFID | `/recalbox/share/system/rfid/logs/rfid.log` |
 | Sortie de `rfidctl start` | `/recalbox/share/system/rfid/logs/service.out` |
+| Installations faites depuis la page web | `/recalbox/share/system/rfid/logs/install.log` |
 | Frontend Recalbox | `/recalbox/share/system/logs/emulationstation.log` |
 | Lancement d'un jeu | `/recalbox/share/system/logs/es_launch_stdout.log` |
 | Démarrage système | commande `recallog` / `dmesg` pour le SPI |
+
+---
+
+## 12. Interface web
+
+### La page ne répond pas
+
+1. **Le service tourne-t-il ?** `ps aux | grep rfid` ou `rfidctl status`. Sans
+   service, l'interface web de secours prend le relais **20 secondes** après le
+   démarrage de Recalbox (le temps de voir si le service démarre).
+2. **L'interface est-elle activée ?** dans `config.ini` :
+
+   ```ini
+   [web]
+   enabled = 1
+   ```
+
+3. **Le port 8080 est-il occupé ?** `netstat -ltnp | grep 8080` (ou essayez un
+   autre port : `port = 8081` dans `[web]`, puis redémarrez le service).
+4. **Bonne adresse ?** `http://<ip-de-la-recalbox>:8080` (l'IP est affichée dans
+   `RÉSEAU` > `INFORMATIONS`).
+5. **Le script d'amorçage est-il installé ?**
+   `ls -l /recalbox/share/userscripts/` doit lister
+   `recalbox-rfid(permanent).py3` et `recalbox-rfid-web(permanent).py3`.
+
+### « Le lanceur n'est pas installé » alors qu'il l'est
+
+La page indique l'état du dossier `/recalbox/share/system/rfid`. Si le programme
+a été installé ailleurs (variable `RFID_HOME`), l'interface web ne le voit pas :
+réinstallez avec le chemin par défaut, ou lancez l'interface avec
+`python3 /recalbox/share/system/rfid/app/main.py web --home <dossier>`.
+
+### L'installation depuis la page échoue
+
+La page affiche le journal complet ; on le retrouve dans
+`logs/install.log`. Causes fréquentes :
+
+| Message | Cause / solution |
+| --- | --- |
+| `install.sh introuvable` | le dossier du projet n'a pas été copié sur `\\RECALBOX\share` |
+| `/bin/sh est necessaire` | la page tourne hors Recalbox (PC de test) |
+| `Permission denied` | l'interface web ne tourne pas en root : elle doit être lancée par Recalbox (userscript) |
+| installation OK mais lecteur absent | le SPI n'est pas encore actif : redémarrer Recalbox |
+
+### Mot de passe oublié
+
+Éditez `\\RECALBOX\share\system\rfid\config.ini` (accessible sans mot de passe
+depuis le partage), videz la ligne `password =` puis redémarrez Recalbox.
+
+### Faut-il l'exposer sur Internet ?
+
+**Non.** La page permet d'installer du code et de redémarrer la Recalbox : elle
+doit rester sur le réseau local. Pour un accès à distance, utilisez un VPN
+(WireGuard, Tailscale…), jamais une redirection de port.

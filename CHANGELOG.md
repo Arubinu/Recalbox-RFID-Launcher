@@ -4,6 +4,33 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.1.0]
+
+### Ajouté
+
+* **Interface web** (`http://recalbox.local:8080`, sans dépendance) : installer,
+  mettre à jour (ZIP envoyé depuis le navigateur ou URL), redémarrer Recalbox,
+  voir l'état du matériel, gérer les badges, armer l'association d'un badge,
+  exporter/importer les CSV et consulter les journaux.
+* **Installation sans SSH** : copier le dossier sur le partage, copier
+  `web-bootstrap/recalbox-rfid-web(permanent).py3` dans les userscripts,
+  redémarrer, puis tout faire dans le navigateur.
+* Interface web de secours : un script permanent sert la page si le service ne
+  démarre pas (configuration cassée, plantage).
+* Mot de passe facultatif (HTTP Basic) et protection CSRF (vérification de
+  l'origine + JSON obligatoire).
+* Commandes `rfidctl web` et option `--source` (mode « avant installation »).
+* Option `--no-restart` de l'installateur (utilisée par l'interface web).
+* Tests de l'interface web : 100 tests unitaires au total.
+
+### Modifié
+
+* L'installateur affiche l'adresse de l'interface web et installe le script
+  permanent de secours.
+* Le service démarre l'interface web et consomme ses commandes (association,
+  suppression, scan simulé).
+* Le désinstalleur retire les deux scripts permanents.
+
 ## [1.0.0]
 
 Première version publiable.

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recalbox RFID Launcher</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1216;
+    --card: #171b22;
+    --card-2: #1e242d;
+    --line: #2a3240;
+    --text: #e6ebf2;
+    --muted: #93a0b4;
+    --accent: #4c8dff;
+    --ok: #37c98b;
+    --warn: #f0b429;
+    --err: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 18px 22px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #1a2029, #12161c);
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header .version { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1 1 auto; }
+  main { max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .item { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .item .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .item .value { font-size: 16px; margin-top: 4px; word-break: break-word; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+  button, .button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.secondary { background: var(--card-2); border: 1px solid var(--line); color: var(--text); }
+  button.danger { background: #b23b3b; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  input[type=text], input[type=url], input[type=file] {
+    background: var(--card-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 9px 11px; font-size: 14px; min-width: 0;
+  }
+  input[type=text]::placeholder, input[type=url]::placeholder { color: #64748b; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  td.mono, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  pre {
+    background: #0b0e12; border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; max-height: 320px; overflow: auto; font-size: 12.5px;
+    white-space: pre-wrap; word-break: break-word; margin: 10px 0 0;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
+    border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: var(--card-2); border: 1px solid var(--line);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .pill.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .pill.off .dot { background: var(--err); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+  .banner { border-radius: 12px; padding: 14px 16px; border: 1px solid; }
+  .banner.info { background: #14263f; border-color: #2b4c7e; }
+  .banner.warn { background: #2c2413; border-color: #6b5722; }
+  .banner.good { background: #12291f; border-color: #245b41; }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .grow { flex: 1 1 240px; }
+  form.inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  footer { text-align: center; color: #5a6577; font-size: 12px; padding: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recalbox RFID Launcher</h1>
+  <span class="version" id="version">…</span>
+  <span class="spacer"></span>
+  <span class="pill" id="service-pill"><span class="dot"></span><span id="service-text">état inconnu</span></span>
+</header>
+
+<main>
+  <div id="banner" class="banner info" hidden></div>
+
+  <section class="card">
+    <h2>Installation &amp; mise à jour</h2>
+    <div class="grid" id="install-grid"></div>
+    <div class="row">
+      <button id="btn-install">Installer / mettre à jour maintenant</button>
+      <button class="secondary" id="btn-upload">Mettre à jour depuis un fichier ZIP</button>
+      <input type="file" id="file-update" accept=".zip" hidden>
+    </div>
+    <div class="row">
+      <input class="grow" type="url" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip">
+      <button class="secondary" id="btn-url">Mettre à jour depuis cette URL</button>
+    </div>
+    <details>
+      <summary>Journal d'installation</summary>
+      <pre id="install-log">(aucune installation lancée)</pre>
+    </details>
+    <div class="row">
+      <button class="danger" id="btn-reboot">Redémarrer Recalbox</button>
+      <span class="muted small" id="reboot-hint">Nécessaire après l'activation du bus SPI.</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Matériel</h2>
+    <div class="grid" id="hardware-grid"></div>
+  </section>
+
+  <section class="card">
+    <h2>Badges</h2>
+    <div class="grid" id="current-grid"></div>
+    <div class="row">
+      <button id="btn-associate" title="Appui court : associer le prochain badge scanné">Associer le prochain badge scanné</button>
+      <button class="secondary" id="btn-associate-delete" title="Appui long : effacer le prochain badge scanné">Effacer le prochain badge scanné</button>
+      <span class="muted small" id="armed-text"></span>
+    </div>
+
+    <form class="inline" id="form-add" style="margin-top:16px">
+      <input type="text" id="add-uid" placeholder="UID du badge (A1:B2:C3:D4)" size="22" required>
+      <input type="text" id="add-system" placeholder="Système (snes)" size="12" required>
+      <input class="grow" type="text" id="add-game" placeholder="Jeu (Super Mario World.smc)" required>
+      <input type="text" id="add-name" placeholder="Nom (facultatif)" size="18">
+      <button type="submit">Ajouter</button>
+    </form>
+
+    <div class="row">
+      <button class="ghost" id="btn-export">Exporter en CSV</button>
+      <button class="ghost" id="btn-import">Importer un CSV</button>
+      <input type="file" id="file-import" accept=".csv,text/csv" hidden>
+      <span class="muted small" id="tags-count"></span>
+    </div>
+
+    <table style="margin-top:14px">
+      <thead>
+        <tr><th>Badge</th><th>Système</th><th>Jeu</th><th>Scans</th><th>Dernier usage</th><th></th></tr>
+      </thead>
+      <tbody id="tags-body"></tbody>
+    </table>
+
+    <details>
+      <summary>Débogage</summary>
+      <form class="inline" id="form-scan" style="margin-top:10px">
+        <input type="text" id="scan-uid" placeholder="Simuler le scan d'un UID" size="22">
+        <button class="secondary" type="submit">Simuler le scan</button>
+      </form>
+      <div class="row">
+        <button class="ghost" id="btn-logs">Afficher le journal du service</button>
+      </div>
+      <pre id="service-log" hidden></pre>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Service</h2>
+    <div class="grid" id="service-grid"></div>
+    <div class="row">
+      <button class="secondary" id="btn-start">Démarrer</button>
+      <button class="secondary" id="btn-stop">Arrêter</button>
+      <button class="secondary" id="btn-restart">Redémarrer</button>
+    </div>
+  </section>
+</main>
+
+<footer>Interface locale — aucune donnée ne quitte votre réseau.</footer>
+
+<script>
+"use strict";
+
+const $ = (selector) => document.querySelector(selector);
+let state = null;
+let lastStatusJson = "";
+let lastTagsJson = "";
+let busy = false;
+
+function el(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+  if (options.className) node.className = options.className;
+  if (options.text !== undefined) node.textContent = options.text;
+  if (options.title) node.title = options.title;
+  if (options.onclick) node.addEventListener("click", options.onclick);
+  for (const child of children) if (child) node.appendChild(child);
+  return node;
+}
+
+function item(label, value, extraClass) {
+  return el("div", { className: "item" }, [
+    el("div", { className: "label", text: label }),
+    el("div", { className: "value " + (extraClass || ""), text: value }),
+  ]);
+}
+
+async function api(path, options = {}) {
+  const request = { method: options.method || "GET", headers: {} };
+  if (options.body !== undefined) {
+    request.body = options.body;
+    request.headers["Content-Type"] = options.contentType || "application/json";
+  }
+  const response = await fetch(path, request);
+  const text = await response.text();
+  let payload = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch (error) { payload = { raw: text }; }
+  if (!response.ok) {
+    throw new Error(payload.error || ("HTTP " + response.status));
+  }
+  return payload;
+}
+
+function showBanner(kind, message) {
+  const banner = $("#banner");
+  if (!message) { banner.hidden = true; return; }
+  banner.hidden = false;
+  banner.className = "banner " + kind;
+  banner.textContent = message;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return value.replace("T", " ");
+}
+
+/* ------------------------------------------------------------------ rendu */
+function render(status) {
+  state = status;
+  $("#version").textContent = "v" + status.app_version +
+    (status.installed && status.installed_version ? " (installé : " + status.installed_version + ")" : "");
+
+  const running = status.service && status.service.running;
+  const pill = $("#service-pill");
+  pill.className = "pill " + (running ? "on" : "off");
+  $("#service-text").textContent = running ? "service actif" : "service arrêté";
+
+  if (!status.installed) {
+    showBanner("warn",
+      "Le lanceur n'est pas encore installé sur cette Recalbox. Cliquez sur « Installer maintenant » " +
+      "puis redémarrez Recalbox.");
+  } else if (!status.spi) {
+    showBanner("warn",
+      "Le bus SPI n'est pas actif : le lecteur ne peut pas être lu. Redémarrez Recalbox (un redémarrage " +
+      "est nécessaire après l'activation du SPI).");
+  } else if (status.frontend === false) {
+    showBanner("warn",
+      "Recalbox ne sait pas lancer un jeu par script (version 9 minimum). Les badges seront lus, " +
+      "mais le lancement automatique ne fonctionnera pas.");
+  } else if (status.installed && !running) {
+    showBanner("info", "Le programme est installé mais le service n'est pas démarré. " +
+      "Démarrez-le ci-dessous ou redémarrez Recalbox.");
+  } else {
+    showBanner("good", "");
+  }
+
+  renderInstall(status);
+  renderHardware(status);
+  renderCurrent(status);
+  renderService(status);
+}
+
+function renderInstall(status) {
+  const grid = $("#install-grid");
+  grid.replaceChildren(
+    item("Version du programme", status.app_version),
+    item("Installation", status.installed ? "installée" : "absente", status.installed ? "ok" : "warn"),
+    item("Recalbox", status.recalbox || "inconnue"),
+    item("Dossier", status.home)
+  );
+  const install = status.install || {};
+  $("#btn-install").textContent = status.installed ? "Mettre à jour (dossier local)" : "Installer maintenant";
+  $("#btn-install").disabled = busy || install.state === "running";
+  $("#btn-upload").disabled = busy || install.state === "running";
+  $("#btn-url").disabled = busy || install.state === "running" || !$("#update-url").value.trim();
+
+  const log = $("#install-log");
+  if (install.state === "running") {
+    log.textContent = "Installation en cours…\n\n" + (install.output || "");
+  } else if (install.state === "ok") {
+    log.textContent = "Installation terminée avec succès (" + formatDate(install.finished) + ")\n\n" +
+      (install.output || "");
+  } else if (install.state === "error") {
+    log.textContent = "L'installation a échoué (code " + install.code + ")\n\n" + (install.output || "");
+  }
+}
+
+function renderHardware(status) {
+  const service = status.service && status.service.status;
+  const reader = service && service.reader ? "0x" + String(service.reader).replace(/^0x/, "") : "";
+  $("#hardware-grid").replaceChildren(
+    item("Bus SPI", status.spi ? "actif" : "inactif", status.spi ? "ok" : "err"),
+    item("Lecteur RC522", reader || "non détecté", reader ? "ok" : "warn"),
+    item("Bouton poussoir", service && service.button ? "détecté" : "indisponible",
+         service && service.button ? "ok" : "warn"),
+    item("Dernier badge", service && service.last_uid ? service.last_uid : "—"),
+    item("Frontend Recalbox", status.frontend === null ? "hors Recalbox" :
+         (status.frontend ? "compatible" : "trop ancien"), status.frontend ? "ok" : "warn")
+  );
+}
+
+function renderCurrent(status) {
+  const current = status.current;
+  const grid = $("#current-grid");
+  if (current) {
+    grid.replaceChildren(
+      item("Jeu sélectionné", current.name || current.game),
+      item("Système", current.system),
+      item("Fichier", current.game)
+    );
+  } else {
+    grid.replaceChildren(
+      item("Jeu sélectionné", "aucun (ouvrez Recalbox et mettez un jeu en surbrillance)")
+    );
+  }
+
+  const controller = status.service && status.service.status && status.service.status.controller;
+  const armed = controller && controller.mode;
+  $("#armed-text").textContent = armed
+    ? (armed === "associate" ? "Association armée : scannez un badge (" : "Suppression armée : scannez un badge (") +
+      Math.round(controller.seconds_left || 0) + " s)"
+    : "";
+  $("#btn-associate").disabled = busy || !status.service || !status.service.running || !current;
+  $("#btn-associate-delete").disabled = busy || !status.service || !status.service.running;
+}
+
+function renderService(status) {
+  const service = status.service || {};
+  const details = service.status || {};
+  $("#service-grid").replaceChildren(
+    item("État", service.running ? "en marche" : "arrêté", service.running ? "ok" : "err"),
+    item("PID", service.running ? String(service.pid) : "—"),
+    item("Depuis", details.started ? formatDate(details.started) : "—"),
+    item("Badges connus", String(status.tags))
+  );
+  $("#btn-start").disabled = busy || service.running;
+  $("#btn-stop").disabled = busy || !service.running;
+  $("#btn-restart").disabled = busy || !service.running;
+}
+
+async function renderTags(force) {
+  const payload = await api("/api/tags");
+  const json = JSON.stringify(payload);
+  if (!force && json === lastTagsJson) return;
+  lastTagsJson = json;
+  $("#tags-count").textContent = payload.count + " badge(s) enregistré(s)";
+  const body = $("#tags-body");
+  body.replaceChildren();
+  for (const tag of payload.tags) {
+    const row = el("tr", {}, [
+      el("td", { className: "mono", text: tag.pretty }),
+      el("td", { text: tag.system }),
+      el("td", { text: tag.game, title: tag.game }),
+      el("td", { text: String(tag.hits) }),
+      el("td", { text: formatDate(tag.last_used) }),
+    ]);
+    const deleteButton = el("button", {
+      className: "ghost",
+      text: "Supprimer",
+      onclick: () => removeTag(tag.uid),
+    });
+    row.appendChild(el("td", {}, [deleteButton]));
+    body.appendChild(row);
+  }
+  if (!payload.tags.length) {
+    const row = el("tr", {}, [el("td", { colspan: 6, className: "muted", text: "Aucun badge pour le moment." })]);
+    body.appendChild(row);
+  }
+}
+
+/* ---------------------------------------------------------------- actions */
+async function refresh() {
+  try {
+    const status = await api("/api/status");
+    const json = JSON.stringify(status);
+    if (json !== lastStatusJson) {
+      lastStatusJson = json;
+      render(status);
+    } else {
+      state = status;
+      renderCurrent(status);
+    }
+    await renderTags(false);
+  } catch (error) {
+    showBanner("warn", "Connexion perdue avec la Recalbox : " + error.message);
+  }
+}
+
+async function run(action, message) {
+  if (busy) return;
+  busy = true;
+  try {
+    const result = await action();
+    if (message) console.log(message, result);
+    lastStatusJson = "";
+    await refresh();
+    return result;
+  } catch (error) {
+    alert("Erreur : " + error.message);
+  } finally {
+    busy = false;
+  }
+}
+
+async function removeTag(uid) {
+  if (!confirm("Supprimer le badge " + uid + " ?")) return;
+  await run(() => api("/api/tags/" + encodeURIComponent(uid), { method: "DELETE" }));
+}
+
+/* ------------------------------------------------------------------ écoute */
+$("#btn-install").addEventListener("click", () =>
+  run(() => api("/api/install", { method: "POST", body: JSON.stringify({}) })));
+
+$("#btn-upload").addEventListener("click", () => $("#file-update").click());
+$("#file-update").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  await run(() => api("/api/upload", { method: "POST", body: file, contentType: "application/zip" }));
+  event.target.value = "";
+});
+
+$("#btn-url").addEventListener("click", () => {
+  const url = $("#update-url").value.trim();
+  if (!url) return;
+  run(() => api("/api/install", { method: "POST", body: JSON.stringify({ url }) }));
+});
+$("#update-url").addEventListener("input", () => {
+  $("#btn-url").disabled = !$("#update-url").value.trim() || busy;
+});
+
+$("#btn-reboot").addEventListener("click", () => {
+  if (!confirm("Redémarrer Recalbox maintenant ?")) return;
+  run(() => api("/api/reboot", { method: "POST", body: "{}" }));
+});
+
+$("#btn-associate").addEventListener("click", () =>
+  run(() => api("/api/associate", { method: "POST", body: JSON.stringify({ mode: "associate" }) })));
+$("#btn-associate-delete").addEventListener("click", () =>
+  run(() => api("/api/associate", { method: "POST", body: JSON.stringify({ mode: "delete" }) })));
+
+$("#form-add").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const payload = {
+    uid: $("#add-uid").value.trim(),
+    system: $("#add-system").value.trim(),
+    game: $("#add-game").value.trim(),
+    name: $("#add-name").value.trim(),
+  };
+  if (!payload.uid || !payload.system || !payload.game) {
+    alert("UID, système et jeu sont obligatoires.");
+    return;
+  }
+  await run(() => api("/api/tags", { method: "POST", body: JSON.stringify(payload) }));
+  $("#form-add").reset();
+});
+
+$("#form-scan").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const uid = $("#scan-uid").value.trim();
+  if (!uid) return;
+  await run(() => api("/api/scan", { method: "POST", body: JSON.stringify({ uid }) }));
+});
+
+$("#btn-export").addEventListener("click", () => { window.location.href = "/api/export"; });
+
+$("#btn-import").addEventListener("click", () => $("#file-import").click());
+$("#file-import").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  await run(() => api("/api/import", { method: "POST", body: text, contentType: "text/csv" }));
+  event.target.value = "";
+});
+
+$("#btn-start").addEventListener("click", () =>
+  run(() => api("/api/service", { method: "POST", body: JSON.stringify({ action: "start" }) })));
+$("#btn-stop").addEventListener("click", () => {
+  if (!confirm("Arrêter le service ? L'interface web ne répondra plus.")) return;
+  run(() => api("/api/service", { method: "POST", body: JSON.stringify({ action: "stop" }) }));
+});
+$("#btn-restart").addEventListener("click", () => {
+  if (!confirm("Redémarrer le service ? L'interface web sera coupée quelques secondes.")) return;
+  run(() => api("/api/service", { method: "POST", body: JSON.stringify({ action: "restart" }) }));
+});
+
+$("#btn-logs").addEventListener("click", async () => {
+  const pre = $("#service-log");
+  pre.hidden = false;
+  try {
+    const response = await fetch("/api/log?name=service");
+    pre.textContent = await response.text();
+  } catch (error) {
+    pre.textContent = "Journal indisponible : " + error.message;
+  }
+});
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

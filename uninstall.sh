@@ -12,6 +12,7 @@ APP_NAME="Recalbox RFID Launcher"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
+WEB_USERSCRIPT_NAME="recalbox-rfid-web(permanent).py3"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
@@ -64,6 +65,10 @@ if [ -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME" ]; then
     rm -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     say "  script de demarrage supprime"
 fi
+if [ -f "$USERSCRIPTS_DIR/$WEB_USERSCRIPT_NAME" ]; then
+    rm -f "$USERSCRIPTS_DIR/$WEB_USERSCRIPT_NAME"
+    say "  interface web de secours supprimee"
+fi
 
 # 3. SPI (optionnel)
 if [ "$REMOVE_SPI" = "1" ]; then
@@ -85,7 +90,7 @@ fi
 
 # 4. Fichiers
 if [ "$KEEP_DATA" = "1" ]; then
-    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/docs"
+    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/web-bootstrap" "$HOME_DIR/docs"
     rm -f "$HOME_DIR/rfidctl" "$HOME_DIR/install.sh" "$HOME_DIR/uninstall.sh" \
           "$HOME_DIR/VERSION" "$HOME_DIR/README.md" "$HOME_DIR/CHANGELOG.md" \
           "$HOME_DIR/rfid.pid" "$HOME_DIR/status.json"

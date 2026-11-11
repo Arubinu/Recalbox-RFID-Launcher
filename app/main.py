@@ -63,6 +63,7 @@ Commandes :
   logs                     Affiche les dernieres lignes du journal
   frontend                 Verifie que Recalbox sait lancer un jeu par script
   self-update [URL]        Met a jour le programme (ZIP en ligne ou dossier copie)
+  web                      Demarre l'interface web (installation et gestion)
   simulate                 Mode simulation (test sur PC, sans Raspberry Pi)
   config                   Affiche la configuration effective
   config-init              Ecrit le fichier de configuration par defaut
@@ -72,6 +73,7 @@ Options :
   --home <dossier>         Dossier de travail (defaut : %s)
   --config <fichier>       Fichier de configuration
   --db <fichier>           Base des badges
+  --source <dossier>       Dossier du projet (mode web avant installation)
   -v, --verbose            Affiche les details
 """ % (__version__, PROGRAM, consts.DEFAULT_HOME)
 
@@ -81,6 +83,7 @@ class Options:
         self.home = consts.home_dir()
         self.config = None
         self.db = None
+        self.source = None
         self.verbose = False
         self.command = "help"
         self.args = []
@@ -102,7 +105,7 @@ def parse_args(argv):
         if argument in ("-h", "--help"):
             options.command = "help"
             return options
-        if argument in ("--home", "--config", "--db"):
+        if argument in ("--home", "--config", "--db", "--source"):
             if index + 1 >= len(argv):
                 raise SystemExit("option %s : valeur manquante" % argument)
             value = argv[index + 1]
@@ -110,8 +113,10 @@ def parse_args(argv):
                 options.home = value
             elif argument == "--config":
                 options.config = value
-            else:
+            elif argument == "--db":
                 options.db = value
+            else:
+                options.source = value
             index += 2
             continue
         if argument in ("-v", "--verbose"):
@@ -550,6 +555,32 @@ def cmd_self_update(options) -> int:
     return subprocess.call(command)
 
 
+def cmd_web(options) -> int:
+    """Demarre l'interface web (utilisee avant installation, ou manuellement)."""
+    from rfid.webui import WebUI
+
+    config = load_config(options)
+    log = make_logger(options, echo=True)
+    os.makedirs(options.home, exist_ok=True)
+    ui = WebUI(config, log, home=options.home, source=options.source, db=options.db)
+    if not ui.start():
+        print("Impossible de demarrer l'interface web (port deja utilise ?).")
+        return 1
+    print("")
+    print(LINE)
+    print(" Interface web : ouvrez %s dans un navigateur" % ui.url())
+    print(" (Ctrl+C pour arreter)")
+    print(LINE)
+    try:
+        while True:
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        print()
+    finally:
+        ui.stop()
+    return 0
+
+
 def cmd_simulate(options) -> int:
     from rfid.controller import Controller
     from rfid.drivers.fake import FakeButton, FakeReader
@@ -674,6 +705,7 @@ COMMANDS = {
     "test": cmd_test,
     "frontend": cmd_frontend,
     "self-update": cmd_self_update,
+    "web": cmd_web,
     "simulate": cmd_simulate,
 }
 

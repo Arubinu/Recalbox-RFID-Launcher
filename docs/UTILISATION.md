@@ -10,6 +10,43 @@ Les associations sont stockées dans
 `/recalbox/share/system/rfid/tags.json`, un fichier texte lisible et
 sauvegardable (voir plus bas).
 
+## L'interface web
+
+Ouvrez **`http://recalbox.local:8080`** (ou l'adresse IP de la Recalbox) depuis
+n'importe quel navigateur du réseau : téléphone, tablette, PC.
+
+| Section | Actions |
+| --- | --- |
+| Installation & mise à jour | installer / mettre à jour (ZIP depuis le PC ou URL), redémarrer Recalbox, suivre le journal en direct |
+| Matériel | état du bus SPI, du lecteur RC522, du bouton, du frontend |
+| Badges | associer le prochain badge au jeu sélectionné, ajouter/modifier/supprimer, export et import CSV |
+| Service | démarrer / arrêter / redémarrer, consulter le journal |
+
+Points utiles :
+
+* **Associer sans le bouton** : sélectionnez un jeu dans Recalbox, ouvrez la page
+  (le jeu sélectionné s'affiche), cliquez sur « Associer le prochain badge
+  scanné », puis scannez le badge. Ou saisissez directement l'UID (visible dans
+  « Dernier badge » ou dans le journal).
+* **Débogage › Simuler le scan** : rejoue un UID sans badge physique, pratique
+  pour tester une association.
+* **Export CSV** : télécharge la liste des badges (sauvegarde).
+* **Import CSV** : restaure une sauvegarde ou prépare une série de badges dans un
+  tableur.
+* La page se rafraîchit toute seule (état du service, mode armé, dernier badge).
+
+**Sécurité** : la page est ouverte à tout le réseau local, comme la console
+elle-même. Pour la protéger, mettez un mot de passe dans `config.ini` :
+
+```ini
+[web]
+password = monmotdepasse
+```
+
+puis `rfidctl restart` (le navigateur demandera le mot de passe, l'utilisateur
+n'a pas d'importance). Pour désactiver complètement l'interface :
+`enabled = 0`.
+
 ## Associer un badge
 
 1. Dans Recalbox, placez le curseur sur le jeu voulu dans la liste (le jeu est
@@ -134,6 +171,10 @@ partage réseau, avec le Bloc-notes par exemple). Après modification :
 | `[launch] launch_after_bind` | `1` | lance le jeu après une association |
 | `[feedback] sound` | `1` | bips |
 | `[feedback] sound_player` | `auto` | `paplay`, `aplay` ou `none` |
+| `[web] enabled` | `1` | interface web |
+| `[web] host` | `0.0.0.0` | écoute sur le réseau local |
+| `[web] port` | `8080` | port de l'interface |
+| `[web] password` | vide | mot de passe HTTP Basic (facultatif) |
 | `[update] url` | vide | URL du ZIP de mise à jour |
 | `[update] check_on_start` | `0` | réservé |
 
