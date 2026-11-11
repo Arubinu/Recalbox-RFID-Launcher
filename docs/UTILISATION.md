@@ -15,6 +15,11 @@ sauvegardable (voir plus bas).
 Ouvrez **`http://recalbox.local:8080`** (ou l'adresse IP de la Recalbox) depuis
 n'importe quel navigateur du réseau : téléphone, tablette, PC.
 
+> L'installation et les mises à jour sont automatiques au démarrage de Recalbox
+> (voir `INSTALLATION.md`). L'interface web sert à **vérifier**, **gérer les
+> badges** et **dépanner** ; elle permet aussi de réinstaller à la main si
+> l'automatique a échoué.
+
 | Section | Actions |
 | --- | --- |
 | Installation & mise à jour | installer / mettre à jour (ZIP depuis le PC ou URL), redémarrer Recalbox, suivre le journal en direct |

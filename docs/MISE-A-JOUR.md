@@ -19,6 +19,18 @@ Le programme est installé dans un dossier **avec** ses données :
 La mise à jour **remplace uniquement `app/`** (et les fichiers de programme),
 puis redémarre le service. Configuration et badges ne sont jamais touchés.
 
+## Méthode automatique — copier un dossier plus récent puis redémarrer
+
+1. Copiez le dossier de la nouvelle version (par exemple
+   `recalbox-rfid-1.3.0`) sur `\\RECALBOX\share`.
+2. Redémarrez Recalbox.
+
+Au démarrage, le script d'amorçage compare la version du dossier copié à celle
+qui est installée : si elle est **plus récente**, il l'installe tout seul, puis
+démarre le service. Les versions identiques ou plus anciennes sont ignorées
+(pas de rétrogradation accidentelle). Le détail est dans
+`/recalbox/share/system/rfid/logs/auto-install.log`.
+
 ## Méthode 0 — depuis le navigateur (aucune ligne de commande)
 
 Ouvrez `http://recalbox.local:8080`, puis :

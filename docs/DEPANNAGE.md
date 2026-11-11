@@ -234,14 +234,47 @@ En dernier recours, supprimez `/recalbox/share/system/rfid` et réinstallez.
 | --- | --- |
 | Service RFID | `/recalbox/share/system/rfid/logs/rfid.log` |
 | Sortie de `rfidctl start` | `/recalbox/share/system/rfid/logs/service.out` |
-| Installations faites depuis la page web | `/recalbox/share/system/rfid/logs/install.log` |
+| Installations (auto et web) | `/recalbox/share/system/rfid/logs/auto-install.log` et `logs/install.log` |
 | Frontend Recalbox | `/recalbox/share/system/logs/emulationstation.log` |
 | Lancement d'un jeu | `/recalbox/share/system/logs/es_launch_stdout.log` |
 | Démarrage système | commande `recallog` / `dmesg` pour le SPI |
 
 ---
 
-## 12. Interface web
+## 12. L'installation automatique ne se déclenche pas
+
+L'installation démarre au boot de Recalbox via le script permanent
+`recalbox-rfid-autoinstall(permanent).py3`. À vérifier :
+
+1. **Le script est-il en place ?**
+   `ls -l /recalbox/share/userscripts/` doit lister
+   `recalbox-rfid-autoinstall(permanent).py3` (et le fichier ne doit pas être
+   vide).
+2. **Le dossier du projet est-il sur le partage ?**
+   `ls /recalbox/share/recalbox-rfid/install.sh` (le dossier peut aussi être
+   jusqu'à trois niveaux plus bas).
+3. **Que dit le journal ?**
+   `cat /recalbox/share/system/rfid/logs/auto-install.log` (il n'existe qu'après
+   la première tentative).
+4. **Recalbox a-t-il redémarré ?** L'installation ne se déclenche qu'au démarrage
+   de l'interface ; un simple `rfidctl restart` ne la lance pas. Menu
+   `QUITTER` > `REDÉMARRER`.
+5. **Un jeu était-il en cours ?** Le redémarrage automatique est alors reporté :
+   quittez le jeu, puis redémarrez Recalbox.
+6. **Fins de ligne Windows (CRLF) ?** `install.sh` en CRLF échoue avec des
+   messages `: not found`. Utilisez l'assistant Windows (il convertit) ou
+   `sed -i 's/\r$//' /recalbox/share/recalbox-rfid/install.sh`.
+7. Si l'interface d'EmulationStation ne démarre pas (écran noir), aucun script
+   utilisateur ne tourne : passez par SSH
+   (`sh /recalbox/share/recalbox-rfid/install.sh --start`).
+
+En cas d'échec, le script ouvre normalement l'interface web de secours :
+ouvrez `http://<ip>:8080`, lisez le journal d'installation et cliquez sur
+« Installer maintenant ».
+
+---
+
+## 13. Interface web
 
 ### La page ne répond pas
 
@@ -261,7 +294,8 @@ En dernier recours, supprimez `/recalbox/share/system/rfid` et réinstallez.
    `RÉSEAU` > `INFORMATIONS`).
 5. **Le script d'amorçage est-il installé ?**
    `ls -l /recalbox/share/userscripts/` doit lister
-   `recalbox-rfid(permanent).py3` et `recalbox-rfid-web(permanent).py3`.
+   `recalbox-rfid(permanent).py3` et
+   `recalbox-rfid-autoinstall(permanent).py3`.
 
 ### « Le lanceur n'est pas installé » alors qu'il l'est
 

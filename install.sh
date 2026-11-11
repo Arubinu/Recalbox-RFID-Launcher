@@ -13,11 +13,11 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="1.1.0"
+VERSION="1.2.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
-WEB_USERSCRIPT_NAME="recalbox-rfid-web(permanent).py3"
+BOOTSTRAP_USERSCRIPT_NAME="recalbox-rfid-autoinstall(permanent).py3"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
@@ -226,9 +226,9 @@ else
         rm -rf "$HOME_DIR/userscript"
         cp -R "$SCRIPT_DIR/userscript" "$HOME_DIR/userscript"
     fi
-    if [ -d "$SCRIPT_DIR/web-bootstrap" ]; then
-        rm -rf "$HOME_DIR/web-bootstrap"
-        cp -R "$SCRIPT_DIR/web-bootstrap" "$HOME_DIR/web-bootstrap"
+    if [ -d "$SCRIPT_DIR/bootstrap" ]; then
+        rm -rf "$HOME_DIR/bootstrap"
+        cp -R "$SCRIPT_DIR/bootstrap" "$HOME_DIR/bootstrap"
     fi
     if [ -d "$SCRIPT_DIR/docs" ]; then
         rm -rf "$HOME_DIR/docs"
@@ -281,13 +281,13 @@ if [ "$IS_ROOT" = "1" ] && [ -f "$TEMPLATE" ]; then
     chmod +x "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     ok "Script de demarrage : $USERSCRIPTS_DIR/$USERSCRIPT_NAME"
 
-    # Interface web de secours (sert la page si le service ne demarre pas).
-    WEB_TEMPLATE="$HOME_DIR/web-bootstrap/$WEB_USERSCRIPT_NAME"
-    [ -f "$WEB_TEMPLATE" ] || WEB_TEMPLATE="$SCRIPT_DIR/web-bootstrap/$WEB_USERSCRIPT_NAME"
-    if [ -f "$WEB_TEMPLATE" ]; then
-        cp -f "$WEB_TEMPLATE" "$USERSCRIPTS_DIR/$WEB_USERSCRIPT_NAME"
-        chmod +x "$USERSCRIPTS_DIR/$WEB_USERSCRIPT_NAME"
-        ok "Interface web de secours : $USERSCRIPTS_DIR/$WEB_USERSCRIPT_NAME"
+    # Installation et mise a jour automatiques au demarrage + interface web de secours.
+    BOOTSTRAP_TEMPLATE="$HOME_DIR/bootstrap/$BOOTSTRAP_USERSCRIPT_NAME"
+    [ -f "$BOOTSTRAP_TEMPLATE" ] || BOOTSTRAP_TEMPLATE="$SCRIPT_DIR/bootstrap/$BOOTSTRAP_USERSCRIPT_NAME"
+    if [ -f "$BOOTSTRAP_TEMPLATE" ]; then
+        cp -f "$BOOTSTRAP_TEMPLATE" "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
+        chmod +x "$USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
+        ok "Auto-installation : $USERSCRIPTS_DIR/$BOOTSTRAP_USERSCRIPT_NAME"
     fi
 else
     warn "Script de demarrage non installe (droits root necessaires)."

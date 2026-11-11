@@ -36,7 +36,10 @@ from .esbridge import current_target, read_state, supports_start_command
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
-WEB_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-web(permanent).py3"
+BOOTSTRAP_USERSCRIPTS = (
+    "/recalbox/share/userscripts/recalbox-rfid-autoinstall(permanent).py3",
+    "/recalbox/share/userscripts/recalbox-rfid-web(permanent).py3",  # ancien nom
+)
 
 #: Corps maximal accepté (ZIP de mise à jour).
 MAX_BODY = 64 * 1024 * 1024
@@ -198,7 +201,8 @@ class WebUI:
             "installed_version": installed_version,
             "recalbox": recalbox_version(),
             "spi": os.path.exists("/dev/spidev0.0"),
-            "userscript": os.path.isfile(USERSCRIPT) or os.path.isfile(WEB_USERSCRIPT),
+            "userscript": os.path.isfile(USERSCRIPT)
+            or any(os.path.isfile(path) for path in BOOTSTRAP_USERSCRIPTS),
             "frontend": frontend,
             "service": {
                 "running": running,

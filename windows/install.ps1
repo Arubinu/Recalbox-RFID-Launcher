@@ -15,7 +15,7 @@
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$Items = @("app", "userscript", "web-bootstrap", "docs", "tests",
+$Items = @("app", "userscript", "bootstrap", "docs", "tests",
            "install.sh", "uninstall.sh", "VERSION", "README.md", "CHANGELOG.md",
            "windows")
 
@@ -88,19 +88,19 @@ foreach ($script in $scripts) { Normalize-LineEndings $script.FullName }
 Write-Ok "Scripts compatibles Recalbox"
 
 # --------------------------------------------------------------------------- #
-# Interface web d'installation (aucun SSH necessaire)
+# Auto-installation au demarrage (aucun SSH necessaire)
 # --------------------------------------------------------------------------- #
-$bootstrapName = "recalbox-rfid-web(permanent).py3"
-$bootstrap = Join-Path $destination "web-bootstrap\$bootstrapName"
+$bootstrapName = "recalbox-rfid-autoinstall(permanent).py3"
+$bootstrap = Join-Path $destination "bootstrap\$bootstrapName"
 $userscripts = Join-Path $share "userscripts"
 if (Test-Path $bootstrap) {
     New-Item -ItemType Directory -Path $userscripts -Force | Out-Null
     $installed = Join-Path $userscripts $bootstrapName
     Copy-Item $bootstrap $installed -Force
     Normalize-LineEndings $installed
-    Write-Ok "Interface web installee (demarre avec Recalbox)"
+    Write-Ok "Auto-installation installee (au prochain demarrage de Recalbox)"
 } else {
-    Write-Warn "web-bootstrap introuvable : l'installation par navigateur sera indisponible."
+    Write-Warn "bootstrap introuvable : l'installation automatique sera indisponible."
 }
 
 # --------------------------------------------------------------------------- #
@@ -114,12 +114,11 @@ if (-not $installNow) {
     Write-Host ""
     Write-Ok "Preparation terminee."
     Write-Host ""
-    Write-Host " Prochaines etapes :" -ForegroundColor Cyan
-    Write-Host "  1. Redemarrez Recalbox (menu QUITTER > REDEMARRER)."
-    Write-Host "  2. Ouvrez $webURL dans un navigateur."
-    Write-Host "  3. Cliquez sur « Installer maintenant », puis « Redemarrer Recalbox »."
-    Write-Host ""
-    Write-Host " (Rien d'autre a taper : tout se fait dans le navigateur.)"
+    Write-Host " Il ne reste qu'a redemarrer Recalbox :" -ForegroundColor Cyan
+    Write-Host "  1. Menu QUITTER > REDEMARRER."
+    Write-Host "     L'installation se fait toute seule au demarrage, et Recalbox"
+    Write-Host "     redemarre une fois de plus si le bus SPI vient d'etre active."
+    Write-Host "  2. Ouvrez $webURL dans un navigateur pour verifier et associer les badges."
     Write-Host ""
     Read-Host "Appuyez sur Entree pour fermer"
     exit 0

@@ -17,47 +17,47 @@ Mot de passe par défaut du compte `root` : `recalboxroot`.
 
 ---
 
-## Méthode A — dans le navigateur, sans SSH (la plus simple)
-
-Aucune ligne de commande, aucun mot de passe SSH : tout se fait dans le
-navigateur, y compris l'installation et les mises à jour suivantes.
+## Méthode A — automatique, sans SSH ni serveur (la plus simple)
 
 1. **Copiez le dossier du projet** sur le partage Recalbox : ouvrez
    `\\RECALBOX\share` dans l'Explorateur et déposez-y le dossier
    `recalbox-rfid` (celui qui contient `install.sh`).
-2. **Activez l'interface web** : copiez le fichier
+2. **Copiez le script d'amorçage** :
 
    ```
-   recalbox-rfid\web-bootstrap\recalbox-rfid-web(permanent).py3
+   recalbox-rfid\bootstrap\recalbox-rfid-autoinstall(permanent).py3
    ```
 
    dans le dossier `userscripts` du partage, c'est-à-dire
    `\\RECALBOX\share\userscripts\`.
 3. **Redémarrez Recalbox** (`QUITTER` > `REDÉMARRER`).
-4. Ouvrez **`http://recalbox.local:8080`** dans un navigateur (remplacez par
-   l'adresse IP si `recalbox.local` ne répond pas).
-5. Cliquez sur **« Installer maintenant »** : la page affiche le journal
-   d'installation en direct.
-6. Cliquez sur **« Redémarrer Recalbox »** (le SPI doit être activé par un
-   redémarrage).
-7. Rouvrez la page : tout est vert. Les badges s'associent depuis la page ou avec
-   le bouton.
 
-> Le script copié à l'étape 2 ne sert qu'à démarrer l'interface web : il ne fait
-> rien si le service tourne déjà, et il sert de secours si le service ne démarre
-> pas (configuration cassée, plantage). Il est inclus dans le projet, il n'y a
-> rien à télécharger.
+C'est tout. Au démarrage, Recalbox exécute le script qui :
+
+* installe le programme dans `/recalbox/share/system/rfid` ;
+* active le bus SPI (`dtparam=spi=on`, avec sauvegarde du fichier de boot) ;
+* **redémarre Recalbox une seconde fois** pour appliquer le SPI (sauf si un jeu
+  est en cours : le redémarrage est alors reporté) ;
+* démarre le service, qui sert l'interface web de gestion.
+
+Ensuite, ouvrez **`http://recalbox.local:8080`** pour vérifier le matériel et
+associer les badges. Le détail complet de l'installation est conservé dans
+`/recalbox/share/system/rfid/logs/auto-install.log`.
+
+> Le script d'amorçage reste en place : il sert aussi aux mises à jour
+> automatiques (copier un dossier plus récent sur le partage puis redémarrer) et
+> à rouvrir l'interface web de secours si le service ne démarre pas.
 
 ## Méthode B — assistant Windows
 
 1. Téléchargez / décompressez le projet `recalbox-rfid` sur le PC.
 2. Double-cliquez sur **`windows\INSTALLER.cmd`**.
 3. L'assistant demande l'adresse de la Recalbox (par défaut `recalbox.local`),
-   copie les fichiers sur le partage et y place aussi le script d'amorçage de
-   l'interface web.
+   copie les fichiers sur le partage et y place automatiquement le script
+   d'amorçage.
 4. Il propose ensuite d'installer tout de suite par SSH (mot de passe
-   `recalboxroot`) ; si vous refusez, redémarrez Recalbox puis ouvrez
-   `http://recalbox.local:8080`.
+   `recalboxroot`) ; si vous refusez, **redémarrez Recalbox** : l'installation
+   est automatique.
 
 ## Méthode C — Windows, macOS ou Linux, en ligne de commande (SSH)
 
@@ -112,8 +112,9 @@ reboot
 | Journaux | `/recalbox/share/system/rfid/logs/rfid.log` |
 | Commande | `/recalbox/share/system/rfid/rfidctl` |
 | Démarrage auto | `/recalbox/share/userscripts/recalbox-rfid(permanent).py3` |
+| Auto-installation / MAJ | `/recalbox/share/userscripts/recalbox-rfid-autoinstall(permanent).py3` |
+| Journal d'auto-installation | `/recalbox/share/system/rfid/logs/auto-install.log` |
 | Interface web | servie par le service sur `http://<ip>:8080` (port et mot de passe dans `[web]` de `config.ini`) |
-| Interface web de secours | `/recalbox/share/userscripts/recalbox-rfid-web(permanent).py3` |
 | Bus SPI | ajoute `dtparam=spi=on` dans `/boot/recalbox-user-config.txt` (sauvegarde `.bak-rfid-launcher`) |
 
 Tout est dans le partage : **rien n'est écrit dans le système Recalbox**, une

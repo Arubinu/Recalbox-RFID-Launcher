@@ -53,31 +53,40 @@ programme.
 
 ## 3. Installation
 
-### Méthode A — dans le navigateur, sans SSH (la plus simple)
+### Méthode A — automatique, sans SSH ni serveur (la plus simple)
 
 1. Ouvrez `\\RECALBOX\share` dans l'Explorateur et copiez-y le dossier
-   `recalbox-rfid`.
+   `recalbox-rfid` (celui qui contient `install.sh`).
 2. Copiez le fichier
-   `recalbox-rfid\web-bootstrap\recalbox-rfid-web(permanent).py3` dans
+   `recalbox-rfid\bootstrap\recalbox-rfid-autoinstall(permanent).py3` dans
    `\\RECALBOX\share\userscripts\`.
-3. **Redémarrez Recalbox**, puis ouvrez dans un navigateur :
+3. **Redémarrez Recalbox. C'est tout.**
 
-   ```
-   http://recalbox.local:8080
-   ```
+Au démarrage, Recalbox exécute le script d'amorçage qui :
 
-4. Cliquez sur **« Installer maintenant »**, puis sur **« Redémarrer
-   Recalbox »** (nécessaire pour activer le bus SPI).
-5. Rouvrez la page : l'état est vert, il ne reste qu'à associer les badges.
+* installe le programme dans `/recalbox/share/system/rfid` ;
+* active le bus SPI (`dtparam=spi=on`, sauvegarde incluse) ;
+* **redémarre Recalbox une seconde fois** (sauf si un jeu est en cours) pour
+  appliquer le SPI ;
+* démarre le service, qui sert l'interface web de gestion.
 
-Aucune ligne de commande, aucun mot de passe SSH. Le statut de chaque étape est
-affiché en direct dans la page (journal d'installation inclus).
+Ensuite, ouvrez `http://recalbox.local:8080` pour vérifier le matériel et
+associer les badges. Tout est journalisé dans
+`/recalbox/share/system/rfid/logs/auto-install.log`.
 
-> L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
-> place, puis propose d'installer par SSH ou de vous laisser finir dans le
-> navigateur.
+> Aucun serveur n'est nécessaire pour installer : les fichiers arrivent par le
+> partage réseau et tout s'exécute sur la Recalbox. L'assistant Windows
+> `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre place (il convertit
+> aussi les fins de ligne).
 
-### Méthode B — en ligne de commande (SSH)
+### Méthode B — dans le navigateur (si l'automatique a échoué)
+
+L'interface web sert aussi d'installateur de secours : elle est disponible si
+quelque chose bloque (dossier incomplet, droits, disque plein). Ouvrez
+`http://recalbox.local:8080`, lisez le journal, puis cliquez sur
+**« Installer maintenant »** et **« Redémarrer Recalbox »**.
+
+### Méthode C — en ligne de commande (SSH)
 
 1. Activez le SSH : menu `RÉSEAU` → `SERVEUR SSH` → `ON`.
 2. Copiez le dossier `recalbox-rfid` sur `\\RECALBOX\share` (étape A.1).
@@ -89,18 +98,19 @@ affiché en direct dans la page (journal d'installation inclus).
 
    Mot de passe par défaut de Recalbox : `recalboxroot`.
 
-### Ce que fait l'installateur
+### Ce que fait l'installation
 
-* installe le programme dans `/recalbox/share/system/rfid` ;
-* active le bus SPI (`dtparam=spi=on` dans `/boot/recalbox-user-config.txt`,
-  avec sauvegarde) ;
-* installe le démarrage automatique avec Recalbox (et l'interface web de
-  secours) ;
-* vérifie que le lancement de jeu par script est disponible ;
-* conserve toujours `config.ini` et `tags.json` lors d'une mise à jour.
+| Action | Détail |
+| --- | --- |
+| Programme | copié dans `/recalbox/share/system/rfid/app` |
+| Configuration | `config.ini` (créée si absente, **jamais écrasée**) |
+| Badges | `tags.json` (**jamais écrasé**) |
+| Démarrage | script permanent Recalbox + verrou anti-doublon |
+| Bus SPI | `dtparam=spi=on` dans `/boot/recalbox-user-config.txt`, avec sauvegarde |
+| Redémarrage | automatique une fois, pour activer le SPI |
 
-**Redémarrez Recalbox** si l'installateur le demande (activation du SPI), puis
-ouvrez l'interface web ou lancez le diagnostic :
+**Vérification** : ouvrez l'interface web ou lancez le diagnostic (le MFRC522
+doit être branché) :
 
 ```sh
 /recalbox/share/system/rfid/rfidctl test
@@ -112,18 +122,18 @@ lecteur et teste le bouton.
 ## 4. L'interface web
 
 `http://recalbox.local:8080` — n'importe quel navigateur du réseau, sans
-installation ni compte.
+installation ni compte. Elle est servie par le service RFID (sur la Recalbox,
+rien sur votre PC).
 
 | Onglet | Ce qu'on peut faire |
 | --- | --- |
-| Installation | installer, mettre à jour (ZIP depuis le PC ou URL), redémarrer Recalbox, suivre le journal |
+| Installation | voir l'état, réinstaller / mettre à jour (ZIP depuis le PC ou URL), redémarrer Recalbox, suivre le journal |
 | Matériel | état du SPI, du lecteur RC522, du bouton, du frontend Recalbox |
 | Badges | associer un badge au jeu sélectionné, ajouter/modifier/supprimer, export et import CSV |
 | Service | démarrer / arrêter / redémarrer, consulter le journal |
 
-C'est la même interface avant et après l'installation : tant que le programme
-n'est pas installé, la page sert uniquement à l'installer.
-
+* **Installation** : elle est automatique au démarrage (méthode A). La page sert
+  de contrôle et de secours si l'automatique n'a pas abouti.
 * **Mise à jour** : le bouton « depuis un fichier ZIP » envoie l'archive depuis
   le PC ; elle est installée sur la Recalbox puis le service est à redémarrer.
 * **Sécurité** : la page est accessible à tout le réseau local (comme la console
@@ -194,15 +204,17 @@ ou `Classiques/jeu.smc` pour un jeu dans un sous-dossier).
 
 ## 6. Mise à jour
 
-Trois méthodes, aucune ne touche aux badges :
+Quatre méthodes, aucune ne touche aux badges :
 
-1. **Depuis le navigateur** (le plus simple) : ouvrez
-   `http://recalbox.local:8080`, puis « Mettre à jour depuis un fichier ZIP » (ou
-   une URL). Le service redémarre ensuite en un clic.
-2. **Depuis un nouveau dossier** (pratique pour tester) : copiez la nouvelle
-   version sur le partage puis relancez
+1. **Automatique** : copiez la nouvelle version (dossier `recalbox-rfid-x.y.z`)
+   sur le partage, puis redémarrez Recalbox. Le script d'amorçage compare les
+   versions et installe la plus récente tout seul (aucune rétrogradation).
+2. **Depuis le navigateur** : ouvrez `http://recalbox.local:8080`, puis
+   « Mettre à jour depuis un fichier ZIP » (ou une URL). Le service redémarre
+   ensuite en un clic.
+3. **Depuis un dossier, en SSH** (pratique pour tester) :
    `sh /recalbox/share/<nouveau-dossier>/install.sh --upgrade`.
-3. **Depuis une URL, en SSH** (ZIP hébergé où vous voulez) :
+4. **Depuis une URL, en SSH** (ZIP hébergé où vous voulez) :
 
    ```sh
    /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
@@ -235,7 +247,7 @@ python app/main.py --home ./data web --source .
 # puis http://127.0.0.1:8080
 ```
 
-Tests unitaires (100 tests, aucun matériel requis) :
+Tests unitaires (120 tests, aucun matériel requis) :
 
 ```sh
 python tests/run_tests.py
@@ -260,8 +272,11 @@ python tests/run_tests.py
   (fichier JSON) consommée par le service.
 * **Démarrage** : script permanent `recalbox-rfid(permanent).py3` dans
   `/recalbox/share/userscripts`, exécuté par Recalbox à chaque démarrage de
-  l'interface. Un second script permanent sert l'interface web de secours si le
-  service ne démarre pas. Un verrou (`flock`) empêche tout doublon.
+  l'interface. Un second script permanent
+  (`recalbox-rfid-autoinstall(permanent).py3`) installe ou met à jour au
+  démarrage, redémarre Recalbox si le SPI vient d'être activé, et sert
+  l'interface web de secours en cas de problème. Un verrou (`flock`) empêche
+  tout doublon.
 * **Données** : `/recalbox/share/system/rfid/` (config, badges, journaux),
   donc dans le partage réseau et conservé lors des mises à jour de Recalbox.
 
@@ -275,6 +290,7 @@ python tests/run_tests.py
 | Bouton sans effet | GPIO17 occupé (manettes GPIO : `controllers.gpio.enabled=0`), câblage vers GND |
 | Le jeu ne se lance pas | Recalbox < 9, ou `rfidctl frontend` en échec |
 | Rien ne se passe après un appui | le jeu doit être **sélectionné** dans la liste (pas dossier) |
+| L'installation auto ne démarre pas | script d'amorçage absent de `userscripts`, ou dossier non copié ; voir `logs/auto-install.log` |
 | Page web inaccessible | `[web] enabled = 1`, port 8080 libre, service démarré |
 
 Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
@@ -306,8 +322,8 @@ recalbox-rfid/
 │       ├── hardware.py          # fabrication lecteur + bouton
 │       └── drivers/             # SPI, RC522, GPIO, bouton, simulateur
 ├── userscript/recalbox-rfid(permanent).py3
-├── web-bootstrap/recalbox-rfid-web(permanent).py3
-├── tests/                       # 100 tests unitaires
+├── bootstrap/recalbox-rfid-autoinstall(permanent).py3
+├── tests/                       # 120 tests unitaires
 ├── docs/
 ├── install.sh                   # installation / mise à jour
 ├── uninstall.sh

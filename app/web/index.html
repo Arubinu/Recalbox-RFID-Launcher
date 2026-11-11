@@ -249,8 +249,9 @@ function render(status) {
 
   if (!status.installed) {
     showBanner("warn",
-      "Le lanceur n'est pas encore installé sur cette Recalbox. Cliquez sur « Installer maintenant » " +
-      "puis redémarrez Recalbox.");
+      "Le lanceur n'est pas encore installé. Si vous venez de copier les fichiers sur le partage, " +
+      "redémarrez simplement Recalbox : l'installation est automatique. Sinon, cliquez sur " +
+      "« Installer maintenant ».");
   } else if (!status.spi) {
     showBanner("warn",
       "Le bus SPI n'est pas actif : le lecteur ne peut pas être lu. Redémarrez Recalbox (un redémarrage " +

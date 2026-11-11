@@ -4,6 +4,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.2.0]
+
+### Ajouté
+
+* **Installation et mise à jour automatiques au démarrage** : il suffit de
+  copier le dossier sur le partage et de redémarrer Recalbox. Le script
+  d'amorçage installe, active le SPI, redémarre Recalbox une fois si nécessaire,
+  puis démarre le service — sans SSH, sans serveur et sans clic.
+* Mise à jour automatique : copier un dossier de version plus récente sur le
+  partage et redémarrer ; la comparaison de version évite les rétrogradations.
+* Le journal `logs/auto-install.log` conserve la sortie complète de
+  l'installation automatique.
+* Redémarrage différé si un jeu est en cours (jamais d'interruption de partie).
+* 20 tests dédiés au script d'amorçage (120 tests au total).
+
+### Modifié
+
+* Le script permanent `recalbox-rfid-autoinstall(permanent).py3` remplace
+  l'interface web d'amorçage : il installe tout seul et ne sert la page que si
+  quelque chose échoue (diagnostic + relance manuelle).
+* Le dossier `bootstrap/` remplace `web-bootstrap/`.
+* L'interface web devient un outil de gestion et de secours : elle n'est plus
+  nécessaire pour installer.
+
 ## [1.1.0]
 
 ### Ajouté
