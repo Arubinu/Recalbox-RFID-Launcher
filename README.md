@@ -71,6 +71,11 @@ La copie depuis la page utilise l'API **File System Access** : elle fonctionne
 avec **Edge et Chrome** (Firefox et Safari ne permettent pas l'écriture locale —
 utilisez alors la méthode B).
 
+> Si Windows demande un identifiant pour `\\RECALBOX\share` (Windows 11 24H2 et
+> plus bloquent les accès « invité » par défaut) : utilisateur **`root`**, mot de
+> passe **`recalboxroot`**. Détails et alternatives :
+> [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), section 14.
+
 L'interface n'est **pas hébergée par la Recalbox** : le fichier est local et parle
 à l'agent par WebSocket, protégé par le jeton.
 
@@ -320,6 +325,7 @@ python tests/run_tests.py
 | `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, bon jeton, journal `logs/agent.log` |
 | « Jeton invalide » | recopier `\\RECALBOX\share\system\rfid\token.txt` (bouton « Charger token.txt… ») |
 | Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/DEPANNAGE.md` |
+| `\\RECALBOX\share` demande un mot de passe | Windows 11 bloque les invités : identifiant `root` / `recalboxroot` (ou autoriser les invités) |
 
 Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
 

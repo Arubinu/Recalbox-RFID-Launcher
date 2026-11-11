@@ -4,6 +4,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.4.1]
+
+### Corrigé / documenté
+
+* **`\\RECALBOX\share` demande un identifiant** : explication ajoutée dans la
+  page de copie, le README, `docs/INSTALLATION.md` et `docs/DEPANNAGE.md`.
+  Windows 11 (24H2+) refuse par défaut les sessions invitées : utiliser le compte
+  Recalbox **`root` / `recalboxroot`**, ou autoriser les ouvertures de session
+  invité non sécurisées
+  (`Set-SmbClientConfiguration -EnableInsecureGuestLogons $true`).
+  Rappel : `\\RECALBOX` sans `\share` n'est pas parcourable (normal), et
+  `net use Z: \\RECALBOX\share /user:root recalboxroot` évite les dialogues dans
+  le sélecteur de dossier.
+* Précisé que le compte Samba `root` est (re)créé à chaque démarrage par le
+  script Recalbox `S35securepasswd`.
+
 ## [1.4.0]
 
 ### Ajouté

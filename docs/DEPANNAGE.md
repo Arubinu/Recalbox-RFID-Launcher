@@ -342,6 +342,61 @@ uniquement dans **Edge et Chrome**. Causes fréquentes :
 Après une copie réussie, la page affiche
 `\\RECALBOX\share\recalbox-rfid` : redémarrez Recalbox pour que l'agent démarre.
 
+### `\\RECALBOX\share` demande un identifiant
+
+C'est le comportement normal des **Windows 11 24H2 et plus** : le partage
+Recalbox est un partage « invité », et Windows refuse par défaut les sessions
+invitées (il demande donc des identifiants).
+
+1. **Compte Recalbox** (créé à chaque démarrage par `S35securepasswd`) :
+
+   * utilisateur : `root`
+   * mot de passe : `recalboxroot` (valeur par défaut)
+
+2. **Ou autoriser les invités** (plus de mot de passe) — PowerShell **en
+   administrateur** :
+
+   ```powershell
+   Set-SmbClientConfiguration -EnableInsecureGuestLogons $true
+   ```
+
+   Équivalent graphique : `gpedit.msc` → Configuration ordinateur → Modèles
+   d'administration → Réseau → Station de travail Lanman → « Activer les
+   ouvertures de session invité non sécurisées ».
+
+   ⚠️ Ce réglage assouplit la sécurité SMB de **tout** le poste : à réserver à un
+   réseau domestique.
+
+Nettoyage si Windows a mémorisé de mauvais identifiants :
+
+```cmd
+net use \\RECALBOX\share /delete
+cmdkey /delete:RECALBOX
+```
+
+Pour supprimer les dialogues dans le sélecteur de dossier, montez le partage en
+lecteur avant de cliquer sur « Copier » :
+
+```cmd
+net use Z: \\RECALBOX\share /user:root recalboxroot /persistent:yes
+```
+
+> `\\RECALBOX` sans `\share` n'est pas parcourable — c'est normal, seul le
+> partage nommé est exposé. Utilisez `\\RECALBOX\share` ou
+> `\\<adresse-ip>\share`.
+
+Si `root` / `recalboxroot` est refusé, le mot de passe racine a probablement été
+personnalisé : en SSH, `smbpasswd -a root` permet de définir le mot de passe
+Samba (le compte doit correspondre à un utilisateur existant). Sinon, utilisez la
+copie manuelle (méthode B) ou l'installation par SSH (méthode C).
+
+Un test réseau utile (invite de commandes) :
+
+```cmd
+net view \\RECALBOX
+dir \\RECALBOX\share
+```
+
 ## 15. Le fichier unique est périmé
 
 `dist/recalbox-rfid-installer-<version>.html` est généré à partir des sources.

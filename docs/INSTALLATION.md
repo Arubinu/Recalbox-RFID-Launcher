@@ -41,6 +41,55 @@ En cas de navigateur non compatible (ou d'API d'écriture refusée), utilisez la
 méthode A ci-dessous : le résultat est identique, seules les copies sont
 manuelles.
 
+### Si `\\RECALBOX\share` demande un identifiant
+
+C'est normal sur les Windows récents : le partage Recalbox est un partage
+« invité » et **Windows 11 (24H2 et plus) bloque les accès invités par défaut**.
+Deux solutions :
+
+1. **Se connecter avec le compte Recalbox** (le plus simple) :
+
+   * utilisateur : `root`
+   * mot de passe : `recalboxroot` (mot de passe par défaut)
+
+   Cochez « Se souvenir de mes informations d'identification ». Recalbox crée ce
+   compte Samba à chaque démarrage (script `S35securepasswd`).
+
+2. **Autoriser les accès invités dans Windows** (plus aucune demande de mot de
+   passe). Dans une console **PowerShell en administrateur** :
+
+   ```powershell
+   Set-SmbClientConfiguration -EnableInsecureGuestLogons $true
+   ```
+
+   (équivalent graphique : `gpedit.msc` → Configuration ordinateur → Modèles
+   d'administration → Réseau → Station de travail Lanman → « Activer les
+   ouvertures de session invité non sécurisées »).
+
+Astuce : si Windows a mémorisé de mauvais identifiants, supprimez-les avant de
+réessayer :
+
+```cmd
+net use \\RECALBOX\share /delete
+cmdkey /delete:RECALBOX
+```
+
+Puis, pour éviter les dialogues dans la sélecteur de dossier, montez le partage
+en lecteur (le sélecteur de la page pourra choisir `Z:\`) :
+
+```cmd
+net use Z: \\RECALBOX\share /user:root recalboxroot /persistent:yes
+```
+
+> `\\RECALBOX` seul (sans `\share`) n'est pas parcourable : c'est normal, seul le
+> partage nommé est exposé. Utilisez `\\RECALBOX\share` ou
+> `\\<adresse-ip>\share`.
+
+Si `root` / `recalboxroot` est refusé, c'est que le mot de passe racine a été
+personnalisé : réinitialisez le mot de passe Samba en SSH
+(`smbpasswd -a root`), ou utilisez la méthode A (copie manuelle) / la méthode C
+(SSH).
+
 ## Méthode A — l'installateur HTML (la plus simple)
 
 Aucune ligne de commande : une page locale (`installer.html`) parle à un agent
