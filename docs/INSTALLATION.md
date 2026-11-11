@@ -32,8 +32,10 @@ page de gestion et le contenu des fichiers à installer. Il se régénère avec
    * `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`
      (démarrage automatique de l'agent).
 3. **Redémarrez Recalbox.**
-4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, jeton de
-   `\\RECALBOX\share\system\rfid\token.txt`.
+4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, et
+   cliquez sur **« Connecter »** — le jeton est lu automatiquement dans
+   `\\RECALBOX\share\system\rfid\token.txt` (une autorisation de dossier la
+   première fois, mémorisée ensuite).
 5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
    **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
 

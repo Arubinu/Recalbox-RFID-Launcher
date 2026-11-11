@@ -318,6 +318,19 @@ Causes fréquentes :
   recréé au démarrage de l'agent) — pensez à ressaisir le nouveau jeton dans
   `installer.html`.
 
+### « Connecter » ne trouve pas le jeton
+
+| Message / symptôme | Cause / solution |
+| --- | --- |
+| demande le dossier puis « jeton introuvable » | l'agent n'a jamais démarré : redémarrez Recalbox (`token.txt` est créé au démarrage de l'agent) |
+| « jeton vide » | même cause, ou fichier tronqué : supprimez `token.txt` et redémarrez |
+| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez « Charger token.txt… » ou Edge/Chrome |
+| autorisation refusée | recliquez sur « Connecter » et acceptez l'accès au dossier ; sinon « Charger token.txt… » |
+| accès au dossier impossible | Windows ne s'authentifie pas au partage : lancez `acces-recalbox.cmd` (bouton « Autoriser Windows… ») ou `net use Z: \\RECALBOX\share /user:root recalboxroot` |
+
+Le jeton est mémorisé dans le navigateur par sécurité uniquement pour la
+connexion ; il reste sur le partage (`system/rfid/token.txt`).
+
 ### Faut-il l'exposer sur Internet ?
 
 **Non.** L'agent permet d'installer du code et de redémarrer la Recalbox : il

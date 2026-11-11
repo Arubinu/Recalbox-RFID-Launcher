@@ -23,11 +23,16 @@ Champs de connexion :
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | contenu de `\\RECALBOX\share\system\rfid\token.txt` |
+| Jeton | inutile de le saisir : **« Connecter » le lit tout seul** dans `\\RECALBOX\share\system\rfid\token.txt` (une autorisation de dossier la première fois, mémorisée) |
 
-Le bouton **« Charger token.txt… »** lit directement le fichier depuis le
-partage. Adresse et jeton sont mémorisés dans le navigateur (`localStorage`) :
-la connexion suivante tient en un clic.
+Si le navigateur ne permet pas l'accès au dossier (Firefox, Safari), deux
+replis : **« Charger token.txt… »** (sélection du fichier) ou copier-coller le
+contenu du fichier.
+
+Le bouton **« Autoriser Windows à accéder au partage »** (section de copie)
+télécharge un `acces-recalbox.cmd` : double-clic et Windows se connecte au
+partage (`net use \\RECALBOX\share /user:root recalboxroot`, mot de passe
+modifiable dans le fichier), puis ouvre l'Explorateur.
 
 | Section | Actions |
 | --- | --- |

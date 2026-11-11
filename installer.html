@@ -105,6 +105,7 @@
     <div class="grid" id="payload-grid"></div>
     <div class="row">
       <button id="btn-copy">Choisir \\RECALBOX\share et copier…</button>
+      <button class="secondary" id="btn-netuse">Autoriser Windows à accéder au partage</button>
       <span class="muted small" id="copy-hint">
         Navigateur Edge ou Chrome requis (écriture locale).
       </span>
@@ -154,9 +155,11 @@
       <summary>Où trouver le jeton ?</summary>
       <p class="small muted">
         Sur le partage réseau de la Recalbox :
-        <code>\\RECALBOX\share\system\rfid\token.txt</code>. Ouvrez-le avec le
-        Bloc-notes et collez son contenu ci-dessus (ou utilisez
-        « Charger token.txt… »). Il est créé au premier démarrage de l'agent.
+        <code>\\RECALBOX\share\system\rfid\token.txt</code>. Si le champ est vide,
+        « Connecter » demande une seule fois le dossier du partage et lit le jeton
+        tout seul (Edge/Chrome). Sinon, ouvrez le fichier avec le Bloc-notes et
+        collez son contenu (ou « Charger token.txt… »). Il est créé au premier
+        démarrage de l'agent.
       </p>
     </details>
   </section>
@@ -687,9 +690,141 @@ function currentSettings() {
   };
 }
 
+/* ------------------------------------- partage : jeton et accès Windows */
+const SHARE_DB = "recalbox-rfid";
+const SHARE_STORE = "handles";
+const TOKEN_PATH = "system/rfid/token.txt";
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("IndexedDB indisponible")); return; }
+    const request = indexedDB.open(SHARE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(SHARE_STORE)) {
+        request.result.createObjectStore(SHARE_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB"));
+  });
+}
+
+async function idbSet(key, value) {
+  const database = await idbOpen();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(SHARE_STORE, "readwrite");
+    transaction.objectStore(SHARE_STORE).put(value, key);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  database.close();
+}
+
+async function idbGet(key) {
+  const database = await idbOpen();
+  const value = await new Promise((resolve) => {
+    const transaction = database.transaction(SHARE_STORE, "readonly");
+    const request = transaction.objectStore(SHARE_STORE).get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => resolve(null);
+  });
+  database.close();
+  return value;
+}
+
+async function rememberShare(handle) {
+  try { await idbSet("share", handle); } catch (error) { /* mode privé, etc. */ }
+}
+
+async function readShareFile(handle, path) {
+  const parts = path.split("/");
+  let directory = handle;
+  for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part);
+  const file = await directory.getFileHandle(parts[parts.length - 1]);
+  return await (await file.getFile()).text();
+}
+
+async function savedShare(interactive) {
+  let handle = null;
+  try { handle = await idbGet("share"); } catch (error) { handle = null; }
+  if (!handle) return null;
+  try {
+    if ((await handle.queryPermission({ mode: "readwrite" })) === "granted") return handle;
+    if (interactive && (await handle.requestPermission({ mode: "readwrite" })) === "granted") {
+      return handle;
+    }
+  } catch (error) {
+    return null;
+  }
+  return null;
+}
+
+async function pickShare() {
+  if (typeof window.showDirectoryPicker !== "function") {
+    throw new Error("ce navigateur ne permet pas la lecture du partage (Edge ou Chrome requis)");
+  }
+  return await window.showDirectoryPicker({ mode: "readwrite", id: "recalbox-share" });
+}
+
+async function readTokenFromShare() {
+  let handle = await savedShare(true);
+  if (!handle) handle = await pickShare();
+  await rememberShare(handle);
+  const token = (await readShareFile(handle, TOKEN_PATH)).trim();
+  if (!token) throw new Error("jeton vide (redémarrez Recalbox pour le créer)");
+  return token;
+}
+
+function downloadNetUse() {
+  const settings = currentSettings();
+  const host = settings.host || "recalbox.local";
+  const lines = [
+    "@echo off",
+    "rem ============================================================",
+    "rem  Acces au partage Recalbox (fichier genere par installer.html)",
+    "rem  Modifiez PASS si vous avez personnalise le mot de passe root.",
+    "rem ============================================================",
+    "set HOST=" + host,
+    "set USER=root",
+    "set PASS=recalboxroot",
+    "",
+    "echo Connexion a \\\\%HOST%\\share ...",
+    "net use \\\\%HOST%\\share /delete >nul 2>&1",
+    "net use \\\\%HOST%\\share /user:%USER% %PASS% /persistent:yes",
+    "if errorlevel 1 (",
+    "  echo.",
+    "  echo ECHEC : verifiez l'adresse, ou supprimez les identifiants memorises :",
+    "  echo    net use \\\\%HOST%\\share /delete",
+    "  echo    cmdkey /delete:%HOST%",
+    ") else (",
+    "  echo.",
+    "  echo OK : le partage est accessible. Ouverture de l'explorateur...",
+    "  explorer \"\\\\%HOST%\\share\"",
+    ")",
+    "echo.",
+    "pause",
+    "",
+  ];
+  downloadText("acces-recalbox.cmd", lines.join("\r\n"), "application/octet-stream");
+}
+
 async function tryReconnect(silent) {
   const settings = currentSettings();
-  if (!settings.token) { $("#connect-hint").textContent = "Jeton manquant."; return; }
+  if (!settings.token) {
+    $("#connect-hint").textContent = "Recherche du jeton sur le partage…";
+    try {
+      const token = await readTokenFromShare();
+      $("#token").value = token;
+      settings.token = token;
+      store.write(settings);
+    } catch (error) {
+      setLink(false, "déconnecté");
+      $("#connect-hint").textContent =
+        "Jeton introuvable (" + error.message + ") : utilisez « Charger token.txt… ».";
+      if (!silent) showBanner("err", "Jeton introuvable : " + error.message);
+      return;
+    }
+  }
   const url = "ws://" + settings.host + ":" + settings.port;
   $("#connect-hint").textContent = "Connexion à " + url + "…";
   try {
@@ -711,6 +846,7 @@ async function tryReconnect(silent) {
 $("#btn-connect").addEventListener("click", () => tryReconnect(false));
 $("#token").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
 $("#host").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
+$("#btn-netuse").addEventListener("click", downloadNetUse);
 
 $("#btn-token-file").addEventListener("click", () => $("#file-token").click());
 $("#file-token").addEventListener("change", async (event) => {
@@ -897,6 +1033,7 @@ async function copyPayload() {
     write("Terminé : " + written + " fichiers écrits dans \\\\RECALBOX\\share\\" + project);
     write("Redémarrez Recalbox, puis passez à l'étape 2 (connexion).");
     $("#copy-hint").textContent = "Fichiers copiés. Redémarrez Recalbox.";
+    await rememberShare(root);
   } catch (error) {
     write("Erreur d'écriture : " + error.message);
   }
@@ -905,8 +1042,8 @@ async function copyPayload() {
 /* ------------------------------------------------------------------ départ */
 (function init() {
   const payload = readPayload();
+  $("#copy-card").hidden = false;
   if (payload && payload.files) {
-    $("#copy-card").hidden = false;
     $("#payload-grid").replaceChildren(
       item("Installateur", "autonome (fichiers embarqués)", "ok"),
       item("Version embarquée", payload.version || "?"),
@@ -915,7 +1052,10 @@ async function copyPayload() {
     );
     $("#btn-copy").addEventListener("click", copyPayload);
   } else {
-    $("#copy-hint").textContent = "Version « dossier » : copiez recalbox-rfid sur le partage à la main.";
+    $("#payload-grid").hidden = true;
+    $("#btn-copy").hidden = true;
+    $("#copy-hint").textContent =
+      "Version « dossier » : copiez recalbox-rfid à la main (ou utilisez le fichier unique).";
   }
 
   const saved = store.read();
@@ -928,7 +1068,8 @@ async function copyPayload() {
   if (saved.token) {
     $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Connecter ».";
   } else {
-    $("#connect-hint").textContent = "Renseignez le jeton (fichier token.txt du partage).";
+    $("#connect-hint").textContent =
+      "Jeton vide : « Connecter » va le chercher sur le partage (une autorisation la première fois).";
   }
   window.addEventListener("beforeunload", () => agent.close());
 })();

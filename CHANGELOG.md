@@ -4,6 +4,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.5.0]
+
+### Ajouté
+
+* **Le bouton « Connecter » récupère le jeton tout seul** : si le champ est vide,
+  la page demande une seule fois le dossier du partage, lit
+  `system/rfid/token.txt` et se connecte. L'autorisation est mémorisée
+  (`IndexedDB`) pour les fois suivantes ; plus de copier-coller.
+* Bouton **« Autoriser Windows à accéder au partage »** : génère un
+  `acces-recalbox.cmd` prêt à l'emploi (`net use \\RECALBOX\share /user:root
+  recalboxroot`, puis ouverture de l'Explorateur). Le navigateur ne peut pas
+  saisir les identifiants SMB à notre place : ce fichier fait le lien en un
+  double-clic (l'adresse saisie dans la page est reprise).
+* La section « Copier les fichiers » reste visible dans la version « dossier »
+  (le bouton de copie est masqué) pour profiter de l'assistant d'accès et du
+  jeton automatique.
+* Vérifié dans un navigateur réel : jeton lu sur le partage puis connexion à
+  l'agent sans saisie manuelle.
+
 ## [1.4.1]
 
 ### Corrigé / documenté

@@ -62,8 +62,11 @@ programme.
    partage Recalbox (le dossier qui contient `roms`, `system`…). La page écrit
    elle-même `recalbox-rfid\` et le script de démarrage dans `userscripts\`.
 3. **Redémarrez Recalbox** : l'agent WebSocket démarre avec l'interface.
-4. Dans la même page, connectez-vous (adresse, port `8765`, **jeton** lu dans
-   `\\RECALBOX\share\system\rfid\token.txt`).
+4. Dans la même page, cliquez sur **« Connecter »** : le jeton est lu
+   automatiquement sur le partage (une seule autorisation de dossier, mémorisée
+   ensuite). Si Windows refuse l'accès au partage, utilisez le bouton
+   **« Autoriser Windows à accéder au partage »** (génère un `acces-recalbox.cmd`
+   avec `net use`).
 5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
    **« Redémarrer Recalbox »** si le SPI vient d'être activé.
 
