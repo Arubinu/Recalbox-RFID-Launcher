@@ -112,12 +112,25 @@ done
 HOME_DIR=$(printf '%s' "$HOME_DIR" | sed 's:/*$::')
 
 # --------------------------------------------------------------------------- #
+# Interpreteur Python 3 (python3, ou python si la version est 3)
+# --------------------------------------------------------------------------- #
+PYTHON=""
+for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        if "$candidate" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' 2>/dev/null; then
+            PYTHON="$candidate"
+            break
+        fi
+    fi
+done
+[ -n "$PYTHON" ] || die "Python 3 est introuvable. Recalbox 9 ou plus est necessaire."
+
+# --------------------------------------------------------------------------- #
 # Installation depuis un ZIP distant
 # --------------------------------------------------------------------------- #
 if [ -n "$REMOTE_URL" ]; then
     step "Telechargement de la mise a jour"
     command -v curl >/dev/null 2>&1 || die "curl est introuvable sur ce systeme"
-    command -v python3 >/dev/null 2>&1 || die "python3 est introuvable sur ce systeme"
 
     TMP_DIR=$(mktemp -d /tmp/recalbox-rfid-XXXXXX)
     say "URL : $REMOTE_URL"
@@ -126,7 +139,7 @@ if [ -n "$REMOTE_URL" ]; then
         die "telechargement impossible (verifiez l'URL et la connexion)"
     fi
     mkdir -p "$TMP_DIR/src"
-    if ! python3 -m zipfile -e "$TMP_DIR/update.zip" "$TMP_DIR/src"; then
+    if ! "$PYTHON" -m zipfile -e "$TMP_DIR/update.zip" "$TMP_DIR/src"; then
         rm -rf "$TMP_DIR"
         die "le fichier ZIP est invalide"
     fi
@@ -154,8 +167,8 @@ if [ "$DO_UNINSTALL" = "1" ]; then
     die "uninstall.sh introuvable"
 fi
 
-command -v python3 >/dev/null 2>&1 || die \
-    "python3 est introuvable. Recalbox 9 ou plus est necessaire."
+command -v "$PYTHON" >/dev/null 2>&1 || die \
+    "Python 3 est introuvable. Recalbox 9 ou plus est necessaire."
 
 if [ ! -f "$SCRIPT_DIR/app/main.py" ]; then
     die "dossier 'app' absent : lancez install.sh depuis le dossier complet du projet"
@@ -171,7 +184,7 @@ if [ -f /recalbox/recalbox.version ]; then
 else
     warn "Ce systeme ne semble pas etre Recalbox (fichier /recalbox/recalbox.version absent)."
 fi
-say "Python             : $(python3 -c 'import sys; print(sys.version.split()[0])')"
+say "Python             : $("$PYTHON" -c 'import sys; print(sys.version.split()[0])')"
 say "Dossier cible      : $HOME_DIR"
 say "Sources            : $SCRIPT_DIR"
 
@@ -227,7 +240,7 @@ printf '%s\n' "$VERSION" > "$HOME_DIR/VERSION"
 cat > "$HOME_DIR/rfidctl" <<EOF
 #!/bin/sh
 # Raccourci vers $APP_NAME
-exec python3 "$HOME_DIR/app/main.py" --home "$HOME_DIR" "\$@"
+exec $PYTHON "$HOME_DIR/app/main.py" --home "$HOME_DIR" "\$@"
 EOF
 chmod +x "$HOME_DIR/rfidctl"
 ok "Commande installee : $HOME_DIR/rfidctl"
@@ -236,11 +249,11 @@ ok "Commande installee : $HOME_DIR/rfidctl"
 if [ -f "$HOME_DIR/config.ini" ]; then
     ok "Configuration conservee : $HOME_DIR/config.ini"
 else
-    python3 "$HOME_DIR/app/main.py" --home "$HOME_DIR" config-init >/dev/null
+    "$PYTHON" "$HOME_DIR/app/main.py" --home "$HOME_DIR" config-init >/dev/null
     ok "Configuration creee : $HOME_DIR/config.ini"
 fi
 if [ -f "$HOME_DIR/tags.json" ]; then
-    TAGS_COUNT=$(python3 -c "import json,sys;print(len(json.load(open(sys.argv[1])).get('tags',{})))" "$HOME_DIR/tags.json" 2>/dev/null || echo "?")
+    TAGS_COUNT=$("$PYTHON" -c "import json,sys;print(len(json.load(open(sys.argv[1])).get('tags',{})))" "$HOME_DIR/tags.json" 2>/dev/null || echo "?")
     ok "Badges conserves : $HOME_DIR/tags.json ($TAGS_COUNT entree(s))"
 else
     ok "Base de badges : $HOME_DIR/tags.json (sera creee au premier badge)"
@@ -300,7 +313,7 @@ fi
 # Verification du frontend Recalbox
 # --------------------------------------------------------------------------- #
 step "Verification du frontend Recalbox"
-if python3 "$HOME_DIR/app/main.py" --home "$HOME_DIR" frontend; then
+if "$PYTHON" "$HOME_DIR/app/main.py" --home "$HOME_DIR" frontend; then
     ok "Lancement de jeu par script disponible"
 else
     WARN_FRONTEND=1
@@ -317,7 +330,7 @@ if [ "$NEED_REBOOT" = "1" ]; then
     say "Redemarrage de Recalbox necessaire pour activer le SPI."
     say "Le service demarrera tout seul apres le redemarrage."
 elif [ "$WAS_RUNNING" = "1" ] || [ "$DO_START" = "1" ]; then
-    if python3 "$HOME_DIR/app/main.py" --home "$HOME_DIR" restart; then
+    if "$PYTHON" "$HOME_DIR/app/main.py" --home "$HOME_DIR" restart; then
         ok "Service demarre"
     else
         warn "Le service n'a pas demarre : consultez $HOME_DIR/logs/rfid.log"
