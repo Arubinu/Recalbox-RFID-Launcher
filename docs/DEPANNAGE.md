@@ -480,9 +480,13 @@ indique quel essai échoue et le code d'erreur.
 > l'essai 2 qui passe.
 
 Il n'y a pas de blocage possible non plus au moment de la copie : le script de
-démarrage est copié par `robocopy` (comme le programme) et sa présence est
-vérifiée. En cas d'échec, le code `robocopy` est affiché (8 = fichiers non
-copiés, 16 = erreur grave).
+démarrage est copié par **quatre méthodes successives** (robocopy depuis le
+partage, `copy` depuis le partage, robocopy depuis les fichiers temporaires,
+puis recherche du fichier `recalbox-rfid-agent*.py3` dans toute l'arborescence
+temporaire), chacune suivie d'une vérification de présence. Si les quatre
+échouent, le `.cmd` indique si les sources sont présentes et rappelle la copie
+manuelle : `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` → dossier
+`userscripts\` du partage.
 
 En cas d'échec, testez à la main dans une invite de commandes (les messages
 seront visibles) :

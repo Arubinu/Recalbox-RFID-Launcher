@@ -4,6 +4,23 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.6.3]
+
+### Corrigé
+
+* **Copie du script de démarrage : quatre méthodes en cascade**, au lieu d'une
+  seule source. Le `.cmd` essaie (1) `robocopy` depuis
+  `recalbox-rfid\bootstrap` du partage, (2) `copy` depuis ce même dossier,
+  (3) `robocopy` depuis les fichiers temporaires, puis (4) une recherche du
+  fichier `recalbox-rfid-agent*.py3` dans toute l'arborescence temporaire
+  (`for /r`) — et vérifie la présence du fichier après chaque tentative. Chez
+  certains utilisateurs l'extraction temporaire ne contenait pas `bootstrap\`,
+  ce qui donnait un `robocopy` en code 0 (« rien à copier ») puis un échec
+  alors que les fichiers étaient bien sur la carte.
+* Le message d'échec indique désormais **quelle source est présente ou absente**
+  (locale / partage) et rappelle la copie manuelle du userscript dans
+  `userscripts\`.
+
 ## [1.6.2]
 
 ### Corrigé
