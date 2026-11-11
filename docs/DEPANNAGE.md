@@ -348,6 +348,7 @@ uniquement dans **Edge et Chrome**. Causes fréquentes :
 | --- | --- |
 | « Windows a protégé votre PC » au double-clic | fichier téléchargé : *Informations complémentaires* → *Exécuter quand même* (ou clic droit → Propriétés → Débloquer) |
 | `ECHEC : acces au partage impossible` | adresse/mot de passe : ouvrir le `.cmd` avec le Bloc-notes, corriger `set HOST=` et `set PASS=` ; ou autoriser les invités (voir plus bas) |
+| Reste bloqué à « 1/4 Connexion au partage » | Windows attendait une réponse à une question invisible (connexion déjà ouverte / mot de passe) : utilisez la page 1.6.1 ou plus, voir « Le `.cmd` reste bloqué » plus bas |
 | `ECHEC : decompression impossible` | `certutil`/`tar` absents : Windows 10 1803+ requis, sinon la page bascule sur PowerShell |
 | `ECHEC : copie vers le partage` | partage en lecture seule ou session expirée : relancer le `.cmd` |
 | Le bouton ne fait rien | navigateur non compatible (Firefox, Safari) : copiez le dossier à la main (méthode 2) |
@@ -453,6 +454,39 @@ Un test réseau utile (invite de commandes) :
 net view \\RECALBOX
 dir \\RECALBOX\share
 ```
+
+### Le `.cmd` reste bloqué à « 1/4 Connexion au partage »
+
+Version 1.6.0 et antérieures : les sorties de `net use` étaient redirigées vers
+`nul`, donc **une question de Windows restait invisible** et le script attendait
+une réponse indéfiniment. Deux questions possibles :
+
+* `net use \\RECALBOX\share /delete` demande « Des fichiers sont ouverts sur cette
+  connexion, voulez-vous continuer ? » quand le partage est ouvert dans
+  l'Explorateur ;
+* `net use` demande un mot de passe quand Windows exige des identifiants.
+
+Depuis 1.6.1 : toutes les commandes sont lancées avec `<nul` (une question
+échoue au lieu d'attendre), chaque essai est affiché (`essai 1` = `root`,
+`essai 2` = `RECALBOX\root`, `essai 3` = IP résolue, `essai 4` = invité) et le
+ping de la Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle
+indique quel essai échoue et le code d'erreur.
+
+En cas d'échec, testez à la main dans une invite de commandes (les messages
+seront visibles) :
+
+```cmd
+ping RECALBOX
+powershell Test-NetConnection RECALBOX -Port 445
+net use \\RECALBOX\share /delete /y
+net use \\RECALBOX\share /user:root recalboxroot
+```
+
+* `Test-NetConnection` en échec → réseau/pare-feu (port 445), Recalbox éteinte
+  ou sur un autre réseau.
+* code 1326 → mot de passe (voir la section suivante).
+* code 1219 → une session existe déjà avec d'autres identifiants :
+  `net use /delete` puis `cmdkey /delete:RECALBOX`.
 
 ## 15. Le fichier unique est périmé
 

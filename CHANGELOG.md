@@ -4,6 +4,26 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.6.1]
+
+### Corrigé
+
+* **Le `.cmd` ne reste plus bloqué à « 1/4 Connexion au partage »** : les
+  commandes `net use` sont désormais lancées avec l'entrée standard redirigée
+  (`<nul`), si bien qu'une question de Windows (« des fichiers sont ouverts,
+  continuer ? », demande de mot de passe) échoue au lieu d'attendre une réponse
+  invisible pendant que la sortie était redirigée vers `nul`.
+* La connexion essaie maintenant **quatre méthodes** et affiche chaque essai :
+  `root`, `RECALBOX\root`, l'adresse IP résolue par ping, puis l'accès invité.
+  Le ping préalable indique tout de suite si la Recalbox répond au nom donné.
+* Après connexion, le partage est réutilisé via l'**adresse IP** si c'est elle
+  qui a fonctionné (robuste aux noms NetBIOS/mDNS capricieux).
+* Le `.cmd` n'ouvre plus la page avec un chemin de fichier suivi d'un fragment
+  (`…\installer.html#host=…`, que Windows refuse d'ouvrir) mais avec une vraie
+  URL `file:///…` (les espaces du chemin sont encodés en `%20`).
+* `acces-recalbox.cmd` (diagnostic) affiche aussi le résultat du ping et n'attend
+  plus de réponse invisible.
+
 ## [1.6.0]
 
 ### Ajouté
