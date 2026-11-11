@@ -350,7 +350,7 @@ uniquement dans **Edge et Chrome**. Causes fréquentes :
 | `ECHEC : acces au partage impossible` | adresse/mot de passe : ouvrir le `.cmd` avec le Bloc-notes, corriger `set HOST=` et `set PASS=` ; ou autoriser les invités (voir plus bas) |
 | Reste bloqué à « 1/4 Connexion au partage » | Windows attendait une réponse à une question invisible (connexion déjà ouverte / mot de passe) : utilisez la page 1.6.1 ou plus, voir « Le `.cmd` reste bloqué » plus bas |
 | `ECHEC : decompression impossible` | `certutil`/`tar` absents : Windows 10 1803+ requis, sinon la page bascule sur PowerShell |
-| `ECHEC : copie vers le partage` | partage en lecture seule ou session expirée : relancer le `.cmd` |
+| `ECHEC : copie vers le partage` | partage en lecture seule ou session expirée : relancer le `.cmd` (le code `robocopy` affiché aide : 8 = fichiers non copiés, 16 = erreur grave) |
 | Le bouton ne fait rien | navigateur non compatible (Firefox, Safari) : copiez le dossier à la main (méthode 2) |
 | « Sélection annulée » | boîte de dialogue fermée : recommencez et choisissez le partage |
 | « pas de dossier roms ici » | mauvais dossier choisi : sélectionnez `\\RECALBOX\share` (celui qui contient `roms`, `system`, `bios`…) |
@@ -468,16 +468,21 @@ une réponse indéfiniment. Deux questions possibles :
 
 Depuis 1.6.1 : toutes les commandes sont lancées avec `<nul` (une question
 échoue au lieu d'attendre), chaque essai est affiché (`essai 1` = `root` avec
-`recalboxroot`, `essai 2` = `RECALBOX\root`, `essai 3` = adresse IP résolue,
-`essai 4` = `root` **sans** mot de passe, `essai 5` = invité) et le ping de la
-Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle indique quel
-essai échoue et le code d'erreur.
+`recalboxroot`, `essai 2` = `root` **sans** mot de passe, `essai 3` =
+`RECALBOX\root`, `essai 4` = adresse IP résolue, `essai 5` = invité) et le ping
+de la Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle
+indique quel essai échoue et le code d'erreur.
 
-> L'essai 4 (« `root` sans mot de passe ») couvre le cas où Recalbox n'a pas créé
+> L'essai 2 (« `root` sans mot de passe ») couvre le cas où Recalbox n'a pas créé
 > le mot de passe Samba par défaut (voir « Mot de passe incorrect » plus bas).
-> Il échoue souvent quand même : Samba refuse les mots de passe vides
-> (`null passwords = no`) et Windows refuse une session SMB sans mot de passe.
-> Dans ce cas, la solution reste `smbpasswd -a root` en SSH.
+> Sur cette configuration, les codes `86` / `1326` (« Le mot de passe réseau
+> spécifié est incorrect ») sont attendus pour les essais 1, 3 et 4 — c'est
+> l'essai 2 qui passe.
+
+Il n'y a pas de blocage possible non plus au moment de la copie : le script de
+démarrage est copié par `robocopy` (comme le programme) et sa présence est
+vérifiée. En cas d'échec, le code `robocopy` est affiché (8 = fichiers non
+copiés, 16 = erreur grave).
 
 En cas d'échec, testez à la main dans une invite de commandes (les messages
 seront visibles) :

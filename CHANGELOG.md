@@ -4,6 +4,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.6.2]
+
+### Corrigé
+
+* **La copie du script de démarrage ne peut plus échouer avec le code 1** :
+  elle se fait maintenant avec `robocopy` (comme le programme), qui crée le
+  dossier `userscripts` au besoin et renvoie des codes explicites ; la présence
+  du fichier est vérifiée ensuite. L'ancien `copy /y` échouait silencieusement
+  (« ECHEC : copie vers le partage impossible (code 1) ») alors que le programme
+  venait d'être copié.
+* Les codes `robocopy` sont affichés en cas d'échec (8 = fichiers non copiés,
+  16 = erreur grave) avec les pistes correspondantes.
+
+### Modifié
+
+* L'essai « `root` sans mot de passe » passe en **2ᵉ** position : c'est la
+  configuration réelle d'une Recalbox dont `system.default_password` est
+  renseigné (le compte Samba `root` a alors un mot de passe vide). Les essais
+  deviennent : 1 `root` / `recalboxroot`, 2 `root` sans mot de passe,
+  3 `RECALBOX\root`, 4 adresse IP, 5 invité.
+* Le message d'échec de connexion rappelle que le code **86** signifie
+  « mot de passe réseau incorrect » côté Samba.
+
 ## [1.6.1]
 
 ### Corrigé
