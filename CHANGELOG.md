@@ -4,6 +4,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.4.0]
+
+### Ajouté
+
+* **Installateur unique et autonome** : `dist/recalbox-rfid-installer-<version>.html`
+  contient la page de gestion **et le contenu de tous les fichiers à copier**.
+  Plus besoin de copier le dossier à la main.
+* **Copie directe vers `\\RECALBOX\share`** depuis la page (API File System
+  Access) : la page crée `recalbox-rfid\` et le script de démarrage dans
+  `userscripts\`. Fonctionne avec Edge et Chrome (Firefox/Safari ne permettent
+  pas l'écriture locale : la méthode « copier le dossier » reste disponible).
+* Générateur `tools/build_installer.py` : relancez-le après toute modification
+  d'un fichier pour régénérer le fichier unique (celui livré est vérifié par un
+  test de fraîcheur).
+* 11 tests dédiés au générateur (contenu identique aux sources, payload
+  analysable, génération déterministe, aucune balise parasite, fins de ligne LF) :
+  118 tests au total.
+
+### Modifié
+
+* `installer.html` affiche une section « Copier les fichiers » lorsqu'il est
+  utilisé sous sa forme générée, et rappelle la méthode manuelle sinon.
+
 ## [1.3.0]
 
 ### Modifié

@@ -1,5 +1,16 @@
 # Mise à jour
 
+## Régénérer l'installateur unique
+
+Après chaque modification d'un fichier du projet :
+
+```sh
+python tools/build_installer.py
+```
+
+Le fichier `dist/recalbox-rfid-installer-<version>.html` est reconstruit avec le
+contenu à jour. Un test échoue si le fichier livré n'est pas régénéré.
+
 ## Principe
 
 Le programme est installé dans un dossier **avec** ses données :
@@ -100,14 +111,16 @@ version… déjà installée. Pour une nouvelle version, utilisez la méthode 2 
 Depuis le dossier du projet (Windows, PowerShell) :
 
 ```powershell
-Compress-Archive -Path app, userscript, docs, tests, install.sh, uninstall.sh, VERSION, README.md, CHANGELOG.md `
-                 -DestinationPath recalbox-rfid-1.1.0.zip
+Compress-Archive -Path app, userscript, bootstrap, docs, tools, dist, installer.html, `
+                  install.sh, uninstall.sh, VERSION, README.md, CHANGELOG.md `
+                 -DestinationPath recalbox-rfid-1.4.0.zip
 ```
 
 Depuis un système Unix :
 
 ```sh
-zip -r recalbox-rfid-1.1.0.zip app userscript docs tests install.sh uninstall.sh VERSION README.md CHANGELOG.md
+zip -r recalbox-rfid-1.4.0.zip app userscript bootstrap docs tools dist installer.html \
+                              install.sh uninstall.sh VERSION README.md CHANGELOG.md
 ```
 
 Le ZIP doit contenir `install.sh` **à sa racine** (ou dans un unique

@@ -13,7 +13,7 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="1.3.0"
+VERSION="1.4.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"

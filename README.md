@@ -54,32 +54,43 @@ programme.
 
 ## 3. Installation
 
-### Méthode A — l'installateur HTML (la plus simple)
+### Méthode A — le fichier unique (aucune copie manuelle)
+
+1. Ouvrez **`dist\recalbox-rfid-installer-<version>.html`** (fourni dans le
+   projet ; sinon `python tools/build_installer.py` le régénère).
+2. Cliquez sur **« Choisir `\\RECALBOX\share` et copier… »** puis sélectionnez le
+   partage Recalbox (le dossier qui contient `roms`, `system`…). La page écrit
+   elle-même `recalbox-rfid\` et le script de démarrage dans `userscripts\`.
+3. **Redémarrez Recalbox** : l'agent WebSocket démarre avec l'interface.
+4. Dans la même page, connectez-vous (adresse, port `8765`, **jeton** lu dans
+   `\\RECALBOX\share\system\rfid\token.txt`).
+5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
+   **« Redémarrer Recalbox »** si le SPI vient d'être activé.
+
+La copie depuis la page utilise l'API **File System Access** : elle fonctionne
+avec **Edge et Chrome** (Firefox et Safari ne permettent pas l'écriture locale —
+utilisez alors la méthode B).
+
+L'interface n'est **pas hébergée par la Recalbox** : le fichier est local et parle
+à l'agent par WebSocket, protégé par le jeton.
+
+### Méthode B — copier le dossier à la main
 
 1. Ouvrez `\\RECALBOX\share` dans l'Explorateur et copiez-y le dossier
    `recalbox-rfid` (celui qui contient `install.sh`).
-2. Copiez le fichier
-   `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
+2. Copiez `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
    `\\RECALBOX\share\userscripts\`.
-3. **Redémarrez Recalbox.** L'agent WebSocket démarre avec l'interface.
-4. Double-cliquez sur **`installer.html`** (fourni avec le projet, sur votre PC).
-   Renseignez l'adresse de la Recalbox, le port `8765` et le **jeton** contenu
-   dans `\\RECALBOX\share\system\rfid\token.txt`, puis cliquez sur Connecter.
-5. Cliquez sur **« Installer / mettre à jour maintenant »** : le journal défile
-   en direct.
-6. Si le bus SPI vient d'être activé, cliquez sur **« Redémarrer Recalbox »**.
+3. **Redémarrez Recalbox.**
+4. Ouvrez `installer.html`, connectez-vous (adresse, `8765`, jeton), puis
+   « Installer / mettre à jour maintenant ».
 
-L'interface n'est **pas hébergée par la Recalbox** : `installer.html` est un
-fichier local qui parle à l'agent par WebSocket, protégé par le jeton.
+> L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
+> place, propose l'installation par SSH et ouvre `installer.html` à la fin.
 
-> L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2, propose
-> l'installation par SSH, et ouvre `installer.html` à la fin (il convertit aussi
-> les fins de ligne).
-
-### Méthode B — en ligne de commande (SSH)
+### Méthode C — en ligne de commande (SSH)
 
 1. Activez le SSH : menu `RÉSEAU` → `SERVEUR SSH` → `ON`.
-2. Copiez le dossier `recalbox-rfid` sur `\\RECALBOX\share` (étape A.1).
+2. Copiez le dossier `recalbox-rfid` sur `\\RECALBOX\share` (étape B.1).
 3. Lancez, depuis PowerShell / un terminal :
 
    ```sh
@@ -108,10 +119,39 @@ fichier local qui parle à l'agent par WebSocket, protégé par le jeton.
 Le diagnostic affiche la version du MFRC522, détecte un badge posé sur le
 lecteur et teste le bouton.
 
-## 4. L'installateur HTML (`installer.html`)
+## 4. L'installateur HTML
 
 C'est le seul fichier à ouvrir sur votre PC : double-clic, il fonctionne en
 `file://`, sans installation ni serveur local.
+
+Deux formes, même page :
+
+* **`dist\recalbox-rfid-installer-<version>.html`** — le fichier **unique**
+  (fichiers embarqués) : il sait aussi copier le programme sur le partage ;
+* **`installer.html`** (à la racine) — la version « dossier », qui suppose que
+  vous avez copié `recalbox-rfid` à la main.
+
+| Partie | Ce qu'on peut faire |
+| --- | --- |
+| Copier les fichiers | (fichier unique) choisir `\\RECALBOX\share`, la page écrit `recalbox-rfid\` + `userscripts\` |
+| Installation | installer, mettre à jour (dossier du partage, ZIP envoyé depuis le PC, URL), suivre le journal, redémarrer Recalbox |
+| Matériel | état du SPI, du lecteur RC522, du bouton, du frontend Recalbox |
+| Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
+| Service | démarrer / arrêter / redémarrer, consulter les journaux |
+
+### Régénérer le fichier unique
+
+Après toute modification d'un fichier du projet :
+
+```sh
+python tools/build_installer.py
+```
+
+Le générateur embarque `app/`, `userscript/`, `bootstrap/`, `docs/`,
+`install.sh`, `uninstall.sh`, `VERSION`, `README.md` et `CHANGELOG.md` en base64
+dans la page. Le fichier livré est vérifié par un test de fraîcheur : s'il n'est
+pas régénéré, la suite de tests échoue (impossible de livrer un installateur
+périmé).
 
 | Partie | Ce qu'on peut faire |
 | --- | --- |
@@ -232,7 +272,7 @@ python app/main.py --home ./data agent --source .
 # avec 127.0.0.1, port 8765 et ce jeton
 ```
 
-Tests unitaires (104 tests, aucun matériel requis) :
+Tests unitaires (118 tests, aucun matériel requis) :
 
 ```sh
 python tests/run_tests.py
@@ -256,6 +296,10 @@ python tests/run_tests.py
   (poignée de main + trames, ~200 lignes), authentification par jeton, flux
   d'installation en direct, envoi de ZIP par morceaux. Aucune page servie par la
   Recalbox : `installer.html` est ouvert en local et se connecte en `ws://`.
+* **Installateur unique** : `tools/build_installer.py` embarque les fichiers du
+  projet (base64) dans une copie de `installer.html`. La page les écrit sur le
+  partage via l'API **File System Access** (`showDirectoryPicker`, Edge/Chrome) —
+  vérifié dans un vrai navigateur : `file://` → écriture dans un dossier choisi.
 * **Démarrage** : deux scripts permanents dans `/recalbox/share/userscripts` :
   `recalbox-rfid(permanent).py3` (service RFID) et
   `recalbox-rfid-agent(permanent).py3` (agent de gestion). Chacun prend un
@@ -275,6 +319,7 @@ python tests/run_tests.py
 | Rien ne se passe après un appui | le jeu doit être **sélectionné** dans la liste (pas dossier) |
 | `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, bon jeton, journal `logs/agent.log` |
 | « Jeton invalide » | recopier `\\RECALBOX\share\system\rfid\token.txt` (bouton « Charger token.txt… ») |
+| Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/DEPANNAGE.md` |
 
 Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
 
@@ -291,7 +336,9 @@ Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
 
 ```
 recalbox-rfid/
-├── installer.html               # interface d'installation/gestion (à ouvrir sur le PC)
+├── dist/recalbox-rfid-installer-<version>.html   # installateur unique (à ouvrir)
+├── installer.html               # version « dossier » de l'interface
+├── tools/build_installer.py     # régénère le fichier unique
 ├── app/
 │   ├── main.py                  # point d'entrée (CLI + service + agent + simulation)
 │   └── rfid/
@@ -306,7 +353,7 @@ recalbox-rfid/
 │       └── drivers/             # SPI, RC522, GPIO, bouton, simulateur
 ├── userscript/recalbox-rfid(permanent).py3
 ├── bootstrap/recalbox-rfid-agent(permanent).py3
-├── tests/                       # 104 tests unitaires
+├── tests/                       # 118 tests unitaires
 ├── docs/
 ├── install.sh                   # installation / mise à jour
 ├── uninstall.sh

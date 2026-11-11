@@ -17,6 +17,30 @@ Mot de passe par défaut du compte `root` : `recalboxroot`.
 
 ---
 
+## Méthode 0 — le fichier unique (aucune copie manuelle)
+
+Le fichier `dist\recalbox-rfid-installer-<version>.html` contient **tout** : la
+page de gestion et le contenu des fichiers à installer. Il se régénère avec
+`python tools/build_installer.py`.
+
+1. **Ouvrez le fichier** (double-clic) dans **Edge ou Chrome** — Firefox et
+   Safari ne permettent pas l'écriture locale.
+2. Cliquez sur **« Choisir `\\RECALBOX\share` et copier… »**, puis sélectionnez le
+   partage Recalbox (le dossier qui contient `roms`, `system`…).
+   La page crée :
+   * `\\RECALBOX\share\recalbox-rfid\` (programme complet) ;
+   * `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`
+     (démarrage automatique de l'agent).
+3. **Redémarrez Recalbox.**
+4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, jeton de
+   `\\RECALBOX\share\system\rfid\token.txt`.
+5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
+   **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
+
+En cas de navigateur non compatible (ou d'API d'écriture refusée), utilisez la
+méthode A ci-dessous : le résultat est identique, seules les copies sont
+manuelles.
+
 ## Méthode A — l'installateur HTML (la plus simple)
 
 Aucune ligne de commande : une page locale (`installer.html`) parle à un agent

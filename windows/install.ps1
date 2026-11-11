@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 #  Recalbox RFID Launcher - assistant d'installation Windows
 #
 #  Double-cliquez sur INSTALLER.cmd (dans le meme dossier) plutot que de lancer
@@ -109,19 +109,25 @@ $answer = Read-Host "Installer tout de suite par SSH ? (O/n)"
 $installNow = [string]::IsNullOrWhiteSpace($answer) -or ($answer -match '^[oOyY]')
 
 if (-not $installNow) {
-    $page = Join-Path $ProjectRoot "installer.html"
+    $page = Get-ChildItem -Path (Join-Path $ProjectRoot "dist") -Filter "recalbox-rfid-installer-*.html" -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+    if (-not $page) {
+        $page = Get-Item (Join-Path $ProjectRoot "installer.html") -ErrorAction SilentlyContinue
+    }
     Write-Host ""
     Write-Ok "Preparation terminee."
     Write-Host ""
     Write-Host " Prochaines etapes :" -ForegroundColor Cyan
     Write-Host "  1. Redemarrez Recalbox (menu QUITTER > REDEMARRER)."
     Write-Host "  2. L'agent WebSocket demarre avec Recalbox (ws://$target`:8765)."
-    Write-Host "  3. Ouvrez installer.html (il s'ouvre automatiquement ci-dessous),"
-    Write-Host "     renseignez l'adresse $target et le jeton contenu dans :"
+    Write-Host "  3. Ouvrez l'installateur (il s'ouvre ci-dessous si possible) :"
+    Write-Host "     - fichier unique : « Choisir \\RECALBOX\share et copier » ;"
+    Write-Host "     - sinon : adresse $target, port 8765, jeton de"
     Write-Host "       \\$target\share\system\rfid\token.txt"
-    Write-Host "  4. Cliquez sur Â« Installer Â», puis redemarrez si le SPI etait inactif."
+    Write-Host "  4. Cliquez sur « Installer », puis redemarrez si le SPI etait inactif."
     Write-Host ""
-    if (Test-Path $page) { Start-Process $page }
+    if ($page) { Start-Process $page.FullName }
     Read-Host "Appuyez sur Entree pour fermer"
     exit 0
 }
@@ -133,7 +139,7 @@ if (-not $ssh) {
     Write-Host " Utilisez plutot l'agent WebSocket :" -ForegroundColor Yellow
     Write-Host "  1. Redemarrez Recalbox."
     Write-Host "  2. Ouvrez installer.html, connectez-vous a $target`:8765 avec le"
-    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis Â« Installer Â»."
+    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis « Installer »."
     Write-Host ""
     Write-Host " (Ou installez OpenSSH : Parametres > Applications >"
     Write-Host "  Fonctionnalites facultatives > Client OpenSSH.)"
@@ -156,7 +162,7 @@ if ($exitCode -ne 0) {
     Write-Host " Pas de panique : l'agent WebSocket reste disponible." -ForegroundColor Yellow
     Write-Host "  1. Redemarrez Recalbox."
     Write-Host "  2. Ouvrez installer.html, connectez-vous a $target`:8765 avec le"
-    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis Â« Installer Â»."
+    Write-Host "     jeton de \\$target\share\system\rfid\token.txt, puis « Installer »."
     Write-Host ""
     Write-Host " A verifier si vous retentez par SSH : serveur SSH active"
     Write-Host " (RESEAU > SERVEUR SSH > ON), mot de passe, version de Recalbox."

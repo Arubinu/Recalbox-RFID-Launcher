@@ -99,6 +99,29 @@
 </header>
 
 <main>
+  <!-- Copie des fichiers (uniquement dans l'installateur généré) -->
+  <section class="card" id="copy-card" hidden>
+    <h2>1. Copier les fichiers sur la Recalbox</h2>
+    <div class="grid" id="payload-grid"></div>
+    <div class="row">
+      <button id="btn-copy">Choisir \\RECALBOX\share et copier…</button>
+      <span class="muted small" id="copy-hint">
+        Navigateur Edge ou Chrome requis (écriture locale).
+      </span>
+    </div>
+    <pre id="copy-log" hidden></pre>
+    <details>
+      <summary>Comment faire ?</summary>
+      <ol class="small muted">
+        <li>Cliquez sur le bouton, puis choisissez <code>\\RECALBOX\share</code>
+            (le dossier qui contient <code>roms</code>, <code>system</code>…).</li>
+        <li>La page crée <code>recalbox-rfid\</code> et le script de démarrage
+            dans <code>userscripts\</code>.</li>
+        <li>Redémarrez Recalbox, puis connectez-vous ci-dessous (étape 2).</li>
+      </ol>
+    </details>
+  </section>
+
   <!-- Connexion -->
   <section class="card" id="connect-card">
     <h2>Connexion à la Recalbox</h2>
@@ -237,6 +260,20 @@ const store = {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(values)); } catch (error) { /* ignore */ }
   },
 };
+
+/* --------------------------------------------------- contenu embarqué (build) */
+function readPayload() {
+  const node = document.getElementById("rfid-payload");
+  if (!node) return null;
+  try { return JSON.parse(node.textContent); } catch (error) { return null; }
+}
+
+function base64ToBytes(text) {
+  const binary = atob(String(text).replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
 
 /* --------------------------------------------------------------- WebSocket */
 class Agent {
@@ -782,8 +819,97 @@ async function showLog(name) {
 $("#btn-logs").addEventListener("click", () => showLog("service"));
 $("#btn-logs-agent").addEventListener("click", () => showLog("agent"));
 
+/* ---------------------------------------------------- copie des fichiers */
+async function copyPayload() {
+  const payload = readPayload();
+  const log = $("#copy-log");
+  const write = (text) => {
+    log.hidden = false;
+    log.textContent += text + "\n";
+    log.scrollTop = log.scrollHeight;
+  };
+  if (!payload || !payload.files) return;
+  if (typeof window.showDirectoryPicker !== "function") {
+    write("Ce navigateur ne permet pas l'écriture locale : utilisez Edge ou Chrome.");
+    return;
+  }
+
+  let root;
+  try {
+    root = await window.showDirectoryPicker({ mode: "readwrite", id: "recalbox-share" });
+  } catch (error) {
+    write(error.name === "AbortError" ? "Sélection annulée." : "Sélection impossible : " + error.message);
+    return;
+  }
+
+  const entries = Object.entries(payload.files);
+  const project = payload.project || "recalbox-rfid";
+  write("Dossier choisi : " + (root.name || "?") + " (" + entries.length + " fichiers)");
+
+  let looksLikeShare = false;
+  try {
+    await root.getDirectoryHandle("roms");
+    looksLikeShare = true;
+  } catch (error) {
+    looksLikeShare = false;
+  }
+  if (!looksLikeShare) {
+    write("Attention : pas de dossier 'roms' ici — est-ce bien le partage RECALBOX ?");
+  }
+
+  let written = 0;
+  try {
+    const projectHandle = await root.getDirectoryHandle(project, { create: true });
+    for (const [path, content] of entries) {
+      const parts = path.split("/");
+      let directory = projectHandle;
+      for (const part of parts.slice(0, -1)) {
+        directory = await directory.getDirectoryHandle(part, { create: true });
+      }
+      const file = await directory.getFileHandle(parts[parts.length - 1], { create: true });
+      const stream = await file.createWritable();
+      await stream.write(base64ToBytes(content));
+      await stream.close();
+      written += 1;
+      if (written % 5 === 0 || written === entries.length) {
+        write("  " + written + "/" + entries.length + " fichiers…");
+      }
+    }
+
+    if (payload.userscript && payload.files[payload.userscript]) {
+      const name = payload.userscript.split("/").pop();
+      const scripts = await root.getDirectoryHandle("userscripts", { create: true });
+      const file = await scripts.getFileHandle(name, { create: true });
+      const stream = await file.createWritable();
+      await stream.write(base64ToBytes(payload.files[payload.userscript]));
+      await stream.close();
+      write("Script de démarrage : userscripts\\" + name);
+    }
+
+    write("Terminé : " + written + " fichiers écrits dans \\\\RECALBOX\\share\\" + project);
+    write("Redémarrez Recalbox, puis passez à l'étape 2 (connexion).");
+    $("#copy-hint").textContent = "Fichiers copiés. Redémarrez Recalbox.";
+  } catch (error) {
+    write("Erreur d'écriture : " + error.message);
+  }
+}
+
 /* ------------------------------------------------------------------ départ */
 (function init() {
+  const payload = readPayload();
+  if (payload && payload.files) {
+    $("#copy-card").hidden = false;
+    $("#payload-grid").replaceChildren(
+      item("Installateur", "autonome (fichiers embarqués)", "ok"),
+      item("Version embarquée", payload.version || "?"),
+      item("Fichiers", String(Object.keys(payload.files).length)),
+      item("Dossier créé", "\\RECALBOX\\share\\" + (payload.project || "recalbox-rfid"))
+    );
+    $("#btn-copy").addEventListener("click", copyPayload);
+  } else {
+    $("#copy-hint").textContent = "Version « dossier » : copiez recalbox-rfid sur le partage à la main.";
+  }
+
   const saved = store.read();
   $("#host").value = saved.host || "recalbox.local";
   $("#port").value = saved.port || 8765;

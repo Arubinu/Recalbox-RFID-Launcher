@@ -38,6 +38,10 @@ la connexion suivante tient en un clic.
 
 Points utiles :
 
+* **Fichier unique** : si vous avez ouvert
+  `dist\recalbox-rfid-installer-<version>.html`, une première section permet de
+  **copier les fichiers** sur `\\RECALBOX\share` directement depuis la page
+  (Edge/Chrome) : choisissez le partage, tout est écrit, puis redémarrez.
 * **Associer sans le bouton** : sélectionnez un jeu dans Recalbox, ouvrez la page
   (le jeu sélectionné s'affiche), cliquez sur « Associer le prochain badge
   scanné », puis scannez le badge.

@@ -323,3 +323,35 @@ Causes fréquentes :
 **Non.** L'agent permet d'installer du code et de redémarrer la Recalbox : il
 doit rester sur le réseau local. Pour un accès à distance, utilisez un VPN
 (WireGuard, Tailscale…), jamais une redirection du port 8765.
+
+---
+
+## 14. La copie des fichiers depuis la page échoue
+
+La copie utilise l'API **File System Access** (`showDirectoryPicker`), disponible
+uniquement dans **Edge et Chrome**. Causes fréquentes :
+
+| Symptôme | Cause / solution |
+| --- | --- |
+| Le bouton ne fait rien | navigateur non compatible (Firefox, Safari) : copiez le dossier à la main (méthode B) |
+| « Sélection annulée » | boîte de dialogue fermée : recommencez et choisissez le partage |
+| « pas de dossier roms ici » | mauvais dossier choisi : sélectionnez `\\RECALBOX\share` (celui qui contient `roms`, `system`, `bios`…) |
+| « Erreur d'écriture » / permission | partage non monté ou en lecture seule : vérifiez `\\RECALBOX\share` dans l'Explorateur |
+| Aucun fichier écrit | antivirus/proxy bloquant l'API ; essayez un autre poste ou la méthode manuelle |
+
+Après une copie réussie, la page affiche
+`\\RECALBOX\share\recalbox-rfid` : redémarrez Recalbox pour que l'agent démarre.
+
+## 15. Le fichier unique est périmé
+
+`dist/recalbox-rfid-installer-<version>.html` est généré à partir des sources.
+Si une version différente de `VERSION` est affichée dans la page, ou si les
+fichiers copiés ne correspondent pas au code :
+
+```sh
+python tools/build_installer.py
+```
+
+Puis remplacez votre ancien fichier par le nouveau. La suite de tests
+(`python tests/run_tests.py`) échoue volontairement si le fichier livré n'est
+plus à jour.
