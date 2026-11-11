@@ -52,12 +52,19 @@ class WebUITestCase(unittest.TestCase):
     def request(self, path, method="GET", body=None, headers=None, raw=None):
         url = "http://127.0.0.1:%d%s" % (self.port, path)
         data = raw if raw is not None else (json.dumps(body).encode("utf-8") if body is not None else None)
-        request = urllib.request.Request(url, data=data, method=method, headers=headers or {})
-        try:
-            with urllib.request.urlopen(request, timeout=10) as response:
-                return response.status, response.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:
-            return exc.code, exc.read().decode("utf-8")
+        last_error = None
+        for _attempt in range(3):
+            request = urllib.request.Request(url, data=data, method=method, headers=headers or {})
+            try:
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    return response.status, response.read().decode("utf-8")
+            except urllib.error.HTTPError as exc:
+                return exc.code, exc.read().decode("utf-8")
+            except (ConnectionError, OSError) as exc:
+                # Connexion refusée/abandonnée : transitoire sous Windows.
+                last_error = exc
+                time.sleep(0.05)
+        raise last_error
 
     def json_request(self, path, method="GET", body=None, headers=None):
         merged = {"Content-Type": "application/json"}

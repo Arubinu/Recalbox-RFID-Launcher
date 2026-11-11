@@ -254,17 +254,20 @@ class Service:
         interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
         next_slot = 0.0
         next_status = 0.0
+        next_reader = 0.0
         try:
             while self.running:
                 now = time.monotonic()
 
-                if self.reader is None:
-                    if not self._open_reader():
+                # Le lecteur peut arriver plus tard (SPI active apres coup) : on
+                # reessaie regulierement sans bloquer le bouton ni l'interface web.
+                if self.reader is None and now >= next_reader:
+                    next_reader = now + 2.0
+                    self._open_reader()
+                    if self.reader is None:
                         self._write_status()
-                        time.sleep(2.0)
-                        continue
 
-                if now >= next_slot:
+                if self.reader is not None and now >= next_slot:
                     next_slot = now + interval
                     uid = None
                     try:
@@ -370,6 +373,7 @@ class Service:
             self.last_uid,
             controller_status.get("mode", ""),
             controller_status.get("target"),
+            round(controller_status.get("seconds_left") or 0),
             self.reader.version if self.reader else None,
             bool(self.button and getattr(self.button, "available", False)),
             self.store.count() if self.store else 0,
