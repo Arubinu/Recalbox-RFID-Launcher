@@ -45,11 +45,13 @@ qui n'était pas la vôtre. La demande est aussi refusée si le service du lecte
 n'est pas démarré.
 
 Aucun jeton n'est transmis, aucun fichier n'est écrit : l'agent tire un secret de
-session en mémoire à chaque démarrage, et la page le garde dans le navigateur
-(localStorage). Une actualisation de la page reconnecte donc sans rien faire. En
-revanche, un **redémarrage de la Recalbox**, un redémarrage du service ou une
-**mise à jour** efface ce secret : la page l'annonce (« la Recalbox demande une
-nouvelle autorisation ») et il suffit de garder le bouton appuyé 3 secondes une
+session (dans un dossier privé de la Recalbox, hors du partage réseau), et la
+page le garde dans le navigateur (localStorage). Une actualisation de la page,
+un redémarrage du service ou une **mise à jour** reconnectent donc sans rien
+faire : l'autorisation survit. Seul un **redémarrage complet de la Recalbox**
+remet le secret à zéro (il vit dans `/tmp`) : la page l'annonce (« la Recalbox
+demande une nouvelle autorisation ») et il suffit de garder le bouton appuyé 3
+secondes une
 fois de plus.
 
 L'installateur `.cmd` relancé après l'installation rouvre la page avec
@@ -90,7 +92,7 @@ Points utiles :
   « Connexion perdue depuis N s » et la page **se reconnecte automatiquement**
   dès que l'agent revient ; le retour est annoncé (« Connexion rétablie »). Le
   bouton « Réessayer maintenant » force une tentative immédiate.
-* **Autorisation perdue** (Recalbox redémarrée, service relancé, programme mis à
+* **Autorisation perdue** (Recalbox complètement redémarrée, programme mis à
   jour) : le secret de session a changé, la page l'indique et il suffit de
   garder le bouton du boîtier appuyé 3 secondes pour continuer.
 

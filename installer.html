@@ -769,8 +769,10 @@
               <span class="label">Mise à jour</span>
               <span class="grow"></span>
               <button id="btn-install">Installer / mettre à jour</button>
+              <button class="secondary" id="btn-force-install" hidden>Réinstaller quand même</button>
               <button class="danger" id="btn-reboot">Redémarrer la Recalbox</button>
             </div>
+            <p class="hint" id="install-hint"></p>
             <div class="grid" id="service-grid"></div>
             <div class="action-bar">
               <span class="label">Service</span>
@@ -1356,10 +1358,17 @@ function render(status) {
 }
 
 function renderInstall(status) {
+  const serviceVersion = (status.service && status.service.status && status.service.status.version) || "";
+  const installed = status.installed_version || "";
+  const source = status.source_version || "";
+  const aJour = Boolean(installed && source && installed === source && serviceVersion === installed);
   $("#install-grid").replaceChildren(
-    item("Version du lanceur", status.app_version),
-    item("Programme", status.installed ? "installé" : "pas encore installé",
-         status.installed ? "ok" : "warn"),
+    item("Version sur la Recalbox", installed || "inconnue"),
+    item("Version en service", serviceVersion || "service arrêté",
+         aJour ? "ok" : "warn"),
+    item("Version à installer", source || status.app_version || "inconnue",
+         aJour ? "ok" : ""),
+    item("État", aJour ? "déjà à jour" : "mise à jour possible", aJour ? "ok" : "warn"),
     item("Version de Recalbox", status.recalbox || "inconnue"),
     item("Emplacement", status.home)
   );
@@ -2025,11 +2034,23 @@ async function runReaderTest() {
 }
 
 $("#btn-reader-test").addEventListener("click", runReaderTest);
-$("#btn-install").addEventListener("click", () => run(async () => {
+async function startInstall(force) {
   logLines = [];
   $("#install-log").textContent = "";
-  await agent.send("install");
-}));
+  $("#install-hint").textContent = "";
+  $("#btn-force-install").hidden = true;
+  const result = await agent.send("install", force ? { force: true } : {});
+  if (result && result.skipped) {
+    $("#install-hint").textContent =
+      "Vous êtes déjà en " + result.installed_version + " : il n'y a rien à réinstaller. " +
+      "« Réinstaller quand même » ne sert que si quelque chose ne fonctionne pas.";
+    $("#btn-force-install").hidden = false;
+    await refresh();
+  }
+}
+
+$("#btn-install").addEventListener("click", () => run(() => startInstall(false)));
+$("#btn-force-install").addEventListener("click", () => run(() => startInstall(true)));
 
 $("#btn-upload").addEventListener("click", () => $("#file-update").click());
 $("#file-update").addEventListener("change", async (event) => {

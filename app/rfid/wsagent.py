@@ -59,6 +59,8 @@ AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
 PAIRING_FILENAME = "pairing.json"
 PAIRED_FILENAME = "paired.ok"
+#: Secret de session garde dans le dossier prive (tmpfs, jamais le partage SMB).
+SESSION_FILENAME = "session-secret"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
@@ -271,11 +273,11 @@ class Agent:
         self.source = os.path.abspath(source) if source else None
         self.db_path = db or os.path.join(self.home, DB_FILENAME)
         self.port = int(port) if port is not None else cfg.get_int("agent", "port", DEFAULT_PORT)
-        # Aucun secret sur disque : l'autorisation vient d'un appui physique sur
-        # le bouton. Le secret de session vit uniquement en memoire, donc il
-        # disparait au redemarrage de l'agent (et rien ne peut etre vole sur le
-        # partage SMB).
-        self.token = secrets.token_hex(16).upper()
+        # Aucun secret sur le partage SMB : l'autorisation vient d'un appui
+        # physique sur le bouton, et le secret de session vit dans un dossier
+        # prive (0600, tmpfs). Il survit donc a un redemarrage du service ou de
+        # l'agent (mise a jour), mais pas a un redemarrage de la Recalbox.
+        self.token = self._session_secret()
         self.token_path = ""
         self._forget_legacy_tokens()
         # Nouveau secret a chaque demarrage : la fenetre d'appairage est ouverte
@@ -288,6 +290,25 @@ class Agent:
         self.server = None
         self.running = False
         self._lock = None
+
+    def _session_secret(self) -> str:
+        """Secret de session : relu du dossier prive, ou cree."""
+        path = os.path.join(pairing.state_dir(self.home), SESSION_FILENAME)
+        saved = ""
+        try:
+            with open(path, "r", encoding="ascii") as handle:
+                saved = handle.read().strip()
+        except OSError:
+            saved = ""
+        token = saved if len(saved) >= 32 else secrets.token_hex(16).upper()
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            descriptor = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
+            with os.fdopen(descriptor, "w", encoding="ascii") as handle:
+                handle.write(token)
+        except OSError:
+            pass                     # disque plein : le secret reste en memoire
+        return token
 
     def _forget_legacy_tokens(self) -> None:
         """Efface les jetons des versions precedentes (ils etaient sur le partage)."""
@@ -413,6 +434,7 @@ class Agent:
             "source": self.source,
             "installed": installed,
             "installed_version": installed_version,
+            "source_version": self.source_version(self.installer()),
             "recalbox": recalbox_version(),
             "spi": os.path.exists("/dev/spidev0.0"),
             "userscript": os.path.isfile(USERSCRIPT) or os.path.isfile(AGENT_USERSCRIPT),
@@ -750,6 +772,36 @@ class Agent:
             return {"text": "(journal vide : %s)" % filename}
         return {"text": "".join(lines)}
 
+    def source_version(self, installer: str) -> str:
+        """Version du dossier dont vient l'installateur."""
+        if not installer:
+            return ""
+        return read_version(os.path.dirname(os.path.abspath(installer)))
+
+    def up_to_date(self, installer: str):
+        """Rien a installer si le disque ET le service sont deja a la bonne version.
+
+        Retourne un dict ``{"skipped": True, ...}`` dans ce cas, sinon None.
+        Un service qui tourne encore une ancienne version empeche le saut : il
+        faut reappliquer l'installation pour qu'il reparte a jour.
+        """
+        source = self.source_version(installer)
+        installed = read_version(self.home)
+        if not source or not installed:
+            return None
+        if version_key(installed) != version_key(source):
+            return None                  # vraie montee ou descente de version
+        status = read_status(self.home) or {}
+        service = str(status.get("version") or "")
+        if not service or version_key(service) != version_key(installed):
+            return None                  # le service n'a pas encore ce code
+        return {
+            "skipped": True,
+            "installed_version": installed,
+            "source_version": source,
+            "service_version": service,
+        }
+
     def _cmd_install(self, client, message):
         installer = self.installer()
         if installer is None:
@@ -758,6 +810,16 @@ class Agent:
                 "(\\\\RECALBOX\\share) puis rechargez cette page"
             )
         url = str(message.get("url") or "").strip()
+        force = bool(message.get("force"))
+        if not url and not force:
+            skipped = self.up_to_date(installer)
+            if skipped:
+                if self.log:
+                    self.log.info(
+                        "Installation inutile : deja en %s (service %s)"
+                        % (skipped["installed_version"], skipped["service_version"])
+                    )
+                return skipped
         command = ["sh", installer, "--upgrade", "--no-restart", "--home", self.home]
         if url:
             command += ["--from-url", url]

@@ -4,6 +4,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.2]
+
+### Corrigé
+
+* **Plus d'installation inutile.** « Installer / mettre à jour » lançait tout le
+  script, recopiait les fichiers et redémarrait l'agent même quand la Recalbox
+  était déjà à la version du dossier du partage — ce qui coûtait au passage un
+  nouvel appui sur le bouton. L'agent compare maintenant les trois versions
+  (disque, dossier du partage, service en cours) :
+  * versions identiques → il répond « déjà à jour » et **ne touche à rien** ;
+  * le service tourne encore une version plus ancienne → il réinstalle ;
+  * bouton **« Réinstaller quand même »** pour forcer (cas d'un fichier abîmé).
+* L'onglet Maintenance affiche désormais : version **sur la Recalbox**, version
+  **en service**, version **à installer**, et l'état « déjà à jour ».
+
+### Modifié
+
+* **Un redémarrage du service ou une mise à jour ne redemande plus l'appui de
+  3 secondes.** Le secret de session est conservé dans le dossier privé
+  (`0600`, hors partage, remis à zéro avec `/tmp` au démarrage) : la page se
+  reconnecte seule. Seul un **redémarrage complet de la Recalbox** renouvelle le
+  secret et donc demande un nouvel appui — c'est aussi ce qui garantit qu'aucun
+  secret ne survit à une coupure de courant.
+
 ## [2.5.1]
 
 ### Ajouté

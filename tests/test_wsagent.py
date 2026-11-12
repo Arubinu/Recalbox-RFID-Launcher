@@ -214,21 +214,50 @@ class AgentTestCase(unittest.TestCase):
 
 
 class SessionSecretTest(AgentTestCase):
-    """Aucun secret sur disque : il nait en memoire a chaque demarrage."""
+    """Aucun secret sur le partage : il vit dans un dossier prive (0600)."""
 
-    def test_secret_en_memoire_uniquement(self):
+    def session_path(self):
+        return os.path.join(wsagent.pairing.state_dir(self.home), wsagent.SESSION_FILENAME)
+
+    def test_aucun_secret_sur_le_partage(self):
         self.start_agent()
         self.assertGreaterEqual(len(self.agent.token), 16)
         self.assertEqual(self.agent.token_path, "")
         self.assertFalse(os.path.isfile(os.path.join(self.home, "token.txt")))
         self.assertFalse(os.path.isfile(os.path.join(self.home, "paired.ok")))
+        # ...et le secret de session est range dans le dossier prive dedie
+        self.assertEqual(
+            os.path.dirname(self.session_path()), wsagent.pairing.state_dir(self.home)
+        )
 
-    def test_secret_different_a_chaque_demarrage(self):
+    def test_secret_garde_hors_du_partage(self):
+        self.start_agent()
+        chemin = self.session_path()
+        self.assertTrue(os.path.isfile(chemin), chemin)
+        with open(chemin, encoding="ascii") as handle:
+            self.assertEqual(handle.read().strip(), self.agent.token)
+        if os.name != "nt":
+            self.assertEqual(os.stat(chemin).st_mode & 0o777, 0o600)
+
+    def test_secret_conserve_apres_redemarrage_du_service(self):
+        # Une mise a jour ou un redemarrage du service ne doit pas redemander
+        # l'appui sur le bouton.
         self.start_agent()
         premier = self.agent.token
         self.agent.stop()
         time.sleep(0.2)
         self.agent = None
+        self.start_agent()
+        self.assertEqual(self.agent.token, premier)
+
+    def test_secret_renouvele_apres_perte(self):
+        # Redemarrage complet (tmpfs vide) : nouveau secret, donc nouvel appui.
+        self.start_agent()
+        premier = self.agent.token
+        self.agent.stop()
+        time.sleep(0.2)
+        self.agent = None
+        os.remove(self.session_path())
         self.start_agent()
         self.assertNotEqual(self.agent.token, premier)
 
@@ -548,6 +577,108 @@ class InstallTest(AgentTestCase):
         client.call("upload.begin", size=10)
         with self.assertRaises(WsError):
             client.call("upload.chunk", data=base64.b64encode(b"x" * 20).decode())
+
+
+class InstallSkipTest(AgentTestCase):
+    """Une installation sans changement de version ne doit rien relancer."""
+
+    def setUp(self):
+        super().setUp()
+        self._after_patch = mock.patch.object(
+            wsagent.Agent, "_after_install", lambda self, client: None
+        )
+        self._after_patch.start()
+
+    def tearDown(self):
+        self._after_patch.stop()
+        super().tearDown()
+
+    def prepare(self, installed, shared, service, running_service=True):
+        """Prepare le dossier source, le programme installe et l'etat du service."""
+        source = os.path.join(self.tmp, "share-src")
+        os.makedirs(os.path.join(source, "app"), exist_ok=True)
+        for base, version in ((source, shared), (self.home, installed)):
+            for name, text in (
+                ("install.sh", "#!/bin/sh\n"),
+                ("VERSION", version + "\n"),
+                (os.path.join("app", "main.py"), "#\n"),
+            ):
+                path = os.path.join(base, name)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as handle:
+                    handle.write(text)
+        with open(os.path.join(self.home, "status.json"), "w", encoding="utf-8") as handle:
+            json.dump({"version": service}, handle)
+        self.source = source
+
+    def start(self):
+        config = Config(self.config_path)
+        self.agent = wsagent.Agent(config, None, home=self.home, port=0)
+        self.agent.source = self.source
+        thread = threading.Thread(target=self.agent.serve_forever, daemon=True)
+        thread.start()
+        for _ in range(100):
+            if self.agent.server is not None:
+                break
+            time.sleep(0.05)
+        self.port = self.agent.server.server_address[1]
+        client = self.client()
+        client.call("auth", token=self.agent.token)
+        return client
+
+    def test_meme_version_ne_relance_rien(self):
+        self.prepare("2.5.2", "2.5.2", "2.5.2")
+        client = self.start()
+        with mock.patch.object(wsagent.subprocess, "Popen", side_effect=AssertionError("relance")):
+            data = client.call("install")
+        self.assertTrue(data.get("skipped"))
+        self.assertEqual(data.get("installed_version"), "2.5.2")
+
+    def test_service_en_retard_relance(self):
+        self.prepare("2.5.2", "2.5.2", "2.4.0")
+        client = self.start()
+        recorded = {}
+
+        def fake_popen(command, **kwargs):
+            recorded["command"] = command
+            return FakeProcess(["ok"], 0)
+
+        with mock.patch.object(wsagent.subprocess, "Popen", fake_popen):
+            data = client.call("install")
+        self.assertTrue(data.get("started"))
+        self.assertIn("--upgrade", recorded["command"])
+
+    def test_version_plus_recente_relance(self):
+        self.prepare("2.4.0", "2.5.2", "2.4.0")
+        client = self.start()
+        recorded = {}
+
+        def fake_popen(command, **kwargs):
+            recorded["command"] = command
+            return FakeProcess(["ok"], 0)
+
+        with mock.patch.object(wsagent.subprocess, "Popen", fake_popen):
+            data = client.call("install")
+        self.assertTrue(data.get("started"))
+        self.assertTrue(recorded["command"][1].startswith(self.source))
+
+    def test_force_reinstalle(self):
+        self.prepare("2.5.2", "2.5.2", "2.5.2")
+        client = self.start()
+
+        def fake_popen(command, **kwargs):
+            return FakeProcess(["ok"], 0)
+
+        with mock.patch.object(wsagent.subprocess, "Popen", fake_popen):
+            data = client.call("install", force=True)
+        self.assertTrue(data.get("started"))
+
+    def test_status_expose_la_version_source(self):
+        self.prepare("2.5.2", "2.5.2", "2.5.2")
+        client = self.start()
+        data = client.call("status")
+        self.assertEqual(data.get("source_version"), "2.5.2")
+        self.assertEqual(data.get("installed_version"), "2.5.2")
 
 
 class ReaderTestCommandTest(AgentTestCase):
