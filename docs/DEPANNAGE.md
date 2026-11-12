@@ -476,27 +476,46 @@ dir \\RECALBOX\share
 
 ### Le `.cmd` reste bloqué à « 1/4 Connexion au partage »
 
-Version 1.6.0 et antérieures : les sorties de `net use` étaient redirigées vers
-`nul`, donc **une question de Windows restait invisible** et le script attendait
-une réponse indéfiniment. Deux questions possibles :
+Deux causes possibles, corrigées dans cet ordre.
+
+**1) Une question invisible (1.6.0 et antérieures).** Les sorties de `net use`
+étaient redirigées vers `nul`, donc une question de Windows restait cachée et le
+script attendait indéfiniment :
 
 * `net use \\RECALBOX\share /delete` demande « Des fichiers sont ouverts sur cette
   connexion, voulez-vous continuer ? » quand le partage est ouvert dans
   l'Explorateur ;
 * `net use` demande un mot de passe quand Windows exige des identifiants.
 
-Depuis 1.6.1 : toutes les commandes sont lancées avec `<nul` (une question
-échoue au lieu d'attendre), chaque essai est affiché (`essai 1` = `root` avec
-`recalboxroot`, `essai 2` = `root` **sans** mot de passe, `essai 3` =
-`RECALBOX\root`, `essai 4` = adresse IP résolue, `essai 5` = invité) et le ping
-de la Recalbox est fait avant. La fenêtre ne reste donc plus muette : elle
-indique quel essai échoue et le code d'erreur.
+Depuis 1.6.1, toutes les commandes sont lancées avec `<nul` : une question
+échoue au lieu d'attendre.
+
+**2) Une attente TCP de 20 à 60 s par essai (1.7.1 et antérieures).** Si le nom
+résout vers une **ancienne adresse IP** (bail DHCP changé) ou si Windows essaie
+**IPv6 en premier**, `net use` attend la fin des tentatives TCP avant d'échouer :
+la fenêtre semble figée sur « essai 1 » pendant une minute.
+
+Depuis **1.7.2**, l'étape 1 est bornée :
+
+1. un seul appel PowerShell résout l'adresse IPv4 et **teste le port 445 avec un
+   délai maximum de 1,5 s** ;
+2. port injoignable → message **`ECHEC RAPIDE`** (≈ 3 s au total) qui rappelle
+   les vérifications (Recalbox allumée, même réseau, adresse IP changée) et
+   s'arrête sans tenter `net use` ;
+3. port joignable → trois essais seulement (chacun ≈ 2 s de négociation SMB) :
+   `root`, `root` sans mot de passe, invité. Les essais se font **sur l'adresse
+   IP**, jamais sur le nom ;
+4. la méthode retenue est affichée : `OK  (methode : root sans mot de passe)`.
 
 > L'essai 2 (« `root` sans mot de passe ») couvre le cas où Recalbox n'a pas créé
 > le mot de passe Samba par défaut (voir « Mot de passe incorrect » plus bas).
 > Sur cette configuration, les codes `86` / `1326` (« Le mot de passe réseau
-> spécifié est incorrect ») sont attendus pour les essais 1, 3 et 4 — c'est
-> l'essai 2 qui passe.
+> spécifié est incorrect ») sont attendus pour l'essai 1 — c'est l'essai 2 qui
+> passe.
+
+Si l'étape 1 reste silencieuse plus de quelques secondes : `Ctrl+C`, puis
+lancez le **diagnostic** (« Faire un diagnostic » dans la page) qui dit si le
+partage répond.
 
 Il n'y a pas de blocage possible non plus au moment de la copie : le script de
 démarrage est copié par **quatre méthodes successives** (robocopy depuis le

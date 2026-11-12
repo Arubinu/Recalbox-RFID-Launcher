@@ -4,6 +4,30 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.7.2]
+
+### Corrigé
+
+* **L'étape 1 du `.cmd` ne peut plus rester bloquée.** Le blocage venait de
+  `net use`, qui attendait la fin des tentatives TCP vers une adresse morte
+  (nom résolu vers une ancienne IP, ou IPv6 essayé d'abord) : 20 à 60 s par
+  essai, sans rien afficher. L'étape 1 fait maintenant, dans un **seul appel
+  PowerShell**, la résolution IPv4 puis un **test du port 445 limité à 1,5 s**.
+  Port injoignable → message `ECHEC RAPIDE` immédiat (≈ 3 s) et arrêt, sans
+  aucune tentative `net use` ; port joignable → les essais d'identifiants, qui
+  répondent en ~2 s chacun.
+* Les tentatives se font désormais **sur l'adresse IP** (jamais sur le nom), ce
+  qui supprime l'attente IPv6/NetBIOS ; l'adresse trouvée est aussi utilisée
+  pour ouvrir la page (`#host=`), donc l'interface se connecte du premier coup.
+* Trois essais au lieu de cinq (chacun coûte ~2 s de négociation SMB) : `root`,
+  `root` sans mot de passe, invité. La méthode retenue est affichée
+  (`OK (methode : root sans mot de passe)`).
+* La suppression d'une éventuelle connexion existante n'est faite que si elle
+  existe vraiment (test local, sans réseau) : encore ~2 s gagnées.
+
+Mesures sur un PC réel, port joignable mais partage absent (pire cas) :
+**15,7 s → 7,4 s** ; adresse injoignable : **≈ 3 s** au lieu du blocage.
+
 ## [1.7.1]
 
 ### Ajouté
