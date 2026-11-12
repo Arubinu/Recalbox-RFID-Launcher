@@ -4,6 +4,38 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.7.1]
+
+### Ajouté
+
+* **« Faire un diagnostic »** dans l'aide « Où trouver le jeton ? » : la page
+  génère `diagnostic-recalbox.cmd`, un rapport lisible en six points — nom et
+  adresse IP résolus, ports 445 (partage) et 8765 (agent) testés en TCP,
+  connexion au partage avec les trois jeux d'identifiants, présence des
+  `install.sh`, des deux userscripts et du `token.txt`, contenu de
+  `system\rfid`, puis les codes d'erreur expliqués. Il ne modifie rien.
+* Bouton **« Copier l'adresse du dossier »** : copie
+  `\\<adresse>\share\system\rfid` (l'adresse du champ, donc l'IP si vous l'avez
+  saisie) pour la coller dans la barre de l'Explorateur, sans risque de faute de
+  frappe.
+
+### Modifié
+
+* L'aide du jeton explique désormais en premier qu'il suffit de **relancer le
+  `.cmd`** (il copie le jeton dans le presse-papiers et rouvre la page déjà
+  connectée), et rappelle explicitement que `\\RECALBOX` **tout seul** ne
+  s'ouvre pas sous Windows : il faut `\\RECALBOX\share`.
+
+### Corrigé
+
+* Diagnostic : les chemins contenant des parenthèses
+  (`recalbox-rfid-agent(permanent).py3`) cassaient l'analyse de la ligne `if`
+  (erreur « .py3) était inattendu ») — corrigé.
+* Diagnostic : le test de réponse utilisait `ping`, qui n'affiche pas l'adresse
+  entre crochets quand on lui donne déjà une IP (faux négatif) ; il passe
+  maintenant par la résolution DNS en PowerShell, insensible à la langue de
+  Windows, et les tests de ports n'émettent plus d'avertissement parasite.
+
 ## [1.7.0]
 
 ### Modifié

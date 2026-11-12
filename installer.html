@@ -58,6 +58,18 @@
     padding: .1em .38em;
   }
 
+  kbd {
+    font-family: inherit;
+    font-size: .86em;
+    font-weight: 600;
+    padding: .12em .42em;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    white-space: nowrap;
+  }
+
   /* ------------------------------------------------------------- barre haute */
   header.topbar {
     display: flex;
@@ -554,7 +566,6 @@
       </p>
       <div class="row">
         <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier</button>
-        <button class="secondary" id="btn-netuse">Autoriser Windows à accéder au partage</button>
         <span class="muted small" id="copy-hint"></span>
       </div>
       <pre id="copy-log" hidden></pre>
@@ -593,15 +604,32 @@
     <details>
       <summary>Où trouver le jeton&nbsp;?</summary>
       <p class="small muted">
-        Ouvrez l'Explorateur Windows et allez dans
-        <code>\\RECALBOX\share\system\rfid</code> : le fichier <code>token.txt</code>
-        s'y trouve. Double-cliquez dessus, copiez tout son contenu, puis collez-le
-        ci-dessus. Il est créé automatiquement au premier démarrage de la Recalbox.
+        <b>Le plus simple</b> : relancez le fichier
+        <code>recalbox-rfid-installation.cmd</code> téléchargé à l'étape 1. Il lit le
+        jeton, le copie dans votre presse-papiers et rouvre cette page déjà connectée.
       </p>
       <p class="small muted">
-        Astuce : si vous laissez le champ vide, « Se connecter » vous demandera une
-        seule fois le dossier du partage et lira le jeton tout seul (Edge ou Chrome).
+        Sinon, dans l'Explorateur Windows, collez cette adresse dans la barre du haut
+        (<kbd>Ctrl</kbd>+<kbd>V</kbd> puis <kbd>Entrée</kbd>) :
+        <code id="token-path">\\RECALBOX\share\system\rfid</code> — le fichier
+        <code>token.txt</code> s'y trouve. Ouvrez-le, copiez tout son contenu et
+        collez-le dans le champ « Jeton de sécurité ».
       </p>
+      <p class="small muted">
+        <b>À savoir</b> : <code>\\RECALBOX</code> tout seul ne s'ouvre pas sous Windows
+        (« Windows ne peut pas accéder à \\RECALBOX ») — c'est normal, il faut toujours
+        le <code>\share</code>. Si le nom pose problème, utilisez l'adresse IP.
+      </p>
+      <p class="small muted">
+        Astuce : laissez le champ vide et cliquez sur « Se connecter » — la page
+        demandera une seule fois le dossier du partage et lira le jeton toute seule
+        (Edge ou Chrome, partage monté en lecteur).
+      </p>
+      <div class="row">
+        <button class="secondary" id="btn-copy-path">Copier l'adresse du dossier</button>
+        <button class="secondary" id="btn-netuse">Faire un diagnostic</button>
+        <span class="muted small" id="token-hint"></span>
+      </div>
     </details>
   </section>
 
@@ -1510,58 +1538,76 @@ async function readTokenFromShare() {
 function downloadNetUse() {
   const settings = currentSettings();
   const host = settings.host || "recalbox.local";
+  const tcp = (port, ok, ko) =>
+    "powershell -NoProfile -Command \"try { $c = New-Object Net.Sockets.TcpClient; " +
+    "$c.Connect('" + host + "', " + port + "); $c.Close(); '" + ok + "' } " +
+    "catch { '" + ko + "' }\" 2>nul";
   const lines = [
     "@echo off",
-    "setlocal",
+    "setlocal enabledelayedexpansion",
+    "title Diagnostic - Recalbox RFID",
     "rem ============================================================",
-    "rem  Acces au partage Recalbox (fichier genere par installer.html)",
-    "rem  - modifiez PASS si vous avez personnalise le mot de passe root",
-    "rem  - le partage est en mode 'invite' : Windows 11 24H2+ le bloque,",
-    "rem    d'ou la demande de mot de passe (root / recalboxroot par defaut)",
+    "rem  Diagnostic genere par installer.html",
+    "rem  - ne modifie rien : il affiche seulement l'etat de la Recalbox",
+    "rem  - mot de passe root personnalise ? modifiez la ligne set PASS=",
     "rem ============================================================",
     "set HOST=" + host,
     "set USER=root",
     "set PASS=recalboxroot",
+    "set SHARE=\\\\%HOST%\\share",
     "",
-    "echo Connexion a \\\\%HOST%\\share (utilisateur %USER%) ...",
-    "set IP=",
-    "for /f \"tokens=2 delims=[]\" %%a in ('ping -4 -n 1 -w 1500 %HOST%') do set \"IP=%%a\"",
-    "if defined IP echo   ping OK : %HOST% = %IP%",
-    "if not defined IP echo   ping KO : %HOST% ne repond pas (nom ou reseau)",
-    "net use \\\\%HOST%\\share /delete /y <nul >nul 2>&1",
-    "net use \\\\%HOST%\\share /user:%USER% %PASS% /persistent:yes <nul",
-    "if errorlevel 1 echo   -> essai %USER% sans mot de passe ...",
-    "if errorlevel 1 net use \\\\%HOST%\\share /user:%USER% \"\" /persistent:yes <nul",
-    "if errorlevel 1 echo   -> essai en invite ...",
-    "if errorlevel 1 net use \\\\%HOST%\\share /persistent:yes <nul",
-    "if errorlevel 1 goto echec",
+    "echo ================================================",
+    "echo  Diagnostic -- Recalbox RFID",
+    "echo ================================================",
     "echo.",
-    "echo OK : le partage est accessible.",
-    "explorer \"\\\\%HOST%\\share\"",
-    "goto fin",
-    "",
-    ":echec",
+    "echo 1) Nom de la Recalbox et adresse IP",
+    "powershell -NoProfile -Command \"try { $a = [System.Net.Dns]::GetHostAddresses('" + host + "') " +
+      "| Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1; " +
+      "if ($a) { '   OK    : " + host + " = ' + $a.IPAddressToString } " +
+      "else { '   SOUCI : " + host + " ne donne aucune adresse IPv4' } } " +
+      "catch { '   SOUCI : " + host + " introuvable (orthographe, Recalbox eteinte, autre reseau)' }\" 2>nul",
     "echo.",
-    "echo ECHEC (code %ERRORLEVEL%).",
-    "echo   1326 = mot de passe incorrect",
-    "echo           ^- si vous avez personnalise le mot de passe root, le",
-    "echo              compte Samba a un mot de passe vide (bug Recalbox) :",
-    "echo              en SSH, lancez  smbpasswd -a root  puis relancez ce fichier",
-    "echo              avec le mot de passe choisi dans PASS.",
-    "echo    53  = nom/adresse introuvable (essayez l'adresse IP)",
-    "echo    67  = partage introuvable (PARTAGE SMB desactive dans Recalbox ?)",
-    "echo    1272 = bloque par une strategie Windows (voir docs, section 14)",
+    "echo 2) Ports : 445 = partage de fichiers, 8765 = agent de gestion",
+    tcp(445, "   OK    : port 445 ouvert (partage)",
+        "   SOUCI : port 445 ferme (Recalbox eteinte, autre reseau ou pare-feu)"),
+    tcp(8765, "   OK    : port 8765 ouvert (agent)",
+        "   SOUCI : port 8765 ferme (agent pas demarre : voir etape 1)"),
     "echo.",
-    "echo Identifiants memorises a supprimer si besoin :",
-    "echo   net use \\\\%HOST%\\share /delete",
-    "echo   cmdkey /delete:%HOST%",
-    "",
-    ":fin",
+    "echo 3) Connexion au partage \\\\%HOST%\\share",
+    "net use \"%SHARE%\" /delete /y <nul >nul 2>&1",
+    "net use \"%SHARE%\" /user:%USER% %PASS% /persistent:no <nul >nul 2>&1",
+    "if errorlevel 1 net use \"%SHARE%\" /user:%USER% \"\" /persistent:no <nul >nul 2>&1",
+    "if errorlevel 1 net use \"%SHARE%\" /persistent:no <nul >nul 2>&1",
+    "if errorlevel 1 echo    SOUCI : partage refuse, code !ERRORLEVEL!  -- codes expliques a la fin",
+    "if not errorlevel 1 echo    OK    : partage accessible",
     "echo.",
+    "echo 4) Fichiers installes",
+    "if exist \"%SHARE%\\recalbox-rfid\\install.sh\" echo    OK    : programme present",
+    "if not exist \"%SHARE%\\recalbox-rfid\\install.sh\" echo    MANQUE : recalbox-rfid\\install.sh  -- etape 1 pas terminee",
+    "if exist \"%SHARE%\\userscripts\\recalbox-rfid(permanent).py3\" echo    OK    : demarrage du lecteur",
+    "if not exist \"%SHARE%\\userscripts\\recalbox-rfid(permanent).py3\" echo    MANQUE : userscripts\\recalbox-rfid(permanent).py3",
+    "if exist \"%SHARE%\\userscripts\\recalbox-rfid-agent(permanent).py3\" echo    OK    : demarrage de l'agent",
+    "if not exist \"%SHARE%\\userscripts\\recalbox-rfid-agent(permanent).py3\" echo    MANQUE : userscripts\\recalbox-rfid-agent(permanent).py3",
+    "if exist \"%SHARE%\\system\\rfid\\token.txt\" echo    OK    : jeton present",
+    "if not exist \"%SHARE%\\system\\rfid\\token.txt\" echo    MANQUE : system\\rfid\\token.txt  -- normal tant que la Recalbox n'a pas redemarre",
+    "echo.",
+    "echo 5) Contenu du dossier system\\rfid",
+    "if exist \"%SHARE%\\system\\rfid\" dir /b \"%SHARE%\\system\\rfid\"",
+    "if not exist \"%SHARE%\\system\\rfid\" echo    dossier absent",
+    "echo.",
+    "echo 6) A retenir",
+    "echo    - \\\\%HOST%  tout seul ne s'ouvre pas sous Windows : c'est normal.",
+    "echo      Il faut toujours  \\\\%HOST%\\share  (ou l'adresse IP affichee plus haut).",
+    "echo    - code 86 ou 1326 : mot de passe Samba refuse (en SSH : smbpasswd -a root)",
+    "echo    - code 53 : nom introuvable (essayez l'adresse IP)",
+    "echo    - code 67 : partage introuvable (PARTAGE SMB desactive dans Recalbox)",
+    "echo    - code 1272 : bloque par une strategie Windows (acces invite desactive)",
+    "echo.",
+    "echo Termine. Vous pouvez copier cette fenetre : clic droit ^> Tout selectionner.",
     "pause",
     "",
   ];
-  downloadText("acces-recalbox.cmd", lines.join("\r\n"), "application/octet-stream");
+  downloadText("diagnostic-recalbox.cmd", lines.join("\r\n"), "application/octet-stream");
 }
 
 async function tryReconnect(silent) {
@@ -1603,6 +1649,39 @@ $("#btn-connect").addEventListener("click", () => tryReconnect(false));
 $("#token").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
 $("#host").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
 $("#btn-netuse").addEventListener("click", downloadNetUse);
+
+/* Adresse du dossier du jeton, affichée et copiable en un clic. */
+function updateTokenPath() {
+  const host = currentSettings().host;
+  $("#token-path").textContent = "\\\\" + host + "\\share\\system\\rfid";
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.top = "-1000px";
+    document.body.appendChild(area);
+    area.select();
+    let done = false;
+    try { done = document.execCommand("copy"); } catch (ignored) { done = false; }
+    area.remove();
+    return done;
+  }
+}
+
+$("#btn-copy-path").addEventListener("click", async () => {
+  const path = $("#token-path").textContent;
+  const done = await copyText(path);
+  $("#token-hint").textContent = done
+    ? "Adresse copiée : dans l'Explorateur, Ctrl+V dans la barre du haut puis Entrée."
+    : "À copier à la main : " + path;
+});
 
 $("#btn-token-file").addEventListener("click", () => $("#file-token").click());
 $("#file-token").addEventListener("change", async (event) => {
@@ -1835,11 +1914,13 @@ async function copyPayload() {
   }
 
   if (saved.token) {
-    $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Connecter ».";
+    $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Se connecter ».";
   } else {
     $("#connect-hint").textContent =
-      "Jeton vide : « Connecter » va le chercher sur le partage (une autorisation la première fois).";
+      "Pas encore de jeton : « Se connecter » ira le chercher sur le partage (une autorisation la première fois).";
   }
+  updateTokenPath();
+  $("#host").addEventListener("input", updateTokenPath);
 })();
 window.addEventListener("beforeunload", () => agent.close());
 </script>

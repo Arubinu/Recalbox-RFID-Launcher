@@ -443,6 +443,25 @@ net use Z: \\RECALBOX\share /user:root recalboxroot /persistent:yes
 > partage nommé est exposé. Utilisez `\\RECALBOX\share` ou
 > `\\<adresse-ip>\share`.
 
+### Le bouton « Faire un diagnostic »
+
+Dans `installer.html`, ouvrez **« Où trouver le jeton ? »** puis cliquez sur
+**« Faire un diagnostic »** : la page télécharge `diagnostic-recalbox.cmd`, à
+double-cliquer. Il n'installe rien et n'écrit rien, il affiche :
+
+1. le nom et l'adresse IP résolus (ou l'échec de résolution) ;
+2. l'état des ports **445** (partage) et **8765** (agent), testés en TCP ;
+3. la connexion au partage avec les trois jeux d'identifiants (root, root sans
+   mot de passe, invité) et le code d'erreur éventuel ;
+4. la présence de `recalbox-rfid\install.sh`, des deux userscripts et de
+   `system\rfid\token.txt` ;
+5. le contenu de `system\rfid` ;
+6. le rappel des codes `net use` et la bonne façon d'écrire le chemin.
+
+C'est le rapport à transmettre en cas de problème : il dit en une capture si
+l'installation est incomplète, si le partage est refusé ou si l'agent ne tourne
+pas.
+
 Si `root` / `recalboxroot` est refusé, le mot de passe racine a probablement été
 personnalisé : en SSH, `smbpasswd -a root` permet de définir le mot de passe
 Samba (le compte doit correspondre à un utilisateur existant). Sinon, utilisez la
