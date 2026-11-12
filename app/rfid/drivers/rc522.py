@@ -318,6 +318,20 @@ class Rc522:
         payload, _ = result
         return payload[0] if payload else None
 
+    def reset_field(self, pause_s: float = 0.004) -> None:
+        """Coupe puis retablit le champ : tous les badges repartent en IDLE.
+
+        Plus fiable que HALT pour les badges clones : apres un HALT, certains ne
+        repondent plus a WUPA et restent muets tant qu'ils n'ont pas quitte le
+        champ (c'est exactement ce qui donnait l'impression d'un badge invisible).
+        """
+        try:
+            self.antenna_off()
+            time.sleep(max(0.001, float(pause_s)))
+            self.antenna_on()
+        except (Rc522Error, OSError):
+            pass
+
     def halt(self) -> None:
         # Le badge ne repond pas a HALT : le temps mort est normal.
         frame = bytes([PICC_HALTA, 0x00])
@@ -340,6 +354,11 @@ class Rc522:
         )
         derniere = None
         for tentative, mode in enumerate((PICC_REQA, PICC_WUPA, PICC_REQA)):
+            if tentative == 2 and derniere is None:
+                # Deux tours sans aucune reponse : le badge est peut-etre reste
+                # bloque (HALT d'une version precedente). Un cycle de champ le
+                # remet en IDLE sans qu'il faille le retirer.
+                self.reset_field()
             atqa = self.request(mode)
             if trace is not None:
                 trace["atqa"] = bytes(atqa).hex().upper() if atqa else ""
@@ -381,10 +400,10 @@ class Rc522:
                             self.log.warning("Badge a UID 10 octets ignore")
                         return None
                     uid = bytes(first[1:4]) + bytes(second[0:4])
-                    self.halt()
+                    self.reset_field()
                     return uid
                 uid = bytes(first[0:4])
-                self.halt()
+                self.reset_field()
                 return uid
         # Toutes les selections ont echoue : un badge qui repond de facon stable
         # en anticollision reste utilisable (nous n'avons besoin que de son UID,
@@ -395,7 +414,7 @@ class Rc522:
             if stable is not None:
                 if trace is not None:
                     trace["strategie"] = "anticollision-stable"
-                self.halt()
+                self.reset_field()
                 return stable
         return None
 
@@ -430,13 +449,13 @@ class Rc522:
     def tag_present(self) -> bool:
         """Vrai si un badge est physiquement pose sur le lecteur.
 
-        Contourne l'anti-rebond : sert au mode "cartouche" a savoir quand le
-        badge a vraiment ete retire, pour pouvoir refaire l'action ensuite.
+        Un simple REQA suffit et ne modifie rien : c'est ce qu'il faut pour le
+        mode "cartouche", qui doit savoir quand le badge a vraiment ete retire.
         """
         if not self._started:
             return False
         try:
-            return bool(self.rc522.read_uid())
+            return self.rc522.request() is not None
         except (Rc522Error, OSError):
             return False
 

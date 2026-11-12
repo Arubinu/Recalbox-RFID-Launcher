@@ -44,7 +44,7 @@ class ButtonTest(unittest.TestCase):
         self.gpio.levels[17] = 0  # appui
         self.assertIsNone(button.poll())
         self.clock.advance(0.02)
-        self.assertIsNone(button.poll())
+        self.assertEqual(button.poll(), "press")   # geste immediat, sans attendre
 
         self.gpio.levels[17] = 1  # relachement
         self.assertIsNone(button.poll())
@@ -80,7 +80,7 @@ class ButtonTest(unittest.TestCase):
         self.gpio.levels[17] = 0
         button.poll()
         self.clock.advance(0.02)
-        self.assertIsNone(button.poll())  # appui confirme, pas encore de geste
+        self.assertEqual(button.poll(), "press")  # appui confirme : geste immediat
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)

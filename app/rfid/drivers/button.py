@@ -10,10 +10,12 @@ from .gpio_backend import GpioError
 class Button:
     """Bouton entre une broche GPIO et GND (appui = niveau bas).
 
-    ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne
-    ``"short"`` a la fin d'un appui court, ``"long"`` a la fin d'un appui long,
-    ``"hold"`` a la fin d'un appui tres long (confirmation d'appairage), sinon
-    ``None``.
+    ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne :
+
+    * ``"press"`` des que l'appui est confirme (anti-rebond), pour agir tout de
+      suite sans attendre le relachement ;
+    * ``"short"`` / ``"long"`` / ``"hold"`` au relachement, selon la duree ;
+    * ``None`` sinon.
     """
 
     def __init__(
@@ -94,7 +96,7 @@ class Button:
             self._pressed_at = now
             if self.log:
                 self.log.debug("Bouton appuye")
-            return None
+            return "press"
 
         # relachement confirme
         if self._pressed_at is None:

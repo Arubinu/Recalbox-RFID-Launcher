@@ -65,6 +65,50 @@ class DaemonHelpersTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+class ImmediatePressTest(unittest.TestCase):
+    """Appui : l'association est armee des le contact, sans maintenir."""
+
+    def setUp(self):
+        from unittest import mock as _mock
+
+        from rfid import daemon as _daemon
+
+        self._daemon = _daemon
+        self.service = _daemon.Service.__new__(_daemon.Service)
+        self.service.home = tempfile.mkdtemp(prefix="rfid-press-")
+        self.service.log = None
+        self.service._press_started_at = None
+        self.service._press_handled = False
+        self.service._active_uid = "A1B2C3D4"
+        self.service._absent_since = None
+        self.armements = []
+        self.service.controller = _mock.Mock()
+        self.service.controller.armed = False
+        self.service.controller.on_button = lambda geste: self.armements.append(geste)
+
+    def tearDown(self):
+        shutil.rmtree(self.service.home, ignore_errors=True)
+
+    def test_appui_arme_immediatement(self):
+        self.service._handle_gesture("press")
+        self.assertEqual(self.armements, ["short"])
+
+    def test_relachement_ne_rearme_pas(self):
+        self.service._handle_gesture("press")
+        self.service._handle_gesture("short")
+        self.assertEqual(self.armements, ["short"])
+
+    def test_appui_oublie_le_badge_deja_pose(self):
+        """Un badge reste sur le lecteur doit pouvoir etre reutilise."""
+        self.service._handle_gesture("press")
+        self.assertIsNone(self.service._active_uid)
+
+    def test_pas_de_double_armement(self):
+        self.service.controller.armed = True
+        self.service._handle_gesture("press")
+        self.assertEqual(self.armements, [])
+
+
 class ReaderTestTest(unittest.TestCase):
     """Test du lecteur : distingue "aucune carte", "carte vue" et "carte illisible"."""
 

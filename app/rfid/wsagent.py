@@ -426,7 +426,9 @@ class Agent:
                 installed_version = handle.read().strip()
         except OSError:
             pass
-        target = current_target(read_state())
+        # allow_running : le frontend garde State=playing sur la fiche d'un jeu
+        # (et juste apres avoir quitte une partie) ; l'affichage doit le montrer.
+        target = current_target(read_state(), allow_running=True)
         frontend = supports_start_command() if os.path.exists("/usr/bin/emulationstation") else None
         return {
             "app_version": __version__,

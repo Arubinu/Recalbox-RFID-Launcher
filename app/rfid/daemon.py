@@ -162,6 +162,7 @@ class Service:
         self.launcher = None
         self._web_command_signature = None
         self._press_started_at = None
+        self._press_handled = False
         self._active_uid = None
         self._absent_since = None
         self.rearm_absent_ms = 1200
@@ -346,14 +347,34 @@ class Service:
         elif not pressed:
             self._press_started_at = None
 
+    def _forget_latch(self) -> None:
+        """Oublie le badge pose : un mode arme autorise a le representer."""
+        self._active_uid = None
+        self._absent_since = None
+
     def _handle_gesture(self, gesture: str) -> None:
-        """Un appui tres long confirme une demande d'appairage en cours."""
+        """Gere un appui : court des le contact, long/hold au relachement."""
         request = None
         try:
             request = pairing.pending(self.home)
         except Exception as exc:  # noqa: BLE001 - fichier d'etat illisible
             if self.log:
                 self.log.warning("Demande d'appairage illisible : %s" % exc)
+
+        if gesture == "press":
+            # Agir des le contact : plus besoin de maintenir le bouton.
+            if request is not None:
+                return                    # appairage en cours : ne rien armer
+            if self.controller.armed:
+                return                    # deja arme
+            self._forget_latch()
+            self.controller.on_button("short")
+            self._press_handled = True
+            return
+
+        if gesture == "short" and self._press_handled:
+            self._press_handled = False
+            return                        # deja traite a l'appui
 
         if request is not None:
             if gesture == "hold":
@@ -379,6 +400,7 @@ class Service:
 
         if gesture == "hold":
             return   # sans demande en cours, l'appui tres long ne fait rien
+        self._forget_latch()
         self.controller.on_button(gesture)
 
     # ----------------------------------------------------------- commandes agent
@@ -409,8 +431,10 @@ class Service:
             return
         command = payload.get("cmd")
         if command == "arm_associate":
+            self._forget_latch()
             self.controller.on_button("short")
         elif command == "arm_delete":
+            self._forget_latch()
             self.controller.on_button("long")
         elif command == "reader_test":
             self._start_reader_test(float(payload.get("seconds") or 5))

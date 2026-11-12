@@ -4,6 +4,33 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.6]
+
+### Corrigé
+
+* **Un badge resté posé sur le lecteur devenait invisible.** Le pilote terminait
+  chaque lecture par un `HALT` ; certains badges clones ne se réveillent pas
+  après un `HALT` (ils ignorent `WUPA`) et restent muets tant qu'ils n'ont pas
+  quitté le champ — d'où l'impression que le badge n'était plus vu. Le pilote
+  **coupe puis rétablit le champ** (4 ms) : toutes les cartes repartent en état
+  `IDLE`, et un cycle de champ automatique débloque même une carte restée
+  coincée par une version précédente. La détection de présence (`tag_present`)
+  n'utilise plus qu'un `REQA`, sans effet de bord.
+
+### Modifié
+
+* **L'appui sur le bouton agit immédiatement.** L'association est armée dès que
+  le contact est confirmé (anti-rebond de 40 ms), sans attendre le relâchement :
+  plus besoin de maintenir une seconde. Un appui maintenu bascule ensuite sur
+  l'effacement (2 s) ou la confirmation d'appairage (3 s), qui restent au
+  relâchement.
+* **Armer un mode oublie le badge déjà posé** : après une suppression, on peut
+  réassocier le même badge sans avoir à l'éloigner du lecteur.
+* **Le jeu affiché est toujours montré dans l'interface.** Après avoir quitté
+  une partie, le frontend conserve `State=playing` sur la fiche du jeu : la page
+  affichait « aucun ». L'affichage tolère désormais cet état (le lancement par
+  badge, lui, ne lance toujours rien pendant une partie).
+
 ## [2.6.5]
 
 ### Corrigé (le jeu ne se lançait pas : « Couldn't find game »)
