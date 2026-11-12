@@ -4,6 +4,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.4]
+
+### Ajouté
+
+* **Reconnexion silencieuse au chargement.** Si une autorisation a déjà été
+  donnée (secret de session mémorisé par le navigateur), la page **teste la
+  connexion en arrière-plan** dès l'ouverture, sans attendre de clic :
+  * succès (cas normal, y compris après une mise à jour ou un redémarrage du
+    service, puisque le secret survit) → on arrive **directement sur le tableau
+    de bord**, en ~0,2 s sur le réseau local ;
+  * échec (Recalbox complètement redémarrée, autorisation perdue) → **rien ne
+    s'affiche** : la page reste sur son écran, sans bandeau collant ; un message
+    discret n'apparaît sous le formulaire que s'il est déjà à l'écran.
+* La tentative est abandonnée au bout de 2,5 s et ne bloque jamais l'affichage :
+  l'écran d'accueil est utilisable immédiatement.
+
 ## [2.7.3]
 
 ### Modifié

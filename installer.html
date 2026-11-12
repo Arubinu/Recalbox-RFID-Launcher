@@ -2110,6 +2110,33 @@ function serviceDownMessage(url) {
     "« Démarrer », puis revenez ici et appuyez sur « Se connecter ».";
 }
 
+/* Au chargement : si une session a deja ete autorisee (secret memorise), on
+   retente la connexion en arriere-plan, sans rien afficher. Assez rapide pour
+   arriver directement sur le tableau de bord ; en cas d'echec, on ne perturbe
+   rien du tout : la page reste sur son ecran courant, sans bandeau. */
+async function autoConnectSilencieux() {
+  const settings = currentSettings();
+  if (!settings.token || !settings.host) return;
+  const url = "ws://" + settings.host + ":" + settings.port;
+  try {
+    await agent.connect(url, settings.token, 2500);
+  } catch (error) {
+    /* Session plus valable (Recalbox redemarree, agent relance) : message
+       discret, et seulement si le formulaire est deja sous les yeux. */
+    if (document.body.dataset.view === "connect") {
+      $("#connect-hint").textContent =
+        "La session enregistrée n'est plus valable : cliquez sur « Se connecter ».";
+    }
+    return;
+  }
+  if (connectedOnce) return;          /* une connexion manuelle a deja abouti */
+  connectedOnce = true;
+  setConnected({});
+  lastStatusJson = "";
+  try { await refresh(); } catch (error) { /* revu au prochain tick */ }
+  scheduleRefresh();
+}
+
 async function tryReconnect(silent) {
   const settings = currentSettings();
   const url = "ws://" + settings.host + ":" + settings.port;
@@ -2567,6 +2594,9 @@ async function copyPayload() {
     ? ""
     : "Cliquez sur « Se connecter » : gardez ensuite le bouton du boîtier appuyé 3 secondes.";
   setView(hash.get("host") || search.get("host") ? "connect" : "choix");
+  /* Tentative silencieuse, en parallele de l'affichage :
+     si elle aboutit, on bascule sur le tableau de bord. */
+  if (saved.token) setTimeout(autoConnectSilencieux, 0);
 })();
 
 /* ------------------------------------------------------------------ theme --
