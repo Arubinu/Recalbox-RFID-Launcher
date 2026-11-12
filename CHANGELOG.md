@@ -4,6 +4,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.0]
+
+### Ajouté
+
+* **Thème clair et thème sombre.** La page suit le thème du système
+  (`prefers-color-scheme`) tant que l'on n'a rien choisi, et un bouton
+  **soleil / lune** dans l'en-tête fige le choix (mémorisé dans le navigateur).
+  La bascule est animée par un **cercle qui part du bouton** (API View
+  Transitions, repli immédiat si elle n'existe pas ou si les animations sont
+  réduites). **Appui long** sur le bouton : retour au thème du système.
+* La palette claire est une vraie palette (fond chaud, encres foncées, mêmes
+  accents) : les surfaces, bordures, textes teintés et la lueur de fond passent
+  tous par des variables, aucune couleur n'est codée en dur dans les composants.
+
+### Modifié
+
+* **Le schéma de câblage suit le thème** : ses couleurs sont des variables CSS
+  (`--c-…`), donc il est sombre sur page sombre et clair sur page claire. Le
+  fichier `docs/cablage.svg` embarque sa propre feuille de style et suit
+  `prefers-color-scheme`, y compris dans le README.
+* La section **« Comment brancher le lecteur et le bouton »** est de nouveau
+  **repliée au départ** et occupe **toute la largeur** de l'onglet Matériel.
+
 ## [2.5.6]
 
 ### Corrigé (cause réelle des badges illisibles)

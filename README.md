@@ -167,6 +167,7 @@ périmé).
 | Matériel | état du SPI, du lecteur RC522, du bouton, du frontend Recalbox |
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
+| Apparence | thème clair / sombre (bouton soleil-lune : suit le système, un clic le fixe, appui long pour revenir) ; il s'applique aussi au schéma de câblage |
 
 * **Connexion** : `ws://<ip>:8765`, adresse et port seulement. Cliquez sur
   « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant le
@@ -297,8 +298,10 @@ python tests/run_tests.py
 * **Lecture du badge** : pilote MFRC522 écrit en Python pur au-dessus de
   `/dev/spidev0.0` (ioctl `SPI_IOC_MESSAGE` via `ctypes`, sans le module
   `spidev`). Séquence ISO 14443-3A : `REQA` → anticollision → `SELECT` →
-  `HALT`, avec vérification du BCC, du CRC (coprocesseur du MFRC522) et gestion
-  des UID 4 et 7 octets.
+  `HALT`. Le BCC est recalculé et le CRC_A de la sélection est calculé en
+  logiciel (vecteur de référence ISO : `HALT 50 00 → 57 CD`) : les badges clones
+  dont le BCC est faux ou dont le CRC n'est pas accepté par le coprocesseur sont
+  lus comme les autres. UID de 4 et 7 octets gérés.
 * **Bouton** : `RPi.GPIO` (fourni par Recalbox via `rpi-lgpio`), repli sur
   `lgpio`, puis sur `/sys/class/gpio`. Pull-up interne, anti-rebond logiciel.
 * **Jeu sélectionné** : lecture de `/tmp/es_state.inf`, fichier que le frontend

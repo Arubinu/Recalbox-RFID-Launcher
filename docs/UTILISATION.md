@@ -26,6 +26,11 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
+Un bouton **soleil / lune** dans l'en-tête change de thème : la page suit d'abord
+celui du système, un clic fixe le choix (mémorisé par le navigateur) et un
+**appui long** revient au thème du système. La bascule est animée par un cercle
+partant du bouton ; le schéma de câblage suit le thème choisi.
+
 Dans **Gestion**, le bandeau du haut donne l'état (connecté, service actif) et le
 bouton **Déconnecter** revient à l'écran de connexion.
 

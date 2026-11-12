@@ -12,8 +12,8 @@
     --surface: #12161f;
     --surface-2: #171c27;
     --surface-3: #1e2534;
-    --line: rgba(255, 255, 255, .08);
-    --line-2: rgba(255, 255, 255, .14);
+    --line: rgba(var(--ink-rgb), .08);
+    --line-2: rgba(var(--ink-rgb), .14);
     --text: #eaeef7;
     --muted: #9aa6bd;
     --faint: #6d7a92;
@@ -27,7 +27,86 @@
     --r-lg: 22px;
     --r-md: 14px;
     --r-sm: 10px;
+
+    /* Encre des surfaces translucides : claire sur fond sombre. */
+    --ink-rgb: 255, 255, 255;
+    --glow: rgba(68, 96, 241, .18);
+    --shadow: rgba(0, 0, 0, .55);
+
+    /* Textes teintes (lisibles sur fond sombre). */
+    --ok-text: #a7f0cd;
+    --err-text: #ffc0be;
+    --warn-text: #f2c078;
+    --primary-text: #b6c4ff;
+    --brand-text: #ffb3a2;
+    --info-text: #9db0ff;
+
+    /* Palette du schema de cablage (onglet Materiel). */
+    --c-bg: #0f131b;
+    --c-card: #161b25;
+    --c-ink: #eaeef7;
+    --c-sub: #a8b3c7;
+    --c-faint: #7f8a9e;
+    --c-line: rgba(255, 255, 255, .14);
+    --c-row: rgba(255, 255, 255, .05);
+    --c-alert-bg: rgba(224, 49, 49, .12);
+    --c-alert-line: rgba(224, 49, 49, .38);
+    --c-alert-ink: #ff9b98;
+    --c-good: #37b26c;
   }
+
+  /* ------------------------------------------------------------------ theme clair
+     Applique par `data-theme="light"` sur <html> (bouton soleil/lune).
+     Sans choix explicite, le script suit le theme du systeme. */
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --ink-rgb: 23, 27, 34;
+    --glow: rgba(68, 96, 241, .10);
+    --shadow: rgba(23, 27, 34, .18);
+    --bg: #f5f3ef;
+    --bg-2: #eeebe4;
+    --surface: #ffffff;
+    --surface-2: #f8f6f2;
+    --surface-3: #ece8e1;
+    --line: rgba(var(--ink-rgb), .10);
+    --line-2: rgba(var(--ink-rgb), .18);
+    --text: #1a1d24;
+    --muted: #5a6472;
+    --faint: #87909f;
+    --primary: #3b55e6;
+    --primary-2: #2f46c9;
+    --primary-soft: rgba(59, 85, 230, .12);
+    --brand: #f2593a;
+    --ok: #12a06f;
+    --warn: #c08420;
+    --err: #dc4b48;
+    --ok-text: #0b7a55;
+    --err-text: #a42724;
+    --warn-text: #8a5a10;
+    --primary-text: #2f46c9;
+    --brand-text: #b0331a;
+    --info-text: #3550d8;
+    --c-bg: #f8f9fa;
+    --c-card: #ffffff;
+    --c-ink: #212529;
+    --c-sub: #495057;
+    --c-faint: #868e96;
+    --c-line: #dee2e6;
+    --c-row: #f1f3f5;
+    --c-alert-bg: #fff5f5;
+    --c-alert-line: #ffc9c9;
+    --c-alert-ink: #c92a2a;
+    --c-good: #2f9e44;
+  }
+
+  /* Bascule animee : le nouveau theme apparait dans un cercle qui part du
+     bouton (View Transitions). Repli : bascule immediate. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  /* Icone du bouton : lune en sombre, soleil en clair. */
+  :root:not([data-theme="light"]) .icon-sun { display: none; }
+  :root[data-theme="light"] .icon-moon { display: none; }
+  #btn-theme svg { width: 16px; height: 16px; }
 
   * { box-sizing: border-box; }
 
@@ -35,7 +114,7 @@
 
   body {
     margin: 0;
-    background: radial-gradient(900px 420px at 50% -18%, rgba(68, 96, 241, .18), transparent 62%), var(--bg);
+    background: radial-gradient(900px 420px at 50% -18%, var(--glow), transparent 62%), var(--bg);
     color: var(--text);
     font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, Inter, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -48,13 +127,13 @@
   h2 { font-size: 16.5px; }
   code {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: .88em; background: rgba(255, 255, 255, .07);
+    font-size: .88em; background: rgba(var(--ink-rgb), .07);
     border-radius: 5px; padding: .08em .34em;
   }
   kbd {
     font: inherit; font-size: .84em; font-weight: 600;
     padding: .1em .38em; border-radius: 5px;
-    background: rgba(255, 255, 255, .09); border: 1px solid var(--line-2); border-bottom-width: 2px;
+    background: rgba(var(--ink-rgb), .09); border: 1px solid var(--line-2); border-bottom-width: 2px;
     white-space: nowrap;
   }
 
@@ -97,12 +176,12 @@
     white-space: nowrap;
   }
   .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
-  .chip.on { color: #a7f0cd; border-color: rgba(34, 197, 139, .32); background: rgba(34, 197, 139, .12); }
+  .chip.on { color: var(--ok-text); border-color: rgba(34, 197, 139, .32); background: rgba(34, 197, 139, .12); }
   .chip.on .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(34, 197, 139, .18); }
-  .chip.off { color: #ffc0be; border-color: rgba(239, 83, 80, .3); background: rgba(239, 83, 80, .12); }
+  .chip.off { color: var(--err-text); border-color: rgba(239, 83, 80, .3); background: rgba(239, 83, 80, .12); }
   .chip.off .dot { background: var(--err); box-shadow: 0 0 0 3px rgba(239, 83, 80, .16); }
   .chip .version { color: var(--faint); font-weight: 500; }
-  .version.diff { color: #ffc0be; }
+  .version.diff { color: var(--err-text); }
 
   /* ------------------------------------------------------------- messages */
   /* Sans cette regle, un simple `display: flex` sur un composant annule
@@ -142,13 +221,13 @@
   }
   .banner::before { position: absolute; left: 16px; top: 11px; font-weight: 700; }
   .banner.info { background: rgba(68, 96, 241, .1); border-color: rgba(68, 96, 241, .34); }
-  .banner.info::before { content: "i"; color: #9db0ff; font-style: italic; }
+  .banner.info::before { content: "i"; color: var(--info-text); font-style: italic; }
   .banner.good { background: rgba(34, 197, 139, .1); border-color: rgba(34, 197, 139, .32); }
-  .banner.good::before { content: "✓"; color: #6fe3b4; }
+  .banner.good::before { content: "✓"; color: var(--ok-text); }
   .banner.warn { background: rgba(234, 166, 60, .1); border-color: rgba(234, 166, 60, .34); }
-  .banner.warn::before { content: "!"; color: #f2c078; }
+  .banner.warn::before { content: "!"; color: var(--warn-text); }
   .banner.err { background: rgba(239, 83, 80, .1); border-color: rgba(239, 83, 80, .34); }
-  .banner.err::before { content: "×"; color: #ff9b98; font-size: 17px; }
+  .banner.err::before { content: "×"; color: var(--err-text); font-size: 17px; }
 
   /* ---------------------------------------------------------------- ecrans */
   main { min-height: 0; padding: 16px 0 8px; overflow: hidden; }
@@ -193,27 +272,27 @@
     padding: 22px;
     border-radius: var(--r-lg);
     border: 1px solid var(--line);
-    background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 55%), var(--surface);
+    background: linear-gradient(180deg, rgba(var(--ink-rgb), .035), transparent 55%), var(--surface);
     cursor: pointer; color: inherit;
     transition: transform .16s ease, border-color .16s ease, background .16s ease;
   }
   .tile:hover { transform: translateY(-3px); border-color: rgba(68, 96, 241, .5); background: linear-gradient(180deg, rgba(68, 96, 241, .1), transparent 60%), var(--surface); }
-  .tile:focus-visible { outline: 2px solid #93a6ff; outline-offset: 3px; }
+  .tile:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
   .tile .ico {
     width: 46px; height: 46px; border-radius: 14px;
     display: grid; place-items: center;
-    background: var(--primary-soft); color: #b6c4ff;
+    background: var(--primary-soft); color: var(--primary-text);
   }
-  .tile.brand .ico { background: rgba(255, 107, 74, .14); color: #ffb3a2; }
+  .tile.brand .ico { background: rgba(255, 107, 74, .14); color: var(--brand-text); }
   .tile .ico svg { width: 24px; height: 24px; }
   .tile h2 { font-size: 18px; }
   .tile p { margin: 0; color: var(--muted); font-size: 13.5px; }
   .tile .go {
     margin-top: auto; padding-top: 6px;
     display: inline-flex; align-items: center; gap: 7px;
-    font-size: 13.5px; font-weight: 650; color: #a9b8ff;
+    font-size: 13.5px; font-weight: 650; color: var(--primary-text);
   }
-  .tile.brand .go { color: #ffb3a2; }
+  .tile.brand .go { color: var(--brand-text); }
   .tile .go svg { width: 16px; height: 16px; transition: transform .16s ease; }
   .tile:hover .go svg { transform: translateX(3px); }
 
@@ -247,7 +326,7 @@
   .steps-line .n {
     width: 20px; height: 20px; border-radius: 50%;
     display: grid; place-items: center; font-size: 11px; font-weight: 700;
-    background: var(--primary-soft); color: #b6c4ff;
+    background: var(--primary-soft); color: var(--primary-text);
   }
 
   /* --------------------------------------------------------- formulaire */
@@ -259,7 +338,7 @@
     border-radius: var(--r-sm); padding: 0 13px; font: inherit; font-size: 14.5px;
     transition: border-color .15s, box-shadow .15s;
   }
-  input::placeholder { color: #5f6b81; }
+  input::placeholder { color: var(--faint); }
   input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 
   .fields { display: grid; grid-template-columns: 1.6fr 0.7fr 1.6fr; gap: 10px; }
@@ -271,12 +350,12 @@
   /* Action unique du formulaire : toute la largeur, pas de vide a gauche. */
   .actions.connect-actions > button {
     flex: 1 1 100%; height: 46px; font-size: 14.5px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .055));
-    border-color: rgba(255, 255, 255, .17);
+    background: linear-gradient(180deg, rgba(var(--ink-rgb), .10), rgba(var(--ink-rgb), .055));
+    border-color: rgba(var(--ink-rgb), .17);
   }
   .actions.connect-actions > button:hover {
-    background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .08));
-    border-color: rgba(255, 255, 255, .26);
+    background: linear-gradient(180deg, rgba(var(--ink-rgb), .14), rgba(var(--ink-rgb), .08));
+    border-color: rgba(var(--ink-rgb), .26);
   }
 
   .hint { color: var(--muted); font-size: 12.5px; }
@@ -285,18 +364,14 @@
     display: flex; align-items: flex-start; gap: 9px;
     margin-top: 14px; padding: 11px 13px;
     border-radius: var(--r-md); border: 1px dashed var(--line-2);
-    background: rgba(255, 255, 255, .02);
+    background: rgba(var(--ink-rgb), .02);
     font-size: 12.5px; color: var(--muted); line-height: 1.5;
   }
-  .auto-note svg { width: 17px; height: 17px; flex: 0 0 auto; color: #9db0ff; margin-top: 1px; }
-  .cablage-bloc { flex: 0 0 auto; }
-  .cablage-titre {
-    font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--muted); margin: 4px 0 0;
-  }
+  .auto-note svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--info-text); margin-top: 1px; }
+  .cablage-details { flex: 0 0 auto; }
   .cablage {
-    margin: 10px 0 8px; border-radius: var(--r-md); overflow: hidden;
-    border: 1px solid var(--line-2); max-width: 700px;
+    margin: 12px 0 8px; border-radius: var(--r-md); overflow: hidden;
+    border: 1px solid var(--line-2); width: 100%;
   }
   .cablage svg { display: block; width: 100%; height: auto; }
 
@@ -306,22 +381,22 @@
     color: var(--text);
     height: 40px; padding: 0 16px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, .12);
-    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(var(--ink-rgb), .12);
+    background: rgba(var(--ink-rgb), .05);
     cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     transition: background .15s, border-color .15s, color .15s;
     white-space: nowrap;
   }
-  button:hover { background: rgba(255, 255, 255, .09); border-color: rgba(255, 255, 255, .2); }
-  button:active { background: rgba(255, 255, 255, .11); }
-  button:focus-visible { outline: 2px solid #8fa2ff; outline-offset: 2px; }
-  button:disabled { opacity: .38; cursor: not-allowed; background: rgba(255, 255, 255, .03); }
+  button:hover { background: rgba(var(--ink-rgb), .09); border-color: rgba(var(--ink-rgb), .2); }
+  button:active { background: rgba(var(--ink-rgb), .11); }
+  button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  button:disabled { opacity: .38; cursor: not-allowed; background: rgba(var(--ink-rgb), .03); }
   button.big { height: 46px; font-size: 14.5px; padding: 0 20px; border-radius: 12px; }
-  button.secondary { background: transparent; border-color: rgba(255, 255, 255, .1); color: var(--muted); }
-  button.secondary:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
-  button.ghost { background: transparent; border-color: rgba(255, 255, 255, .1); color: var(--muted); }
-  button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+  button.secondary { background: transparent; border-color: rgba(var(--ink-rgb), .1); color: var(--muted); }
+  button.secondary:hover { color: var(--text); background: rgba(var(--ink-rgb), .05); }
+  button.ghost { background: transparent; border-color: rgba(var(--ink-rgb), .1); color: var(--muted); }
+  button.ghost:hover { color: var(--text); background: rgba(var(--ink-rgb), .05); }
   button.danger {
     background: rgba(239, 83, 80, .08);
     border-color: rgba(239, 83, 80, .28);
@@ -336,7 +411,7 @@
     padding: 9px 10px 9px 14px;
     border: 1px solid var(--line);
     border-radius: var(--r-md);
-    background: rgba(255, 255, 255, .022);
+    background: rgba(var(--ink-rgb), .022);
     flex: 0 0 auto;
   }
   .action-bar .label {
@@ -378,14 +453,14 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 10px; flex: 0 0 auto; }
   .item {
     background: var(--surface-2); border: 1px solid var(--line);
-    border-left: 3px solid rgba(255, 255, 255, .08);
+    border-left: 3px solid rgba(var(--ink-rgb), .08);
     border-radius: var(--r-md); padding: 11px 13px; min-width: 0;
   }
   .item .label { font-size: 11.5px; color: var(--faint); font-weight: 500; }
   .item .value { font-size: 14.5px; font-weight: 650; margin-top: 2px; overflow-wrap: anywhere; }
-  .item .value.ok { color: #6fe3b4; }
-  .item .value.warn { color: #f2c078; }
-  .item .value.err { color: #ff9b98; }
+  .item .value.ok { color: var(--ok-text); }
+  .item .value.warn { color: var(--warn-text); }
+  .item .value.err { color: var(--err-text); }
   .item:has(.value.ok) { border-left-color: rgba(34, 197, 139, .5); }
   .item:has(.value.warn) { border-left-color: rgba(234, 166, 60, .5); }
   .item:has(.value.err) { border-left-color: rgba(239, 83, 80, .5); }
@@ -398,7 +473,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   thead th {
     position: sticky; top: 0; z-index: 1;
-    background: #131822;
+    background: var(--bg-2);
     font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint);
     text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
     white-space: nowrap;
@@ -420,7 +495,7 @@
   .verdict.ok::before { background: var(--ok); }
   .verdict.warn::before { background: var(--warn); }
   .verdict.err::before { background: var(--err); }
-  tbody tr:hover td { background: rgba(255, 255, 255, .03); }
+  tbody tr:hover td { background: rgba(var(--ink-rgb), .03); }
   tbody tr:last-child td { border-bottom: 0; }
   .muted { color: var(--muted); }
   .small { font-size: 12.5px; }
@@ -445,11 +520,11 @@
   details p { margin: 8px 0 0; }
 
   pre {
-    background: #070a10; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 12px; margin: 0; max-height: 180px; overflow: auto;
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
     font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-    color: #c7d2e5;
+    color: var(--text);
   }
 
   /* --------------------------------------------------------------- dialogue */
@@ -457,7 +532,7 @@
     border: 1px solid var(--line-2); border-radius: var(--r-lg);
     background: var(--surface); color: var(--text);
     padding: 22px; max-width: min(560px, 92vw);
-    box-shadow: 0 40px 80px -40px #000;
+    box-shadow: 0 40px 80px -40px var(--shadow);
   }
   dialog::backdrop { background: rgba(4, 6, 10, .72); backdrop-filter: blur(3px); }
   dialog h2 { font-size: 16px; margin-bottom: 10px; }
@@ -494,6 +569,18 @@
     * { transition: none !important; animation: none !important; }
   }
 </style>
+<script>
+  /* Applique le theme avant le premier rendu : pas de flash clair/sombre.
+     Choix memorise prioritaire, sinon on suit le systeme. */
+  (function () {
+    var choix = null;
+    try { choix = localStorage.getItem("rfid-theme"); } catch (error) { choix = null; }
+    var sombre = choix
+      ? choix === "dark"
+      : !window.matchMedia || window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = sombre ? "dark" : "light";
+  })();
+</script>
 </head>
 <body>
 <div class="shell">
@@ -517,6 +604,18 @@
     <span class="version" id="box-version" title="Version installée sur la Recalbox" hidden></span>
     <span class="chip off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
     <button class="ghost tiny hidden" id="btn-disconnect" type="button">Déconnecter</button>
+    <button class="ghost tiny" id="btn-theme" type="button"
+            aria-label="Changer de thème clair ou sombre"
+            title="Thème clair / sombre (appui long : suivre le système)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <g class="icon-moon"><path d="M20.5 13a8.5 8.5 0 1 1-9-9 6.6 6.6 0 0 0 9 9Z"/></g>
+        <g class="icon-sun">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.8v2M12 19.2v2M4.8 12h-2M21.2 12h-2M6.4 6.4 5 5M19 19l-1.4-1.4M17.6 6.4 19 5M5 19l1.4-1.4"/>
+        </g>
+      </svg>
+    </button>
     <button class="ghost tiny" id="btn-help" type="button" aria-label="Aide">?</button>
   </header>
 
@@ -760,115 +859,115 @@
             </div>
             <p class="hint" id="reader-test-hint"></p>
             <pre class="log" id="reader-test-log" hidden></pre>
-            <div class="cablage-bloc">
-              <h3 class="cablage-titre">Le branchement, en image</h3>
+            <details class="cablage-details">
+              <summary>Comment brancher le lecteur et le bouton</summary>
               <div class="cablage">
                 <!-- cablage:debut (genere par tools/build_cablage.py) -->
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="cablage-titre" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
-                <title id="cablage-titre">Branchement du lecteur RC522 et du bouton poussoir sur le Raspberry Pi</title>
-                <rect x="0" y="0" width="940" height="588" rx="14" fill="#f8f9fa"/>
-                <text x="30" y="42" font-size="21" font-weight="700" fill="#212529">Branchement du lecteur RC522 et du bouton</text>
-                <text x="30" y="66" font-size="13.5" fill="#495057">Le lecteur se branche sur le bus SPI, le bouton entre une broche GPIO et la masse. Aucune résistance.</text>
-                <rect x="30" y="78" width="470" height="26" rx="7" fill="#fff5f5" stroke="#ffc9c9"/>
-                <text x="42" y="96" font-size="13" font-weight="600" fill="#c92a2a">⚠ 3,3 V uniquement : le 5 V détruit le module et la carte.</text>
-                <rect x="30" y="120" width="400" height="356" rx="12" fill="#ffffff" stroke="#dee2e6"/>
-                <text x="46" y="146" font-size="15" font-weight="700" fill="#212529">Raspberry Pi — broches à utiliser</text>
-                <text x="46" y="164" font-size="11.5" fill="#868e96">numéros du connecteur 40 broches, vue de dessus</text>
-                <rect x="46" y="168" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="183" r="6" fill="#e03131"/>
-                <text x="80" y="188" font-size="13" font-weight="700" fill="#212529">broche 1</text>
-                <text x="162" y="188" font-size="12.5" fill="#495057">3V3</text>
-                <text x="398" y="188" font-size="12.5" font-weight="600" fill="#e03131" text-anchor="end">3.3V</text>
-                <rect x="46" y="200" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="215" r="6" fill="#6c757d"/>
-                <text x="80" y="220" font-size="13" font-weight="700" fill="#212529">broche 6</text>
-                <text x="162" y="220" font-size="12.5" fill="#495057">GND</text>
-                <text x="398" y="220" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">GND</text>
-                <rect x="46" y="232" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="247" r="6" fill="#f08c00"/>
-                <text x="80" y="252" font-size="13" font-weight="700" fill="#212529">broche 24</text>
-                <text x="162" y="252" font-size="12.5" fill="#495057">GPIO8 · CE0</text>
-                <text x="398" y="252" font-size="12.5" font-weight="600" fill="#f08c00" text-anchor="end">SDA</text>
-                <rect x="46" y="264" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="279" r="6" fill="#2f9e44"/>
-                <text x="80" y="284" font-size="13" font-weight="700" fill="#212529">broche 23</text>
-                <text x="162" y="284" font-size="12.5" fill="#495057">GPIO11 · SCLK</text>
-                <text x="398" y="284" font-size="12.5" font-weight="600" fill="#2f9e44" text-anchor="end">SCK</text>
-                <rect x="46" y="296" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="311" r="6" fill="#1971c2"/>
-                <text x="80" y="316" font-size="13" font-weight="700" fill="#212529">broche 19</text>
-                <text x="162" y="316" font-size="12.5" fill="#495057">GPIO10 · MOSI</text>
-                <text x="398" y="316" font-size="12.5" font-weight="600" fill="#1971c2" text-anchor="end">MOSI</text>
-                <rect x="46" y="328" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="343" r="6" fill="#7048e8"/>
-                <text x="80" y="348" font-size="13" font-weight="700" fill="#212529">broche 21</text>
-                <text x="162" y="348" font-size="12.5" fill="#495057">GPIO9 · MISO</text>
-                <text x="398" y="348" font-size="12.5" font-weight="600" fill="#7048e8" text-anchor="end">MISO</text>
-                <rect x="46" y="360" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="375" r="6" fill="#0c8599"/>
-                <text x="80" y="380" font-size="13" font-weight="700" fill="#212529">broche 22</text>
-                <text x="162" y="380" font-size="12.5" fill="#495057">GPIO25</text>
-                <text x="398" y="380" font-size="12.5" font-weight="600" fill="#0c8599" text-anchor="end">RST</text>
-                <rect x="46" y="392" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="407" r="6" fill="#6c757d"/>
-                <text x="80" y="412" font-size="13" font-weight="700" fill="#212529">broche 9</text>
-                <text x="162" y="412" font-size="12.5" fill="#495057">GND</text>
-                <text x="398" y="412" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">bouton · masse</text>
-                <rect x="46" y="424" width="368" height="30" rx="8" fill="#f1f3f5"/>
-                <circle cx="64" cy="439" r="6" fill="#d6336c"/>
-                <text x="80" y="444" font-size="13" font-weight="700" fill="#212529">broche 11</text>
-                <text x="162" y="444" font-size="12.5" fill="#495057">GPIO17</text>
-                <text x="398" y="444" font-size="12.5" font-weight="600" fill="#d6336c" text-anchor="end">bouton · signal</text>
-                <rect x="462" y="120" width="448" height="212" rx="12" fill="#ffffff" stroke="#dee2e6"/>
-                <text x="478" y="146" font-size="15" font-weight="700" fill="#212529">Lecteur RC522 (13,56 MHz)</text>
-                <text x="478" y="164" font-size="11.5" fill="#868e96">les 8 broches du module, dans l’ordre du connecteur</text>
-                <rect x="478" y="176" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="184" r="5" fill="#f08c00"/>
-                <text x="508" y="188" font-size="12.5" font-weight="700" fill="#212529">SDA</text>
-                <text x="572" y="188" font-size="12.5" fill="#495057">→ broche 24 du Pi</text>
-                <rect x="478" y="194" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="202" r="5" fill="#2f9e44"/>
-                <text x="508" y="206" font-size="12.5" font-weight="700" fill="#212529">SCK</text>
-                <text x="572" y="206" font-size="12.5" fill="#495057">→ broche 23 du Pi</text>
-                <rect x="478" y="212" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="220" r="5" fill="#1971c2"/>
-                <text x="508" y="224" font-size="12.5" font-weight="700" fill="#212529">MOSI</text>
-                <text x="572" y="224" font-size="12.5" fill="#495057">→ broche 19 du Pi</text>
-                <rect x="478" y="230" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="238" r="5" fill="#7048e8"/>
-                <text x="508" y="242" font-size="12.5" font-weight="700" fill="#212529">MISO</text>
-                <text x="572" y="242" font-size="12.5" fill="#495057">→ broche 21 du Pi</text>
-                <rect x="478" y="248" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="256" r="5" fill="#adb5bd"/>
-                <text x="508" y="260" font-size="12.5" font-weight="700" fill="#212529">IRQ</text>
-                <text x="572" y="260" font-size="12.5" fill="#868e96">→ non connectée</text>
-                <rect x="478" y="266" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="274" r="5" fill="#6c757d"/>
-                <text x="508" y="278" font-size="12.5" font-weight="700" fill="#212529">GND</text>
-                <text x="572" y="278" font-size="12.5" fill="#495057">→ broche 6 du Pi</text>
-                <rect x="478" y="284" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="292" r="5" fill="#0c8599"/>
-                <text x="508" y="296" font-size="12.5" font-weight="700" fill="#212529">RST</text>
-                <text x="572" y="296" font-size="12.5" fill="#495057">→ broche 22 du Pi</text>
-                <rect x="478" y="302" width="416" height="17" rx="5" fill="#f1f3f5"/>
-                <circle cx="494" cy="310" r="5" fill="#e03131"/>
-                <text x="508" y="314" font-size="12.5" font-weight="700" fill="#212529">3.3V</text>
-                <text x="572" y="314" font-size="12.5" fill="#495057">→ broche 1 du Pi</text>
-                <rect x="462" y="348" width="448" height="168" rx="12" fill="#ffffff" stroke="#dee2e6"/>
-                <text x="478" y="374" font-size="15" font-weight="700" fill="#212529">Bouton poussoir</text>
-                <text x="478" y="392" font-size="11.5" fill="#868e96">appui court = associer · appui long = effacer · 3 s = autoriser</text>
-                <text x="508" y="432" font-size="12" fill="#495057">borne 1 → broche 11 (GPIO17)</text>
-                <path d="M508 448 h34" stroke="#d6336c" stroke-width="3" fill="none"/>
-                <circle cx="508" cy="448" r="4" fill="#d6336c"/>
-                <path d="M542 448 q13 -20 28 -2" stroke="#212529" stroke-width="2.5" fill="none"/>
-                <path d="M572 448 h34" stroke="#6c757d" stroke-width="3" fill="none"/>
-                <circle cx="606" cy="448" r="4" fill="#6c757d"/>
-                <text x="626" y="464" font-size="12" fill="#495057">borne 2 → broche 9 (GND)</text>
-                <text x="478" y="502" font-size="12" font-weight="600" fill="#2f9e44">aucune résistance : le pull-up interne du Pi suffit</text>
-                <text x="30" y="536" font-size="12.5" fill="#495057">• Le module doit être alimenté en 3,3 V (broche 1) et partager la masse (broche 6 ou 9).</text>
-                <text x="30" y="556" font-size="12.5" fill="#495057">• MISO (broche 21) et MOSI (broche 19) ne se croisent pas : MISO vers MISO, MOSI vers MOSI.</text>
-                <text x="30" y="576" font-size="12.5" fill="#495057">• Si vos badges ne sont pas lus, lancez « Tester avec un badge » : le test dit si une carte répond.</text>
-                </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="cablage-titre" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+                    <title id="cablage-titre">Branchement du lecteur RC522 et du bouton poussoir sur le Raspberry Pi</title>
+                    <rect x="0" y="0" width="940" height="588" rx="14" fill="var(--c-bg)"/>
+                    <text x="30" y="42" font-size="21" font-weight="700" fill="var(--c-ink)">Branchement du lecteur RC522 et du bouton</text>
+                    <text x="30" y="66" font-size="13.5" fill="var(--c-sub)">Le lecteur se branche sur le bus SPI, le bouton entre une broche GPIO et la masse. Aucune résistance.</text>
+                    <rect x="30" y="78" width="470" height="26" rx="7" fill="var(--c-alert-bg)" stroke="var(--c-alert-line)"/>
+                    <text x="42" y="96" font-size="13" font-weight="600" fill="var(--c-alert-ink)">⚠ 3,3 V uniquement : le 5 V détruit le module et la carte.</text>
+                    <rect x="30" y="120" width="400" height="356" rx="12" fill="var(--c-card)" stroke="var(--c-line)"/>
+                    <text x="46" y="146" font-size="15" font-weight="700" fill="var(--c-ink)">Raspberry Pi — broches à utiliser</text>
+                    <text x="46" y="164" font-size="11.5" fill="var(--c-faint)">numéros du connecteur 40 broches, vue de dessus</text>
+                    <rect x="46" y="168" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="183" r="6" fill="#e03131"/>
+                    <text x="80" y="188" font-size="13" font-weight="700" fill="var(--c-ink)">broche 1</text>
+                    <text x="162" y="188" font-size="12.5" fill="var(--c-sub)">3V3</text>
+                    <text x="398" y="188" font-size="12.5" font-weight="600" fill="#e03131" text-anchor="end">3.3V</text>
+                    <rect x="46" y="200" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="215" r="6" fill="#6c757d"/>
+                    <text x="80" y="220" font-size="13" font-weight="700" fill="var(--c-ink)">broche 6</text>
+                    <text x="162" y="220" font-size="12.5" fill="var(--c-sub)">GND</text>
+                    <text x="398" y="220" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">GND</text>
+                    <rect x="46" y="232" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="247" r="6" fill="#f08c00"/>
+                    <text x="80" y="252" font-size="13" font-weight="700" fill="var(--c-ink)">broche 24</text>
+                    <text x="162" y="252" font-size="12.5" fill="var(--c-sub)">GPIO8 · CE0</text>
+                    <text x="398" y="252" font-size="12.5" font-weight="600" fill="#f08c00" text-anchor="end">SDA</text>
+                    <rect x="46" y="264" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="279" r="6" fill="#2f9e44"/>
+                    <text x="80" y="284" font-size="13" font-weight="700" fill="var(--c-ink)">broche 23</text>
+                    <text x="162" y="284" font-size="12.5" fill="var(--c-sub)">GPIO11 · SCLK</text>
+                    <text x="398" y="284" font-size="12.5" font-weight="600" fill="#2f9e44" text-anchor="end">SCK</text>
+                    <rect x="46" y="296" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="311" r="6" fill="#1971c2"/>
+                    <text x="80" y="316" font-size="13" font-weight="700" fill="var(--c-ink)">broche 19</text>
+                    <text x="162" y="316" font-size="12.5" fill="var(--c-sub)">GPIO10 · MOSI</text>
+                    <text x="398" y="316" font-size="12.5" font-weight="600" fill="#1971c2" text-anchor="end">MOSI</text>
+                    <rect x="46" y="328" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="343" r="6" fill="#7048e8"/>
+                    <text x="80" y="348" font-size="13" font-weight="700" fill="var(--c-ink)">broche 21</text>
+                    <text x="162" y="348" font-size="12.5" fill="var(--c-sub)">GPIO9 · MISO</text>
+                    <text x="398" y="348" font-size="12.5" font-weight="600" fill="#7048e8" text-anchor="end">MISO</text>
+                    <rect x="46" y="360" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="375" r="6" fill="#0c8599"/>
+                    <text x="80" y="380" font-size="13" font-weight="700" fill="var(--c-ink)">broche 22</text>
+                    <text x="162" y="380" font-size="12.5" fill="var(--c-sub)">GPIO25</text>
+                    <text x="398" y="380" font-size="12.5" font-weight="600" fill="#0c8599" text-anchor="end">RST</text>
+                    <rect x="46" y="392" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="407" r="6" fill="#6c757d"/>
+                    <text x="80" y="412" font-size="13" font-weight="700" fill="var(--c-ink)">broche 9</text>
+                    <text x="162" y="412" font-size="12.5" fill="var(--c-sub)">GND</text>
+                    <text x="398" y="412" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">bouton · masse</text>
+                    <rect x="46" y="424" width="368" height="30" rx="8" fill="var(--c-row)"/>
+                    <circle cx="64" cy="439" r="6" fill="#d6336c"/>
+                    <text x="80" y="444" font-size="13" font-weight="700" fill="var(--c-ink)">broche 11</text>
+                    <text x="162" y="444" font-size="12.5" fill="var(--c-sub)">GPIO17</text>
+                    <text x="398" y="444" font-size="12.5" font-weight="600" fill="#d6336c" text-anchor="end">bouton · signal</text>
+                    <rect x="462" y="120" width="448" height="212" rx="12" fill="var(--c-card)" stroke="var(--c-line)"/>
+                    <text x="478" y="146" font-size="15" font-weight="700" fill="var(--c-ink)">Lecteur RC522 (13,56 MHz)</text>
+                    <text x="478" y="164" font-size="11.5" fill="var(--c-faint)">les 8 broches du module, dans l’ordre du connecteur</text>
+                    <rect x="478" y="176" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="184" r="5" fill="#f08c00"/>
+                    <text x="508" y="188" font-size="12.5" font-weight="700" fill="var(--c-ink)">SDA</text>
+                    <text x="572" y="188" font-size="12.5" fill="var(--c-sub)">→ broche 24 du Pi</text>
+                    <rect x="478" y="194" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="202" r="5" fill="#2f9e44"/>
+                    <text x="508" y="206" font-size="12.5" font-weight="700" fill="var(--c-ink)">SCK</text>
+                    <text x="572" y="206" font-size="12.5" fill="var(--c-sub)">→ broche 23 du Pi</text>
+                    <rect x="478" y="212" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="220" r="5" fill="#1971c2"/>
+                    <text x="508" y="224" font-size="12.5" font-weight="700" fill="var(--c-ink)">MOSI</text>
+                    <text x="572" y="224" font-size="12.5" fill="var(--c-sub)">→ broche 19 du Pi</text>
+                    <rect x="478" y="230" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="238" r="5" fill="#7048e8"/>
+                    <text x="508" y="242" font-size="12.5" font-weight="700" fill="var(--c-ink)">MISO</text>
+                    <text x="572" y="242" font-size="12.5" fill="var(--c-sub)">→ broche 21 du Pi</text>
+                    <rect x="478" y="248" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="256" r="5" fill="var(--c-faint)"/>
+                    <text x="508" y="260" font-size="12.5" font-weight="700" fill="var(--c-ink)">IRQ</text>
+                    <text x="572" y="260" font-size="12.5" fill="var(--c-faint)">→ non connectée</text>
+                    <rect x="478" y="266" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="274" r="5" fill="#6c757d"/>
+                    <text x="508" y="278" font-size="12.5" font-weight="700" fill="var(--c-ink)">GND</text>
+                    <text x="572" y="278" font-size="12.5" fill="var(--c-sub)">→ broche 6 du Pi</text>
+                    <rect x="478" y="284" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="292" r="5" fill="#0c8599"/>
+                    <text x="508" y="296" font-size="12.5" font-weight="700" fill="var(--c-ink)">RST</text>
+                    <text x="572" y="296" font-size="12.5" fill="var(--c-sub)">→ broche 22 du Pi</text>
+                    <rect x="478" y="302" width="416" height="17" rx="5" fill="var(--c-row)"/>
+                    <circle cx="494" cy="310" r="5" fill="#e03131"/>
+                    <text x="508" y="314" font-size="12.5" font-weight="700" fill="var(--c-ink)">3.3V</text>
+                    <text x="572" y="314" font-size="12.5" fill="var(--c-sub)">→ broche 1 du Pi</text>
+                    <rect x="462" y="348" width="448" height="168" rx="12" fill="var(--c-card)" stroke="var(--c-line)"/>
+                    <text x="478" y="374" font-size="15" font-weight="700" fill="var(--c-ink)">Bouton poussoir</text>
+                    <text x="478" y="392" font-size="11.5" fill="var(--c-faint)">appui court = associer · appui long = effacer · 3 s = autoriser</text>
+                    <text x="508" y="432" font-size="12" fill="var(--c-sub)">borne 1 → broche 11 (GPIO17)</text>
+                    <path d="M508 448 h34" stroke="#d6336c" stroke-width="3" fill="none"/>
+                    <circle cx="508" cy="448" r="4" fill="#d6336c"/>
+                    <path d="M542 448 q13 -20 28 -2" stroke="var(--c-ink)" stroke-width="2.5" fill="none"/>
+                    <path d="M572 448 h34" stroke="#6c757d" stroke-width="3" fill="none"/>
+                    <circle cx="606" cy="448" r="4" fill="#6c757d"/>
+                    <text x="626" y="464" font-size="12" fill="var(--c-sub)">borne 2 → broche 9 (GND)</text>
+                    <text x="478" y="502" font-size="12" font-weight="600" fill="var(--c-good)">aucune résistance : le pull-up interne du Pi suffit</text>
+                    <text x="30" y="536" font-size="12.5" fill="var(--c-sub)">• Le module doit être alimenté en 3,3 V (broche 1) et partager la masse (broche 6 ou 9).</text>
+                    <text x="30" y="556" font-size="12.5" fill="var(--c-sub)">• MISO (broche 21) et MOSI (broche 19) ne se croisent pas : MISO vers MISO, MOSI vers MOSI.</text>
+                    <text x="30" y="576" font-size="12.5" fill="var(--c-sub)">• Si vos badges ne sont pas lus, lancez « Tester avec un badge » : le test dit si une carte répond.</text>
+                    </svg>
                 <!-- cablage:fin -->
               </div>
               <p class="small muted">
@@ -878,7 +977,7 @@
                 utilisez « Tester avec un badge » : le test lit pendant 5 secondes et dit
                 si la carte répond, si elle est lue, ou si rien n'est détecté.
               </p>
-            </div>
+            </details>
           </section>
 
           <section class="panel" data-panel="maintenance">
@@ -930,6 +1029,8 @@
   <p><b>Installer</b> : téléchargez le fichier, double-cliquez dessus, puis redémarrez la Recalbox.</p>
   <p><b>Se connecter</b> : rien à recopier. Gardez le bouton du boîtier appuyé 3 secondes pendant le compte à rebours.</p>
   <p><b>Un badge</b> : surlignez un jeu dans Recalbox, appuyez sur le bouton, posez le badge.</p>
+  <p><b>Thème clair ou sombre</b> : le bouton soleil / lune de l'en-tête suit d'abord le thème
+    du système ; un clic fixe votre choix, un <b>appui long</b> revient au thème du système.</p>
   <p>
     Le diagnostic complet se trouve dans « Se connecter » → « La connexion ne marche pas ? »
     → « Faire un diagnostic ».
@@ -2456,6 +2557,106 @@ async function copyPayload() {
     : "Cliquez sur « Se connecter » : gardez ensuite le bouton du boîtier appuyé 3 secondes.";
   setView(hash.get("host") || search.get("host") ? "connect" : "choix");
 })();
+
+/* ------------------------------------------------------------------ theme --
+   Clair / sombre : par defaut celui du systeme, fige par un clic sur le bouton,
+   et revenu au systeme par un appui long. La bascule est animee par un cercle
+   qui part du bouton (View Transitions), comme dans boardgames-planner. */
+const THEME_KEY = "rfid-theme";
+
+function systemPrefersDark() {
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function currentTheme() {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+function applyTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  if (!persist) return;
+  try { localStorage.setItem(THEME_KEY, theme); } catch (error) { /* mode privé */ }
+}
+
+function storedTheme() {
+  try { return localStorage.getItem(THEME_KEY); } catch (error) { return null; }
+}
+
+function initTheme() {
+  /* Tant qu'aucun choix explicite n'existe, suivre les changements du systeme. */
+  if (storedTheme() || typeof window.matchMedia !== "function") return;
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+      if (!storedTheme()) applyTheme(event.matches ? "dark" : "light", false);
+    });
+  } catch (error) { /* navigateur sans addEventListener sur MediaQueryList */ }
+}
+
+function toggleTheme(event) {
+  const suivant = currentTheme() === "dark" ? "light" : "dark";
+  const reduire = typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const appliquer = () => applyTheme(suivant, true);
+  if (!document.startViewTransition || reduire) {
+    appliquer();
+    return;
+  }
+  let x = window.innerWidth - 40;
+  let y = 40;
+  if (event && (event.clientX || event.clientY)) {
+    x = event.clientX;
+    y = event.clientY;
+  } else if (event && event.currentTarget && event.currentTarget.getBoundingClientRect) {
+    const box = event.currentTarget.getBoundingClientRect();
+    x = box.left + box.width / 2;
+    y = box.top + box.height / 2;
+  }
+  const rayon = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const transition = document.startViewTransition(appliquer);
+  transition.ready
+    .then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            "circle(0px at " + x + "px " + y + "px)",
+            "circle(" + rayon + "px at " + x + "px " + y + "px)",
+          ],
+        },
+        { duration: 480, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" }
+      );
+    })
+    .catch(() => { /* animation interrompue : le theme est deja applique */ });
+}
+
+function followSystemTheme() {
+  try { localStorage.removeItem(THEME_KEY); } catch (error) { /* mode privé */ }
+  applyTheme(systemPrefersDark() ? "dark" : "light", false);
+  showBanner("info", "Thème : celui du système (clair ou sombre selon l'heure et vos réglages).");
+  setTimeout(() => { if (!offlineSince) showBanner("good", ""); }, 2500);
+}
+
+(function wireThemeButton() {
+  const bouton = $("#btn-theme");
+  if (!bouton) return;
+  bouton.addEventListener("click", (event) => toggleTheme(event));
+  let minuterie = null;
+  const annuler = () => {
+    if (minuterie) { clearTimeout(minuterie); minuterie = null; }
+  };
+  bouton.addEventListener("pointerdown", () => {
+    annuler();
+    minuterie = setTimeout(() => { minuterie = null; followSystemTheme(); }, 700);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((type) => {
+    bouton.addEventListener(type, annuler);
+  });
+  bouton.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") toggleTheme(event);
+  });
+})();
+
+initTheme();
 
 /* ------------------------------------------------------------- navigation */
 function setView(name) {
