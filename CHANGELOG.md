@@ -4,6 +4,39 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.6]
+
+### Corrigé — un badge posé n'est plus jamais pris pour un badge retiré
+
+Deux symptômes, une seule cause : **la presence d'un badge etait testee par un
+appel qui echouait a tous les coups**. Le service croyait donc le badge retire
+une seconde apres chaque lecture, ce qui relancait le jeu tout seul et faisait
+declarer « badge retire » juste apres un lancement (donc sans rien arreter).
+
+* `tag_present()` est maintenant expose par le lecteur et fonctionne :
+  * **REQA, puis WUPA.** Un badge qui vient d'etre selectionne ne repond plus a
+    REQA : interroger REQA seul faisait passer un badge parfaitement pose pour
+    retire. C'est la cause du jeu relance tout seul.
+  * **cycle de champ en dernier recours** pour les clones bloques ;
+  * **`None` quand le lecteur ne repond pas** : un bus muet ne prouve pas qu'un
+    badge a ete retire, donc on ne conclut rien (avant, une erreur valait
+    « absent »).
+* Le service ne deduit plus l'absence d'une lecture ratee ou filtree par
+  l'anti-rebond : seule une **absence confirmee par le lecteur** (REQA et WUPA
+  sans reponse, trois constats, au moins 2 secondes d'affilee) libere le verrou.
+* **3 secondes de grace** apres une action : un incident au demarrage de
+  l'emulateur ne peut plus defaire le lancement.
+
+### Corrigé — « quitter le jeu quand le badge est retire »
+
+* L'arret du jeu attend que **l'emulateur tourne vraiment** (jusqu'a 6 s) : au
+  moment du retrait, le jeu peut encore etre en train de demarrer. Plus de
+  message trompeur « jeu arrete » alors que rien n'avait ete arrete.
+* L'arret ne bloque jamais la lecture des badges ni le bouton : la demande est
+  mémorisée et traitée par la boucle du service.
+* `EmulationStation` n'est toujours jamais vise : seul l'emulateur recoit
+  `SIGTERM`, puis `SIGKILL` s'il resiste.
+
 ## [2.7.5]
 
 ### Ajouté

@@ -62,8 +62,6 @@ class DaemonHelpersTest(unittest.TestCase):
             release_lock(lock)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 class ReleaseGestureTest(unittest.TestCase):
     """Les gestes sont traites au relachement, jamais au contact."""
@@ -183,6 +181,7 @@ class ReaderTestTest(unittest.TestCase):
 class BadgeLatchTest(unittest.TestCase):
     """Mode "cartouche" : un badge laisse sur le lecteur n'agit qu'une fois."""
 
+    #: Service construit sans materiel : on ne teste que la logique de presence.
     def setUp(self):
         from unittest import mock as _mock
 
@@ -197,166 +196,180 @@ class BadgeLatchTest(unittest.TestCase):
         self.service._absent_since = None
         self.service._absent_hits = 0
         self.service._active_seen_at = 0.0
+        self.service._last_read_at = 0.0
+        self.service._action_at = 0.0
         self.service._launched_uid = None
+        self.service._stop_pending = None
         self.service._stop_on_remove = False
         self.service.last_uid = None
         self.service.last_uid_at = 0
         self.actions = []
         self.service.controller = _mock.Mock()
+        self.service.controller.last_action = ""
         self.service.controller.on_badge = lambda uid: self.actions.append(uid)
         self.service.reader = _mock.Mock()
         self.service.reader.tag_present.return_value = True
         self.now = 100.0
         self._patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now)
         self._patch.start()
+        self.addCleanup(self._patch.stop)
+        self.addCleanup(shutil.rmtree, self.service.home, True)
 
-    def tearDown(self):
-        self._patch.stop()
-        shutil.rmtree(self.service.home, ignore_errors=True)
+    def avancer(self, secondes):
+        self.now += secondes
 
+    def presence(self, verdict):
+        self.service.reader.tag_present.return_value = verdict
+
+    def laisse_tourner(self, secondes, pas=0.15):
+        """Fait tourner la boucle du service (presence + arret differe)."""
+        reste = secondes
+        while reste > 0:
+            self.now += pas
+            self.service._check_presence()
+            self.service._service_stop()
+            reste -= pas
+
+    # ------------------------------------------------------------- verrou
     def test_badge_laisse_n_agit_qu_une_fois(self):
-        for _ in range(5):
+        for _ in range(6):
             self.service._badge_seen("A1B2C3D4")
-            self.now += 0.15
-            self.service._release_latch()      # badge toujours present
+            self.avancer(0.15)
+            self.service._check_presence()
         self.assertEqual(self.actions, ["A1B2C3D4"])
 
-    def test_retirer_puis_representer_refait_l_action(self):
+    def test_lecture_ratee_n_est_pas_un_retrait(self):
+        # L'anti-rebond du lecteur renvoie None pendant 2,5 s : ce silence ne
+        # doit jamais passer pour un badge retire (sinon le jeu se relancait).
         self.service._badge_seen("A1B2C3D4")
-        self.service.reader.tag_present.return_value = False
-        self.now += 0.2
-        self.service._release_latch()          # debut de l'absence
-        self.now += 1.3
-        self.service._release_latch()          # 2e constat negatif
-        self.service._release_latch()          # 3e constat : absence confirmee
+        self.presence(True)
+        self.laisse_tourner(6.0)
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_lecteur_muet_ne_conclut_pas(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(None)
+        self.laisse_tourner(10.0)
+        self.assertEqual(self.service._active_uid, "A1B2C3D4")
+
+    def test_badge_retire_puis_repose_refait_l_action(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(False)
+        self.laisse_tourner(6.0)   # 3 s de grace + 2 s d'absence confirmee
+        self.assertIsNone(self.service._active_uid)
+        self.presence(True)
         self.service._badge_seen("A1B2C3D4")
         self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
 
-    def test_deux_lectures_negatives_ne_rearment_pas(self):
-        # Une lecture ratee isolee (badge clone) ne doit jamais passer pour un
-        # retrait : c'etait la cause du jeu relance tout seul.
-        self.service._badge_seen("A1B2C3D4")
-        self.service.reader.tag_present.return_value = False
-        self.now += 2.0
-        self.service._release_latch()
-        self.service._release_latch()
-        self.service._badge_seen("A1B2C3D4")
-        self.assertEqual(self.actions, ["A1B2C3D4"])
-
-    def test_lecture_positive_reinitialise_le_compteur(self):
-        self.service._badge_seen("A1B2C3D4")
-        self.service.reader.tag_present.return_value = False
-        self.now += 0.5
-        self.service._release_latch()
-        self.service._release_latch()
-        self.service.reader.tag_present.return_value = True
-        self.now += 0.1
-        self.service._release_latch()          # badge revu : remise a zero
-        self.service.reader.tag_present.return_value = False
-        self.now += 2.0
-        self.service._release_latch()
-        self.service._release_latch()
-        self.service._badge_seen("A1B2C3D4")
-        self.assertEqual(self.actions, ["A1B2C3D4"])
-
     def test_absence_trop_courte_ne_rearme_pas(self):
         self.service._badge_seen("A1B2C3D4")
-        self.service.reader.tag_present.return_value = False
-        self.now += 0.2
-        for _ in range(4):
-            self.service._release_latch()
-            self.now += 0.1
+        self.presence(False)
+        self.laisse_tourner(1.0)
+        self.presence(True)
         self.service._badge_seen("A1B2C3D4")
         self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_absence_exigee_au_moins_deux_secondes(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(False)
+        self.laisse_tourner(1.5)   # > rearm_absent_ms (1,2 s) mais < 2 s
+        self.assertEqual(self.service._active_uid, "A1B2C3D4")
+
+    def test_grace_apres_lancement(self):
+        # Un badge qui disparait juste apres le lancement ne doit pas defaire
+        # l'action (demarrage de l'emulateur, badge mal pose une seconde...).
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(False)
+        self.laisse_tourner(2.5)
+        self.assertEqual(self.service._active_uid, "A1B2C3D4")
+        self.laisse_tourner(3.0)
+        self.assertIsNone(self.service._active_uid)
 
     def test_autre_badge_agit_immediatement(self):
         self.service._badge_seen("A1B2C3D4")
         self.service._badge_seen("11223344")
         self.assertEqual(self.actions, ["A1B2C3D4", "11223344"])
 
+    def test_etat_du_badge_oublie_pour_un_mode_arme(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.service._forget_latch()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
 
-class StopOnRemoveTest(unittest.TestCase):
+
+class StopOnRemoveTest(BadgeLatchTest):
     """Option « quitter le jeu quand le badge est retire »."""
 
     def setUp(self):
-        from unittest import mock as _mock
-
-        from rfid import daemon as _daemon
-
-        self.daemon = _daemon
-        self.service = _daemon.Service.__new__(_daemon.Service)
-        self.service.home = tempfile.mkdtemp(prefix="rfid-stop-")
-        self.service.log = None
-        self.service.rearm_absent_ms = 1200.0
-        self.service._active_uid = None
-        self.service._absent_since = None
-        self.service._absent_hits = 0
-        self.service._active_seen_at = 0.0
-        self.service._launched_uid = None
+        super().setUp()
         self.service._stop_on_remove = True
-        self.service.last_uid = None
-        self.service.last_uid_at = 0
-        self.service.controller = _mock.Mock()
         self.service.controller.last_action = "launched"
-        self.service.controller.on_badge = _mock.Mock()
-        self.service.reader = _mock.Mock()
-        self.service.reader.tag_present.return_value = True
-        self.now = 100.0
-        self._patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now)
-        self._patch.start()
+        self.service.controller.game_running.return_value = True
 
-    def tearDown(self):
-        self._patch.stop()
-        shutil.rmtree(self.service.home, ignore_errors=True)
+    def retirer_le_badge(self):
+        self.presence(False)
+        # 3 s de grace apres le lancement + 2 s d'absence confirmee.
+        self.laisse_tourner(6.0)
 
-    def retirer(self):
-        self.service.reader.tag_present.return_value = False
-        self.now += 1.3
-        for _ in range(3):
-            self.service._release_latch()
-            self.now += 0.05
-
-    def test_retirer_le_badge_arrete_le_jeu(self):
+    def test_le_jeu_est_arrete_quand_le_badge_est_retire(self):
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()
+        self.retirer_le_badge()
         self.service.controller.stop_game.assert_called_once_with()
 
     def test_badge_laisse_n_arrete_rien(self):
         self.service._badge_seen("A1B2C3D4")
-        for _ in range(6):
-            self.service._release_latch()
-            self.now += 0.15
+        self.laisse_tourner(8.0)
         self.service.controller.stop_game.assert_not_called()
 
-    def test_option_desactivee_ne_arrete_rien(self):
+    def test_option_desactivee_n_arrete_rien(self):
         self.service._stop_on_remove = False
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()
+        self.retirer_le_badge()
         self.service.controller.stop_game.assert_not_called()
 
     def test_sans_lancement_rien_a_arreter(self):
         self.service.controller.last_action = "recognized"
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()
+        self.retirer_le_badge()
         self.service.controller.stop_game.assert_not_called()
 
-    def test_un_arret_par_retrait(self):
+    def test_arret_attend_le_demarrage_de_l_emulateur(self):
+        self.service.controller.game_running.return_value = False
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()
-        self.service._badge_seen("A1B2C3D4")  # repose : le jeu relance
-        self.retirer()                        # retire : il s'arrete encore
-        self.assertEqual(self.service.controller.stop_game.call_count, 2)
+        self.retirer_le_badge()
+        self.service.controller.stop_game.assert_not_called()
+        # L'emulateur finit par demarrer : le service l'arrete alors.
+        self.service.controller.game_running.return_value = True
+        self.laisse_tourner(0.5)
+        self.service.controller.stop_game.assert_called_once_with()
 
-    def test_pas_de_double_arret_sur_la_meme_absence(self):
+    def test_arret_abandonne_si_aucun_jeu_ne_demarre(self):
+        self.service.controller.game_running.return_value = False
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()
-        self.service._release_latch()
-        self.service._release_latch()
+        self.retirer_le_badge()
+        self.laisse_tourner(self.daemon.Service.STOP_WAIT_S + 1.0)
+        self.service.controller.stop_game.assert_not_called()
+        self.assertIsNone(self.service._stop_pending)
+
+    def test_un_seul_arret_par_retrait(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer_le_badge()
+        self.laisse_tourner(3.0)
         self.service.controller.stop_game.assert_called_once_with()
 
     def test_erreur_d_arret_non_bloquante(self):
         self.service.controller.stop_game.side_effect = RuntimeError("boom")
         self.service._badge_seen("A1B2C3D4")
-        self.retirer()  # ne doit pas lever
+        self.retirer_le_badge()  # ne doit pas lever
         self.assertIsNone(self.service._active_uid)
 
+    def test_retrait_puis_repose_relance_le_jeu(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer_le_badge()
+        self.presence(True)
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -446,18 +446,40 @@ class Rc522:
             checksum ^= byte
         return bytes([checksum])
 
-    def tag_present(self) -> bool:
-        """Vrai si un badge est physiquement pose sur le lecteur.
+    def tag_present(self):
+        """Vrai si un badge est pose, False s'il n'y en a pas, None si muet.
 
-        Un simple REQA suffit et ne modifie rien : c'est ce qu'il faut pour le
-        mode "cartouche", qui doit savoir quand le badge a vraiment ete retire.
+        Trois constats ont impose cette forme :
+
+        * **REQA ou WUPA.** Un badge qui vient d'etre selectionne (ou mis en
+          pause) ne repond plus a REQA : interroger REQA seul faisait passer un
+          badge parfaitement pose pour retire, ce qui relancait le jeu tout seul
+          et declenchait l'arret « badge retire » juste apres un lancement.
+        * **Un cycle de champ en dernier recours.** Certains clones restent
+          bloques dans un etat ou seule une coupure du champ les reveille.
+        * **None quand le lecteur ne repond pas du tout.** Un bus SPI muet ne
+          prouve pas qu'un badge a ete retire : on ne conclut rien.
         """
-        if not self._started:
-            return False
+        erreurs = 0
         try:
-            return self.rc522.request() is not None
+            if self.request(PICC_REQA) is not None:
+                return True
         except (Rc522Error, OSError):
-            return False
+            erreurs += 1
+        try:
+            if self.request(PICC_WUPA) is not None:
+                return True
+        except (Rc522Error, OSError):
+            erreurs += 1
+        try:
+            self.reset_field()
+            if self.request(PICC_REQA) is not None:
+                return True
+        except (Rc522Error, OSError):
+            erreurs += 1
+        if erreurs >= 3:
+            return None
+        return False
 
     def close(self) -> None:
         try:
@@ -509,6 +531,22 @@ class Rc522Reader:
         except Exception as exc:  # noqa: BLE001 - on retentera au prochain tour
             if self.log:
                 self.log.warning("Lecteur RC522 toujours indisponible : %s" % exc)
+
+    def tag_present(self):
+        """Vrai si un badge est pose, False sinon, None si le lecteur est muet.
+
+        Delegue au pilote, qui interroge REQA **et** WUPA : un badge deja
+        selectionne ne repond plus a REQA, et le confondre avec une absence
+        relancait le jeu tout seul.
+        """
+        if not self._started:
+            return None
+        try:
+            return self.rc522.tag_present()
+        except (Rc522Error, OSError, AttributeError) as exc:
+            if self.log:
+                self.log.warning("Presence du badge illisible : %s" % exc)
+            return None
 
     def read_uid(self):
         """Retourne l'UID (chaine hexa majuscule) d'un nouveau badge, sinon None."""

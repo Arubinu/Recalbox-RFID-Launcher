@@ -8,13 +8,57 @@ import unittest
 import support  # noqa: F401  (ajoute app/ au sys.path)
 from fake_rc522 import FakeRc522Spi
 
-from rfid.drivers.rc522 import Rc522, Rc522Reader, crc_a_software
+from rfid.drivers.rc522 import Rc522, Rc522Error, Rc522Reader, crc_a_software
 from rfid.drivers.spi_port import (
     SPI_IOC_WR_MAX_SPEED_HZ,
     SPI_IOC_WR_MODE,
     SpiIocTransfer,
     spi_ioc_message,
 )
+
+
+class TagPresentTest(unittest.TestCase):
+    """Presence d'un badge : REQA, sinon WUPA, sinon muet (None)."""
+
+    def lecteur(self, spi):
+        reader = Rc522Reader(spi, cooldown_s=0.0)
+        reader.start()
+        return reader
+
+    def test_badge_present(self):
+        self.assertIs(self.lecteur(FakeRc522Spi(b"\xDE\xAD\xBE\xEF")).tag_present(), True)
+
+    def test_aucun_badge(self):
+        self.assertIs(self.lecteur(FakeRc522Spi(None)).tag_present(), False)
+
+    def test_badge_qui_ne_repond_qu_a_wupa(self):
+        # Regression : un badge selectionne ne repond plus a REQA. Sans WUPA, un
+        # badge parfaitement pose passait pour retire (jeu relance tout seul).
+        self.assertIs(self.lecteur(FakeRc522Spi(b"\x11\x22\x33\x44", wupa_only=True)).tag_present(), True)
+
+    def test_badge_clone_bcc_faux(self):
+        self.assertIs(self.lecteur(FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)).tag_present(), True)
+
+    def test_lecteur_non_demarre_ne_conclut_pas(self):
+        reader = Rc522Reader(FakeRc522Spi(b"\xDE\xAD\xBE\xEF"), cooldown_s=0.0)
+        self.assertIsNone(reader.tag_present())
+
+    def test_lecteur_muet_ne_conclut_pas(self):
+        reader = self.lecteur(FakeRc522Spi(b"\xDE\xAD\xBE\xEF"))
+
+        def tombe(*args, **kwargs):
+            raise Rc522Error("SPI muet")
+
+        reader.rc522.request = tombe
+        self.assertIsNone(reader.tag_present())
+
+    def test_presence_apres_une_lecture(self):
+        # Apres read_uid, la carte a ete selectionnee : la presence doit rester
+        # vraie (c'est le scenario exact du jeu relance tout seul).
+        spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
+        reader = self.lecteur(spi)
+        self.assertEqual(reader.read_uid(), "36000000")
+        self.assertIs(reader.tag_present(), True)
 
 
 class IoctlEncodingTest(unittest.TestCase):

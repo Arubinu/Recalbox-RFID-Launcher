@@ -215,6 +215,39 @@ class ActionTest(ControllerTest):
         self.assertIn("recognized", self.feedback.events)
         self.assertNotIn("error", self.feedback.events)
 
+    def test_arret_du_jeu_lance_par_le_badge(self):
+        self.controller.store.put("A1B2C3D4", "snes", "Super Mario World.smc")
+        self.assertEqual(self.controller.on_badge("A1B2C3D4"), "launched")
+        self.assertTrue(self.controller.game_running())
+        self.assertTrue(self.controller.stop_game())
+        self.assertFalse(self.controller.game_running())
+        self.assertEqual(self.launcher.stops, 1)
+
+    def test_arret_sans_jeu_en_cours(self):
+        journal = support.RecordingLog()
+        controleur = Controller(
+            self.store,
+            self.launcher,
+            self.feedback,
+            self.config,
+            journal,
+            state_provider=lambda: self.state,
+            clock=self.clock,
+        )
+        self.assertFalse(controleur.game_running())
+        self.assertFalse(controleur.stop_game())
+        self.assertTrue(
+            any("Aucun jeu en cours" in message for _niveau, message in journal.messages),
+            journal.messages,
+        )
+
+    def test_arret_apres_le_lancement_remet_l_action_a_zero(self):
+        self.controller.store.put("A1B2C3D4", "snes", "Super Mario World.smc")
+        self.controller.on_badge("A1B2C3D4")
+        self.assertEqual(self.controller.last_action, "launched")
+        self.controller.stop_game()
+        self.assertEqual(self.controller.last_action, "")
+
     def test_delai_arme_dix_secondes(self):
         controller = self.make_controller()
         controller.on_button("short")

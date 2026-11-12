@@ -166,7 +166,10 @@ class Service:
         self._absent_since = None
         self._absent_hits = 0
         self._active_seen_at = 0.0
+        self._last_read_at = 0.0
+        self._action_at = 0.0
         self._launched_uid = None
+        self._stop_pending = None
         self._stop_on_remove = bool(cfg.get_bool("launch", "stop_on_remove", False))
         self.rearm_absent_ms = 1200
         self.last_error_at = 0.0
@@ -283,8 +286,6 @@ class Service:
                         self.log.warning("Lecture RFID en echec : %s" % exc)
                     if uid:
                         self._badge_seen(uid)
-                    elif self._active_uid is not None:
-                        self._release_latch()
 
                 if self.button is not None:
                     self._track_press()
@@ -292,6 +293,11 @@ class Service:
                     if gesture:
                         self._handle_gesture(gesture)
 
+                # Le badge est-il toujours pose ? La lecture peut echouer ou etre
+                # filtree (anti-rebond) : seule une absence REPONDUE par le
+                # lecteur compte.
+                self._check_presence()
+                self._service_stop()
                 self._consume_agent_command()
                 self._reader_test_step()
 
@@ -317,62 +323,118 @@ class Service:
         """Un badge est lu. Un badge laisse en place ne refait pas l'action."""
         self.last_uid = uid
         self.last_uid_at = time.time()
+        maintenant = time.monotonic()
+        self._last_read_at = maintenant
         if uid == self._active_uid:
             # Le badge est toujours la : on rafraichit sa presence, sans agir.
-            self._active_seen_at = time.monotonic()
+            self._active_seen_at = maintenant
             self._absent_since = None
             self._absent_hits = 0
             return
         self._active_uid = uid
-        self._active_seen_at = time.monotonic()
+        self._active_seen_at = maintenant
         self._absent_since = None
         self._absent_hits = 0
         self._launched_uid = None
         self.controller.on_badge(uid)
+        self._action_at = time.monotonic()
         if getattr(self.controller, "last_action", "") == "launched":
             # Retenu pour l'option « quitter le jeu quand le badge est retire ».
             self._launched_uid = uid
 
-    def _release_latch(self) -> None:
-        """Libere le verrou quand le badge a VRAIMENT quitte le lecteur.
+    #: Duree (secondes) sans badge vu avant de conclure au retrait.
+    ABSENCE_MIN_S = 2.0
+    #: Delai de grace apres une action : un lancement ne doit jamais etre defait.
+    GRACE_ACTION_S = 3.0
+    #: Duree maximale (secondes) d'attente du demarrage de l'emulateur.
+    STOP_WAIT_S = 6.0
 
-        Les lectures peuvent echouer par intermittence (badges clones, champ
-        limite) : une absence n'est retenue qu'apres plusieurs constats negatifs
-        **et** un delai complet sans lecture positive. Sans cela, un badge
-        laisse en place etait considere comme retire, et le jeu se relancait.
+    def _check_presence(self) -> None:
+        """Le badge verrouille est-il toujours pose sur le lecteur ?
+
+        C'est le lecteur qui repond (REQA ou WUPA), jamais le silence d'une
+        lecture ratee : une lecture peut echouer ou etre filtree par
+        l'anti-rebond sans que le badge ait bouge.
         """
-        present = False
-        try:
-            present = bool(self.reader.tag_present())
-        except Exception:  # noqa: BLE001 - lecteur retire a chaud
-            present = False
-        now = time.monotonic()
-        if present:
-            self._active_seen_at = now
+        if self._active_uid is None or self.reader is None:
+            return
+        # Pendant un test du lecteur, c'est le test qui interroge le module.
+        if getattr(self, "_reader_test", None) is not None:
+            return
+        maintenant = time.monotonic()
+        # Une lecture positive recente suffit : pas besoin d'interroger a nouveau.
+        if maintenant - self._last_read_at < 0.6:
             self._absent_since = None
             self._absent_hits = 0
             return
-        self._absent_hits += 1
+        if maintenant - self._action_at < self.GRACE_ACTION_S:
+            return
+        try:
+            verdict = self.reader.tag_present()
+        except Exception:  # noqa: BLE001 - lecteur retire a chaud
+            verdict = None
+        if verdict is None:
+            # Lecteur muet : on ne peut rien conclure sur la presence du badge.
+            return
+        if verdict:
+            self._absent_since = None
+            self._absent_hits = 0
+            return
         if self._absent_since is None:
-            self._absent_since = now
+            self._absent_since = maintenant
+        self._absent_hits += 1
         if self._absent_hits < 3:
             return
-        if (now - self._active_seen_at) * 1000.0 < self.rearm_absent_ms:
+        if maintenant - self._absent_since < self._absence_requise_s():
             return
+        self._release_latch()
+
+    def _absence_requise_s(self) -> float:
+        return max(self.ABSENCE_MIN_S, float(self.rearm_absent_ms) / 1000.0)
+
+    def _release_latch(self) -> None:
+        """Badge retire : on libere le verrou et, si demande, on quitte le jeu."""
+        badge = self._active_uid
+        lance = self._launched_uid
         self._active_uid = None
         self._absent_since = None
         self._absent_hits = 0
-        # Badge retire : on quitte le jeu si l'option est active.
-        if self._stop_on_remove and self._launched_uid is not None:
-            lance = self._launched_uid
-            self._launched_uid = None
-            try:
-                self.controller.stop_game()
-            except Exception as exc:  # noqa: BLE001 - jamais bloquant
-                if self.log:
-                    self.log.warning("Arret du jeu impossible : %s" % exc)
+        self._launched_uid = None
+        if not (self._stop_on_remove and lance and badge):
+            return
+        # L'emulateur peut encore demarrer : on laisse le service le constater
+        # dans la boucle au lieu de bloquer la lecture des badges.
+        self._stop_pending = (badge, time.monotonic() + self.STOP_WAIT_S)
+        if self.log:
+            self.log.info("Badge %s retire : arret du jeu demande" % badge)
+
+    def _service_stop(self) -> None:
+        """Arrete le jeu quand il tourne vraiment (jamais EmulationStation)."""
+        if self._stop_pending is None or self.controller is None:
+            return
+        badge, echeance = self._stop_pending
+        try:
+            en_cours = bool(self.controller.game_running())
+        except Exception:  # noqa: BLE001 - jamais bloquant
+            en_cours = False
+        if not en_cours:
+            if time.monotonic() < echeance:
+                return
+            self._stop_pending = None
             if self.log:
-                self.log.info("Badge %s retire : jeu arrete" % lance)
+                self.log.info("Badge %s retire : aucun jeu en cours a arreter" % badge)
+            return
+        self._stop_pending = None
+        try:
+            arrete = bool(self.controller.stop_game())
+        except Exception as exc:  # noqa: BLE001 - jamais bloquant
+            arrete = False
+            if self.log:
+                self.log.warning("Arret du jeu impossible : %s" % exc)
+        if self.log:
+            self.log.info(
+                "Badge %s retire : %s" % (badge, "jeu arrete" if arrete else "arret impossible")
+            )
 
     # ------------------------------------------------------------------ bouton
     def _track_press(self) -> None:
@@ -390,6 +452,8 @@ class Service:
         """Oublie le badge pose : un mode arme autorise a le representer."""
         self._active_uid = None
         self._absent_since = None
+        self._absent_hits = 0
+        self._last_read_at = 0.0
 
     def _handle_gesture(self, gesture: str) -> None:
         """Gere un geste recu au relachement (court ou tres long)."""

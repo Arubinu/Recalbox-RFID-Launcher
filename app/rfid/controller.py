@@ -210,6 +210,13 @@ class Controller:
         )
         return "bound"
 
+    def game_running(self) -> bool:
+        """Vrai si un emulateur tourne vraiment (pas seulement demarre)."""
+        try:
+            return bool(self.launcher.game_running())
+        except Exception:  # noqa: BLE001 - /proc illisible : on ne conclut rien
+            return False
+
     def stop_game(self) -> bool:
         """Quitte le jeu en cours (badge retire, option active)."""
         if not self.launcher.stop_game():

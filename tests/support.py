@@ -25,13 +25,27 @@ class FakeClock:
 
 
 class FakeLauncher:
-    def __init__(self, ok: bool = True):
+    def __init__(self, ok: bool = True, running: bool = False):
         self.ok = ok
+        self.running = running
         self.calls = []
+        self.stops = 0
 
     def start_game(self, system: str, game: str) -> bool:
         self.calls.append((system, game))
+        if self.ok:
+            self.running = True
         return self.ok
+
+    def game_running(self, rom_path: str = "") -> bool:
+        return self.running
+
+    def stop_game(self, rom_path: str = "", timeout_s: float = 8.0) -> bool:
+        self.stops += 1
+        if not self.running:
+            return False
+        self.running = False
+        return True
 
 
 class RecordingLog:
