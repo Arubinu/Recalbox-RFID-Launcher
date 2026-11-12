@@ -199,6 +199,13 @@ class AgentTestCase(unittest.TestCase):
         self.clients.append(client)
         return client
 
+    def button_pair(self, client):
+        """Joue l'appui de 3 s : demande puis accord, comme le service."""
+        request = client.call("pair.request")["request"]
+        pending = wsagent.pairing.pending(self.home)
+        wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0)
+        return client.call("pair.check", request=request)
+
     def authenticated_client(self):
         self.start_agent()
         client = self.client()
@@ -206,99 +213,63 @@ class AgentTestCase(unittest.TestCase):
         return client
 
 
-class TokenTest(AgentTestCase):
-    def test_creation_et_stabilite(self):
-        path = os.path.join(self.home, "token.txt")
-        first = wsagent.ensure_token(path)
-        self.assertGreaterEqual(len(first), 8)
-        self.assertEqual(wsagent.ensure_token(path), first)
-        with open(path, "r", encoding="ascii") as handle:
-            self.assertEqual(handle.read().strip(), first)
+class SessionSecretTest(AgentTestCase):
+    """Aucun secret sur disque : il nait en memoire a chaque demarrage."""
 
-    def test_jeton_absent_recree(self):
-        path = os.path.join(self.home, "token.txt")
-        with open(path, "w", encoding="ascii") as handle:
-            handle.write("")
-        self.assertTrue(wsagent.ensure_token(path))
+    def test_secret_en_memoire_uniquement(self):
+        self.start_agent()
+        self.assertGreaterEqual(len(self.agent.token), 16)
+        self.assertEqual(self.agent.token_path, "")
+        self.assertFalse(os.path.isfile(os.path.join(self.home, "token.txt")))
+        self.assertFalse(os.path.isfile(os.path.join(self.home, "paired.ok")))
+
+    def test_secret_different_a_chaque_demarrage(self):
+        self.start_agent()
+        premier = self.agent.token
+        self.agent.stop()
+        time.sleep(0.2)
+        self.agent = None
+        self.start_agent()
+        self.assertNotEqual(self.agent.token, premier)
+
+    def test_anciens_fichiers_supprimes(self):
+        for name in ("token.txt", wsagent.PAIRED_FILENAME):
+            with open(os.path.join(self.home, name), "w", encoding="ascii") as handle:
+                handle.write("VIEUXJETON\n")
+        self.start_agent()
+        self.assertFalse(os.path.isfile(os.path.join(self.home, "token.txt")))
+        self.assertFalse(os.path.isfile(os.path.join(self.home, wsagent.PAIRED_FILENAME)))
 
 
 class PairingTest(AgentTestCase):
-    """Appairage : le jeton se transmet une fois, sans partage reseau."""
+    """Appairage : aucun jeton transmissible sans appui physique sur le bouton."""
 
-    def test_jeton_transmis_une_seule_fois(self):
+    def test_commande_pair_supprimee(self):
         self.start_agent()
-        client = self.client()
-        data = client.call("pair")
-        token = (data or {}).get("token") or ""
-        self.assertEqual(token, self.agent.token)
-        self.assertRegex(token, r"^[0-9A-F]{16}$")
-        self.assertFalse(wsagent.pairing_is_open(self.home), "fenetre non refermee")
-
-        second = self.client()
         with self.assertRaises(WsError) as context:
-            second.call("pair")
-        self.assertIn("appairage", str(context.exception).lower())
+            self.client().call("pair")
+        self.assertIn("bouton", str(context.exception).lower())
 
-    def test_jeton_recupere_permet_de_se_connecter(self):
-        self.start_agent()
-        client = self.client()
-        token = client.call("pair")["token"]
-        verifie = self.client()
-        verifie.call("auth", token=token)
-        self.assertEqual(verifie.call("version")["version"], wsagent.__version__)
-
-    def test_pas_d_appairage_une_fois_le_poste_appaire(self):
-        path = os.path.join(self.home, "token.txt")
-        wsagent.ensure_token(path)
-        with open(os.path.join(self.home, wsagent.PAIRED_FILENAME), "w", encoding="utf-8") as handle:
-            handle.write("2024-01-01T00:00:00\n")
-        self.start_agent()
-        client = self.client()
-        with self.assertRaises(WsError) as context:
-            client.call("pair")
-        self.assertIn("appairage", str(context.exception).lower())
-
-    def test_jeton_existant_jamais_utilise_reste_appariable(self):
-        # Cas d'une mise a jour : le jeton existe deja, aucun client ne s'est
-        # encore connecte -> la fenetre doit s'ouvrir au demarrage.
-        path = os.path.join(self.home, "token.txt")
-        wsagent.ensure_token(path)
-        self.start_agent()
-        data = self.client().call("pair")
-        self.assertEqual(data["token"], self.agent.token)
-
-    def test_demande_d_appairage_par_fichier(self):
-        # Le .cmd pose un simple fichier 'pair-request' : l'agent ouvre la fenetre
-        # meme si le poste est deja apparie (donc sans SSH).
-        path = os.path.join(self.home, "token.txt")
-        wsagent.ensure_token(path)
-        with open(os.path.join(self.home, wsagent.PAIRED_FILENAME), "w", encoding="utf-8") as handle:
-            handle.write("2024-01-01T00:00:00\n")
-        with open(os.path.join(self.home, wsagent.PAIR_REQUEST_FILENAME), "w", encoding="utf-8") as handle:
+    def test_fichier_pair_request_ignore(self):
+        # Une demande deposee sur le partage ne doit RIEN donner : c'est le trou
+        # par lequel un poste du reseau pouvait recuperer le jeton sans appui.
+        with open(os.path.join(self.home, "pair-request"), "w", encoding="utf-8") as handle:
             handle.write("\n")
         self.start_agent()
-        self.assertTrue(wsagent.pairing_is_open(self.home), "fenetre non ouverte")
-        self.assertFalse(
-            os.path.isfile(os.path.join(self.home, wsagent.PAIR_REQUEST_FILENAME)),
-            "demande non consommee",
-        )
-        data = self.client().call("pair")
-        self.assertEqual(data["token"], self.agent.token)
+        with self.assertRaises(WsError):
+            self.client().call("pair")
+
+    def test_auth_sans_secret_refusee(self):
+        self.start_agent()
+        with self.assertRaises(WsError) as context:
+            self.client().call("auth", token="")
+        self.assertIn("appairage", str(context.exception).lower())
 
     def test_auth_reussie_ferme_la_fenetre(self):
         self.start_agent()
-        wsagent.open_pairing_window(self.home, 5)
+        self.assertTrue(wsagent.pairing_is_open(self.home))
         self.client().call("auth", token=self.agent.token)
         self.assertFalse(wsagent.pairing_is_open(self.home))
-        self.assertTrue(os.path.isfile(os.path.join(self.home, wsagent.PAIRED_FILENAME)))
-
-    def test_fenetre_ouverte_sur_demande(self):
-        self.start_agent()
-        client = self.client()
-        client.call("pair")
-        wsagent.open_pairing_window(self.home, 5)
-        data = self.client().call("pair")
-        self.assertEqual(data["token"], self.agent.token)
 
     def test_adresse_privee(self):
         self.assertTrue(wsagent.is_private_address(("192.168.42.46", 5555)))
@@ -450,7 +421,8 @@ class StatusTest(AgentTestCase):
         data = client.call("status")
         self.assertIn("app_version", data)
         self.assertFalse(data["installed"])
-        self.assertEqual(data["agent"]["token"], self.agent.token)
+        self.assertTrue(data["agent"]["session"], "session attendue ouverte")
+        self.assertNotIn("token", data["agent"])
         self.assertEqual(data["tags"], 0)
 
     def test_version(self):

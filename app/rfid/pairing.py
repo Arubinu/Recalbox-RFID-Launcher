@@ -41,12 +41,50 @@ class PairingError(Exception):
 # ---------------------------------------------------------------------------
 # Fichiers d'etat
 # ---------------------------------------------------------------------------
+# Les etats d'appairage ne doivent pas etre ecrits sur le partage Samba : il est
+# accessible en invite, donc n'importe quel poste du reseau pourrait y deposer un
+# accord et s'autoriser sans appui sur le bouton. On les place donc dans un
+# dossier prive (tmpfs), hors du partage. ``RFID_STATE_DIR`` force un chemin.
+STATE_DIR_ENV = "RFID_STATE_DIR"
+DEFAULT_STATE_DIR = "/tmp/rfid-launcher-pairing"
+
+
+def state_dir(home: str) -> str:
+    """Dossier des etats d'appairage : prive, et jamais le partage Samba."""
+    forced = os.environ.get(STATE_DIR_ENV, "").strip()
+    if forced:
+        try:
+            os.makedirs(forced, exist_ok=True)
+        except OSError:
+            pass
+        return forced
+    # Comparaison faite sur une forme normalisee : la meme fonction sert sous
+    # Windows (tests, mode simulation) et sur la Recalbox.
+    normalise = os.path.abspath(str(home or "")).replace("\\", "/")
+    if "/recalbox/share" in normalise:
+        try:
+            os.makedirs(DEFAULT_STATE_DIR, exist_ok=True)
+            try:
+                # Dossier prive : le service et l'agent tournent en root.
+                os.chmod(DEFAULT_STATE_DIR, 0o700)
+            except OSError:
+                pass
+            probe = os.path.join(DEFAULT_STATE_DIR, ".probe")
+            with open(probe, "w", encoding="ascii") as handle:
+                handle.write("ok")
+            os.remove(probe)
+            return DEFAULT_STATE_DIR
+        except OSError:
+            pass
+    return home
+
+
 def request_path(home: str) -> str:
-    return os.path.join(home, REQUEST_FILENAME)
+    return os.path.join(state_dir(home), REQUEST_FILENAME)
 
 
 def grant_path(home: str) -> str:
-    return os.path.join(home, GRANT_FILENAME)
+    return os.path.join(state_dir(home), GRANT_FILENAME)
 
 
 def _read(path: str):

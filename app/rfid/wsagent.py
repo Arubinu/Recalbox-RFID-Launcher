@@ -7,12 +7,12 @@ navigateur, alors qu'un `WebSocket` est autorisé (vérifié : l'origine `null`
 d'un fichier local est acceptée).
 
 Tout est dans la bibliothèque standard : poignée de main HTTP, trames RFC 6455
-et boucle de service. Seule une connexion authentifiée par un jeton peut agir.
+et boucle de service. Seule une session autorisee par un appui physique peut agir.
 
 Commandes (JSON, une réponse par `id`) :
 
 * ``pair.request`` / ``pair.check`` / ``pair.cancel`` (appairage confirme au bouton) ;
-* ``auth`` (jeton), ``status``, ``version``, ``log`` ;
+* ``auth`` (secret de session), ``status``, ``version``, ``log`` ;
 * ``install`` (dossier du partage ou URL), ``upload.begin/chunk/end`` (ZIP) ;
 * ``tags.list/add/remove/export/import`` ;
 * ``associate``, ``scan`` (mode association / badge simulé) ;
@@ -54,7 +54,6 @@ AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
 PAIRING_FILENAME = "pairing.json"
 PAIRED_FILENAME = "paired.ok"
-PAIR_REQUEST_FILENAME = "pair-request"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
@@ -84,7 +83,8 @@ def is_private_address(address) -> bool:
 
 
 def pairing_path(home: str) -> str:
-    return os.path.join(home, PAIRING_FILENAME)
+    # Meme dossier prive que les etats d'appairage : surtout pas le partage SMB.
+    return os.path.join(pairing.state_dir(home), PAIRING_FILENAME)
 
 
 def open_pairing_window(home: str, minutes: int = PAIRING_MINUTES) -> float:
@@ -116,62 +116,9 @@ def pairing_is_open(home: str) -> bool:
         return False
 
 
-def consume_pair_request(home: str) -> bool:
-    """Ouvre la fenetre si le fichier ``pair-request`` existe (pose par le .cmd).
-
-    Le fichier peut etre cree par un simple ``echo. > pair-request`` depuis
-    Windows, ce qui permet de demander un appairage sans SSH.
-    """
-    request = os.path.join(home, PAIR_REQUEST_FILENAME)
-    if not os.path.isfile(request):
-        return False
-    try:
-        os.remove(request)
-    except OSError:
-        pass
-    open_pairing_window(home)
-    return True
-
-
 # ---------------------------------------------------------------------------
-# Jeton partagé
+# Version du programme et dossier source
 # ---------------------------------------------------------------------------
-def ensure_token(path: str) -> str:
-    """Lit (ou crée) le jeton d'accès de l'agent."""
-    try:
-        # utf-8-sig : un token.txt edite avec Notepad peut commencer par un BOM.
-        with open(path, "r", encoding="utf-8-sig") as handle:
-            token = handle.read().strip()
-        if token:
-            return token
-    except (OSError, UnicodeDecodeError):
-        pass
-
-    token = secrets.token_hex(8).upper()
-    try:
-        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError:
-        # Fichier existant mais vide ou illisible : on le remplace.
-        try:
-            with open(path, "r", encoding="ascii") as handle:
-                existing = handle.read().strip()
-            if existing:
-                return existing
-        except OSError:
-            pass
-        try:
-            with open(path, "w", encoding="ascii") as handle:
-                handle.write(token + "\n")
-            return token
-        except OSError:
-            return token
-    except OSError:
-        return token
-    with os.fdopen(descriptor, "w", encoding="ascii") as handle:
-        handle.write(token + "\n")
-    return token
-
-
 def read_version(folder: str) -> str:
     """Version indiquee par le fichier VERSION d'un dossier (ou chaine vide)."""
     try:
@@ -319,17 +266,16 @@ class Agent:
         self.source = os.path.abspath(source) if source else None
         self.db_path = db or os.path.join(self.home, DB_FILENAME)
         self.port = int(port) if port is not None else cfg.get_int("agent", "port", DEFAULT_PORT)
-        self.token_path = os.path.join(self.home, TOKEN_FILENAME)
-        existed = os.path.isfile(self.token_path)
-        self.token = ensure_token(self.token_path)
-        # Fenetre d'appairage tant qu'aucun client ne s'est jamais connecte :
-        # un jeton deja en place mais jamais utilise (mise a jour, rollback...)
-        # reste donc appariable sans passer par le partage reseau.
-        if not existed or not os.path.isfile(os.path.join(self.home, PAIRED_FILENAME)):
-            open_pairing_window(self.home)
-        # Le .cmd peut demander explicitement un appairage (fichier depot).
-        if consume_pair_request(self.home):
-            open_pairing_window(self.home)
+        # Aucun secret sur disque : l'autorisation vient d'un appui physique sur
+        # le bouton. Le secret de session vit uniquement en memoire, donc il
+        # disparait au redemarrage de l'agent (et rien ne peut etre vole sur le
+        # partage SMB).
+        self.token = secrets.token_hex(16).upper()
+        self.token_path = ""
+        self._forget_legacy_tokens()
+        # Nouveau secret a chaque demarrage : la fenetre d'appairage est ouverte
+        # jusqu'a ce qu'un poste soit autorise (appui de 3 s sur le bouton).
+        open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
         self._install_lock = threading.Lock()
@@ -337,6 +283,21 @@ class Agent:
         self.server = None
         self.running = False
         self._lock = None
+
+    def _forget_legacy_tokens(self) -> None:
+        """Efface les jetons des versions precedentes (ils etaient sur le partage)."""
+        candidates = (
+            os.path.join(self.home, TOKEN_FILENAME),
+            os.path.join("/overlay/rfid", TOKEN_FILENAME),
+            os.path.join(self.home, PAIRED_FILENAME),
+        )
+        for path in candidates:
+            try:
+                os.remove(path)
+            except OSError:
+                continue
+            if self.log:
+                self.log.warning("Ancien jeton supprime : %s" % path)
 
     # ------------------------------------------------------------------ cycle
     def serve_forever(self) -> int:
@@ -364,8 +325,8 @@ class Agent:
         self.running = True
         if self.log:
             self.log.info(
-                "Agent WebSocket pret sur ws://%s:%d (jeton : %s)"
-                % (_local_ip(), self.port, self.token_path)
+                "Agent WebSocket pret sur ws://%s:%d (autorisation : appui de 3 s sur le bouton)"
+                % (_local_ip(), self.port)
             )
         try:
             server.serve_forever(poll_interval=0.2)
@@ -470,8 +431,7 @@ class Agent:
             "install": {"running": self._install_running},
             "agent": {
                 "port": self.port,
-                "token": self.token,
-                "token_path": self.token_path,
+                "session": bool(self.token),
                 "pairing": pairing_is_open(self.home),
             },
         }
@@ -570,7 +530,13 @@ class Agent:
         command = str(message.get("cmd") or "").strip()
 
         if command == "pair":
-            return self._handle_pair(client, request_id)
+            client.send({
+                "id": request_id,
+                "ok": False,
+                "error": "appairage par fichier supprime : utilisez pair.request puis "
+                         "l'appui de 3 s sur le bouton",
+            })
+            return True
 
         if command in ("pair.request", "pair.check", "pair.cancel"):
             return self._handle_pairing(client, request_id, command, message)
@@ -579,11 +545,6 @@ class Agent:
             if secrets.compare_digest(str(message.get("token") or ""), self.token):
                 client.authenticated = True
                 close_pairing_window(self.home)
-                try:
-                    with open(os.path.join(self.home, PAIRED_FILENAME), "w", encoding="utf-8") as handle:
-                        handle.write(time.strftime("%Y-%m-%dT%H:%M:%S") + "\n")
-                except OSError:
-                    pass
                 client.send(
                     {
                         "id": request_id,
@@ -593,7 +554,7 @@ class Agent:
                 )
                 return True
             client.failures += 1
-            client.send({"id": request_id, "ok": False, "error": "jeton invalide"})
+            client.send({"id": request_id, "ok": False, "error": "session non autorisee : refaites l'appairage (appui de 3 s)"})
             if client.failures >= AUTH_FAILURES:
                 if self.log:
                     self.log.warning("Agent : trop d'echecs d'authentification (%s)" % (client.address,))
@@ -626,7 +587,7 @@ class Agent:
 
     # ------------------------------------------------------------- appairage
     def _handle_pairing(self, client, request_id, command, message) -> bool:
-        """Appairage confirme au bouton : demande, attente, jetons.
+        """Appairage confirme au bouton : demande, attente, secret de session.
 
         Aucune authentification (c'est le but), mais trois garde-fous : reseau
         local uniquement, une seule demande a la fois, et validation par un
@@ -703,33 +664,6 @@ class Agent:
             if self.log:
                 self.log.error("Appairage : erreur sur %s : %s" % (command, exc))
             client.send({"id": request_id, "ok": False, "error": "appairage impossible : %s" % exc})
-        return True
-
-    def _handle_pair(self, client, request_id) -> bool:
-        """Donne le jeton une seule fois, sur le reseau local, fenetre limitee."""
-        source = getattr(client, "address", "")
-        if not is_private_address(source):
-            client.send({
-                "id": request_id,
-                "ok": False,
-                "error": "appairage refuse : adresse hors du reseau local",
-            })
-            return True
-        # Une demande explicite (fichier 'pair-request' pose par le .cmd) ouvre
-        # la fenetre immediatement, sans redemarrage.
-        consume_pair_request(self.home)
-        if not pairing_is_open(self.home):
-            client.send({
-                "id": request_id,
-                "ok": False,
-                "error": "appairage ferme : relancez recalbox-rfid-installation.cmd, "
-                         "ou lancez rfidctl pair sur la Recalbox",
-            })
-            return True
-        close_pairing_window(self.home)
-        if self.log:
-            self.log.warning("Agent : appairage depuis %s (jeton transmis une fois)" % (source,))
-        client.send({"id": request_id, "ok": True, "data": {"token": self.token}})
         return True
 
     # ------------------------------------------------------------- diagnostic
@@ -1019,10 +953,23 @@ class _Handler(socketserver.BaseRequestHandler):
             headers = self._read_headers(sock)
         except (OSError, ValueError):
             return
+        origin = ""
         key = ""
         for line in headers.split("\r\n")[1:]:
             if line.lower().startswith("sec-websocket-key:"):
                 key = line.split(":", 1)[1].strip()
+            elif line.lower().startswith("origin:"):
+                origin = line.split(":", 1)[1].strip()
+        # Refus des origines web : seule une page locale (file://, origine "null")
+        # ou un client sans en-tete Origin peut se connecter.
+        if origin and origin.lower() != "null":
+            try:
+                sock.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
+            except OSError:
+                pass
+            if agent.log:
+                agent.log.warning("Agent : origine refusee (%s)" % origin)
+            return
         if not key or "upgrade" not in headers.lower():
             try:
                 sock.sendall(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n")

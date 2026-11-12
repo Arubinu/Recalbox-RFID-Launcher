@@ -563,7 +563,7 @@ def cmd_pair(options) -> int:
     until = open_pairing_window(options.home, PAIRING_MINUTES)
     print("Fenetre d'appairage ouverte pour %d minutes." % PAIRING_MINUTES)
     print("Sur le PC, ouvrez installer.html et cliquez sur « Se connecter » :")
-    print("le jeton sera transmis automatiquement, une seule fois.")
+    print("la page demandera le jeton, transmis apres un appui de 3 s sur le bouton.")
     print("Echeance : %s" % time.strftime("%H:%M", time.localtime(until)))
     print("(l'agent doit tourner : rfidctl start)")
     return 0

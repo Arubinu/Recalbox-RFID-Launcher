@@ -1,6 +1,8 @@
 """Tests de l'appairage confirme physiquement."""
 
+import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -92,6 +94,52 @@ class PairingTest(unittest.TestCase):
         pairing.cancel(self.home)
         self.assertIsNone(pairing.pending(self.home))
         self.assertFalse(pairing.take_grant(self.home, "QUELCONQUE"))
+
+
+class PrivateStateDirTest(unittest.TestCase):
+    """Les etats d'appairage ne doivent jamais vivre sur le partage Samba."""
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="rfid-state-")
+        self.previous = os.environ.pop(pairing.STATE_DIR_ENV, None)
+
+    def tearDown(self):
+        if self.previous is None:
+            os.environ.pop(pairing.STATE_DIR_ENV, None)
+        else:
+            os.environ[pairing.STATE_DIR_ENV] = self.previous
+        shutil.rmtree(self.home, ignore_errors=True)
+
+    def test_dossier_impose(self):
+        prive = os.path.join(self.home, "prive")
+        os.environ[pairing.STATE_DIR_ENV] = prive
+        self.assertEqual(os.path.dirname(pairing.request_path(self.home)), prive)
+        self.assertEqual(os.path.dirname(pairing.grant_path(self.home)), prive)
+
+    def test_accord_forge_ignore(self):
+        # Un poste du reseau peut ecrire dans le partage : un faux accord depose
+        # dans home ne doit donner aucun acces.
+        prive = os.path.join(self.home, "prive")
+        os.environ[pairing.STATE_DIR_ENV] = prive
+        request = pairing.create_request(self.home)
+        with open(os.path.join(self.home, pairing.GRANT_FILENAME), "w", encoding="utf-8") as handle:
+            json.dump({"id": request["id"], "request_until": request["until"] + 60}, handle)
+        with open(os.path.join(self.home, pairing.REQUEST_FILENAME), "w", encoding="utf-8") as handle:
+            json.dump({"id": "FORGED01", "until": request["until"] + 60}, handle)
+        self.assertFalse(pairing.take_grant(self.home, request["id"]), "faux accord accepte")
+
+    def test_accord_du_service_accepte(self):
+        prive = os.path.join(self.home, "prive")
+        os.environ[pairing.STATE_DIR_ENV] = prive
+        request = pairing.create_request(self.home)
+        pairing.grant(self.home, request, request["created"] + 1.0)
+        self.assertTrue(pairing.take_grant(self.home, request["id"]))
+
+    def test_dossier_par_defaut_hors_partage(self):
+        # La redirection vers /tmp est verifiee sur la machine elle-meme ; ici on
+        # s'assure au moins que la valeur par defaut n'est pas le partage.
+        self.assertFalse(pairing.DEFAULT_STATE_DIR.startswith("/recalbox/share"))
+        self.assertNotIn("/recalbox/share", pairing.DEFAULT_STATE_DIR)
 
 
 class ServiceButtonTest(unittest.TestCase):

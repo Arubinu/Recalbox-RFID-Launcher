@@ -33,7 +33,6 @@ Le programme est installé dans un dossier **avec** ses données :
 ├── app/         <- programme (remplacé à chaque mise à jour)
 ├── config.ini   <- VOTRE configuration (conservée)
 ├── tags.json    <- VOS badges (conservés)
-├── token.txt    <- jeton de l'agent (conservé)
 ├── logs/
 ├── rfidctl
 ├── installer.html
@@ -43,22 +42,26 @@ Le programme est installé dans un dossier **avec** ses données :
 ```
 
 La mise à jour **remplace uniquement `app/`** (et les fichiers de programme),
-puis l'agent se recharge et redémarre le service. Configuration, badges et jeton
-ne sont jamais touchés.
+puis l'agent se recharge et redémarre le service. Configuration et badges ne sont
+jamais touchés. Aucun secret n'est stocké dans ce dossier : l'agent tire un
+nouveau secret de session à chaque démarrage, donc l'autorisation est à redonner
+après chaque mise à jour (appui de 3 s sur le bouton).
 
 ## Méthode 1 — depuis `installer.html` (aucune ligne de commande)
 
-1. Double-cliquez sur `installer.html`, connectez-vous (adresse, port `8765`,
-   jeton de `\\RECALBOX\share\system\rfid\token.txt`).
+1. Double-cliquez sur `installer.html`, renseignez l'adresse et le port `8765`,
+   puis cliquez sur « Se connecter » et gardez le bouton du boîtier appuyé
+   3 secondes (compte à rebours de 30 s).
 2. Ouvrez **« Mettre à jour depuis un fichier ZIP ou une adresse »** (dernière
    carte, tout en bas) puis **« Choisir un fichier ZIP »** : l'archive est
    envoyée par WebSocket depuis le PC, installée sur la Recalbox, et le journal
    s'affiche ;
 3. ou collez une URL puis cliquez sur « Installer depuis cette adresse ».
 
-L'agent se recharge tout seul avec la nouvelle version (la page se reconnecte),
-puis il suffit de cliquer sur **« Redémarrer la Recalbox »** (carte
-« Installation et service ») si le SPI vient d'être activé.
+L'agent se recharge tout seul avec la nouvelle version (la page se reconnecte et
+demande une nouvelle autorisation : un appui de 3 s sur le bouton suffit), puis il
+suffit de cliquer sur **« Redémarrer la Recalbox »** (carte « Installation et
+service ») si le SPI vient d'être activé.
 
 Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
 

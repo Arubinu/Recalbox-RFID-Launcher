@@ -9,7 +9,7 @@ lancer un script. Comptez 5 minutes.
   affichée). Le lancement de jeu par script n'existe pas avant Recalbox 9.
 * Le **serveur SSH** activé : `RÉSEAU` > `SERVEUR SSH` > `ON`.
 * Le **partage réseau** activé : `RÉSEAU` > `PARTAGE SMB` > `ON` (activé par
-  défaut). Le partage apparaît dans l'Explorateur sous `\\RECALBOX\share`.
+  défaut) : c'est par lui que le programme arrive sur la Recalbox.
 * Le montage du Raspberry Pi et le câblage du lecteur : voir
   [`CABLAGE.md`](CABLAGE.md).
 
@@ -36,8 +36,9 @@ l'évite complètement. La page génère un **fichier unique** qui fait tout.
 4. **Redémarrez Recalbox.** Le script d'amorçage installe tout seul (programme,
    SPI, service) et redémarre une fois de plus si le SPI vient d'être activé.
    Le déroulé est dans `\\RECALBOX\share\system\rfid\logs\auto-install.log`.
-5. **Relancez le même `.cmd`** : il lit le jeton sur le partage, le copie dans
-   le presse-papiers et ouvre l'interface de gestion avec le jeton déjà rempli.
+5. **Rouvrez la page** (le `.cmd` le fait pour vous), cliquez sur **« Se
+   connecter »**, puis **gardez le bouton du boîtier appuyé 3 secondes** pendant
+   le compte à rebours (30 s) : c'est toute l'autorisation.
 
 Si le message est `ECHEC : acces au partage impossible`, le script affiche le
 code d'erreur et les pistes (adresse IP, mot de passe, accès invité).
@@ -56,10 +57,10 @@ UNC : c'est une méthode de repli, à utiliser si elle fonctionne chez vous.
    * `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`
      (démarrage automatique de l'agent).
 3. **Redémarrez Recalbox.**
-4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, et
-   cliquez sur **« Se connecter »** — le jeton est lu automatiquement dans
-   `\\RECALBOX\share\system\rfid\token.txt` (une autorisation de dossier la
-   première fois, mémorisée ensuite).
+4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, puis
+   cliquez sur **« Se connecter »** et **gardez le bouton du boîtier appuyé
+   3 secondes** pendant le compte à rebours (30 s). Rien à recopier, aucun
+   fichier à chercher.
 5. Cliquez sur **« Installer / mettre à jour »**, puis sur
    **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
 
@@ -134,13 +135,12 @@ WebSocket protégé qui tourne sur la Recalbox.
 3. **Redémarrez Recalbox** (`QUITTER` > `REDÉMARRER`) : l'agent démarre avec
    l'interface.
 4. **Double-cliquez sur `installer.html`** (le fichier est à la racine du
-   projet, sur votre PC). Renseignez :
-   * l'adresse : `recalbox.local` (ou l'IP affichée dans `RÉSEAU` > `INFORMATIONS`) ;
-   * le port : `8765` ;
-   * le jeton : **laissez le champ vide**. Cliquez sur « Se connecter », puis gardez
-     le bouton du boîtier appuyé 3 secondes pendant le compte à rebours (30 s) :
-     c'est la preuve de présence. Il n'y a aucun fichier à chercher.
-5. Cliquez sur **« Se connecter »**, puis sur **« Installer / mettre à jour »**
+   projet, sur votre PC). Renseignez l'adresse (`recalbox.local`, ou l'IP
+   affichée dans `RÉSEAU` > `INFORMATIONS`) et le port `8765`, puis cliquez sur
+   « Se connecter » et gardez le bouton du boîtier appuyé 3 secondes pendant le
+   compte à rebours (30 s) : c'est l'autorisation. Il n'y a aucun fichier à
+   chercher et aucun mot de passe à saisir.
+5. Cliquez sur **« Installer / mettre à jour »**
    (onglet « Maintenance ») : le journal défile en direct.
 6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer la Recalbox »**
    (indispensable pour que le lecteur soit reconnu).
@@ -150,7 +150,8 @@ Tout est journalisé dans `/recalbox/share/system/rfid/logs/install.log` et
 
 > `installer.html` ne nécessite ni serveur local ni installation : un
 > navigateur récent (Edge, Chrome, Firefox, Safari) suffit. Il mémorise
-> l'adresse et le jeton pour les fois suivantes.
+> l'adresse et l'autorisation pour les fois suivantes : une actualisation de la
+> page ne redemande donc rien.
 
 ## Méthode 3 — assistant Windows
 
@@ -217,9 +218,14 @@ reboot
 | Commande | `/recalbox/share/system/rfid/rfidctl` |
 | Démarrage auto | `/recalbox/share/userscripts/recalbox-rfid(permanent).py3` (service RFID) |
 | Agent de gestion | `/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3` (WebSocket) |
-| Jeton d'accès | `/recalbox/share/system/rfid/token.txt` (créé au premier démarrage de l'agent) |
+| Autorisation | appui de 3 s sur le bouton du boîtier ; secret de session **en mémoire**, aucun fichier |
 | Journaux | `/recalbox/share/system/rfid/logs/rfid.log`, `agent.log`, `install.log` |
 | Bus SPI | ajoute `dtparam=spi=on` dans `/boot/recalbox-user-config.txt` (sauvegarde `.bak-rfid-launcher`) |
+
+Aucun secret n'est écrit sur le partage : l'agent tire un secret de session
+aléatoire à chaque démarrage, et il reste en mémoire. Les fichiers `token.txt` et
+`paired.ok` d'une ancienne version sont supprimés automatiquement au démarrage de
+l'agent.
 
 Tout est dans le partage : **rien n'est écrit dans le système Recalbox**, une
 mise à jour de Recalbox ne supprime donc pas l'installation (mais vérifiez que
@@ -227,8 +233,9 @@ mise à jour de Recalbox ne supprime donc pas l'installation (mais vérifiez que
 après une montée de version majeure).
 
 L'installateur est **idempotent** : le relancer réinstalle proprement, en
-conservant configuration, badges et jeton. C'est aussi la procédure de mise à
-jour.
+conservant configuration et badges. C'est aussi la procédure de mise à jour ;
+après chaque réinstallation, l'autorisation est à redonner (un appui de 3 s sur
+le bouton).
 
 ## Options de l'installateur
 

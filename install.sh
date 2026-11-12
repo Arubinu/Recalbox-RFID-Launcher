@@ -13,7 +13,7 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="2.4.0"
+VERSION="2.5.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
@@ -439,11 +439,11 @@ say "Configuration : $HOME_DIR/config.ini"
 say "Badges        : $HOME_DIR/tags.json"
 say "Journal       : $HOME_DIR/logs/rfid.log"
 say "Agent WebSocket: $AGENT_URL"
-say "Jeton         : $HOME_DIR/token.txt"
+say "Acces         : appui de 3 s sur le bouton (aucun mot de passe)"
 say ""
 say "Tout se gere depuis installer.html (ouvert sur votre PC) :"
 say "  1. ouvrez installer.html (livre avec le projet) ;"
-say "  2. adresse $LOCAL_IP, port 8765, jeton lu dans token.txt ;"
+say "  2. adresse $LOCAL_IP, port 8765, puis bouton 3 s pour autoriser ;"
 say "  3. installez, mettez a jour et gerez les badges."
 say ""
 say "Prochaines etapes :"
@@ -452,7 +452,7 @@ if [ "$NEED_REBOOT" = "1" ]; then
     say "  $STEP. Redemarrez Recalbox (menu > QUITTER > REDEMARRER) pour activer le SPI."
     STEP=$((STEP + 1))
 fi
-say "  $STEP. Connectez installer.html (jeton : $HOME_DIR/token.txt)"
+say "  $STEP. Connectez installer.html (bouton 3 s sur le boitier)"
 STEP=$((STEP + 1))
 say "  $STEP. Cliquez sur « Installer », puis redemarrez si le SPI etait inactif."
 STEP=$((STEP + 1))

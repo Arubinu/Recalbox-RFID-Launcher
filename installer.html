@@ -104,6 +104,10 @@
   .chip .version { color: var(--faint); font-weight: 500; }
 
   /* ------------------------------------------------------------- messages */
+  /* Sans cette regle, un simple `display: flex` sur un composant annule
+     l'attribut `hidden` (regle du navigateur, moins prioritaire) : le bandeau
+     « Connexion perdue » restait alors affiche en permanence. */
+  [hidden] { display: none !important; }
   #banner { margin: 12px 0 0; }
   .offline {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -274,18 +278,6 @@
     border-color: rgba(255, 255, 255, .26);
   }
 
-  /* champ avec action integree (import du jeton) */
-  .input-wrap { position: relative; display: block; }
-  .input-wrap input[type=password] { padding-right: 42px; }
-  .icon-btn {
-    position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
-    width: 32px; height: 32px; padding: 0;
-    border-radius: 8px; border: 1px solid transparent;
-    background: transparent; color: var(--muted);
-    display: grid; place-items: center;
-  }
-  .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .12); }
-  .icon-btn svg { width: 17px; height: 17px; }
   .hint { color: var(--muted); font-size: 12.5px; }
   .hint:empty, p.hint:empty { display: none; }
   .auto-note {
@@ -625,7 +617,7 @@
         <button class="back" type="button" data-goto="choix">← Accueil</button>
         <div>
           <h1>Se connecter à la Recalbox</h1>
-          <p>Aucun mot de passe à recopier : la page récupère le sien toute seule.</p>
+          <p>Rien à recopier : c'est un appui sur le bouton du boîtier qui autorise cet ordinateur.</p>
         </div>
       </div>
 
@@ -637,20 +629,7 @@
           <label class="field"><span>Port</span>
             <input type="number" id="port" placeholder="8765" min="1" max="65535">
           </label>
-          <label class="field"><span>Jeton (facultatif)</span>
-            <span class="input-wrap">
-              <input type="password" id="token" placeholder="laisser vide" autocomplete="off">
-              <button class="icon-btn" id="btn-token-file" type="button"
-                      title="Importer le fichier token.txt" aria-label="Importer le fichier token.txt">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 16V7"/><path d="m8.5 10.5 3.5-3.5 3.5 3.5"/>
-                  <path d="M5 16.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18v-1.5"/>
-                </svg>
-              </button>
-              <input type="file" id="file-token" accept=".txt,text/plain" hidden>
-            </span>
-          </label>
+          <input type="hidden" id="token">
         </div>
         <p class="hint" id="connect-hint"></p>
         <div class="actions connect-actions">
@@ -671,15 +650,15 @@
         <details>
           <summary>La connexion ne marche pas&nbsp;?</summary>
           <p class="small muted">
-            <b>1.</b> Redémarrez la Recalbox : c'est au démarrage que l'agent se lance.
-            <b>2.</b> Vérifiez l'adresse, ou cliquez sur « Faire un diagnostic » ci-dessous.
-            <b>3.</b> En dernier recours, le jeton est dans le fichier
-            <code>token.txt</code> du partage (16 caractères, chiffres et lettres A-F).
+            <b>1.</b> Vérifiez que la Recalbox est allumée et que le service tourne
+            (onglet Maintenance une fois connecté, ou le diagnostic ci-dessous).
+            <b>2.</b> Vérifiez l'adresse, ou essayez son adresse IP.
+            <b>3.</b> L'autorisation se donne <b>au boîtier</b> : gardez le bouton appuyé
+            3 secondes pendant le compte à rebours. En SSH, <code>rfidctl pair</code>
+            réouvre la demande.
           </p>
           <div class="actions">
-            <button class="secondary tiny" id="btn-copy-path">Copier l'adresse du dossier</button>
             <button class="secondary tiny" id="btn-netuse">Faire un diagnostic</button>
-            <span class="muted small" id="token-hint"></span>
           </div>
         </details>
       </section>
@@ -816,7 +795,7 @@
 <dialog id="help-dialog">
   <h2>Besoin d'aide&nbsp;?</h2>
   <p><b>Installer</b> : téléchargez le fichier, double-cliquez dessus, puis redémarrez la Recalbox.</p>
-  <p><b>Se connecter</b> : laissez le jeton vide. La page le récupère seule pendant les minutes qui suivent le démarrage.</p>
+  <p><b>Se connecter</b> : rien à recopier. Gardez le bouton du boîtier appuyé 3 secondes pendant le compte à rebours.</p>
   <p><b>Un badge</b> : surlignez un jeu dans Recalbox, appuyez sur le bouton, posez le badge.</p>
   <p>
     Le diagnostic complet se trouve dans « Se connecter » → « La connexion ne marche pas ? »
@@ -1091,27 +1070,14 @@ function buildInstallerCmd(host, zipBytes) {
     "set \"URLPATH=%~dp0\"",
     "set \"URLPATH=!URLPATH:\\=/!\"",
     "set \"URLPATH=!URLPATH: =%%20!\"",
-    "rem Demande d'appairage : l'agent ouvrira la fenetre a son prochain demarrage.",
-    "if not exist \"%SHARE%\\system\\rfid\" mkdir \"%SHARE%\\system\\rfid\" >nul 2>&1",
-    "if not exist \"%SHARE%\\system\\rfid\\pair-request\" echo. > \"%SHARE%\\system\\rfid\\pair-request\"",
-    "if not exist \"%SHARE%\\system\\rfid\\token.txt\" goto redemarrer",
-    "echo    Attente de l'agent de la Recalbox (30 s maximum) ...",
-    "powershell -NoProfile -Command \"$fin=(Get-Date).AddSeconds(30); while((Get-Date) -lt $fin){ try { $c=New-Object Net.Sockets.TcpClient; $t=$c.ConnectAsync('%PAGEHOST%',8765); if($t.Wait(1500)){ $c.Close(); exit 0 } } catch {}; Start-Sleep -Milliseconds 1500 }; exit 4\" 2>nul",
-    "if errorlevel 4 echo    L'agent ne repond pas encore : redemarrez la Recalbox, attendez une minute, puis relancez ce fichier.",
-    "if not errorlevel 4 echo    Agent pret.",
-    "set /p TOKEN=<\"%SHARE%\\system\\rfid\\token.txt\"",
-    "echo    Jeton : !TOKEN!  (copie dans le presse-papiers)",
-    "clip < \"%SHARE%\\system\\rfid\\token.txt\"",
-    "if not exist \"%~dp0installer.html\" goto fin",
-    "start \"\" \"file:///!URLPATH!installer.html#host=%PAGEHOST%&port=8765&token=!TOKEN!\"",
-    "goto fin",
-    ":redemarrer",
-    "echo    ETAPE OBLIGATOIRE : redemarrez la Recalbox maintenant.",
-    "echo    C'est au demarrage qu'elle installe le programme, demarre l'agent et",
-    "echo    cree le jeton. Tant que ce n'est pas fait, la page ne peut pas se connecter.",
     "echo.",
-    "echo    La page va s'ouvrir : apres le redemarrage (environ 1 minute),",
-    "echo    cliquez simplement sur \"Se connecter\" -- elle recupere le jeton toute seule.",
+    "echo    ETAPE OBLIGATOIRE : redemarrez la Recalbox maintenant.",
+    "echo    C'est au demarrage qu'elle installe le programme, demarre l'agent et le service.",
+    "echo.",
+    "echo    La page va s'ouvrir. Apres le redemarrage (environ 1 minute) :",
+    "echo     1. cliquez sur \"Se connecter\" ;",
+    "echo     2. gardez le bouton du boitier appuye 3 secondes pour autoriser ce PC.",
+    "echo    Aucun mot de passe, aucun jeton a recopier.",
     "if not exist \"%~dp0installer.html\" goto fin",
     "start \"\" \"file:///!URLPATH!installer.html#host=%PAGEHOST%\"",
     "goto fin",
@@ -1194,8 +1160,8 @@ class Agent {
       }, timeoutMs);
 
       socket.onopen = () => {
-        // Sans jeton on demande l'appairage (une seule fois, reseau local),
-        // sinon on s'authentifie normalement.
+        // Sans secret de session on demande l'appairage (la Recalbox le refuse
+        // desormais : il faut passer par pairWithButton), sinon on s'authentifie.
         const first = token
           ? { id: -1, cmd: "auth", token }
           : { id: -1, cmd: "pair" };
@@ -1224,7 +1190,7 @@ class Agent {
             resolve(message.data || {});
           } else {
             try { socket.close(); } catch (error) { /* ignore */ }
-            reject(new Error(message.error || "jeton refusé"));
+            reject(new Error(message.error || "autorisation refusée"));
           }
           return;
         }
@@ -1237,8 +1203,8 @@ class Agent {
       socket.onclose = () => {
         clearTimeout(timer);
         reject(new Error(token
-          ? "connexion fermée par la Recalbox (jeton refusé ?)"
-          : "appairage fermé : la Recalbox ne propose plus de jeton automatique"));
+          ? "connexion fermée par la Recalbox (autorisation expirée ?)"
+          : "connexion fermée : la Recalbox exige une autorisation au bouton"));
       };
     });
   }
@@ -1610,14 +1576,14 @@ function currentSettings() {
   return {
     host: $("#host").value.trim() || "recalbox.local",
     port: parseInt($("#port").value, 10) || 8765,
-    token: $("#token").value.trim(),
+    /* secret de session : rempli par l'autorisation au bouton, jamais saisi */
+    token: ($("#token") && $("#token").value.trim()) || "",
   };
 }
 
-/* ------------------------------------- partage : jeton et accès Windows */
+/* ---------------------------------------- partage : accès Windows */
 const SHARE_DB = "recalbox-rfid";
 const SHARE_STORE = "handles";
-const TOKEN_PATH = "system/rfid/token.txt";
 
 function idbOpen() {
   return new Promise((resolve, reject) => {
@@ -1690,15 +1656,6 @@ async function pickShare() {
   return await window.showDirectoryPicker({ mode: "readwrite", id: "recalbox-share" });
 }
 
-async function readTokenFromShare() {
-  let handle = await savedShare(true);
-  if (!handle) handle = await pickShare();
-  await rememberShare(handle);
-  const token = (await readShareFile(handle, TOKEN_PATH)).trim();
-  if (!token) throw new Error("jeton vide (redémarrez Recalbox pour le créer)");
-  return token;
-}
-
 function downloadNetUse() {
   const settings = currentSettings();
   const host = settings.host || "recalbox.local";
@@ -1752,10 +1709,8 @@ function downloadNetUse() {
     "if not exist \"%SHARE%\\userscripts\\recalbox-rfid(permanent).py3\" echo    MANQUE : userscripts\\recalbox-rfid(permanent).py3",
     "if exist \"%SHARE%\\userscripts\\recalbox-rfid-agent(permanent).py3\" echo    OK    : demarrage de l'agent",
     "if not exist \"%SHARE%\\userscripts\\recalbox-rfid-agent(permanent).py3\" echo    MANQUE : userscripts\\recalbox-rfid-agent(permanent).py3",
-    "if exist \"%SHARE%\\system\\rfid\\token.txt\" echo    OK    : jeton present",
-    "if not exist \"%SHARE%\\system\\rfid\\token.txt\" echo    MANQUE : system\\rfid\\token.txt  -- normal tant que la Recalbox n'a pas redemarre",
-    "if exist \"%SHARE%\\system\\rfid\\paired.ok\" echo    OK    : un poste est deja apparie (appairage auto ferme)",
-    "if exist \"%SHARE%\\system\\rfid\\pair-request\" echo    NOTE  : demande d'appairage en attente (elle s'ouvrira au demarrage)",
+    "if exist \"%SHARE%\\system\\rfid\\pair-pending.json\" echo    NOTE  : une demande d'autorisation est en attente (30 s)",
+    "echo    INFO  : aucun mot de passe n'est necessaire -- on autorise en gardant le bouton 3 s",
     "echo.",
     "echo 5) Contenu du dossier system\\rfid",
     "if exist \"%SHARE%\\system\\rfid\" dir /b \"%SHARE%\\system\\rfid\"",
@@ -1786,8 +1741,8 @@ function downloadNetUse() {
 
 /* --------------------------------------------------------------- appairage */
 /* Appairage confirme physiquement : la page depose UNE demande (30 s), la
-   Recalbox l'accepte quand on garde le bouton appuye (3 s), la page echangera
-   cet accord contre le jeton — une seule fois. */
+   Recalbox l'accepte quand on garde le bouton appuye (3 s) et renvoie alors un
+   secret de session, valable jusqu'au prochain demarrage de la Recalbox. */
 function openSocket(url, timeoutMs = 6000) {
   return new Promise((resolve, reject) => {
     let socket;
@@ -1896,53 +1851,35 @@ async function tryReconnect(silent) {
     if (pairing.token) {
       settings.token = pairing.token;
       $("#token").value = pairing.token;
-      $("#token-hint").textContent = "Autorisation accordée au bouton : jeton mémorisé.";
       store.write(settings);
     } else {
       const raison = pairing.error || "";
-      /* Dernier repli : lire token.txt sur le partage via le navigateur. */
-      try {
-        const token = await readTokenFromShare();
-        $("#token").value = token;
-        settings.token = token;
-        store.write(settings);
-      } catch (error) {
-        setLink(false, "déconnecté");
-        if (/deja en attente/i.test(raison)) {
-          $("#connect-hint").textContent = "Une demande est déjà en attente.";
-          if (!silent) showBanner("warn",
-            "Une autre demande d'appairage est déjà en attente sur la Recalbox (30 s). " +
-            "Attendez la fin du compte à rebours, puis cliquez de nouveau sur « Se connecter » : " +
-            "une seule connexion peut être autorisée à la fois.");
-        } else if (/service/i.test(raison)) {
-          $("#connect-hint").textContent = "Le service du lecteur est arrêté.";
-          if (!silent) showBanner("err", serviceDownMessage(url));
-        } else if (/appui/i.test(raison)) {
-          $("#connect-hint").textContent = "Le bouton n'a pas été maintenu assez longtemps.";
-          if (!silent) showBanner("warn",
-            "Le délai de 30 s est écoulé sans appui sur le bouton. Cliquez de nouveau sur " +
-            "« Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant " +
-            "que la page compte à rebours.");
-        } else if (/connexion impossible|délai dépassé|adresse invalide/i.test(raison)) {
-          $("#connect-hint").textContent = "Aucune réponse de la Recalbox (" + settings.host + ").";
-          if (!silent) showBanner("err", agentDownMessage(url));
-        } else {
-          $("#connect-hint").textContent = "Appairage refusé.";
-          if (!silent) showBanner("err",
-            "L'appairage n'a pas abouti (" + raison + "). Réessayez ; en dernier recours, " +
-            "relancez le fichier recalbox-rfid-installation.cmd puis redémarrez la Recalbox.");
-        }
-        setView("connect");
-        return;
+      setLink(false, "déconnecté");
+      if (/deja en attente/i.test(raison)) {
+        $("#connect-hint").textContent = "Une demande est déjà en attente.";
+        if (!silent) showBanner("warn",
+          "Une autre demande d'autorisation est déjà en attente sur la Recalbox (30 s). " +
+          "Attendez la fin du compte à rebours, puis cliquez de nouveau sur « Se connecter ».");
+      } else if (/service/i.test(raison)) {
+        $("#connect-hint").textContent = "Le service du lecteur est arrêté.";
+        if (!silent) showBanner("err", serviceDownMessage(url));
+      } else if (/appui/i.test(raison)) {
+        $("#connect-hint").textContent = "Le bouton n'a pas été maintenu assez longtemps.";
+        if (!silent) showBanner("warn",
+          "Le délai de 30 s est écoulé sans appui sur le bouton. Cliquez de nouveau sur " +
+          "« Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes.");
+      } else if (/connexion impossible|délai dépassé|adresse invalide/i.test(raison)) {
+        $("#connect-hint").textContent = "Aucune réponse de la Recalbox (" + settings.host + ").";
+        if (!silent) showBanner("err", agentDownMessage(url));
+      } else {
+        $("#connect-hint").textContent = "Autorisation refusée.";
+        if (!silent) showBanner("err",
+          "L'autorisation n'a pas abouti (" + raison + "). Réessayez en gardant le bouton " +
+          "appuyé 3 secondes ; en SSH, rfidctl pair réouvre la demande.");
       }
+      setView("connect");
+      return;
     }
-  }
-
-  /* Un jeton Recalbox = 16 caracteres hexadecimaux (ex. 70C2633536122BAA). */
-  if (!/^[0-9A-F]{16}$/i.test(settings.token)) {
-    $("#token-hint").textContent =
-      "Un jeton Recalbox fait 16 caractères (chiffres et lettres A-F) ; celui-ci en fait " +
-      settings.token.length + ". Le presse-papiers contient peut-être autre chose.";
   }
 
   const attempts = 3;
@@ -1956,7 +1893,6 @@ async function tryReconnect(silent) {
       store.write(settings);
       connectedOnce = true;
       $("#connect-hint").textContent = "";
-      $("#token-hint").textContent = "";
       setConnected({});
       lastStatusJson = "";
       await refresh();
@@ -1964,12 +1900,13 @@ async function tryReconnect(silent) {
       return;
     } catch (error) {
       message = error.message || String(error);
-      /* Jeton refuse : on demande l'autorisation au bouton, une seule fois. */
-      if (!pairedNow && /jeton|refus/i.test(message)) {
+      /* Session expiree (redemarrage) : on redemande l'autorisation au bouton. */
+      if (!pairedNow && /secret|session|refus/i.test(message)) {
         pairedNow = true;
         const pairing = await pairWithButton(url, (seconds, hold) => {
           $("#connect-hint").textContent =
-            "Jeton refusé. Gardez le bouton du boîtier appuyé " + hold + " s (" + seconds + " s)…";
+            "Autorisation expirée. Gardez le bouton du boîtier appuyé " + hold + " s (" +
+            seconds + " s)…";
         });
         if (pairing.token) {
           settings.token = pairing.token;
@@ -1985,31 +1922,21 @@ async function tryReconnect(silent) {
   }
 
   setLink(false, "déconnecté");
-  const refused = /jeton|fermée|fermee|refus/i.test(message);
+  const refused = /secret|session|fermée|fermee|refus/i.test(message);
   $("#connect-hint").textContent = refused
-    ? "La Recalbox répond mais refuse le jeton."
+    ? "La Recalbox répond mais n'autorise plus ce poste."
     : "Aucune réponse de la Recalbox (" + settings.host + ").";
   if (!silent) showBanner("err", refused
-    ? "La Recalbox répond mais refuse le jeton, et l'appairage au bouton n'a pas abouti. " +
-      "Cliquez de nouveau sur « Se connecter » en gardant le bouton appuyé 3 secondes."
+    ? "La Recalbox a redémarré (ou le service a été relancé) : elle demande une nouvelle " +
+      "autorisation. Cliquez de nouveau sur « Se connecter » en gardant le bouton appuyé " +
+      "3 secondes."
     : agentDownMessage(url));
   setView("connect");
 }
 
 $("#btn-connect").addEventListener("click", () => tryReconnect(false));
-$("#token").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
 $("#host").addEventListener("keydown", (event) => { if (event.key === "Enter") tryReconnect(false); });
 $("#btn-netuse").addEventListener("click", downloadNetUse);
-
-/* Adresse du dossier du jeton, affichée et copiable en un clic. */
-function tokenFolderPath() {
-  return "\\\\" + currentSettings().host + "\\share\\system\\rfid";
-}
-
-function updateTokenPath() {
-  const node = $("#token-path");
-  if (node) node.textContent = tokenFolderPath();
-}
 
 async function copyText(text) {
   try {
@@ -2030,23 +1957,6 @@ async function copyText(text) {
   }
 }
 
-$("#btn-copy-path").addEventListener("click", async () => {
-  const path = tokenFolderPath();
-  const done = await copyText(path);
-  $("#token-hint").textContent = done
-    ? "Adresse copiée : dans l'Explorateur, Ctrl+V dans la barre du haut puis Entrée."
-    : "À copier à la main : " + path;
-});
-
-$("#btn-token-file").addEventListener("click", () => $("#file-token").click());
-$("#file-token").addEventListener("change", async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  $("#token").value = text.trim();
-  event.target.value = "";
-  $("#connect-hint").textContent = "Jeton chargé, cliquez sur « Connecter ».";
-});
 
 /* ---------------------------------------------------------------- boutons */
 $("#btn-install").addEventListener("click", () => run(async () => {
@@ -2252,33 +2162,20 @@ async function copyPayload() {
   const saved = store.read();
   $("#host").value = saved.host || "recalbox.local";
   $("#port").value = saved.port || 8765;
-  $("#token").value = saved.token || "";
+  if ($("#token")) $("#token").value = saved.token || "";
 
-  // Paramètres passés dans l'URL (#host=…&port=…&token=…), par exemple par
-  // l'installateur .cmd : connexion immédiate, sans rien saisir.
+  // Paramètres passés dans l'URL (#host=…&port=…), par exemple par
+  // l'installateur .cmd : la page arrive deja sur l'ecran de connexion.
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const search = new URLSearchParams(window.location.search);
-  for (const key of ["host", "port", "token"]) {
+  for (const key of ["host", "port"]) {
     const value = hash.get(key) || search.get(key);
     if (value) $("#" + key).value = value;
   }
-  if (hash.get("token")) {
-    $("#connect-hint").textContent = "Connexion automatique…";
-    setView("connect");
-    setTimeout(() => tryReconnect(true), 400);
-    return;
-  }
-
-  if (saved.token) {
-    /* Rien a afficher : la page sait deja a quelle Recalbox se connecter. */
-    $("#connect-hint").textContent = "";
-  } else {
-    $("#connect-hint").textContent =
-      "Laissez le jeton vide : il sera récupéré automatiquement sur la Recalbox.";
-  }
-  updateTokenPath();
-  $("#host").addEventListener("input", updateTokenPath);
-  setView("choix");
+  $("#connect-hint").textContent = saved.token
+    ? ""
+    : "Cliquez sur « Se connecter » : gardez ensuite le bouton du boîtier appuyé 3 secondes.";
+  setView(hash.get("host") || search.get("host") ? "connect" : "choix");
 })();
 
 /* ------------------------------------------------------------- navigation */
@@ -2388,13 +2285,20 @@ function scheduleReconnect(delay) {
   reconnectTimer = setTimeout(attemptReconnect, delay);
 }
 
+/* Stoppe les tentatives et le compte a rebours : le message affiche reste. */
+function stopRetries() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (offlineTick) { clearInterval(offlineTick); offlineTick = null; }
+  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+}
+
 async function attemptReconnect() {
   if (!offlineSince) return;        /* deja reconnecte entre-temps */
   const settings = currentSettings();
-  if (!settings.token) {                    /* plus de jeton : retour au formulaire */
+  if (!settings.token) {         /* aucune autorisation en memoire : formulaire */
     clearOffline();
     setView("connect");
-    showBanner("err", "Connexion perdue et aucun jeton mémorisé : reconnectez-vous.");
+    showBanner("err", "Connexion perdue et aucune autorisation en mémoire : reconnectez-vous.");
     return;
   }
   reconnectAttempt++;
@@ -2404,11 +2308,14 @@ async function attemptReconnect() {
     await goOnline();
   } catch (error) {
     const raison = (error && error.message) || "";
-    if (/jeton|refus|invalide/i.test(raison)) {
-      /* Inutile de spammer : il faut re-appairer ou relire le jeton. */
+    if (/secret|session|autorisation|refus|invalide/i.test(raison)) {
+      /* Inutile de spammer : la Recalbox a redemarre, il faut un nouvel appui.
+         On arrete aussi le compte a rebours, sinon il reecrit ce message. */
+      stopRetries();
       showOfflineStrip("warn",
-        "La Recalbox refuse le jeton : ouvrez « Se connecter » et refaites l'appairage.");
-      setLink(false, "jeton refusé");
+        "La Recalbox a redémarré : ouvrez « Se connecter » et gardez le bouton appuyé " +
+        "3 secondes pour rétablir l'accès.");
+      setLink(false, "autorisation expirée");
       return;
     }
     const delay = Math.min(6000, 1000 + reconnectAttempt * 800);

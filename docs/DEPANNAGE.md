@@ -280,8 +280,8 @@ L'agent est lancé par le script permanent
    python3 /recalbox/share/system/rfid/app/main.py agent --home /recalbox/share/system/rfid
    ```
 
-   La commande affiche `ws://…:8765` et le chemin du jeton. `Ctrl+C` pour
-   arrêter.
+   La commande affiche `ws://…:8765` et rappelle que l'autorisation se donne au
+   bouton. `Ctrl+C` pour arrêter.
 7. Si l'interface d'EmulationStation ne démarre pas (écran noir), aucun script
    utilisateur ne tourne : utilisez SSH avec `install.sh --start`.
 
@@ -291,10 +291,10 @@ L'agent est lancé par le script permanent
 | --- | --- |
 | « Impossible de joindre la Recalbox après 3 tentatives » | l'agent ne tourne pas : Recalbox **pas redémarrée** depuis l'installation, mauvaise adresse, ou userscript de l'agent absent |
 | « Le service du lecteur est arrêté » | sans le service, personne ne surveille le bouton : Maintenance → **Démarrer** |
-| « Une autre demande d'appairage est déjà en attente » | une seule demande à la fois (30 s) : attendez la fin du compte à rebours et recommencez |
+| « Une autre demande d'autorisation est déjà en attente » | une seule demande à la fois (30 s) : attendez la fin du compte à rebours et recommencez |
 | « Le bouton n'a pas été maintenu assez longtemps » | il faut **3 secondes** d'appui continu pendant le compte à rebours |
-| « La Recalbox répond mais refuse le jeton » | jeton mal recopié (16 caractères A-F attendus) ou `token.txt` recréé depuis |
-| « Un jeton Recalbox fait 16 caractères… » | le presse-papiers contenait autre chose (texte copié ailleurs) : relisez `token.txt` |
+| « La Recalbox répond mais n'autorise plus ce poste » | la Recalbox a redémarré, le service a été relancé ou le programme a été mis à jour : cliquez sur « Se connecter » et gardez le bouton appuyé 3 s |
+| « Le délai de 30 s est écoulé sans appui sur le bouton » | une seule demande à la fois : recommencez « Se connecter », puis 3 s d'appui continu pendant le compte à rebours |
 | « délai dépassé » | adresse injoignable : testez `ping recalbox.local`, préférez l'IP |
 | rien ne se passe | la page doit être ouverte **depuis le disque** (`file://`) : ouverte depuis un site `https://`, le navigateur bloque `ws://` (mixed content) |
 
@@ -303,16 +303,17 @@ L'agent est lancé par le script permanent
 1. **La page est-elle bien `installer.html` du projet ?** (pas une ancienne
    copie ni l'ancienne interface web).
 2. **La Recalbox a-t-elle redémarré depuis l'installation ?** C'est au démarrage
-   que le programme est installé, que l'agent démarre et que `token.txt` est
-   créé. Sans ce redémarrage, la page ne peut rien joindre.
-3. **L'appairage** : champ jeton **vide**, « Se connecter », puis **bouton du
-   boîtier maintenu 3 secondes** pendant le compte à rebours (30 s). Une seule
-   demande à la fois. Replis : `rfidctl pair` en SSH, ou relancer le `.cmd`
-   (il dépose une demande), ou le fichier
-   `\\RECALBOX\share\system\rfid\token.txt` (16 caractères, chiffres et A-F).
+   que le programme est installé et que l'agent démarre, avec son secret de
+   session. Sans ce redémarrage, la page ne peut rien joindre.
+3. **L'autorisation** : « Se connecter », puis **bouton du boîtier maintenu
+   3 secondes** pendant le compte à rebours (30 s). Une seule demande à la fois,
+   et elle est refusée si le service du lecteur est arrêté. Rien à recopier :
+   aucun fichier ne contient de secret. Un seul repli, `rfidctl pair` en SSH :
+   il réouvre la fenêtre de 30 s et n'affiche aucun jeton.
 4. **L'adresse** : `recalbox.local` ou l'IP affichée dans
    `RÉSEAU` > `INFORMATIONS` ; le port `8765`. En cas de doute :
-   « Faire un diagnostic » (bouton dans l'aide du jeton) teste le port.
+   « Faire un diagnostic » (bouton dans l'aide de l'écran de connexion) teste le
+   port.
 5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
    un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
 
@@ -326,7 +327,7 @@ Vérifiez, dans cet ordre :
 3. **L'appui est continu** : 3 secondes, sans relâcher, *après* avoir cliqué sur
    « Se connecter » (la demande n'est valable que 30 s). Un appui commencé avant
    la demande est ignoré, par sécurité.
-4. Pendant une demande d'appairage, l'appui long **ne déclenche pas**
+4. Pendant une demande d'autorisation, l'appui long **ne déclenche pas**
    l'effacement d'un badge : c'est volontaire.
 
 ### « Le lanceur n'est pas installé » alors qu'il l'est
@@ -348,25 +349,34 @@ Causes fréquentes :
 | `Permission denied` | l'agent ne tourne pas en root : il doit être lancé par Recalbox (userscript) |
 | installation OK mais lecteur absent | le SPI n'est pas encore actif : redémarrer Recalbox |
 
-### Jeton perdu ou à changer
+### L'autorisation est perdue
 
-* Le lire sur le partage : `\\RECALBOX\share\system\rfid\token.txt` ;
-* pour le régénérer : supprimez ce fichier puis redémarrez Recalbox (il est
-  recréé au démarrage de l'agent) — pensez à ressaisir le nouveau jeton dans
-  `installer.html`.
+Il n'y a plus rien à lire ni à recopier : le secret de session n'existe qu'en
+mémoire et il est renouvelé à chaque démarrage de l'agent. Les anciens fichiers
+`system/rfid/token.txt` et `system/rfid/paired.ok` sont supprimés tout seuls au
+démarrage de l'agent.
 
-### « Se connecter » ne trouve pas le jeton
+* la page indique que la Recalbox demande une nouvelle autorisation : cliquez sur
+  « Se connecter » et gardez le bouton appuyé **3 secondes** ;
+* c'est le cas après un redémarrage de la Recalbox, un redémarrage du service ou
+  une mise à jour du programme ;
+* pour retirer l'autorisation d'un poste (ordinateur prêté, revendu…) : redémarrez
+  l'agent ou la Recalbox, un nouvel appui sera exigé.
 
-| Message / symptôme | Cause / solution |
-| --- | --- |
-| demande le dossier puis « jeton introuvable » | l'agent n'a jamais démarré : redémarrez Recalbox (`token.txt` est créé au démarrage de l'agent) |
-| « jeton vide » | même cause, ou fichier tronqué : supprimez `token.txt` et redémarrez |
-| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez l'icône d'import du champ jeton (Edge/Chrome pour la lecture du partage) |
-| autorisation refusée | recliquez sur « Se connecter » et acceptez l'accès au dossier ; sinon l'icône d'import à droite du champ jeton |
-| accès au dossier impossible | Windows ne s'authentifie pas au partage : lancez `acces-recalbox.cmd` (bouton « Autoriser Windows… ») ou `net use Z: \\RECALBOX\share /user:root recalboxroot` |
+### « Se connecter » n'autorise pas ce poste
 
-Le jeton est mémorisé dans le navigateur par sécurité uniquement pour la
-connexion ; il reste sur le partage (`system/rfid/token.txt`).
+Les messages de la page sont listés au §13. Les causes les plus fréquentes :
+
+* **le service du lecteur est arrêté** : personne ne surveille le bouton —
+  Maintenance → **Démarrer** ;
+* **l'appui est trop court, ou commencé trop tôt** : 3 secondes d'appui continu,
+  *après* avoir cliqué sur « Se connecter » ;
+* **une autre demande est déjà en attente** : une seule à la fois, 30 s ;
+* **la page n'est pas ouverte depuis le disque** (`file://`) : le navigateur
+  bloque `ws://` depuis un site `https://`.
+
+La page garde l'autorisation dans le navigateur (localStorage) : une actualisation
+ne redemande rien, mais un redémarrage de l'agent l'annule.
 
 ### Faut-il l'exposer sur Internet ?
 
@@ -491,8 +501,8 @@ double-cliquer. Il n'installe rien et n'écrit rien, il affiche :
 2. l'état des ports **445** (partage) et **8765** (agent), testés en TCP ;
 3. la connexion au partage avec les trois jeux d'identifiants (root, root sans
    mot de passe, invité) et le code d'erreur éventuel ;
-4. la présence de `recalbox-rfid\install.sh`, des deux userscripts et de
-   `system\rfid\token.txt` ;
+4. la présence de `recalbox-rfid\install.sh`, des deux userscripts et d'une
+   éventuelle demande d'autorisation en attente (`system\rfid\pair-pending.json`) ;
 5. le contenu de `system\rfid` ;
 6. le rappel des codes `net use` et la bonne façon d'écrire le chemin.
 

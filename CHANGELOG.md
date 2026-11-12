@@ -4,6 +4,35 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.0]
+
+### Sécurité
+
+* **Suppression complète du jeton sur disque.** Plus aucun fichier du partage ne
+  contient de secret : l'agent tire un **secret de session en mémoire**, neuf à
+  chaque démarrage, et rien n'est écrit dans `system/rfid/`. Les fichiers
+  `token.txt` et `paired.ok` laissés par une version précédente sont supprimés
+  automatiquement au démarrage de l'agent.
+* **Autorisation par appui physique de 3 secondes uniquement.** On ouvre
+  `installer.html`, on clique sur « Se connecter », puis on garde le bouton du
+  boîtier appuyé pendant le compte à rebours (30 s, une seule demande à la fois,
+  refusée si le service du lecteur est arrêté). Ni mot de passe, ni jeton, ni
+  copier-coller, ni fichier à chercher.
+* **Suppression de la commande `pair` de l'agent et du fichier `pair-request`** :
+  une demande déposée sur le partage ne donne plus aucun accès. `rfidctl pair`
+  subsiste en SSH, mais ne fait que réouvrir la fenêtre de 30 s et n'affiche
+  jamais de jeton.
+
+### Modifié
+
+* Le navigateur mémorise l'autorisation (localStorage) : une actualisation de la
+  page reconnecte sans rien faire. En revanche, un redémarrage de la Recalbox, du
+  service ou une mise à jour efface le secret de session : la page annonce qu'une
+  nouvelle autorisation est demandée, affiche un bandeau « hors ligne » et
+  réessaie automatiquement en attendant le nouvel appui de 3 s.
+* L'agent n'écoute que le réseau local (port 8765) et refuse les origines web
+  autres qu'une page locale ouverte en `file://`.
+
 ## [2.4.0]
 
 ### Modifié

@@ -9,8 +9,9 @@ Scannez un badge RFID → le jeu Recalbox associé se lance.
 * **Bouton poussoir** (sans résistance, pull-up interne du Raspberry Pi) pour
   associer un badge au jeu actuellement sélectionné dans Recalbox.
 * **Aucune interface hébergée sur la Recalbox** : un fichier `installer.html`
-  ouvert depuis votre PC se connecte à un **agent WebSocket protégé par jeton**
-  pour installer, mettre à jour et gérer les badges.
+  ouvert depuis votre PC se connecte à un **agent WebSocket** pour installer,
+  mettre à jour et gérer les badges. L'accès s'autorise sur le boîtier, par un
+  appui de 3 secondes : ni mot de passe, ni fichier secret à recopier.
 * **Mode simulation** pour tester tout le fonctionnement sur un PC, sans
   Raspberry Pi.
 
@@ -67,9 +68,10 @@ programme.
 4. **Redémarrez Recalbox.** L'installation se fait toute seule au démarrage
    (SPI, service, agent) et Recalbox redémarre une fois de plus si nécessaire.
 5. **Ouvrez `installer.html`, cliquez sur « Se connecter », puis gardez le bouton du
-   boîtier appuyé 3 secondes** (demande valable 30 s, une seule à la fois) : le jeton
-   est transmis une fois, **rien à recopier et aucun fichier à chercher**. Le `.cmd`
-   rouvre cette page tout seul ; le relancer reste une solution de secours.
+   boîtier appuyé 3 secondes** (demande valable 30 s, une seule à la fois) : c'est
+   toute l'autorisation, **rien à recopier et aucun fichier à chercher**. Le `.cmd`
+   rouvre cette page avec l'adresse déjà remplie ; le relancer reste une solution de
+   secours.
 
 > Le `.cmd` tente `root` / `recalboxroot`, puis l'accès invité. Mot de passe root
 > personnalisé ? Ouvrez le fichier avec le Bloc-notes et modifiez
@@ -82,8 +84,9 @@ programme.
 2. Copiez `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
    `\\RECALBOX\share\userscripts\`.
 3. **Redémarrez Recalbox.**
-4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet) et
-   cliquez sur « Se connecter ».
+4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet), cliquez
+   sur « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes
+   pendant le compte à rebours : c'est l'autorisation.
 
 > L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
 > place, propose l'installation par SSH et ouvre `installer.html` à la fin.
@@ -107,7 +110,7 @@ programme.
 | Programme | copié dans `/recalbox/share/system/rfid/app` |
 | Configuration | `config.ini` (créée si absente, **jamais écrasée**) |
 | Badges | `tags.json` (**jamais écrasé**) |
-| Jeton | `token.txt` (créé au premier démarrage de l'agent) |
+| Autorisation | appui de 3 s sur le bouton du boîtier (secret de session en mémoire, aucun fichier) |
 | Démarrage | deux scripts permanents : service RFID + agent WebSocket |
 | Bus SPI | `dtparam=spi=on` dans `/boot/recalbox-user-config.txt`, avec sauvegarde |
 
@@ -161,13 +164,17 @@ périmé).
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 
-* **Connexion** : `ws://<ip>:8765`, jeton lu dans
-  `\\RECALBOX\share\system\rfid\token.txt` (icône d'import à droite du champ « Jeton » pour
-  éviter le copier-coller). Les paramètres sont mémorisés dans le navigateur.
-* **Sécurité** : l'agent n'accepte que les commandes authentifiées par le jeton
-  (3 échecs ferment la connexion). Le jeton vit sur le partage : ne l'ouvrez pas
-  à l'extérieur du réseau local, et n'exposez jamais le port 8765 sur Internet
-  (utilisez un VPN pour un accès distant).
+* **Connexion** : `ws://<ip>:8765`, adresse et port seulement. Cliquez sur
+  « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant le
+  compte à rebours (30 s) : voilà toute l'autorisation. Une seule demande à la
+  fois, et elle est refusée si le service du lecteur est arrêté. Les paramètres et
+  l'autorisation sont mémorisés dans le navigateur.
+* **Sécurité** : aucune commande n'est acceptée sans une session autorisée au
+  bouton. Rien n'est écrit sur le partage : l'agent tire un secret de session en
+  mémoire à chaque démarrage, donc un redémarrage ou une mise à jour redemande un
+  appui de 3 s. L'agent n'écoute que le réseau local et refuse les pages web :
+  n'exposez jamais le port 8765 sur Internet (utilisez un VPN pour un accès
+  distant).
 * **Mise à jour** : le bouton « depuis un fichier ZIP » envoie l'archive par
   WebSocket ; l'agent l'installe puis se recharge tout seul.
 
@@ -245,8 +252,9 @@ Quatre méthodes, aucune ne touche aux badges :
    /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
    ```
 
-La mise à jour remplace le programme, conserve `config.ini` + `tags.json` +
-`token.txt`, redémarre le service et affiche la nouvelle version. Détails :
+La mise à jour remplace le programme, conserve `config.ini` + `tags.json`,
+redémarre le service et affiche la nouvelle version. L'autorisation de la page est
+à redonner : le service redémarre, un appui de 3 s sur le bouton suffit. Détails :
 [`docs/MISE-A-JOUR.md`](docs/MISE-A-JOUR.md).
 
 ## 7. Tester sur un PC (sans Raspberry Pi)
@@ -269,8 +277,9 @@ L'agent et `installer.html` se testent aussi sur un PC :
 
 ```sh
 python app/main.py --home ./data agent --source .
-# jeton affiché au démarrage (data/token.txt), puis ouvrir installer.html
-# avec 127.0.0.1, port 8765 et ce jeton
+# l'agent affiche ws://127.0.0.1:8765 : ouvrir installer.html avec 127.0.0.1
+# et le port 8765, puis « Se connecter » et un appui long sur le bouton
+# (en simulation, la commande hold du service tient lieu d'appui physique)
 ```
 
 Tests unitaires (118 tests, aucun matériel requis) :
@@ -294,9 +303,10 @@ python tests/run_tests.py
   l'interface de commande officielle du frontend Recalbox 9. Le jeu est lancé
   exactement comme depuis le menu (splash, sauvegardes, retroachievements).
 * **Agent WebSocket** : serveur RFC 6455 écrit avec la bibliothèque standard
-  (poignée de main + trames, ~200 lignes), authentification par jeton, flux
-  d'installation en direct, envoi de ZIP par morceaux. Aucune page servie par la
-  Recalbox : `installer.html` est ouvert en local et se connecte en `ws://`.
+  (poignée de main + trames, ~200 lignes), autorisation par appui physique (secret
+  de session en mémoire), flux d'installation en direct, envoi de ZIP par
+  morceaux. Aucune page servie par la Recalbox : `installer.html` est ouvert en
+  local et se connecte en `ws://`.
 * **Installateur unique** : `tools/build_installer.py` embarque les fichiers du
   projet (base64) dans une copie de `installer.html`. La page les écrit sur le
   partage via l'API **File System Access** (`showDirectoryPicker`, Edge/Chrome) —
@@ -305,8 +315,9 @@ python tests/run_tests.py
   `recalbox-rfid(permanent).py3` (service RFID) et
   `recalbox-rfid-agent(permanent).py3` (agent de gestion). Chacun prend un
   verrou (`flock`) : aucun doublon, même si EmulationStation redémarre.
-* **Données** : `/recalbox/share/system/rfid/` (config, badges, jeton,
-  journaux), donc dans le partage réseau et conservé lors des mises à jour.
+* **Données** : `/recalbox/share/system/rfid/` (config, badges, journaux), donc
+  dans le partage réseau et conservé lors des mises à jour. Aucun secret n'y est
+  écrit.
 
 ## 9. Dépannage express
 
@@ -318,8 +329,9 @@ python tests/run_tests.py
 | Bouton sans effet | GPIO17 occupé (manettes GPIO : `controllers.gpio.enabled=0`), câblage vers GND |
 | Le jeu ne se lance pas | Recalbox < 9, ou `rfidctl frontend` en échec |
 | Rien ne se passe après un appui | le jeu doit être **sélectionné** dans la liste (pas dossier) |
-| `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, bon jeton, journal `logs/agent.log` |
-| « Jeton invalide » | recopier `\\RECALBOX\share\system\rfid\token.txt` (icône d'import à droite du champ « Jeton ») |
+| `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, service du lecteur démarré, journal `logs/agent.log` |
+| « La Recalbox demande une nouvelle autorisation » | la Recalbox a redémarré, ou le service a été relancé : cliquez sur « Se connecter » et gardez le bouton appuyé 3 s |
+| L'appui de 3 s ne donne rien | service du lecteur arrêté (Maintenance → **Démarrer**), ou appui commencé avant la demande |
 | Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/DEPANNAGE.md` |
 | `\\RECALBOX\share` demande un mot de passe | Windows 11 bloque les invités : identifiant `root` / `recalboxroot` (ou autoriser les invités) |
 

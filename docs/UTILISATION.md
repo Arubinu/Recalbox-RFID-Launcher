@@ -23,7 +23,7 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | --- | --- |
 | **Accueil** | deux tuiles : *Installer sur la Recalbox* ou *Gérer mes badges* |
 | **Installer** | télécharger le fichier `.cmd` (3 étapes affichées), plus la copie depuis le navigateur en repli |
-| **Se connecter** | adresse, port et jeton **facultatif** : l'appairage se confirme au bouton du boîtier |
+| **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
 Dans **Gestion**, le bandeau du haut donne l'état (connecté, service actif) et le
@@ -35,20 +35,30 @@ Champs de connexion :
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | **laisser vide** : cliquez sur « Se connecter », puis **gardez le bouton du boîtier appuyé 3 secondes** pendant le compte à rebours. Une seule demande à la fois, valable 30 s ; l'icône d'import du champ sert de repli |
+| Autorisation | **rien à saisir** : cliquez sur « Se connecter », puis **gardez le bouton du boîtier appuyé 3 secondes** pendant le compte à rebours. Une seule demande à la fois, valable 30 s |
 
-L'appairage est **confirmé physiquement** : la page dépose une demande (une seule à la
-fois, 30 s), le service de la Recalbox attend un appui long (3 s) sur le bouton, puis
-transmet le jeton une seule fois. Un appui commencé avant la demande, ou destiné à une
-demande précédente, est refusé : on ne peut donc pas valider une demande qui n'était pas
-la vôtre.
+L'autorisation est **confirmée physiquement** : la page dépose une demande (une
+seule à la fois, 30 s), le service de la Recalbox attend un appui long (3 s) sur
+le bouton, puis autorise ce poste. Un appui commencé avant la demande, ou destiné
+à une demande précédente, est refusé : on ne peut donc pas valider une demande
+qui n'était pas la vôtre. La demande est aussi refusée si le service du lecteur
+n'est pas démarré.
 
-L'installateur `.cmd` relancé après l'installation ouvre la page avec
-`#host=…&port=…&token=…` : la connexion est immédiate, sans rien saisir (le jeton
-est aussi copié dans le presse-papiers).
+Aucun jeton n'est transmis, aucun fichier n'est écrit : l'agent tire un secret de
+session en mémoire à chaque démarrage, et la page le garde dans le navigateur
+(localStorage). Une actualisation de la page reconnecte donc sans rien faire. En
+revanche, un **redémarrage de la Recalbox**, un redémarrage du service ou une
+**mise à jour** efface ce secret : la page l'annonce (« la Recalbox demande une
+nouvelle autorisation ») et il suffit de garder le bouton appuyé 3 secondes une
+fois de plus.
 
-Si l'appairage n'est pas disponible, deux replis : **« J'ai le fichier
-token.txt »** (sélection du fichier) ou copier-coller son contenu.
+L'installateur `.cmd` relancé après l'installation rouvre la page avec
+`#host=…&port=…` : l'adresse et le port sont déjà remplis, l'autorisation se
+donne toujours au bouton.
+
+Si la page n'arrive pas à déposer sa demande, un seul repli existe : en SSH,
+`rfidctl pair`. Cette commande réouvre seulement la fenêtre de 30 s ; **elle
+n'affiche aucun jeton** et ne remplace pas l'appui sur le bouton.
 
 Le bouton **« Faire un diagnostic »** (écran *Se connecter* → *La connexion ne
 marche pas ?*) télécharge `diagnostic-recalbox.cmd` : double-clic, et il affiche
@@ -76,18 +86,26 @@ Points utiles :
   tableur.
 * La page se rafraîchit toute seule (état du service, mode armé, dernier badge).
 * **Coupure de connexion** (redémarrage de la Recalbox, réseau, agent relancé) :
-  le tableau de bord reste affiché mais grisé, un bandeau indique « Connexion
-  perdue depuis N s » et la page **se reconnecte automatiquement** dès que
-  l'agent revient ; le retour est annoncé (« Connexion rétablie »). Le bouton
-  « Réessayer maintenant » force une tentative immédiate.
+  le tableau de bord reste affiché mais grisé, un bandeau « hors ligne » indique
+  « Connexion perdue depuis N s » et la page **se reconnecte automatiquement**
+  dès que l'agent revient ; le retour est annoncé (« Connexion rétablie »). Le
+  bouton « Réessayer maintenant » force une tentative immédiate.
+* **Autorisation perdue** (Recalbox redémarrée, service relancé, programme mis à
+  jour) : le secret de session a changé, la page l'indique et il suffit de
+  garder le bouton du boîtier appuyé 3 secondes pour continuer.
 
-**Sécurité** : l'agent n'accepte que les commandes authentifiées par le jeton.
-Le jeton se trouve sur le partage (déjà protégé par le réseau local) :
+**Sécurité** : l'agent n'accepte que les commandes d'une session autorisée, et
+cette autorisation ne s'obtient qu'en gardant le bouton du boîtier appuyé
+3 secondes :
 
+* il n'y a **aucun secret sur le partage** : le secret de session est tiré au
+  hasard à chaque démarrage de l'agent et ne vit qu'en mémoire ;
+* l'agent n'écoute que le réseau local et refuse les pages web : `installer.html`
+  doit être ouverte depuis le disque (`file://`) ;
 * ne l'exposez jamais sur Internet : pour un accès distant, utilisez un VPN
   (WireGuard, Tailscale…) ;
-* pour changer de jeton : supprimez `token.txt` puis redémarrez Recalbox (il est
-  recréé au démarrage de l'agent) ;
+* pour retirer l'autorisation d'un poste : redémarrez l'agent ou le service — un
+  nouveau secret est tiré, un appui de 3 s sur le bouton est redemandé ;
 * pour désactiver complètement l'agent : `enabled = 0` dans `[agent]`.
 
 ## Associer un badge
@@ -221,7 +239,7 @@ partage réseau, avec le Bloc-notes par exemple). Après modification :
 | `[button] enabled` | `1` | `0` pour désactiver le bouton |
 | `[button] pin` | `17` | broche du bouton (BCM) |
 | `[button] long_press_s` | `2.0` | durée d'un appui long |
-| `[button] hold_press_s` | `3.0` | durée de l'appui qui valide un appairage |
+| `[button] hold_press_s` | `3.0` | durée de l'appui qui autorise un poste |
 | `[button] arm_timeout_s` | `10` | délai pour scanner après un appui |
 | `[button] debounce_ms` | `40` | anti-rebond |
 | `[launch] udp_host` / `udp_port` | `127.0.0.1` / `1337` | interface du frontend |
