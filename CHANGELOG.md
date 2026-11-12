@@ -4,6 +4,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.3]
+
+### Ajouté (badges qui ne répondent jamais à la sélection)
+
+* **Repli « anticollision stable »** : certains badges clones répondent au
+  `REQA` et à l'anticollision mais restent muets à la sélection, quel que soit le
+  BCC ou le CRC employé. Comme nous n'avons besoin **que de l'UID** (jamais de la
+  mémoire du badge), le pilote accepte désormais la trame d'anticollision comme
+  identifiant **après trois lectures identiques** : une lecture perturbée ne
+  peut donc pas devenir un badge par accident, alors qu'un badge stable est
+  reconnu en une fraction de seconde.
+* Le test du lecteur annonce ce cas : « le badge est lu, mais il ne répond pas à
+  la phase de sélection : badge non standard, il peut quand même être associé ».
+
 ## [2.6.2]
 
 ### Corrigé

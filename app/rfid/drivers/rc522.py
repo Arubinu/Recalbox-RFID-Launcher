@@ -113,6 +113,10 @@ class Rc522:
         self.spi = spi
         self.log = log
         self.version = None
+        #: Derniere trame d'anticollision vue, pour reconnaitre un badge stable
+        #: qui ne repond jamais a la selection (clones).
+        self._last_frame = None
+        self._frame_count = 0
 
     # ------------------------------------------------------------- bas niveau
     def _write(self, register: int, value: int) -> None:
@@ -334,6 +338,7 @@ class Rc522:
             ("bcc-recalcule", True, False),
             ("bcc-recalcule-crc-materiel", True, True),
         )
+        derniere = None
         for tentative, mode in enumerate((PICC_REQA, PICC_WUPA, PICC_REQA)):
             atqa = self.request(mode)
             if trace is not None:
@@ -343,6 +348,7 @@ class Rc522:
             first = self._anticollision(PICC_SEL_CL1, trace)
             if first is None:
                 continue
+            derniere = first
             if trace is not None:
                 trace["anticoll"] = first.hex().upper()
                 trace["bcc_recu"] = "%02X" % first[4]
@@ -380,7 +386,38 @@ class Rc522:
                 uid = bytes(first[0:4])
                 self.halt()
                 return uid
+        # Toutes les selections ont echoue : un badge qui repond de facon stable
+        # en anticollision reste utilisable (nous n'avons besoin que de son UID,
+        # jamais de sa memoire). Le compteur avance d'un cran par lecture, pas
+        # par tentative interne.
+        if derniere is not None:
+            stable = self._stable_uid(derniere)
+            if stable is not None:
+                if trace is not None:
+                    trace["strategie"] = "anticollision-stable"
+                self.halt()
+                return stable
         return None
+
+    def _stable_uid(self, first):
+        """UID deduit de l'anticollision quand la selection reste muette.
+
+        Certains badges clones ne repondent jamais a la selection. Leur trame
+        d'anticollision, elle, est parfaitement stable : on ne l'accepte qu'apres
+        trois trames identiques, pour ne jamais prendre une lecture perturbee
+        pour un badge.
+        """
+        frame = bytes(first)
+        if frame == self._last_frame:
+            self._frame_count += 1
+        else:
+            self._last_frame = frame
+            self._frame_count = 1
+        if self._frame_count < 3:
+            return None
+        if frame[0] == 0x88:          # UID en cascade : non gere sans selection
+            return None
+        return frame[0:4]
 
     @staticmethod
     def _bcc(data) -> bytes:

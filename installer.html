@@ -2288,6 +2288,12 @@ function readerTestVerdict(data) {
       "et redémarrez la Recalbox.";
   }
   if (uids.length) {
+    const strategie = (data.trace && data.trace.strategie) || "";
+    if (strategie === "anticollision-stable") {
+      return "Le badge est lu (UID " + uids.join(", ") + "), mais il ne répond pas à la " +
+        "phase de sélection : c'est un badge non standard (clone). Il peut quand même " +
+        "être associé, son identifiant est stable.";
+    }
     return "Le badge est lu correctement (UID " + uids.join(", ") + ") : il peut être associé.";
   }
   if (atqas.length) {

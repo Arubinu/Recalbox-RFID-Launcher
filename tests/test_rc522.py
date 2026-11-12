@@ -112,6 +112,48 @@ class Rc522UidTest(unittest.TestCase):
         self.assertEqual(reader.read_uid(trace=trace), b"\x36\x00\x00\x00")
         self.assertEqual(trace.get("strategie"), "bcc-recalcule")
 
+    def test_uid_stable_si_la_selection_echoue(self):
+        """Un clone muet a la selection est lu apres trois trames identiques."""
+        spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
+        original = spi._respond
+
+        def sans_sak(payload):
+            if len(payload) == 3 and payload[0] == 0x08:
+                spi.irq = 0x01
+                spi.fifo.clear()
+                return
+            original(payload)
+
+        spi._respond = sans_sak  # type: ignore[method-assign]
+        reader = Rc522(spi)
+        reader.begin()
+        trace = {}
+        self.assertIsNone(reader.read_uid(trace=trace))      # 1re trame
+        self.assertIsNone(reader.read_uid(trace=trace))      # 2e
+        self.assertEqual(reader.read_uid(trace=trace), b"\x36\x00\x00\x00")
+        self.assertEqual(trace.get("strategie"), "anticollision-stable")
+
+    def test_une_trame_differente_ne_compte_pas(self):
+        """Des lectures perturbees ne doivent jamais devenir un badge."""
+        spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
+        original = spi._respond
+
+        def sans_sak(payload):
+            if len(payload) == 3 and payload[0] == 0x08:
+                spi.irq = 0x01
+                spi.fifo.clear()
+                return
+            original(payload)
+
+        spi._respond = sans_sak  # type: ignore[method-assign]
+        reader = Rc522(spi)
+        reader.begin()
+        self.assertIsNone(reader.read_uid())
+        spi.uid = b"\x37\x00\x00\x00"      # autre badge : la serie s'interrompt
+        self.assertIsNone(reader.read_uid())
+        self.assertIsNone(reader.read_uid())
+        self.assertEqual(reader.read_uid(), b"\x37\x00\x00\x00")
+
     def test_trace_des_trames(self):
         """La trace decrit la trame envoyee et la reponse, pour le diagnostic."""
         reader = Rc522(FakeRc522Spi(b"\x01\x02\x03\x04"))
