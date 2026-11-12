@@ -29,6 +29,7 @@ import hashlib
 import json
 import os
 import secrets
+import signal
 import socket
 import socketserver
 import struct
@@ -43,15 +44,20 @@ from . import __version__
 from . import pairing
 from .consts import (
     AGENT_COMMAND_FILENAME,
+    CONFIG_FILENAME,
     DB_FILENAME,
     READER_TEST_FILENAME,
     TOKEN_FILENAME,
 )
+from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import current_target, read_state, resolve_rom_path, supports_start_command
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+#: Signal de relecture de la configuration (absent sous Windows).
+SIG_HUP = getattr(signal, "SIGHUP", 1)
 MAX_MESSAGE = 4 * 1024 * 1024
 MAX_UPLOAD = 64 * 1024 * 1024
 AUTH_FAILURES = 3
@@ -399,6 +405,9 @@ class Agent:
 
     def main_py(self) -> str:
         return os.path.join(self.home, "app", "main.py")
+
+    def config_path(self) -> str:
+        return os.path.join(self.home, CONFIG_FILENAME)
 
     def _tags(self) -> TagStore:
         with self._store_guard:
@@ -937,6 +946,55 @@ class Agent:
         self._write_command("arm_" + mode)
         return {"armed": mode}
 
+    def _cmd_config_get(self, client, message):
+        """Options modifiables depuis la page (avec leur valeur actuelle)."""
+        cfg = Config(self.config_path())
+        options = []
+        for option in OPTIONS:
+            options.append(
+                dict(
+                    option,
+                    value=option_value(cfg, option),
+                    full="%s.%s" % (option["section"], option["key"]),
+                )
+            )
+        return {"path": cfg.path, "options": options}
+
+    def _cmd_config_set(self, client, message):
+        """Enregistre les options puis fait relire la configuration au service."""
+        valeurs = message.get("values")
+        if not isinstance(valeurs, dict) or not valeurs:
+            raise ValueError("aucune valeur a enregistrer")
+        cfg = Config(self.config_path())
+        connues = {"%s.%s" % (o["section"], o["key"]): o for o in OPTIONS}
+        a_ecrire = {}
+        for cle, valeur in valeurs.items():
+            option = connues.get(str(cle))
+            if option is None:
+                raise ValueError("option inconnue : %s" % cle)
+            a_ecrire[cle] = validate_option(option, valeur)
+        modifiees = cfg.write_values(a_ecrire)
+        applique = self._reload_service()
+        if self.log:
+            self.log.info(
+                "Options enregistrees : %s (%s)"
+                % (", ".join(sorted(modifiees)), "service recharge" if applique else "service arrete")
+            )
+        return {"saved": sorted(modifiees), "reloaded": applique}
+
+    def _reload_service(self) -> bool:
+        """Demande au service de relire sa configuration (SIGHUP)."""
+        pid = read_pid(self.home)
+        if not process_alive(pid):
+            return False
+        try:
+            os.kill(pid, SIG_HUP)
+            return True
+        except OSError as exc:
+            if self.log:
+                self.log.warning("Rechargement du service impossible : %s" % exc)
+            return False
+
     def _cmd_reader_test(self, client, message):
         """Teste le lecteur lui-meme : la carte est-elle vue, et lue ?
 
@@ -1065,6 +1123,81 @@ class Agent:
                 os.remove(path)
             except OSError:
                 pass
+
+
+#: Options proposees dans l'onglet dedie de la page (section, cle, type...).
+OPTIONS = (
+    {"section": "launch", "key": "action", "type": "choice",
+     "choices": ["launch", "none"], "default": "launch",
+     "label": "Action au scan d'un badge associé",
+     "help": "launch = lance le jeu ; none = bip seulement (mode cartouche)"},
+    {"section": "launch", "key": "ignore_when_game_running", "type": "bool", "default": True,
+     "label": "Ne rien lancer pendant une partie",
+     "help": "évite d'interrompre un jeu déjà en cours"},
+    {"section": "launch", "key": "stop_on_remove", "type": "bool", "default": False,
+     "label": "Quitter le jeu quand le badge est retiré",
+     "help": "le jeu lancé par le badge s'arrête dès que le badge quitte le lecteur"},
+    {"section": "button", "key": "arm_timeout_s", "type": "number", "min": 3, "max": 60,
+     "default": 10, "label": "Délai pour poser le badge",
+     "help": "secondes accordées après l'appui court"},
+    {"section": "button", "key": "hold_press_s", "type": "number", "min": 1, "max": 10,
+     "default": 3, "label": "Appui qui autorise un navigateur",
+     "help": "secondes de maintien (la validation part dès ce délai)"},
+    {"section": "rfid", "key": "poll_interval_ms", "type": "number", "min": 50, "max": 1000,
+     "default": 150, "label": "Intervalle de lecture du lecteur (ms)"},
+    {"section": "rfid", "key": "same_tag_cooldown_s", "type": "number", "min": 0.5, "max": 30,
+     "default": 2.5, "label": "Anti-rebond du même badge (s)"},
+    {"section": "rfid", "key": "rearm_absent_ms", "type": "number", "min": 300, "max": 10000,
+     "default": 1200, "label": "Absence avant de pouvoir rescanner (ms)"},
+    {"section": "rfid", "key": "spi_speed_hz", "type": "number", "min": 100000, "max": 10000000,
+     "default": 1000000, "label": "Vitesse du bus SPI (Hz)",
+     "help": "reglage materiel : applique au redemarrage du service"},
+    {"section": "feedback", "key": "sound", "type": "bool", "default": True,
+     "label": "Bips sonores"},
+    {"section": "general", "key": "log_level", "type": "choice",
+     "choices": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO",
+     "label": "Niveau de journal"},
+)
+
+
+def option_value(cfg, option) -> str:
+    section, key = option["section"], option["key"]
+    defaut = option.get("default")
+    if option["type"] == "bool":
+        return "1" if cfg.get_bool(section, key, bool(defaut)) else "0"
+    if option["type"] == "number":
+        valeur = cfg.get_float(section, key, float(defaut or 0))
+        if float(valeur).is_integer() and float(defaut or 0).is_integer():
+            return str(int(valeur))
+        return ("%g" % valeur)
+    return cfg.get(section, key, str(defaut or ""))
+
+
+def validate_option(option, valeur) -> str:
+    """Verifie une valeur avant de l'ecrire ; retourne la forme a enregistrer."""
+    brut = str(valeur).strip()
+    if option["type"] == "bool":
+        if brut.lower() in ("1", "true", "oui", "on", "yes"):
+            return "1"
+        if brut.lower() in ("0", "false", "non", "off", "no", ""):
+            return "0"
+        raise ValueError("valeur oui/non attendue pour %s" % option["label"])
+    if option["type"] == "choice":
+        choix = [str(item) for item in option["choices"]]
+        if brut not in choix:
+            raise ValueError("%s : valeur parmi %s" % (option["label"], ", ".join(choix)))
+        return brut
+    try:
+        nombre = float(brut.replace(",", "."))
+    except ValueError:
+        raise ValueError("%s : nombre attendu" % option["label"])
+    if "min" in option and nombre < float(option["min"]):
+        raise ValueError("%s : minimum %s" % (option["label"], option["min"]))
+    if "max" in option and nombre > float(option["max"]):
+        raise ValueError("%s : maximum %s" % (option["label"], option["max"]))
+    if float(option.get("default") or 0).is_integer() and nombre.is_integer():
+        return str(int(nombre))
+    return "%g" % nombre
 
 
 # ---------------------------------------------------------------------------

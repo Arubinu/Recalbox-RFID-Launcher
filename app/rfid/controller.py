@@ -59,6 +59,7 @@ class Controller:
         self.mode = MODE_IDLE
         self.target = None
         self._deadline = 0.0
+        self.last_action = ""
 
     # ------------------------------------------------------------------ helpers
     def _log(self, level: str, message: str) -> None:
@@ -209,6 +210,16 @@ class Controller:
         )
         return "bound"
 
+    def stop_game(self) -> bool:
+        """Quitte le jeu en cours (badge retire, option active)."""
+        if not self.launcher.stop_game():
+            self._log("info", "Aucun jeu en cours a arreter")
+            self.last_action = ""
+            return False
+        self.last_action = ""
+        self._log("info", "Jeu arrete : le badge a ete retire")
+        return True
+
     def _delete(self, uid: str) -> str:
         self.disarm("suppression")
         try:
@@ -239,6 +250,7 @@ class Controller:
                 except StorageError as exc:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
             # Pas de bip : le lancement se voit a l'ecran (splash du jeu).
+            self.last_action = "launched"
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"

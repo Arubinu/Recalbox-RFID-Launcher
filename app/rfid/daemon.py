@@ -164,6 +164,10 @@ class Service:
         self._press_started_at = None
         self._active_uid = None
         self._absent_since = None
+        self._absent_hits = 0
+        self._active_seen_at = 0.0
+        self._launched_uid = None
+        self._stop_on_remove = bool(cfg.get_bool("launch", "stop_on_remove", False))
         self.rearm_absent_ms = 1200
         self.last_error_at = 0.0
         self.last_uid = ""
@@ -269,6 +273,8 @@ class Service:
                         self._write_status()
 
                 if self.reader is not None and self._reader_test is None and now >= next_slot:
+                    # Relu a chaque tour : le reglage s'applique sans redemarrage.
+                    interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
                     next_slot = now + interval
                     uid = None
                     try:
@@ -309,30 +315,64 @@ class Service:
     # ------------------------------------------------------------------ badge
     def _badge_seen(self, uid: str) -> None:
         """Un badge est lu. Un badge laisse en place ne refait pas l'action."""
-        if uid == self._active_uid:
-            return                      # mode "cartouche" : action deja faite
-        self._active_uid = uid
-        self._absent_since = None
         self.last_uid = uid
         self.last_uid_at = time.time()
+        if uid == self._active_uid:
+            # Le badge est toujours la : on rafraichit sa presence, sans agir.
+            self._active_seen_at = time.monotonic()
+            self._absent_since = None
+            self._absent_hits = 0
+            return
+        self._active_uid = uid
+        self._active_seen_at = time.monotonic()
+        self._absent_since = None
+        self._absent_hits = 0
+        self._launched_uid = None
         self.controller.on_badge(uid)
+        if getattr(self.controller, "last_action", "") == "launched":
+            # Retenu pour l'option « quitter le jeu quand le badge est retire ».
+            self._launched_uid = uid
 
     def _release_latch(self) -> None:
-        """Libere le verrou quand le badge a vraiment quitte le lecteur."""
+        """Libere le verrou quand le badge a VRAIMENT quitte le lecteur.
+
+        Les lectures peuvent echouer par intermittence (badges clones, champ
+        limite) : une absence n'est retenue qu'apres plusieurs constats negatifs
+        **et** un delai complet sans lecture positive. Sans cela, un badge
+        laisse en place etait considere comme retire, et le jeu se relancait.
+        """
         present = False
         try:
             present = bool(self.reader.tag_present())
         except Exception:  # noqa: BLE001 - lecteur retire a chaud
             present = False
-        if present:
-            self._absent_since = None
-            return
         now = time.monotonic()
+        if present:
+            self._active_seen_at = now
+            self._absent_since = None
+            self._absent_hits = 0
+            return
+        self._absent_hits += 1
         if self._absent_since is None:
             self._absent_since = now
-        elif (now - self._absent_since) * 1000.0 >= self.rearm_absent_ms:
-            self._active_uid = None
-            self._absent_since = None
+        if self._absent_hits < 3:
+            return
+        if (now - self._active_seen_at) * 1000.0 < self.rearm_absent_ms:
+            return
+        self._active_uid = None
+        self._absent_since = None
+        self._absent_hits = 0
+        # Badge retire : on quitte le jeu si l'option est active.
+        if self._stop_on_remove and self._launched_uid is not None:
+            lance = self._launched_uid
+            self._launched_uid = None
+            try:
+                self.controller.stop_game()
+            except Exception as exc:  # noqa: BLE001 - jamais bloquant
+                if self.log:
+                    self.log.warning("Arret du jeu impossible : %s" % exc)
+            if self.log:
+                self.log.info("Badge %s retire : jeu arrete" % lance)
 
     # ------------------------------------------------------------------ bouton
     def _track_press(self) -> None:
@@ -618,6 +658,20 @@ class Service:
                 if self.launcher is not None:
                     self.launcher.host = self.cfg.get("launch", "udp_host", "127.0.0.1")
                     self.launcher.port = self.cfg.get_int("launch", "udp_port", 1337)
+                self._stop_on_remove = self.cfg.get_bool("launch", "stop_on_remove", False)
+                # Reglages de lecture : relus a chaque tour de boucle.
+                self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
+                if self.reader is not None and hasattr(self.reader, "cooldown_s"):
+                    self.reader.cooldown_s = max(
+                        0.0, self.cfg.get_float("rfid", "same_tag_cooldown_s", 2.5)
+                    )
+                if self.button is not None and hasattr(self.button, "hold_press_s"):
+                    self.button.hold_press_s = max(
+                        0.3, self.cfg.get_float("button", "hold_press_s", 3.0)
+                    )
+                    self.button.debounce_s = max(
+                        0.005, self.cfg.get_int("button", "debounce_ms", 40) / 1000.0
+                    )
                 if self.store and self.launcher and self.feedback:
                     self._build_controller()
                 self.log.info(

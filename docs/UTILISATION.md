@@ -24,7 +24,7 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | **Accueil** | deux tuiles : *Installer sur la Recalbox* ou *Gérer mes badges* |
 | **Installer** | télécharger le fichier `.cmd` (3 étapes affichées), plus la copie depuis le navigateur en repli |
 | **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
-| **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
+| **Gestion** | quatre onglets : **Badges**, **Matériel**, **Options**, **Maintenance** |
 
 Un bouton **`FR` / `EN` / `DE` / `ES` / `IT` / `PT`** (à côté) change la langue de l'interface : un simple clic
 passe à la langue suivante et **fixe** le choix. Tant qu'aucune langue n'a été
@@ -82,7 +82,37 @@ l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
 | --- | --- |
 | Badges | associer le prochain badge au jeu sélectionné, effacer, tableau des badges, export et import CSV |
 | Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire ; bouton **Tester avec un badge** (5 s) qui dit si une carte est vue, lue, ou pas détectée du tout |
+| Options | **tous les réglages** du lanceur, sans ouvrir de fichier : action au scan, lancement pendant une partie, arrêt du jeu au retrait du badge, délai de pose, appui d'autorisation, intervalle de lecture, anti-rebond, vitesse SPI, bips, niveau de journal. Chaque changement est enregistré sur la Recalbox et appliqué aussitôt |
 | Maintenance | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, démarrer/arrêter/redémarrer le service, journaux en direct |
+
+**Onglet Options** — le tableau des réglages :
+
+| Réglage | Ce qu'il fait | Défaut |
+| --- | --- | --- |
+| Action au scan d'un badge associé | `launch` lance le jeu ; `none` se contente du bip (mode cartouche) | lance le jeu |
+| Ne rien lancer pendant une partie | un jeu en cours n'est jamais interrompu par un badge | activé |
+| Quitter le jeu quand le badge est retiré | le jeu lancé par le badge s'arrête et Recalbox revient au menu dès que le badge quitte le lecteur | désactivé |
+| Délai pour poser le badge | secondes accordées après l'appui court | 10 s |
+| Appui qui autorise un navigateur | durée de maintien du bouton (l'autorisation part à ce délai, sans attendre le relâchement) | 3 s |
+| Intervalle de lecture du lecteur | fréquence d'interrogation du RC522 | 150 ms |
+| Anti-rebond du même badge | temps pendant lequel le même badge est ignoré | 2,5 s |
+| Absence avant de pouvoir rescanner | absence nécessaire pour qu'un badge posé puisse agir de nouveau | 1 200 ms |
+| Vitesse du bus SPI | réglage matériel, appliqué au redémarrage du service | 1 MHz |
+| Bips sonores | confirmation sonore des gestes | activé |
+| Niveau de journal | verbosité du journal du service | INFO |
+
+* Rien n'est à ouvrir : l'enregistrement écrit dans le `config.ini` de la
+  Recalbox **en gardant ses commentaires**, puis le service **relit sa
+  configuration immédiatement** (pas de redémarrage, la lecture des badges
+  continue).
+* Une modification pas encore enregistrée est signalée (« modifications non
+  enregistrées ») et **survit à un changement d'onglet** ; **Annuler** revient aux
+  valeurs de la Recalbox.
+* Une valeur hors bornes est ramenée dans les limites, et le service refuse ce
+  qu'il ne comprend pas : dans ce cas rien n'est écrit.
+* Les broches, l'adresse du frontend et le port de l'agent restent dans
+  `config.ini` : ils servent une fois, à l'installation, et ne changent qu'au
+  redémarrage du service.
 
 Points utiles :
 

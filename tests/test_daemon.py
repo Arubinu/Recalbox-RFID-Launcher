@@ -195,6 +195,10 @@ class BadgeLatchTest(unittest.TestCase):
         self.service.rearm_absent_ms = 1200.0
         self.service._active_uid = None
         self.service._absent_since = None
+        self.service._absent_hits = 0
+        self.service._active_seen_at = 0.0
+        self.service._launched_uid = None
+        self.service._stop_on_remove = False
         self.service.last_uid = None
         self.service.last_uid_at = 0
         self.actions = []
@@ -223,17 +227,45 @@ class BadgeLatchTest(unittest.TestCase):
         self.now += 0.2
         self.service._release_latch()          # debut de l'absence
         self.now += 1.3
-        self.service._release_latch()          # absence assez longue
+        self.service._release_latch()          # 2e constat negatif
+        self.service._release_latch()          # 3e constat : absence confirmee
         self.service._badge_seen("A1B2C3D4")
         self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
+
+    def test_deux_lectures_negatives_ne_rearment_pas(self):
+        # Une lecture ratee isolee (badge clone) ne doit jamais passer pour un
+        # retrait : c'etait la cause du jeu relance tout seul.
+        self.service._badge_seen("A1B2C3D4")
+        self.service.reader.tag_present.return_value = False
+        self.now += 2.0
+        self.service._release_latch()
+        self.service._release_latch()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_lecture_positive_reinitialise_le_compteur(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.service.reader.tag_present.return_value = False
+        self.now += 0.5
+        self.service._release_latch()
+        self.service._release_latch()
+        self.service.reader.tag_present.return_value = True
+        self.now += 0.1
+        self.service._release_latch()          # badge revu : remise a zero
+        self.service.reader.tag_present.return_value = False
+        self.now += 2.0
+        self.service._release_latch()
+        self.service._release_latch()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
 
     def test_absence_trop_courte_ne_rearme_pas(self):
         self.service._badge_seen("A1B2C3D4")
         self.service.reader.tag_present.return_value = False
         self.now += 0.2
-        self.service._release_latch()
-        self.now += 0.4
-        self.service._release_latch()
+        for _ in range(4):
+            self.service._release_latch()
+            self.now += 0.1
         self.service._badge_seen("A1B2C3D4")
         self.assertEqual(self.actions, ["A1B2C3D4"])
 
@@ -241,4 +273,90 @@ class BadgeLatchTest(unittest.TestCase):
         self.service._badge_seen("A1B2C3D4")
         self.service._badge_seen("11223344")
         self.assertEqual(self.actions, ["A1B2C3D4", "11223344"])
+
+
+class StopOnRemoveTest(unittest.TestCase):
+    """Option « quitter le jeu quand le badge est retire »."""
+
+    def setUp(self):
+        from unittest import mock as _mock
+
+        from rfid import daemon as _daemon
+
+        self.daemon = _daemon
+        self.service = _daemon.Service.__new__(_daemon.Service)
+        self.service.home = tempfile.mkdtemp(prefix="rfid-stop-")
+        self.service.log = None
+        self.service.rearm_absent_ms = 1200.0
+        self.service._active_uid = None
+        self.service._absent_since = None
+        self.service._absent_hits = 0
+        self.service._active_seen_at = 0.0
+        self.service._launched_uid = None
+        self.service._stop_on_remove = True
+        self.service.last_uid = None
+        self.service.last_uid_at = 0
+        self.service.controller = _mock.Mock()
+        self.service.controller.last_action = "launched"
+        self.service.controller.on_badge = _mock.Mock()
+        self.service.reader = _mock.Mock()
+        self.service.reader.tag_present.return_value = True
+        self.now = 100.0
+        self._patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now)
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+        shutil.rmtree(self.service.home, ignore_errors=True)
+
+    def retirer(self):
+        self.service.reader.tag_present.return_value = False
+        self.now += 1.3
+        for _ in range(3):
+            self.service._release_latch()
+            self.now += 0.05
+
+    def test_retirer_le_badge_arrete_le_jeu(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()
+        self.service.controller.stop_game.assert_called_once_with()
+
+    def test_badge_laisse_n_arrete_rien(self):
+        self.service._badge_seen("A1B2C3D4")
+        for _ in range(6):
+            self.service._release_latch()
+            self.now += 0.15
+        self.service.controller.stop_game.assert_not_called()
+
+    def test_option_desactivee_ne_arrete_rien(self):
+        self.service._stop_on_remove = False
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()
+        self.service.controller.stop_game.assert_not_called()
+
+    def test_sans_lancement_rien_a_arreter(self):
+        self.service.controller.last_action = "recognized"
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()
+        self.service.controller.stop_game.assert_not_called()
+
+    def test_un_arret_par_retrait(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()
+        self.service._badge_seen("A1B2C3D4")  # repose : le jeu relance
+        self.retirer()                        # retire : il s'arrete encore
+        self.assertEqual(self.service.controller.stop_game.call_count, 2)
+
+    def test_pas_de_double_arret_sur_la_meme_absence(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()
+        self.service._release_latch()
+        self.service._release_latch()
+        self.service.controller.stop_game.assert_called_once_with()
+
+    def test_erreur_d_arret_non_bloquante(self):
+        self.service.controller.stop_game.side_effect = RuntimeError("boom")
+        self.service._badge_seen("A1B2C3D4")
+        self.retirer()  # ne doit pas lever
+        self.assertIsNone(self.service._active_uid)
 

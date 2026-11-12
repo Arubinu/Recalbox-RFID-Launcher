@@ -144,6 +144,7 @@ Deux formes, même page :
 | Copier les fichiers | (fichier unique) choisir `\\RECALBOX\share`, la page écrit `recalbox-rfid\` + `userscripts\` |
 | Installation | installer, mettre à jour (dossier du partage, ZIP envoyé depuis le PC, URL), suivre le journal, redémarrer Recalbox |
 | Matériel | état du SPI, du lecteur RC522, du bouton, du frontend Recalbox |
+| Options | tous les réglages du lanceur depuis la page (action au scan, arrêt du jeu au retrait du badge, délai de pose, appui d'autorisation, intervalle de lecture, anti-rebond, vitesse SPI, bips, journal) : enregistrés dans `config.ini` commentaires intacts, appliqués aussitôt |
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 
@@ -165,6 +166,7 @@ périmé).
 | --- | --- |
 | Installation | installer, mettre à jour (dossier du partage, ZIP envoyé depuis le PC, URL), suivre le journal, redémarrer Recalbox |
 | Matériel | état du SPI, du lecteur RC522, du bouton, du frontend Recalbox |
+| Options | tous les réglages du lanceur depuis la page (action au scan, arrêt du jeu au retrait du badge, délai de pose, appui d'autorisation, intervalle de lecture, anti-rebond, vitesse SPI, bips, journal) : enregistrés dans `config.ini` commentaires intacts, appliqués aussitôt |
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 | Apparence | thème clair / sombre (bouton soleil-lune : suit le système, un clic le fixe, appui long pour revenir) ; il s'applique aussi au schéma de câblage |
@@ -300,7 +302,7 @@ python app/main.py --home ./data agent --source .
 # (en simulation, la commande hold du service tient lieu d'appui physique)
 ```
 
-Tests unitaires (118 tests, aucun matériel requis) :
+Tests unitaires (263 tests, aucun matériel requis) :
 
 ```sh
 python tests/run_tests.py

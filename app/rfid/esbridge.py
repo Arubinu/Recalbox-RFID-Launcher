@@ -19,7 +19,9 @@ Deux mecanismes officiels sont utilises, sans modifier l'OS :
 from __future__ import annotations
 
 import os
+import signal
 import socket
+import time
 from dataclasses import dataclass
 
 from .consts import ES_STATE_FILE, ES_UDP_HOST, ES_UDP_PORT
@@ -179,6 +181,98 @@ def current_target(state, allow_running: bool = False) -> "Target | None":
     return Target(system=system, game=game, name=(state.get("Game") or "").strip(), path=absolute)
 
 
+#: Processus d'emulateurs que l'on peut arreter (jamais EmulationStation).
+EMULATEURS = (
+    "retroarch",
+    "emulatorlauncher",
+    "dolphin",
+    "ppsspp",
+    "mupen64plus",
+    "scummvm",
+    "dosbox",
+    "amiberry",
+    "flycast",
+    "pcsx",
+    "duckstation",
+    "yabasanshiro",
+    "mednafen",
+    "hatari",
+    "vice",
+    "fs-uae",
+)
+
+
+#: Dossier des processus (remplacable dans les tests).
+PROC_DIR = "/proc"
+
+#: Signaux utilises pour arreter un emulateur (absents sous Windows).
+SIG_TERM = getattr(signal, "SIGTERM", 15)
+SIG_KILL = getattr(signal, "SIGKILL", 9)
+
+#: Programme a ne jamais arreter : le frontend lui-meme.
+JAMAIS_ARRETER = ("emulationstation", "emulationstation.sh")
+
+
+def _cmdline(pid: str, proc_dir: str = PROC_DIR) -> str:
+    try:
+        with open(os.path.join(proc_dir, str(pid), "cmdline"), "rb") as handle:
+            brut = handle.read()
+    except OSError:
+        return ""
+    return brut.decode("utf-8", "replace").replace("\x00", " ").strip()
+
+
+def _programmes(ligne: str) -> list:
+    """Noms de programme d'une ligne de commande (argv[0] et script eventuel).
+
+    On ne compare que des noms de fichiers : chercher « vice » n'importe ou dans
+    la ligne arreterait des processus systeme sans rapport (paquets, services).
+    """
+    morceaux = ligne.split()
+    return [os.path.basename(morceau).lower() for morceau in morceaux[:3]]
+
+
+def _est_emulateur(noms, ligne: str, rom_path: str) -> bool:
+    if rom_path and rom_path in ligne:
+        return True
+    for nom in noms:
+        if nom in JAMAIS_ARRETER:
+            return False
+        if nom in EMULATEURS:
+            return True
+        base = nom.split(".")[0]
+        if base in EMULATEURS:
+            return True
+    return False
+
+
+def emulator_pids(rom_path: str = "", proc_dir: str = PROC_DIR):
+    """PID des processus d'emulation en cours (jamais ES, jamais nous)."""
+    pids = []
+    propre = os.getpid()
+    try:
+        entrees = os.listdir(proc_dir)
+    except OSError:
+        return pids
+    for entree in entrees:
+        if not entree.isdigit():
+            continue
+        pid = int(entree)
+        if pid == propre:
+            continue
+        ligne = _cmdline(entree, proc_dir)
+        if not ligne:
+            continue
+        if _est_emulateur(_programmes(ligne), ligne, rom_path):
+            pids.append(pid)
+    return pids
+
+
+def _kill(pid: int, sig: int) -> None:
+    """Point d'envoi de signal (remplace dans les tests)."""
+    os.kill(pid, sig)
+
+
 class EsLauncher:
     """Envoi de la commande de lancement au frontend."""
 
@@ -204,6 +298,41 @@ class EsLauncher:
                 "le caractere '|' n'est pas accepte dans le nom d'un jeu (trame UDP)"
             )
         return b"START|" + os.fsencode(system) + b"|" + os.fsencode(game)
+
+    def game_running(self, rom_path: str = "") -> bool:
+        """Vrai si un emulateur tourne (independant de l'etat du frontend)."""
+        return bool(emulator_pids(rom_path))
+
+    def stop_game(self, rom_path: str = "", timeout_s: float = 8.0, proc_dir: str = PROC_DIR) -> bool:
+        """Arrete le jeu en cours (SIGTERM, puis SIGKILL si necessaire).
+
+        Le frontend ne propose aucune commande reseau pour quitter un jeu : on
+        termine le processus de l'emulateur, et EmulationStation revient au menu
+        comme apres une sortie normale.
+        """
+        cibles = emulator_pids(rom_path, proc_dir)
+        if not cibles:
+            return False
+        for pid in cibles:
+            try:
+                _kill(pid, SIG_TERM)
+            except OSError:
+                continue
+        echeance = time.monotonic() + timeout_s
+        while time.monotonic() < echeance:
+            if not emulator_pids(rom_path, proc_dir):
+                if self.log:
+                    self.log.info("Emulateur arrete (%d processus)" % len(cibles))
+                return True
+            time.sleep(0.2)
+        for pid in emulator_pids(rom_path, proc_dir):
+            try:
+                _kill(pid, SIG_KILL)
+            except OSError:
+                continue
+        if self.log:
+            self.log.warning("Emulateur force a s'arreter (SIGKILL)")
+        return True
 
     def start_game(self, system: str, game: str) -> bool:
         """Envoie la commande ; True si le datagramme est parti."""

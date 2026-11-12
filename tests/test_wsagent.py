@@ -754,5 +754,107 @@ class ServiceTest(AgentTestCase):
         self.assertIn("message", data)
 
 
+class ConfigCommandTest(AgentTestCase):
+    """Options exposees dans l'onglet dedie de la page."""
+
+    def setUp(self):
+        super().setUp()
+        Config(self.config_path).create_default()
+
+    def lire(self, nom="config.ini"):
+        with open(os.path.join(self.home, nom), "r", encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_liste_les_options_avec_leur_valeur(self):
+        client = self.authenticated_client()
+        data = client.call("config.get")
+        options = {o["full"]: o for o in data["options"]}
+        self.assertIn("launch.stop_on_remove", options)
+        self.assertIn("launch.action", options)
+        self.assertIn("button.hold_press_s", options)
+        self.assertEqual(options["launch.stop_on_remove"]["value"], "0")
+        self.assertEqual(options["rfid.rearm_absent_ms"]["value"], "1200")
+        self.assertEqual(options["launch.action"]["type"], "choice")
+        self.assertIn("launch", options["launch.action"]["choices"])
+        self.assertTrue(options["launch.stop_on_remove"]["label"])
+
+    def test_enregistre_une_valeur(self):
+        client = self.authenticated_client()
+        data = client.call("config.set", values={"launch.stop_on_remove": "1"})
+        self.assertEqual(data["saved"], ["launch.stop_on_remove"])
+        self.assertFalse(data["reloaded"])  # service arrete : rien a recharger
+        self.assertTrue(Config(self.config_path).get_bool("launch", "stop_on_remove", False))
+        apres = client.call("config.get")
+        valeurs = {o["full"]: o["value"] for o in apres["options"]}
+        self.assertEqual(valeurs["launch.stop_on_remove"], "1")
+
+    def test_conserve_les_commentaires_du_fichier(self):
+        avant = self.lire()
+        commentaires = [l for l in avant.split("\n") if l.strip().startswith("#")]
+        client = self.authenticated_client()
+        client.call("config.set", values={"rfid.rearm_absent_ms": "2500"})
+        apres = self.lire()
+        restants = [l for l in apres.split("\n") if l.strip().startswith("#")]
+        self.assertEqual(len(restants), len(commentaires))
+        self.assertIn("rearm_absent_ms = 2500", apres)
+
+    def test_valeurs_normalisees(self):
+        client = self.authenticated_client()
+        client.call(
+            "config.set",
+            values={"launch.stop_on_remove": "oui", "feedback.sound": "non", "button.arm_timeout_s": 12.0},
+        )
+        cfg = Config(self.config_path)
+        self.assertTrue(cfg.get_bool("launch", "stop_on_remove", False))
+        self.assertFalse(cfg.get_bool("feedback", "sound", True))
+        self.assertIn("arm_timeout_s = 12", self.lire())
+
+    def test_option_inconnue_refusee(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={"launch.inconnue": "1"})
+
+    def test_choix_invalide_refuse(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={"launch.action": "explosion"})
+
+    def test_nombre_hors_bornes_refuse(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={"button.hold_press_s": "99"})
+        self.assertIn("hold_press_s = 3", self.lire())
+
+    def test_nombre_invalide_refuse(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={"rfid.rearm_absent_ms": "beaucoup"})
+
+    def test_booleen_invalide_refuse(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={"feedback.sound": "peut-etre"})
+
+    def test_sans_valeur_refuse(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("config.set", values={})
+
+    def test_rechargement_du_service(self):
+        with open(os.path.join(self.home, "rfid.pid"), "w", encoding="ascii") as handle:
+            handle.write(str(os.getpid()))
+        client = self.authenticated_client()
+        with mock.patch.object(wsagent.os, "kill") as tue:
+            data = client.call("config.set", values={"feedback.sound": "0"})
+        self.assertTrue(data["reloaded"])
+        tue.assert_called_once()
+
+    def test_acces_authentifie_obligatoire(self):
+        self.start_agent()
+        client = self.client()
+        with self.assertRaises(WsError):
+            client.call("config.get")
+
+
 if __name__ == "__main__":
     unittest.main()

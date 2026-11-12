@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import configparser
 import os
+import re
 
 DEFAULT_CONFIG_TEXT = """\
 # ==============================================================================
@@ -47,6 +48,9 @@ enabled = 1
 pin = 17
 # Delai (secondes) accorde pour scanner le badge apres un appui
 arm_timeout_s = 10
+# Maintien (secondes) qui autorise un navigateur a piloter la Recalbox.
+# L'autorisation part des ce delai, sans attendre le relachement.
+hold_press_s = 3
 # Anti-rebond (millisecondes)
 debounce_ms = 40
 
@@ -56,6 +60,8 @@ udp_host = 127.0.0.1
 udp_port = 1337
 # Ne pas lancer de jeu si un jeu tourne deja
 ignore_when_game_running = 1
+# Quitter le jeu quand le badge est retire du lecteur (0 = non)
+stop_on_remove = 0
 # Action quand un badge deja enregistre est scanne :
 #   launch = lance le jeu (comportement historique)
 #   none   = ne lance rien : bip de confirmation et journal seulement
@@ -163,6 +169,72 @@ class Config:
             handle.write(DEFAULT_CONFIG_TEXT)
         self.reload()
         return True
+
+    def write_values(self, values: dict) -> list:
+        """Met a jour des cles dans le fichier en conservant la mise en forme.
+
+        ``values`` associe "section.cle" a la nouvelle valeur. Retourne la liste
+        des cles reellement modifiees. Les cles absentes sont ajoutees a la fin
+        de leur section (la section est creee si besoin).
+        """
+        chemin = self.path
+        try:
+            with open(chemin, "r", encoding="utf-8") as handle:
+                lignes = handle.read().split("\n")
+        except OSError:
+            lignes = []
+        modifiees = []
+        a_ajouter = {}
+        for cle_complete, valeur in values.items():
+            if "." not in cle_complete:
+                raise ConfigError("cle invalide : %s" % cle_complete)
+            section, cle = cle_complete.split(".", 1)
+            valeur = str(valeur).strip()
+            section_courante = None
+            trouvee = False
+            for index, ligne in enumerate(lignes):
+                depouillee = ligne.strip()
+                if depouillee.startswith("[") and depouillee.endswith("]"):
+                    section_courante = depouillee[1:-1].strip()
+                    continue
+                if section_courante != section:
+                    continue
+                if not depouillee or depouillee.startswith(("#", ";")):
+                    continue
+                if re.match(r"^%s\s*=" % re.escape(cle), depouillee):
+                    indent = ligne[: len(ligne) - len(ligne.lstrip())]
+                    lignes[index] = "%s%s = %s" % (indent, cle, valeur)
+                    trouvee = True
+                    break
+            if not trouvee:
+                a_ajouter.setdefault(section, []).append("%s = %s" % (cle, valeur))
+            if trouvee:
+                modifiees.append(cle_complete)
+        for section, nouvelles in a_ajouter.items():
+            entete = "[%s]" % section
+            if entete in (ligne.strip() for ligne in lignes):
+                index = next(i for i, ligne in enumerate(lignes) if ligne.strip() == entete)
+                fin = index + 1
+                while fin < len(lignes) and not lignes[fin].strip().startswith("["):
+                    fin += 1
+                while fin > index + 1 and not lignes[fin - 1].strip():
+                    fin -= 1
+                lignes[fin:fin] = nouvelles
+            else:
+                if lignes and lignes[-1].strip():
+                    lignes.append("")
+                lignes.append(entete)
+                lignes.extend(nouvelles)
+            modifiees.extend("%s.%s" % (section, ligne.split("=")[0].strip()) for ligne in nouvelles)
+        temporaire = chemin + ".tmp"
+        try:
+            with open(temporaire, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write("\n".join(lignes))
+            os.replace(temporaire, chemin)
+        except OSError as exc:
+            raise ConfigError("ecriture impossible : %s" % exc)
+        self.reload()
+        return modifiees
 
     def get_list(self, section: str, key: str) -> list:
         raw = self.get(section, key, "")

@@ -421,6 +421,58 @@
   .action-bar .grow { flex: 1 1 auto; }
   .action-bar > button { flex: 0 0 auto; }
 
+  /* --------------------------------------------------------------- options */
+  /* La liste defile, pas la page : le bouton Enregistrer reste visible. */
+  .options {
+    display: flex; flex-direction: column; gap: 10px;
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    padding-right: 2px;
+  }
+  .option-group {
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    background: var(--surface-2); overflow: hidden; flex: 0 0 auto;
+  }
+  .option-group > h3 {
+    font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700; padding: 11px 14px 4px;
+  }
+  .option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 14px; border-top: 1px solid var(--line);
+  }
+  .option:first-of-type { border-top: 0; }
+  .option-text { flex: 1 1 auto; min-width: 0; }
+  .option-label { display: block; font-size: 13.5px; font-weight: 600; }
+  .option-help { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .option-control { flex: 0 0 auto; display: flex; align-items: center; }
+  .option select {
+    height: 34px; min-width: 168px; max-width: 240px;
+    background: var(--bg-2); color: var(--text);
+    border: 1px solid var(--line-2); border-radius: 9px;
+    padding: 0 10px; font: inherit; font-size: 13.5px;
+  }
+  .option select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .option input[type=number] {
+    width: 104px; height: 34px; text-align: right; font-size: 13.5px;
+  }
+  .switch {
+    position: relative; width: 46px; height: 26px; padding: 0; flex: 0 0 auto;
+    border-radius: 999px; border: 1px solid rgba(var(--ink-rgb), .18);
+    background: rgba(var(--ink-rgb), .1); cursor: pointer;
+    transition: background .18s, border-color .18s;
+  }
+  .switch:hover { background: rgba(var(--ink-rgb), .16); border-color: rgba(var(--ink-rgb), .26); }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--surface); border: 1px solid rgba(var(--ink-rgb), .14);
+    transition: transform .18s;
+  }
+  .switch[aria-checked="true"] { background: var(--primary); border-color: transparent; }
+  .switch[aria-checked="true"]:hover { background: var(--primary); filter: brightness(1.06); }
+  .switch[aria-checked="true"]::after { transform: translateX(20px); }
+  #options-state.warn { color: var(--warn-text); }
+
   /* -------------------------------------------------------- tableau de bord */
   .dash { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 12px; }
   .dash.hidden { display: none !important; }
@@ -554,6 +606,7 @@
     .choices { grid-template-columns: 1fr; }
     .view-install, .view-connect { justify-content: flex-start; }
     .panel { overflow: visible; height: auto; }
+    .options { overflow: visible; flex: 0 0 auto; }
     .view-choix { justify-content: flex-start; }
     .brand small { display: none; }
     .actions > button { flex: 1 1 100%; }
@@ -791,6 +844,7 @@
         <div class="tabs" role="tablist">
           <button type="button" role="tab" data-tab="badges" aria-selected="true">Badges</button>
           <button type="button" role="tab" data-tab="materiel" aria-selected="false">Matériel</button>
+          <button type="button" role="tab" data-tab="options" aria-selected="false">Options</button>
           <button type="button" role="tab" data-tab="maintenance" aria-selected="false">Maintenance</button>
         </div>
 
@@ -978,6 +1032,35 @@
                 <code>docs/CABLAGE.md</code>. Pour savoir si un badge est réellement vu,
                 utilisez « Tester avec un badge » : le test lit pendant 5 secondes et dit
                 si la carte répond, si elle est lue, ou si rien n'est détecté.
+              </p>
+            </details>
+          </section>
+
+          <section class="panel" data-panel="options">
+            <div class="panel-head">
+              <h2>Réglages du lanceur</h2>
+              <span class="hint">
+                Tout se règle ici : chaque changement est enregistré sur la Recalbox et
+                pris en compte aussitôt, sans redémarrage.
+              </span>
+            </div>
+            <div class="options" id="options-body"></div>
+            <p class="hint" id="options-hint"></p>
+            <div class="action-bar">
+              <span class="label">Enregistrement</span>
+              <span class="muted small" id="options-state">réglages à jour</span>
+              <span class="grow"></span>
+              <button class="secondary" id="btn-options-cancel" hidden>Annuler</button>
+              <button id="btn-options-save" disabled>Enregistrer</button>
+            </div>
+            <details>
+              <summary>Réglages qui restent dans le fichier de configuration</summary>
+              <p class="small muted">
+                Les broches du lecteur et du bouton, l'adresse du frontend Recalbox et le
+                port de l'agent restent dans config.ini : ils ne servent
+                qu'une fois, à l'installation, et ne changent qu'au redémarrage du
+                service. Le son, le lancement des jeux et le confort de lecture se
+                règlent ci-dessus.
               </p>
             </details>
           </section>
@@ -1747,6 +1830,212 @@ async function renderTags(force) {
     ]));
     body.appendChild(row);
   }
+}
+
+/* ---------------------------------------------------------------- options */
+/* L'agent decrit chaque reglage (section, cle, type, bornes, libelle) : la page
+   n'a aucune liste en dur, donc ajouter une option cote service la fait
+   apparaitre ici. */
+const OPTION_GROUPES = [
+  ["launch", "Lancement des jeux"],
+  ["button", "Bouton du boîtier"],
+  ["rfid", "Lecteur de badges"],
+  ["feedback", "Retour sonore"],
+  ["general", "Journal et diagnostic"],
+];
+
+const CHOIX_TEXTES = {
+  launch: "lancer le jeu",
+  none: "ne rien lancer",
+  DEBUG: "DEBUG (tout)",
+  INFO: "INFO (normal)",
+  WARNING: "WARNING (anomalies)",
+  ERROR: "ERROR (erreurs seules)",
+};
+
+let optionsData = null;
+let optionsPending = {};
+let optionsMessage = "";
+let lastOptionsJson = "";
+
+function optionValeur(option) {
+  return Object.prototype.hasOwnProperty.call(optionsPending, option.full)
+    ? optionsPending[option.full] : option.value;
+}
+
+function optionsModifiees() {
+  if (!optionsData) return false;
+  return optionsData.options.some((option) => optionValeur(option) !== option.value);
+}
+
+function majEtatOptions() {
+  const modifie = optionsModifiees();
+  if (modifie) optionsMessage = "";
+  const etat = $("#options-state");
+  if (etat) {
+    etat.textContent = modifie
+      ? t("modifications non enregistrées")
+      : t(optionsMessage || "réglages à jour");
+    etat.classList.toggle("warn", modifie);
+  }
+  const enregistrer = $("#btn-options-save");
+  if (enregistrer) enregistrer.disabled = busy || !modifie;
+  const annuler = $("#btn-options-cancel");
+  if (annuler) annuler.hidden = !modifie;
+}
+
+function choixTexte(valeur) {
+  return t(CHOIX_TEXTES[valeur] || valeur);
+}
+
+function controlerOption(option) {
+  const valeur = optionValeur(option);
+  if (option.type === "bool") {
+    const actif = valeur === "1";
+    const bouton = el("button", {
+      className: "switch",
+      attrs: {
+        type: "button",
+        role: "switch",
+        "aria-label": t(option.label || "Option"),
+        "aria-checked": actif ? "true" : "false",
+      },
+    });
+    bouton.addEventListener("click", () => {
+      const nouveau = bouton.getAttribute("aria-checked") !== "true";
+      bouton.setAttribute("aria-checked", nouveau ? "true" : "false");
+      optionsPending[option.full] = nouveau ? "1" : "0";
+      majEtatOptions();
+    });
+    return bouton;
+  }
+  if (option.type === "choice") {
+    const choix = el("select", { attrs: { "aria-label": t(option.label || "Option") } });
+    for (const possible of (option.choices || [])) {
+      const ligne = el("option", { text: choixTexte(possible), attrs: { value: possible } });
+      ligne.selected = possible === valeur;
+      choix.appendChild(ligne);
+    }
+    choix.addEventListener("change", () => {
+      optionsPending[option.full] = choix.value;
+      majEtatOptions();
+    });
+    return choix;
+  }
+  const champ = el("input", {
+    attrs: {
+      type: "number",
+      inputmode: "decimal",
+      "aria-label": t(option.label || "Option"),
+      value: valeur,
+    },
+  });
+  if (option.min !== undefined) champ.setAttribute("min", String(option.min));
+  if (option.max !== undefined) champ.setAttribute("max", String(option.max));
+  champ.addEventListener("input", () => {
+    optionsPending[option.full] = champ.value;
+    majEtatOptions();
+  });
+  champ.addEventListener("blur", () => {
+    /* On remet la valeur dans les bornes pour eviter une erreur au loin. */
+    const nombre = Number(String(champ.value).replace(",", "."));
+    if (!Number.isFinite(nombre)) { champ.value = valeur; return; }
+    let corriger = nombre;
+    if (option.min !== undefined) corriger = Math.max(corriger, Number(option.min));
+    if (option.max !== undefined) corriger = Math.min(corriger, Number(option.max));
+    if (String(corriger) !== String(nombre)) {
+      champ.value = String(corriger);
+      optionsPending[option.full] = String(corriger);
+      majEtatOptions();
+    }
+  });
+  return champ;
+}
+
+async function renderOptions(force) {
+  if (!agent.isOpen) return;
+  let data;
+  try {
+    data = await agent.send("config.get");
+  } catch (error) {
+    /* Recalbox encore en 2.7.4 : l'agent ne connait pas ces commandes. */
+    const conteneur = $("#options-body");
+    if (conteneur) {
+      conteneur.replaceChildren(el("p", {
+        className: "verdict warn",
+        text: t("Les réglages s'ouvrent avec la version 2.7.5 : mettez la Recalbox à jour dans l'onglet Maintenance."),
+      }));
+    }
+    const hint = $("#options-hint");
+    if (hint) hint.textContent = "";
+    const bouton = $("#btn-options-save");
+    if (bouton) bouton.disabled = true;
+    return;
+  }
+  const json = JSON.stringify(data);
+  if (!force && optionsData && json === lastOptionsJson) { majEtatOptions(); return; }
+  lastOptionsJson = json;
+  optionsData = data;
+  /* Les valeurs non enregistrees survivent a un changement d'onglet. */
+  for (const cle of Object.keys(optionsPending)) {
+    if (!data.options.some((option) => option.full === cle)) delete optionsPending[cle];
+  }
+  const conteneur = $("#options-body");
+  if (!conteneur) return;
+  const groupes = new Map();
+  for (const option of data.options) {
+    if (!groupes.has(option.section)) groupes.set(option.section, []);
+    groupes.get(option.section).push(option);
+  }
+  const ordre = OPTION_GROUPES.map((entree) => entree[0]).filter((cle) => groupes.has(cle));
+  for (const cle of groupes.keys()) if (!ordre.includes(cle)) ordre.push(cle);
+  const blocs = [];
+  for (const cle of ordre) {
+    const connue = OPTION_GROUPES.find((entree) => entree[0] === cle);
+    const bloc = el("section", { className: "option-group" }, [
+      el("h3", { text: t(connue ? connue[1] : cle) }),
+    ]);
+    for (const option of groupes.get(cle)) {
+      bloc.appendChild(el("div", { className: "option" }, [
+        el("div", { className: "option-text" }, [
+          el("span", { className: "option-label", text: t(option.label || option.full) }),
+          option.help ? el("span", { className: "option-help", text: t(option.help) }) : null,
+        ]),
+        el("div", { className: "option-control" }, [controlerOption(option)]),
+      ]));
+    }
+    blocs.push(bloc);
+  }
+  conteneur.replaceChildren(...blocs);
+  const actif = state && state.service && state.service.running;
+  $("#options-hint").textContent = actif
+    ? ""
+    : t("Le service est arrêté : les réglages seront utilisés à son prochain démarrage.");
+  majEtatOptions();
+}
+
+async function enregistrerOptions() {
+  if (!optionsData) return;
+  const values = {};
+  for (const option of optionsData.options) {
+    const valeur = optionValeur(option);
+    if (valeur !== option.value) values[option.full] = valeur;
+  }
+  if (!Object.keys(values).length) return;
+  const data = await run(() => agent.send("config.set", { values }));
+  if (!data) return;
+  optionsPending = {};
+  optionsMessage = data.reloaded
+    ? "enregistré · service rechargé"
+    : "enregistré · le service est arrêté";
+  lastOptionsJson = "";
+  await renderOptions(true);
+}
+
+async function annulerOptions() {
+  optionsPending = {};
+  optionsMessage = "";
+  await renderOptions(true);
 }
 
 /* ---------------------------------------------------------------- refresh */
@@ -2810,6 +3099,9 @@ function appliquerLangue(code, memoriser) {
   }
   /* Les messages construits en JavaScript sont regeneres par refresh(). */
   if (typeof refresh === "function" && typeof agent !== "undefined" && agent.isOpen) refresh();
+  if (typeof renderOptions === "function" && typeof agent !== "undefined" && agent && agent.isOpen) {
+    renderOptions(true);
+  }
 }
 
 /* Langue du systeme : premiere langue disponible dans les preferences du
@@ -2908,6 +3200,10 @@ function setTab(name) {
   document.querySelectorAll("[data-panel]").forEach((node) => {
     node.classList.toggle("is-active", node.dataset.panel === name);
   });
+  if (name === "options" && typeof renderOptions === "function"
+      && typeof agent !== "undefined" && agent && agent.isOpen) {
+    renderOptions(true);
+  }
 }
 
 document.querySelectorAll("[data-goto]").forEach((node) => {
@@ -2938,6 +3234,8 @@ $("#btn-disconnect").addEventListener("click", () => {
   $("#connect-hint").textContent = "Déconnecté. Vous pouvez vous reconnecter.";
   setView("connect");
 });
+$("#btn-options-save").addEventListener("click", enregistrerOptions);
+$("#btn-options-cancel").addEventListener("click", annulerOptions);
 setTab("badges");
 
 /* ------------------------------------------- perte et retour de connexion */

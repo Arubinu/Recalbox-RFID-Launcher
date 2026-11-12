@@ -4,6 +4,47 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.5]
+
+### Ajouté
+
+* **Un onglet « Options »**, pour tout régler depuis la page, sans fichier à
+  ouvrir : action au scan d'un badge associé, lancement pendant une partie,
+  arrêt du jeu au retrait du badge, délai de pose du badge, appui qui autorise un
+  navigateur, intervalle de lecture, anti-rebond du même badge, absence avant de
+  pouvoir rescanner, vitesse du bus SPI, bips sonores et niveau de journal.
+  * la page ne contient **aucune liste de réglages en dur** : c'est l'agent qui
+    les décrit (`config.get`) et les enregistre (`config.set`) ; ajouter une
+    option côté service la fait apparaître dans l'interface ;
+  * l'enregistrement **conserve les commentaires** du `config.ini` et le service
+    **relit sa configuration immédiatement** (SIGHUP) : ni redémarrage ni
+    coupure de la lecture des badges ;
+  * les modifications non enregistrées sont annoncées et **survivent au
+    changement d'onglet** ; « Annuler » revient aux valeurs de la Recalbox ;
+  * chaque valeur est **validée côté service** (bornes, choix, oui/non) : une
+    valeur refusée n'écrit rien dans le fichier.
+
+### Ajouté — lancer avec un badge, quitter en le retirant
+
+* Nouvelle option `[launch] stop_on_remove` (désactivée par défaut) : quand le
+  badge qui a lancé le jeu quitte le lecteur, le jeu est arrêté et Recalbox
+  revient au menu. L'émulateur reçoit d'abord un arrêt propre (`SIGTERM`), puis
+  un arrêt forcé s'il résiste (`SIGKILL`) ; **EmulationStation n'est jamais
+  visé**, ce qui donne exactement le retour au menu d'une sortie de jeu normale.
+* La détection des émulateurs se fait sur le **nom du programme** et non plus sur
+  la ligne de commande entière : aucun processus système sans rapport ne peut
+  être arrêté (le mot « service » contient « vice », par exemple).
+
+### Corrigé
+
+* **Le jeu ne se relance plus quand le badge reste sur le lecteur.** Un badge
+  posé ne peut plus être pris pour un badge retiré : l'absence doit être vue
+  **trois fois de suite** et durer plus longtemps que le délai de réarmement,
+  toute lecture positive remettant le compteur à zéro.
+* `hold_press_s` (durée d'appui qui autorise un navigateur) apparaît enfin dans
+  le `config.ini` livré : il était réglable mais absent du fichier, donc
+  invisible.
+
 ## [2.7.4]
 
 ### Ajouté

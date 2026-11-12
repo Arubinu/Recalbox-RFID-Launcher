@@ -7,9 +7,12 @@ import shutil
 import socket
 import tempfile
 import unittest
+from unittest import mock
 
 import support  # noqa: F401
+from rfid import esbridge
 from rfid.esbridge import (
+    emulator_pids,
     EsLauncher,
     current_target,
     describe_state,
@@ -158,6 +161,96 @@ class CurrentTargetTest(unittest.TestCase):
         self.assertTrue(game_is_running(self.state(State="playing")))
         self.assertFalse(game_is_running(self.state()))
         self.assertFalse(game_is_running(None))
+
+
+class EmulatorProcessTest(unittest.TestCase):
+    """Detection des emulateurs a arreter (faux /proc)."""
+
+    def setUp(self):
+        self.proc = tempfile.mkdtemp(prefix="rfid-proc-")
+        self.addCleanup(shutil.rmtree, self.proc, True)
+
+    def ajouter(self, pid, ligne):
+        dossier = os.path.join(self.proc, str(pid))
+        os.makedirs(dossier)
+        with open(os.path.join(dossier, "cmdline"), "wb") as handle:
+            handle.write(ligne.encode("utf-8").replace(b" ", b"\x00"))
+
+    def test_detecte_retroarch(self):
+        self.ajouter(4242, "/usr/bin/retroarch -L /usr/lib/libretro/snes9x.so")
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [4242])
+
+    def test_ignore_le_frontend(self):
+        self.ajouter(1100, "/usr/bin/emulationstation --log-file /tmp/es.log")
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [])
+
+    def test_ignore_un_processus_sans_rapport(self):
+        # « service » contient « vice » : le filtrage doit se faire sur le nom
+        # du programme, jamais sur la ligne entiere.
+        self.ajouter(900, "/usr/bin/python3 /usr/bin/service-helper --all")
+        self.ajouter(901, "/usr/sbin/rpc.statd")
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [])
+
+    def test_ignore_son_propre_pid(self):
+        self.ajouter(os.getpid(), "/usr/bin/retroarch")
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [])
+
+    def test_detecte_par_le_chemin_du_jeu(self):
+        rom = "/recalbox/share/roms/snes/Super Mario World.smc"
+        self.ajouter(5000, "/usr/bin/monemu %s" % rom)
+        self.assertEqual(emulator_pids(rom, proc_dir=self.proc), [5000])
+        self.assertEqual(emulator_pids("", proc_dir=self.proc), [])
+
+    def test_detecte_emulatorlauncher(self):
+        self.ajouter(5100, "/usr/bin/python3 /usr/bin/emulatorlauncher -system snes -rom jeu.smc")
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [5100])
+
+    def test_dossier_absent(self):
+        self.assertEqual(emulator_pids(proc_dir=os.path.join(self.proc, "absent")), [])
+
+    def test_entrees_non_numeriques(self):
+        self.ajouter(600, "/usr/bin/retroarch")
+        os.makedirs(os.path.join(self.proc, "sys"))
+        self.assertEqual(emulator_pids(proc_dir=self.proc), [600])
+
+    def test_game_running(self):
+        launcher = EsLauncher("127.0.0.1", 1337)
+        with mock.patch.object(esbridge, "emulator_pids", return_value=[7]):
+            self.assertTrue(launcher.game_running())
+        with mock.patch.object(esbridge, "emulator_pids", return_value=[]):
+            self.assertFalse(launcher.game_running())
+
+
+class StopGameTest(unittest.TestCase):
+    """Arret du jeu : SIGTERM, puis SIGKILL si l'emulateur resiste."""
+
+    def setUp(self):
+        self.launcher = EsLauncher("127.0.0.1", 1337)
+        self.signaux = []
+        self.patch_kill = mock.patch.object(esbridge, "_kill", side_effect=self.noter)
+        self.patch_kill.start()
+        self.addCleanup(self.patch_kill.stop)
+        self.patch_sleep = mock.patch.object(esbridge.time, "sleep")
+        self.patch_sleep.start()
+        self.addCleanup(self.patch_sleep.stop)
+
+    def noter(self, pid, sig):
+        self.signaux.append((pid, sig))
+
+    def test_arret_propre(self):
+        with mock.patch.object(esbridge, "emulator_pids", side_effect=[[11, 22], [], []]):
+            self.assertTrue(self.launcher.stop_game())
+        self.assertEqual(self.signaux, [(11, esbridge.SIG_TERM), (22, esbridge.SIG_TERM)])
+
+    def test_aucun_emulateur(self):
+        with mock.patch.object(esbridge, "emulator_pids", return_value=[]):
+            self.assertFalse(self.launcher.stop_game())
+        self.assertEqual(self.signaux, [])
+
+    def test_emulateur_qui_resiste(self):
+        with mock.patch.object(esbridge, "emulator_pids", return_value=[33]):
+            self.assertTrue(self.launcher.stop_game(timeout_s=0.0))
+        self.assertEqual(self.signaux, [(33, esbridge.SIG_TERM), (33, esbridge.SIG_KILL)])
 
 
 class PayloadTest(unittest.TestCase):
