@@ -7,256 +7,721 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #0f1216;
-    --card: #171b22;
-    --card-2: #1e242d;
-    --line: #2a3240;
-    --text: #e6ebf2;
-    --muted: #93a0b4;
-    --accent: #4c8dff;
-    --ok: #37c98b;
-    --warn: #f0b429;
-    --err: #ff6b6b;
+    --bg: #090d14;
+    --bg-glow: rgba(61, 90, 241, .16);
+    --surface: #121a28;
+    --surface-2: #182233;
+    --surface-3: #1f2b3f;
+    --line: rgba(255, 255, 255, .075);
+    --line-strong: rgba(255, 255, 255, .14);
+    --text: #e9eef8;
+    --muted: #9aa8c0;
+    --faint: #71809a;
+    --primary: #3d5af1;
+    --primary-hover: #2f49d6;
+    --primary-soft: rgba(61, 90, 241, .16);
+    --brand: #ff6b4a;
+    --ok: #1bb981;
+    --warn: #e8a33d;
+    --err: #ef5350;
+    --radius: 18px;
+    --radius-sm: 12px;
+    --shadow: 0 24px 48px -32px rgba(0, 0, 0, .95);
   }
+
   * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
   body {
     margin: 0;
-    background: var(--bg);
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 520px at 50% -12%, var(--bg-glow), transparent 68%),
+      var(--bg);
     color: var(--text);
-    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI",
+          Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum" 1;
   }
-  header {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-    padding: 18px 22px; border-bottom: 1px solid var(--line);
-    background: linear-gradient(180deg, #1a2029, #12161c);
+
+  h1, h2, h3 { margin: 0; letter-spacing: -.015em; font-weight: 650; line-height: 1.25; }
+
+  a { color: var(--primary); }
+
+  code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: .88em;
+    background: rgba(255, 255, 255, .06);
+    border-radius: 6px;
+    padding: .1em .38em;
   }
-  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
-  header .version { color: var(--muted); font-size: 13px; }
+
+  /* ------------------------------------------------------------- barre haute */
+  header.topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px clamp(16px, 4vw, 32px);
+    border-bottom: 1px solid var(--line);
+    background: rgba(9, 13, 20, .82);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: inherit; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 11px;
+    display: grid; place-items: center;
+    background: linear-gradient(150deg, var(--brand), #c9341f);
+    box-shadow: 0 8px 20px -10px rgba(255, 107, 74, .8);
+    color: #fff;
+  }
+  .brand .mark svg { width: 19px; height: 19px; }
+  .brand-text { display: grid; line-height: 1.2; }
+  .brand-name { font-weight: 650; font-size: 15.5px; letter-spacing: -.01em; }
+  .brand-sub { font-size: 12px; color: var(--faint); }
   .spacer { flex: 1 1 auto; }
-  main { max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; display: grid; gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
-  .card h2 { font-size: 15px; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .item { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-  .item .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .item .value { font-size: 16px; margin-top: 4px; word-break: break-word; }
-  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
-  button {
-    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
-    padding: 9px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+  .version {
+    font-size: 12.5px; color: var(--muted);
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--line);
+    white-space: nowrap; max-width: 42vw; overflow: hidden; text-overflow: ellipsis;
   }
-  button:hover { filter: brightness(1.1); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  button.secondary { background: var(--card-2); border: 1px solid var(--line); color: var(--text); }
-  button.danger { background: #b23b3b; }
-  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .version:empty, .version[hidden] { display: none; }
+
+  /* -------------------------------------------------------------------- page */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 72px;
+    display: grid;
+    gap: 20px;
+  }
+  main > * { min-width: 0; }
+  .card { min-width: 0; }
+  .grid, .row, .actions, .connect-grid { min-width: 0; }
+  .table-wrap { max-width: 100%; }
+
+  .hero { display: grid; gap: 14px; padding: 4px 2px 2px; }
+  .hero h1 { font-size: clamp(26px, 4.2vw, 34px); letter-spacing: -.028em; }
+  .hero .lede { margin: 0; color: var(--muted); font-size: 16.5px; max-width: 62ch; }
+  .facts {
+    list-style: none; margin: 6px 0 0; padding: 0;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+  .facts li {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, .022);
+  }
+  .facts .ico {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: var(--primary-soft); color: #a9b8ff;
+  }
+  .facts .ico svg { width: 17px; height: 17px; }
+  .facts b { display: block; font-size: 14px; font-weight: 600; }
+  .facts span { font-size: 13px; color: var(--muted); }
+
+  /* ---------------------------------------------------------------- stepper */
+  .stepper {
+    list-style: none; margin: 2px 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    font-size: 13.5px; color: var(--faint);
+  }
+  .stepper li { display: flex; align-items: center; gap: 8px; }
+  .stepper .n {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+  }
+  .stepper li + li::before {
+    content: ""; width: 22px; height: 1px;
+    background: var(--line-strong); margin-right: 10px;
+  }
+  .stepper li.is-current { color: var(--text); font-weight: 600; }
+  .stepper li.is-current .n {
+    background: var(--primary); border-color: transparent; color: #fff;
+    box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+  .stepper li.is-done { color: var(--muted); }
+  .stepper li.is-done .n { background: rgba(27, 185, 129, .16); border-color: rgba(27, 185, 129, .35); color: var(--ok); }
+  main:has(#connect-card:not(.hidden)) .stepper li[data-step="2"] { color: var(--text); font-weight: 600; }
+  main:has(#connect-card:not(.hidden)) .stepper li[data-step="2"] .n {
+    background: var(--primary); border-color: transparent; color: #fff; box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+  main:has(#app:not(.hidden)) .stepper li[data-step="1"] { color: var(--muted); }
+  main:has(#app:not(.hidden)) .stepper li[data-step="1"] .n {
+    background: rgba(27, 185, 129, .16); border-color: rgba(27, 185, 129, .35); color: var(--ok);
+  }
+  main:has(#app:not(.hidden)) .stepper li[data-step="3"] { color: var(--text); font-weight: 600; }
+  main:has(#app:not(.hidden)) .stepper li[data-step="3"] .n {
+    background: var(--primary); border-color: transparent; color: #fff; box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+
+  /* ----------------------------------------------------------------- cartes */
+  .card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .022), transparent 42%), var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(18px, 3vw, 26px);
+    box-shadow: var(--shadow);
+  }
+  .card + .card, #app > .card + .card { margin-top: 20px; }
+
+  .step-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 18px; }
+  .step-num {
+    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 11px;
+    display: grid; place-items: center;
+    font-size: 15px; font-weight: 700;
+    background: var(--primary-soft);
+    border: 1px solid rgba(61, 90, 241, .34);
+    color: #b3c1ff;
+  }
+  .step-title h2 { font-size: 19px; }
+  .step-sub { margin: 5px 0 0; color: var(--muted); font-size: 14.5px; max-width: 66ch; }
+  .card-head h2 { font-size: 17px; }
+  .card-sub { margin: 5px 0 0; color: var(--muted); font-size: 14px; max-width: 66ch; }
+  .card-head { margin-bottom: 16px; }
+
+  /* ------------------------------------------------------------- formulaire */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .item {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid rgba(255, 255, 255, .07);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .item .label {
+    font-size: 12.5px; color: var(--faint); font-weight: 500;
+    text-transform: none; letter-spacing: 0;
+  }
+  .item .value {
+    font-size: 15px; font-weight: 600; margin-top: 3px;
+    overflow-wrap: anywhere;
+  }
+  .item .value.ok { color: #5fd6a5; }
+  .item .value.warn { color: #f0bd6a; }
+  .item .value.err { color: #ff8b88; }
+  .item:has(.value.ok) { border-left-color: rgba(27, 185, 129, .55); }
+  .item:has(.value.warn) { border-left-color: rgba(232, 163, 61, .55); }
+  .item:has(.value.err) { border-left-color: rgba(239, 83, 80, .55); }
+
+  .row, .actions {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-top: 16px;
+  }
+
+  label.field { display: block; min-width: 0; }
+  label.field > span {
+    display: block; font-size: 12.5px; color: var(--muted);
+    margin-bottom: 6px; font-weight: 500;
+  }
+
   input[type=text], input[type=number], input[type=password] {
-    background: var(--card-2); border: 1px solid var(--line); color: var(--text);
-    border-radius: 8px; padding: 9px 11px; font-size: 14px; min-width: 0;
+    width: 100%;
+    background: #0d1420;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    min-width: 0;
+    transition: border-color .15s, box-shadow .15s;
   }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-  pre {
-    background: #0b0e12; border: 1px solid var(--line); border-radius: 8px;
-    padding: 12px; max-height: 320px; overflow: auto; font-size: 12.5px;
-    white-space: pre-wrap; word-break: break-word; margin: 10px 0 0;
+  input::placeholder { color: #5f6d85; }
+  input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
   }
-  .pill {
-    display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
-    border-radius: 999px; font-size: 13px; font-weight: 600;
-    background: var(--card-2); border: 1px solid var(--line);
+
+  .connect-grid { display: grid; grid-template-columns: 2fr 96px 1.6fr; gap: 12px; }
+  @media (max-width: 720px) { .connect-grid { grid-template-columns: 1fr; } }
+
+  /* --------------------------------------------------------------- boutons */
+  button {
+    font: inherit;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    color: #fff;
+    background: linear-gradient(180deg, var(--primary), var(--primary-hover));
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 11px;
+    padding: 11px 18px;
+    min-height: 44px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .12s ease, filter .15s ease, background .15s ease;
   }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-  .pill.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-  .pill.off .dot { background: var(--err); }
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
-  .banner { border-radius: 12px; padding: 14px 16px; border: 1px solid; }
-  .banner.info { background: #14263f; border-color: #2b4c7e; }
-  .banner.warn { background: #2c2413; border-color: #6b5722; }
-  .banner.good { background: #12291f; border-color: #245b41; }
-  .banner.err { background: #331a1a; border-color: #6d2b2b; }
-  details summary { cursor: pointer; color: var(--muted); margin-top: 14px; }
+  button:hover { filter: brightness(1.08); }
+  button:active { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid #93a6ff; outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: not-allowed; filter: none; transform: none; }
+  button.big { font-size: 15.5px; padding: 13px 22px; min-height: 50px; border-radius: 12px; }
+  button.secondary {
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  button.secondary:hover { background: var(--surface-3); }
+  button.ghost {
+    background: transparent;
+    border-color: var(--line-strong);
+    color: var(--muted);
+  }
+  button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+  button.danger {
+    background: linear-gradient(180deg, #d93b39, #b62e2c);
+    border-color: rgba(255, 255, 255, .1);
+  }
+
+  .hint { color: var(--muted); font-size: 13.5px; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
   .grow { flex: 1 1 240px; }
-  footer { text-align: center; color: #5a6577; font-size: 12px; padding: 10px; }
+
+  /* ----------------------------------------------------------------- table */
+  .table-wrap { margin-top: 18px; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  th { white-space: nowrap; }
+  th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--faint); font-weight: 600; background: rgba(255, 255, 255, .025);
+  }
+  tbody tr:hover td { background: rgba(255, 255, 255, .028); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.muted, td .muted { color: var(--muted); }
+
+  /* -------------------------------------------------------- details / code */
+  details {
+    border-top: 1px solid var(--line);
+    margin-top: 18px;
+    padding-top: 12px;
+  }
+  details summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    list-style: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform .15s ease;
+    margin-right: 2px;
+    opacity: .8;
+  }
+  details[open] > summary::before { transform: rotate(45deg); }
+  details summary:hover { color: var(--text); }
+  details > *:not(summary) { margin-top: 12px; }
+  details ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+  details p { margin: 10px 0 0; }
+
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  pre {
+    background: #070b12;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    max-height: 300px;
+    overflow: auto;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    color: #cdd8ea;
+  }
+
+  /* ---------------------------------------------------------------- etats */
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 13px 6px 11px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    white-space: nowrap;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--faint);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, .05);
+  }
+  .pill.on .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(27, 185, 129, .2); }
+  .pill.off .dot { background: #f2665f; box-shadow: 0 0 0 3px rgba(239, 83, 80, .18); }
+
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+
+  .banner {
+    border-radius: var(--radius-sm);
+    padding: 14px 16px 14px 46px;
+    border: 1px solid;
+    position: relative;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .banner::before {
+    position: absolute; left: 16px; top: 13px;
+    font-size: 16px; line-height: 1.2;
+  }
+  .banner.info { background: rgba(61, 90, 241, .1); border-color: rgba(61, 90, 241, .35); }
+  .banner.info::before { content: "ℹ"; color: #9db0ff; }
+  .banner.good { background: rgba(27, 185, 129, .1); border-color: rgba(27, 185, 129, .34); }
+  .banner.good::before { content: "✓"; color: #5fd6a5; font-weight: 700; }
+  .banner.warn { background: rgba(232, 163, 61, .1); border-color: rgba(232, 163, 61, .34); }
+  .banner.warn::before { content: "!"; color: #f0bd6a; font-weight: 700; }
+  .banner.err { background: rgba(239, 83, 80, .1); border-color: rgba(239, 83, 80, .36); }
+  .banner.err::before { content: "×"; color: #ff8b88; font-weight: 700; font-size: 18px; }
+
+  /* --------------------------------------------------------------- pied */
+  footer {
+    text-align: center;
+    color: var(--faint);
+    font-size: 12.5px;
+    padding: 4px 16px 40px;
+    max-width: 60ch;
+    margin: 0 auto;
+  }
+
   .hidden { display: none !important; }
-  .connect-grid { display: grid; grid-template-columns: 2fr 90px 2fr; gap: 10px; }
-  @media (max-width: 700px) { .connect-grid { grid-template-columns: 1fr; } }
-  label.field { display: block; }
-  label.field span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+  /* --------------------------------------- page connectee : on compacte */
+  main:has(#app:not(.hidden)) .hero .facts { display: none; }
+  main:has(#app:not(.hidden)) .hero h1 { font-size: clamp(22px, 3vw, 26px); }
+  main:has(#app:not(.hidden)) #copy-card { padding-block: 16px; }
+  main:has(#app:not(.hidden)) #copy-card #payload-grid,
+  main:has(#app:not(.hidden)) #copy-card .step-sub { display: none; }
+  main:has(#app:not(.hidden)) #copy-card .step-num { display: none; }
+  main:has(#app:not(.hidden)) #copy-card .step-head { margin-bottom: 0; align-items: center; }
+  main:has(#app:not(.hidden)) #copy-card .step-title h2 { font-size: 15.5px; color: var(--muted); }
+  main:has(#app:not(.hidden)) #copy-card #btn-download-cmd {
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+    color: var(--text);
+    font-size: 14px;
+    min-height: 40px;
+    padding: 9px 15px;
+    border-radius: 10px;
+    box-shadow: none;
+  }
+  main:has(#app:not(.hidden)) #copy-card #btn-download-cmd:hover { background: var(--surface-3); }
+
+  /* --------------------------------------------------------- mobile */
+  @media (max-width: 640px) {
+    body { font-size: 15.5px; }
+    header.topbar { gap: 10px; padding: 12px 16px; }
+    .brand-sub { display: none; }
+    .actions { align-items: stretch; }
+    .actions > button, .row > button { flex: 1 1 100%; }
+    .actions > .hint { flex: 1 1 100%; }
+    .stepper { gap: 6px 12px; font-size: 12.5px; }
+    .stepper li + li::before { width: 10px; margin-right: 4px; }
+    .version { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  }
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Recalbox RFID Launcher</h1>
-  <span class="version" id="version">—</span>
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Recalbox RFID, haut de page">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/>
+        <circle cx="9" cy="11" r="1.7"/>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <span class="brand-name">Recalbox RFID</span>
+      <span class="brand-sub">Un badge, un jeu</span>
+    </span>
+  </a>
   <span class="spacer"></span>
+  <span class="version" id="version"></span>
   <span class="pill off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
 </header>
 
-<main>
-  <!-- Installation en un seul fichier (.cmd) -->
+<main id="top">
+
+  <section class="hero">
+    <h1>Posez un badge, le jeu démarre.</h1>
+    <p class="lede">
+      Cette page installe et configure votre Recalbox. Trois étapes, aucun réglage
+      compliqué : le fichier s'occupe du reste.
+    </p>
+    <ul class="facts">
+      <li>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 4.5v9.5"/><path d="M8.5 10.5 12 14l3.5-3.5"/><path d="M5 17.5v1.5h14v-1.5"/>
+          </svg>
+        </span>
+        <div><b>Un seul fichier</b><span>Double-clic, tout est copié.</span></div>
+      </li>
+      <li>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="1.8"/>
+            <circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>
+          </svg>
+        </span>
+        <div><b>Rien à régler</b><span>Tout se fait depuis cette page.</span></div>
+      </li>
+      <li>
+        <span class="ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3.8 19 6.2v5.3c0 4.1-3 7.2-7 8.6-4-1.4-7-4.5-7-8.6V6.2z"/>
+            <path d="m9 12 2.2 2.2L15.5 10"/>
+          </svg>
+        </span>
+        <div><b>Rester chez vous</b><span>Rien ne quitte votre réseau.</span></div>
+      </li>
+    </ul>
+    <ol class="stepper" aria-label="Les trois étapes">
+      <li data-step="1"><span class="n">1</span>Installer</li>
+      <li data-step="2"><span class="n">2</span>Relier</li>
+      <li data-step="3"><span class="n">3</span>Associer</li>
+    </ol>
+  </section>
+
+  <!-- Étape 1 : installation en un seul fichier -->
   <section class="card" id="copy-card" hidden>
-    <h2>1. Installer sur la Recalbox</h2>
+    <div class="step-head">
+      <span class="step-num" aria-hidden="true">1</span>
+      <div class="step-title">
+        <h2>Installer sur la Recalbox</h2>
+        <p class="step-sub">
+          Téléchargez un seul fichier et double-cliquez dessus : il se connecte à la
+          Recalbox et copie tout à votre place.
+        </p>
+      </div>
+    </div>
     <div class="grid" id="payload-grid"></div>
-    <div class="row">
-      <button id="btn-download-cmd">Télécharger l'installateur Windows (.cmd)</button>
-      <span class="muted small">
-        Un seul fichier : double-clic, aucune fenêtre à remplir.
-      </span>
+    <div class="actions">
+      <button class="big" id="btn-download-cmd">Télécharger l'installateur</button>
+      <span class="hint">Fichier <code>recalbox-rfid-installation.cmd</code> — il s'ouvre d'un double-clic.</span>
     </div>
     <details>
-      <summary>Comment faire ?</summary>
+      <summary>Que va-t-il se passer&nbsp;?</summary>
       <ol class="small muted">
-        <li>Cliquez sur le bouton : un fichier
-            <code>recalbox-rfid-installation.cmd</code> est téléchargé.</li>
-        <li>Double-cliquez dessus (« Informations complémentaires » →
-            « Exécuter quand même » si Windows prévient). Il se connecte au
-            partage, copie les fichiers et le script de démarrage.</li>
-        <li>Redémarrez Recalbox : l'installation se fait toute seule au
-            démarrage (et Recalbox redémarre une fois de plus pour le SPI).</li>
-        <li>Relancez le même fichier : il ouvre l'interface de gestion avec le
-            jeton déjà rempli (copié dans le presse-papiers).</li>
+        <li>Le fichier apparaît dans votre dossier « Téléchargements ».</li>
+        <li>Double-cliquez dessus. Si Windows affiche un avertissement, cliquez sur
+            « Informations complémentaires » puis « Exécuter quand même ».</li>
+        <li>Une fenêtre noire s'ouvre, travaille toute seule, puis affiche
+            « Terminé ». Vous pouvez la fermer.</li>
+        <li>Redémarrez la Recalbox : l'installation se termine au démarrage
+            (elle peut redémarrer une seconde fois pour activer le lecteur).</li>
       </ol>
       <p class="small muted">
-        Le fichier tente <b>root</b> / <b>recalboxroot</b>, puis l'accès invité.
         Si votre mot de passe root est personnalisé, ouvrez le fichier avec le
         Bloc-notes et remplacez la ligne <code>set PASS=recalboxroot</code>.
       </p>
     </details>
     <details>
-      <summary>Méthode alternative : choisir le dossier (Edge/Chrome)</summary>
+      <summary>Autre méthode : copier depuis ce navigateur (Edge ou Chrome)</summary>
+      <p class="small muted">
+        Pratique si le fichier <code>.cmd</code> est bloqué par votre antivirus :
+        le navigateur écrit directement sur le partage de la Recalbox.
+      </p>
       <div class="row">
-        <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier…</button>
+        <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier</button>
         <button class="secondary" id="btn-netuse">Autoriser Windows à accéder au partage</button>
-        <span class="muted small" id="copy-hint">
-          Écriture directe depuis le navigateur.
-        </span>
+        <span class="muted small" id="copy-hint"></span>
       </div>
       <pre id="copy-log" hidden></pre>
     </details>
   </section>
 
-  <!-- Connexion -->
+  <!-- Étape 2 : connexion -->
   <section class="card" id="connect-card">
-    <h2>Connexion à la Recalbox</h2>
+    <div class="step-head">
+      <span class="step-num" aria-hidden="true">2</span>
+      <div class="step-title">
+        <h2>Relier cette page à la Recalbox</h2>
+        <p class="step-sub">
+          L'adresse est presque toujours <code>recalbox.local</code>. Le jeton est un
+          mot de passe unique, écrit par la Recalbox.
+        </p>
+      </div>
+    </div>
     <div class="connect-grid">
-      <label class="field"><span>Adresse (IP ou nom)</span>
+      <label class="field"><span>Adresse de la Recalbox</span>
         <input type="text" id="host" placeholder="recalbox.local" autocomplete="off">
       </label>
       <label class="field"><span>Port</span>
         <input type="number" id="port" placeholder="8765" min="1" max="65535">
       </label>
-      <label class="field"><span>Jeton (token.txt)</span>
-        <input type="password" id="token" placeholder="jeton de l'agent" autocomplete="off">
+      <label class="field"><span>Jeton de sécurité</span>
+        <input type="password" id="token" placeholder="collez le jeton ici" autocomplete="off">
       </label>
     </div>
-    <div class="row">
-      <button id="btn-connect">Connecter</button>
-      <button class="secondary" id="btn-token-file">Charger token.txt…</button>
+    <div class="actions">
+      <button class="big" id="btn-connect">Se connecter</button>
+      <button class="secondary" id="btn-token-file">J'ai le fichier token.txt</button>
       <input type="file" id="file-token" accept=".txt,text/plain" hidden>
       <span class="muted small" id="connect-hint"></span>
     </div>
     <details>
-      <summary>Où trouver le jeton ?</summary>
+      <summary>Où trouver le jeton&nbsp;?</summary>
       <p class="small muted">
-        Sur le partage réseau de la Recalbox :
-        <code>\\RECALBOX\share\system\rfid\token.txt</code>. Si le champ est vide,
-        « Connecter » demande une seule fois le dossier du partage et lit le jeton
-        tout seul (Edge/Chrome). Sinon, ouvrez le fichier avec le Bloc-notes et
-        collez son contenu (ou « Charger token.txt… »). Il est créé au premier
-        démarrage de l'agent.
+        Ouvrez l'Explorateur Windows et allez dans
+        <code>\\RECALBOX\share\system\rfid</code> : le fichier <code>token.txt</code>
+        s'y trouve. Double-cliquez dessus, copiez tout son contenu, puis collez-le
+        ci-dessus. Il est créé automatiquement au premier démarrage de la Recalbox.
+      </p>
+      <p class="small muted">
+        Astuce : si vous laissez le champ vide, « Se connecter » vous demandera une
+        seule fois le dossier du partage et lira le jeton tout seul (Edge ou Chrome).
       </p>
     </details>
   </section>
 
   <div id="banner" class="banner info" hidden></div>
 
-  <!-- Application -->
-  <div id="app" class="hidden" style="display:grid;gap:16px">
+  <!-- Étape 3 : badges, puis vérifications et maintenance -->
+  <div id="app" class="hidden" style="display:block">
+
     <section class="card">
-      <h2>Installation &amp; mise à jour</h2>
-      <div class="grid" id="install-grid"></div>
-      <div class="row">
-        <button id="btn-install">Installer / mettre à jour maintenant</button>
-        <button class="secondary" id="btn-upload">Mettre à jour depuis un fichier ZIP</button>
-        <input type="file" id="file-update" accept=".zip" hidden>
+      <div class="step-head">
+        <span class="step-num" aria-hidden="true">3</span>
+        <div class="step-title">
+          <h2>Associer un badge à un jeu</h2>
+          <p class="step-sub">
+            Dans Recalbox, mettez un jeu en surbrillance. Appuyez une seconde sur le
+            bouton du boîtier, puis posez le badge sur le lecteur. C'est mémorisé
+            pour toujours.
+          </p>
+        </div>
       </div>
-      <div class="row">
-        <input class="grow" type="text" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip">
-        <button class="secondary" id="btn-url">Mettre à jour depuis cette URL</button>
+      <div class="grid" id="current-grid"></div>
+      <div class="actions">
+        <button class="big" id="btn-associate">Associer le prochain badge</button>
+        <button class="secondary" id="btn-associate-delete">Effacer un badge</button>
+        <span class="muted small" id="armed-text"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Badge</th><th>Console</th><th>Jeu</th><th>Scans</th><th>Dernière utilisation</th><th></th></tr>
+          </thead>
+          <tbody id="tags-body"></tbody>
+        </table>
+      </div>
+      <p class="muted small" id="tags-count" style="margin:12px 0 0"></p>
+
+      <details>
+        <summary>Ajouter un badge à la main (sans le boîtier)</summary>
+        <form class="row" id="form-add">
+          <input type="text" id="add-uid" placeholder="Identifiant du badge (A1:B2:C3:D4)" size="22" required>
+          <input type="text" id="add-system" placeholder="Console (snes)" size="12" required>
+          <input class="grow" type="text" id="add-game" placeholder="Fichier du jeu (Super Mario World.smc)" required>
+          <input type="text" id="add-name" placeholder="Nom affiché (facultatif)" size="18">
+          <button type="submit">Ajouter ce badge</button>
+        </form>
+      </details>
+
+      <details>
+        <summary>Sauvegarde, journal et dépannage</summary>
+        <div class="row">
+          <button class="ghost" id="btn-export">Exporter en CSV</button>
+          <button class="ghost" id="btn-import">Importer un CSV</button>
+          <input type="file" id="file-import" accept=".csv,text/csv" hidden>
+        </div>
+        <div class="row">
+          <button class="ghost" id="btn-logs">Journal du service</button>
+          <button class="ghost" id="btn-logs-agent">Journal de l'agent</button>
+        </div>
+        <pre id="service-log" hidden></pre>
+        <form class="row" id="form-scan">
+          <input type="text" id="scan-uid" placeholder="Simuler la lecture d'un badge (A1:B2:C3:D4)" size="28">
+          <button class="secondary" type="submit">Simuler le scan</button>
+        </form>
+      </details>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Le matériel est-il bien branché&nbsp;?</h2>
+        <p class="card-sub">
+          Ces informations viennent de la Recalbox. Tout doit être au vert pour que
+          les badges fonctionnent.
+        </p>
+      </div>
+      <div class="grid" id="hardware-grid"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Installation et service</h2>
+        <p class="card-sub">
+          À utiliser pour mettre à jour le programme, redémarrer Recalbox ou relancer
+          le service après un changement.
+        </p>
+      </div>
+      <div class="grid" id="install-grid"></div>
+      <div class="actions">
+        <button id="btn-install">Installer / mettre à jour</button>
+        <button class="danger" id="btn-reboot">Redémarrer la Recalbox</button>
+      </div>
+      <div class="grid" id="service-grid" style="margin-top:16px"></div>
+      <div class="actions">
+        <button class="secondary" id="btn-start">Démarrer le service</button>
+        <button class="secondary" id="btn-stop">Arrêter</button>
+        <button class="secondary" id="btn-restart">Redémarrer</button>
       </div>
       <details open>
         <summary>Journal d'installation</summary>
         <pre id="install-log">(aucune installation lancée)</pre>
       </details>
-      <div class="row">
-        <button class="danger" id="btn-reboot">Redémarrer Recalbox</button>
-        <span class="muted small">Nécessaire après l'activation du bus SPI.</span>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Matériel</h2>
-      <div class="grid" id="hardware-grid"></div>
-    </section>
-
-    <section class="card">
-      <h2>Badges</h2>
-      <div class="grid" id="current-grid"></div>
-      <div class="row">
-        <button id="btn-associate">Associer le prochain badge scanné</button>
-        <button class="secondary" id="btn-associate-delete">Effacer le prochain badge scanné</button>
-        <span class="muted small" id="armed-text"></span>
-      </div>
-      <form class="row" id="form-add">
-        <input type="text" id="add-uid" placeholder="UID du badge (A1:B2:C3:D4)" size="22" required>
-        <input type="text" id="add-system" placeholder="Système (snes)" size="12" required>
-        <input class="grow" type="text" id="add-game" placeholder="Jeu (Super Mario World.smc)" required>
-        <input type="text" id="add-name" placeholder="Nom (facultatif)" size="18">
-        <button type="submit">Ajouter</button>
-      </form>
-      <div class="row">
-        <button class="ghost" id="btn-export">Exporter en CSV</button>
-        <button class="ghost" id="btn-import">Importer un CSV</button>
-        <input type="file" id="file-import" accept=".csv,text/csv" hidden>
-        <span class="muted small" id="tags-count"></span>
-      </div>
-      <table style="margin-top:14px">
-        <thead><tr><th>Badge</th><th>Système</th><th>Jeu</th><th>Scans</th><th>Dernier usage</th><th></th></tr></thead>
-        <tbody id="tags-body"></tbody>
-      </table>
       <details>
-        <summary>Débogage</summary>
-        <form class="row" id="form-scan">
-          <input type="text" id="scan-uid" placeholder="Simuler le scan d'un UID" size="22">
-          <button class="secondary" type="submit">Simuler le scan</button>
-        </form>
+        <summary>Mettre à jour depuis un fichier ZIP ou une adresse</summary>
         <div class="row">
-          <button class="ghost" id="btn-logs">Afficher le journal du service</button>
-          <button class="ghost" id="btn-logs-agent">Journal de l'agent</button>
+          <button class="secondary" id="btn-upload">Choisir un fichier ZIP</button>
+          <input type="file" id="file-update" accept=".zip" hidden>
         </div>
-        <pre id="service-log" hidden></pre>
+        <div class="row">
+          <input class="grow" type="text" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip">
+          <button class="secondary" id="btn-url">Installer depuis cette adresse</button>
+        </div>
       </details>
-    </section>
-
-    <section class="card">
-      <h2>Service</h2>
-      <div class="grid" id="service-grid"></div>
-      <div class="row">
-        <button class="secondary" id="btn-start">Démarrer</button>
-        <button class="secondary" id="btn-stop">Arrêter</button>
-        <button class="secondary" id="btn-restart">Redémarrer</button>
-      </div>
     </section>
   </div>
 </main>
 
-<footer>Page locale — aucune donnée ne quitte votre réseau (WebSocket direct vers la Recalbox).</footer>
+<footer>
+  Page locale : elle parle directement à votre Recalbox sur le réseau de la maison.
+  Aucune donnée n'est envoyée sur Internet.
+</footer>
 
 <script>
 "use strict";
@@ -717,19 +1182,19 @@ function render(status) {
 
   if (!status.installed) {
     showBanner("warn",
-      "Le lanceur n'est pas installé. Cliquez sur « Installer / mettre à jour maintenant » " +
-      "(le dossier du projet doit être présent sur le partage de la Recalbox).");
+      "Le lanceur n'est pas encore installé sur la Recalbox. Utilisez l'étape 1 (le fichier .cmd), " +
+      "ou le bouton « Installer / mettre à jour » plus bas si les fichiers sont déjà sur le partage.");
   } else if (!status.spi) {
     showBanner("warn",
-      "Le bus SPI n'est pas actif : redémarrez Recalbox pour que le lecteur soit reconnu " +
-      "(un redémarrage est nécessaire après l'activation du SPI).");
+      "Le bus du lecteur n'est pas encore activé. Redémarrez la Recalbox (bouton plus bas) : " +
+      "le lecteur sera reconnu au démarrage.");
   } else if (status.frontend === false) {
     showBanner("warn",
-      "Recalbox ne sait pas lancer un jeu par script (version 9 minimum). Les badges seront lus, " +
-      "mais le lancement automatique ne fonctionnera pas.");
+      "Cette version de Recalbox est trop ancienne pour lancer un jeu depuis un script " +
+      "(Recalbox 9 minimum). Les badges seront lus, mais le jeu ne démarrera pas tout seul.");
   } else if (status.installed && !running) {
-    showBanner("info", "Le programme est installé mais le service n'est pas démarré. " +
-      "Démarrez-le ci-dessous (section Service).");
+    showBanner("info", "Le programme est installé, mais le service est arrêté. " +
+      "Cliquez sur « Démarrer le service » plus bas.");
   } else {
     showBanner("good", "");
   }
@@ -742,10 +1207,11 @@ function render(status) {
 
 function renderInstall(status) {
   $("#install-grid").replaceChildren(
-    item("Version du programme", status.app_version),
-    item("Installation", status.installed ? "installée" : "absente", status.installed ? "ok" : "warn"),
-    item("Recalbox", status.recalbox || "inconnue"),
-    item("Dossier", status.home)
+    item("Version du lanceur", status.app_version),
+    item("Programme", status.installed ? "installé" : "pas encore installé",
+         status.installed ? "ok" : "warn"),
+    item("Version de Recalbox", status.recalbox || "inconnue"),
+    item("Emplacement", status.home)
   );
   const install = status.install || {};
   $("#btn-install").disabled = busy || install.running;
@@ -758,13 +1224,13 @@ function renderHardware(status) {
   const service = status.service && status.service.status;
   const reader = service && service.reader ? "0x" + String(service.reader).replace(/^0x/, "") : "";
   $("#hardware-grid").replaceChildren(
-    item("Bus SPI", status.spi ? "actif" : "inactif", status.spi ? "ok" : "err"),
-    item("Lecteur RC522", reader || "non détecté", reader ? "ok" : "warn"),
-    item("Bouton poussoir", service && service.button ? "détecté" : "indisponible",
+    item("Bus du lecteur (SPI)", status.spi ? "activé" : "à activer", status.spi ? "ok" : "err"),
+    item("Lecteur de badges", reader || "non détecté", reader ? "ok" : "warn"),
+    item("Bouton du boîtier", service && service.button ? "reconnu" : "non reconnu",
          service && service.button ? "ok" : "warn"),
-    item("Dernier badge", service && service.last_uid ? service.last_uid : "—"),
-    item("Frontend Recalbox", status.frontend === null ? "hors Recalbox" :
-         (status.frontend ? "compatible" : "trop ancien"), status.frontend ? "ok" : "warn")
+    item("Dernier badge posé", service && service.last_uid ? service.last_uid : "aucun"),
+    item("Lancement des jeux", status.frontend === null ? "hors Recalbox" :
+         (status.frontend ? "compatible" : "version trop ancienne"), status.frontend ? "ok" : "warn")
   );
 }
 
@@ -773,18 +1239,19 @@ function renderCurrent(status) {
   if (current) {
     $("#current-grid").replaceChildren(
       item("Jeu sélectionné", current.name || current.game),
-      item("Système", current.system),
-      item("Fichier", current.game)
+      item("Console", current.system),
+      item("Fichier du jeu", current.game)
     );
   } else {
     $("#current-grid").replaceChildren(
-      item("Jeu sélectionné", "aucun (mettez un jeu en surbrillance dans Recalbox)")
+      item("Jeu sélectionné", "aucun", "warn")
     );
   }
   const controller = status.service && status.service.status && status.service.status.controller;
   const armed = controller && controller.mode;
   $("#armed-text").textContent = armed
-    ? (armed === "associate" ? "Association armée : scannez un badge (" : "Suppression armée : scannez un badge (") +
+    ? (armed === "associate" ? "C'est prêt : posez le badge sur le lecteur (" :
+       "Posez le badge à effacer sur le lecteur (") +
       Math.round(controller.seconds_left || 0) + " s)"
     : "";
   $("#btn-associate").disabled = busy || !status.service.running || !current;
@@ -797,10 +1264,10 @@ function renderService(status) {
   const service = status.service || {};
   const details = service.status || {};
   $("#service-grid").replaceChildren(
-    item("État", service.running ? "en marche" : "arrêté", service.running ? "ok" : "err"),
-    item("PID", service.running ? String(service.pid) : "—"),
-    item("Depuis", details.started ? formatDate(details.started) : "—"),
-    item("Badges connus", String(status.tags))
+    item("Service", service.running ? "en marche" : "arrêté", service.running ? "ok" : "err"),
+    item("Numéro de processus", service.running ? String(service.pid) : "—"),
+    item("En marche depuis", details.started ? formatDate(details.started) : "—"),
+    item("Badges enregistrés", String(status.tags))
   );
   $("#btn-start").disabled = busy || service.running;
   $("#btn-stop").disabled = busy || !service.running;
@@ -812,11 +1279,16 @@ async function renderTags(force) {
   const json = JSON.stringify(payload);
   if (!force && json === lastTagsJson) return;
   lastTagsJson = json;
-  $("#tags-count").textContent = payload.count + " badge(s) enregistré(s)";
+  $("#tags-count").textContent = payload.count === 1
+    ? "1 badge enregistré"
+    : payload.count + " badges enregistrés";
   const body = $("#tags-body");
   body.replaceChildren();
   if (!payload.tags.length) {
-    body.appendChild(el("tr", {}, [el("td", { colspan: 6, className: "muted", text: "Aucun badge." })]));
+    body.appendChild(el("tr", {}, [el("td", {
+      colspan: 6, className: "muted",
+      text: "Aucun badge pour l'instant : associez-en un avec le bouton ci-dessus.",
+    })]));
     return;
   }
   for (const tag of payload.tags) {
@@ -1329,10 +1801,9 @@ async function copyPayload() {
   $("#copy-card").hidden = false;
   if (payload && payload.files) {
     $("#payload-grid").replaceChildren(
-      item("Installateur", "autonome (fichiers embarqués)", "ok"),
-      item("Version embarquée", payload.version || "?"),
-      item("Fichiers", String(Object.keys(payload.files).length)),
-      item("Dossier créé", "\\RECALBOX\\share\\" + (payload.project || "recalbox-rfid"))
+      item("Version proposée", payload.version || "?"),
+      item("Contenu", String(Object.keys(payload.files).length) + " fichiers, déjà inclus"),
+      item("Destination", "\\RECALBOX\\share\\" + (payload.project || "recalbox-rfid"))
     );
     $("#btn-copy").addEventListener("click", copyPayload);
     $("#btn-download-cmd").addEventListener("click", downloadInstallerCmd);

@@ -232,9 +232,9 @@ ou `Classiques/jeu.smc` pour un jeu dans un sous-dossier).
 
 Quatre méthodes, aucune ne touche aux badges :
 
-1. **Depuis `installer.html`** (le plus simple) : connectez-vous, puis
-   « Mettre à jour depuis un fichier ZIP » (ou une URL). L'agent installe et se
-   recharge tout seul.
+1. **Depuis `installer.html`** (le plus simple) : connectez-vous, ouvrez
+   « Mettre à jour depuis un fichier ZIP ou une adresse », puis choisissez un ZIP
+   (ou collez une URL). L'agent installe et se recharge tout seul.
 2. **Depuis un dossier, en SSH** (pratique pour tester) :
    `sh /recalbox/share/<nouveau-dossier>/install.sh --upgrade`.
 3. **Depuis une URL, en SSH** (ZIP hébergé où vous voulez) :

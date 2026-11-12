@@ -138,10 +138,10 @@ WebSocket protégé qui tourne sur la Recalbox.
    * l'adresse : `recalbox.local` (ou l'IP affichée dans `RÉSEAU` > `INFORMATIONS`) ;
    * le port : `8765` ;
    * le jeton : ouvrez `\\RECALBOX\share\system\rfid\token.txt` avec le
-     Bloc-notes, ou cliquez sur « Charger token.txt… » dans la page.
-5. Cliquez sur **Connecter**, puis sur **« Installer / mettre à jour
-   maintenant »** : le journal défile en direct.
-6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer Recalbox »**
+     Bloc-notes, ou cliquez sur « J'ai le fichier token.txt » dans la page.
+5. Cliquez sur **« Se connecter »**, puis sur **« Installer / mettre à jour »**
+   (carte « Installation et service ») : le journal défile en direct.
+6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer la Recalbox »**
    (indispensable pour que le lecteur soit reconnu).
 
 Tout est journalisé dans `/recalbox/share/system/rfid/logs/install.log` et

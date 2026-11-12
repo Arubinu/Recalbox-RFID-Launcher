@@ -50,13 +50,15 @@ ne sont jamais touchés.
 
 1. Double-cliquez sur `installer.html`, connectez-vous (adresse, port `8765`,
    jeton de `\\RECALBOX\share\system\rfid\token.txt`).
-2. **« Mettre à jour depuis un fichier ZIP »** : l'archive est envoyée par
-   WebSocket depuis le PC, installée sur la Recalbox, et le journal s'affiche ;
-3. ou collez une URL dans « Mettre à jour depuis cette URL ».
+2. Ouvrez **« Mettre à jour depuis un fichier ZIP ou une adresse »** (dernière
+   carte, tout en bas) puis **« Choisir un fichier ZIP »** : l'archive est
+   envoyée par WebSocket depuis le PC, installée sur la Recalbox, et le journal
+   s'affiche ;
+3. ou collez une URL puis cliquez sur « Installer depuis cette adresse ».
 
 L'agent se recharge tout seul avec la nouvelle version (la page se reconnecte),
-puis il suffit de cliquer sur **« Redémarrer »** dans la section Service si le
-SPI vient d'être activé.
+puis il suffit de cliquer sur **« Redémarrer la Recalbox »** (carte
+« Installation et service ») si le SPI vient d'être activé.
 
 Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
 

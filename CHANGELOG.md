@@ -4,6 +4,39 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.7.0]
+
+### Modifié
+
+* **Refonte complète de `installer.html`** pour un public qui ne connaît pas
+  grand-chose à l'informatique :
+  * une page unique, centrée, en trois étapes numérotées (« Installer »,
+    « Relier », « Associer ») avec un seul bouton important par étape ;
+  * un bandeau d'accroche (« Posez un badge, le jeu démarre. ») et trois
+    promesses courtes à la place du jargon de tableau de bord ;
+  * **tout le vocabulaire technique est reformulé** : « Bus SPI » devient
+    « Bus du lecteur (SPI) », « PID » « Numéro de processus », « Dossier
+    » « Emplacement », « Charger token.txt… » « J'ai le fichier token.txt »,
+    les messages d'erreur et d'attente sont en français simple et disent quoi
+    faire ;
+  * les actions rares (ajout manuel, CSV, journaux, simulation de scan,
+    mise à jour par ZIP ou URL) sont repliées dans des blocs « … » pour ne pas
+    encombrer ;
+  * une fois connecté, l'étape 1 se réduit à une seule ligne discrète et la page
+    met en avant l'étape en cours.
+* Nouveau style visuel : palette sombre chaude, accents corail et indigo,
+  cartes à grand rayon, typographie système lisible, tuiles d'état colorées
+  (vert / ambre / rouge), boutons de 44 px minimum, focus clavier visible,
+  respect de `prefers-reduced-motion` et mise en page mobile sans débordement
+  horizontal.
+* Libellés de la documentation alignés sur les nouveaux boutons.
+
+### Corrigé
+
+* Le tableau des badges ne provoque plus de défilement horizontal quand il est
+  vide (cellules qui reviennent à la ligne ; seuls les en-têtes restent sur une
+  ligne).
+
 ## [1.6.3]
 
 ### Corrigé
