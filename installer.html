@@ -7,745 +7,731 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #090d14;
-    --bg-glow: rgba(61, 90, 241, .16);
-    --surface: #121a28;
-    --surface-2: #182233;
-    --surface-3: #1f2b3f;
-    --line: rgba(255, 255, 255, .075);
-    --line-strong: rgba(255, 255, 255, .14);
-    --text: #e9eef8;
-    --muted: #9aa8c0;
-    --faint: #71809a;
-    --primary: #3d5af1;
-    --primary-hover: #2f49d6;
-    --primary-soft: rgba(61, 90, 241, .16);
+    --bg: #0a0c11;
+    --bg-2: #0e1118;
+    --surface: #12161f;
+    --surface-2: #171c27;
+    --surface-3: #1e2534;
+    --line: rgba(255, 255, 255, .08);
+    --line-2: rgba(255, 255, 255, .14);
+    --text: #eaeef7;
+    --muted: #9aa6bd;
+    --faint: #6d7a92;
+    --primary: #4460f1;
+    --primary-2: #3550d8;
+    --primary-soft: rgba(68, 96, 241, .16);
     --brand: #ff6b4a;
-    --ok: #1bb981;
-    --warn: #e8a33d;
+    --ok: #22c58b;
+    --warn: #eaa63c;
     --err: #ef5350;
-    --radius: 18px;
-    --radius-sm: 12px;
-    --shadow: 0 24px 48px -32px rgba(0, 0, 0, .95);
+    --r-lg: 22px;
+    --r-md: 14px;
+    --r-sm: 10px;
   }
 
   * { box-sizing: border-box; }
 
-  html { scroll-behavior: smooth; }
+  html, body { height: 100%; }
 
   body {
     margin: 0;
-    min-height: 100vh;
-    background:
-      radial-gradient(1100px 520px at 50% -12%, var(--bg-glow), transparent 68%),
-      var(--bg);
+    background: radial-gradient(900px 420px at 50% -18%, rgba(68, 96, 241, .18), transparent 62%), var(--bg);
     color: var(--text);
-    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI",
-          Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, Inter, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "tnum" 1;
+    overflow: hidden;
   }
 
-  h1, h2, h3 { margin: 0; letter-spacing: -.015em; font-weight: 650; line-height: 1.25; }
-
-  a { color: var(--primary); }
-
+  h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.02em; line-height: 1.2; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 16.5px; }
   code {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: .88em;
-    background: rgba(255, 255, 255, .06);
-    border-radius: 6px;
-    padding: .1em .38em;
+    font-size: .88em; background: rgba(255, 255, 255, .07);
+    border-radius: 5px; padding: .08em .34em;
   }
-
   kbd {
-    font-family: inherit;
-    font-size: .86em;
-    font-weight: 600;
-    padding: .12em .42em;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, .08);
-    border: 1px solid var(--line-strong);
-    border-bottom-width: 2px;
+    font: inherit; font-size: .84em; font-weight: 600;
+    padding: .1em .38em; border-radius: 5px;
+    background: rgba(255, 255, 255, .09); border: 1px solid var(--line-2); border-bottom-width: 2px;
     white-space: nowrap;
   }
 
-  /* ------------------------------------------------------------- barre haute */
-  header.topbar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px clamp(16px, 4vw, 32px);
-    border-bottom: 1px solid var(--line);
-    background: rgba(9, 13, 20, .82);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 20;
+  /* --------------------------------------------------------------- gabarit */
+  .shell {
+    height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(14px, 3vw, 28px);
   }
-  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: inherit; }
+  .shell > *, main, .view, .dash, .panels, .panel, .table-wrap,
+  .grid, .actions, .panel-head, .panel-head > * { min-width: 0; }
+
+  header.topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
   .brand .mark {
-    width: 34px; height: 34px; border-radius: 11px;
-    display: grid; place-items: center;
-    background: linear-gradient(150deg, var(--brand), #c9341f);
-    box-shadow: 0 8px 20px -10px rgba(255, 107, 74, .8);
-    color: #fff;
+    width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center;
+    background: linear-gradient(150deg, var(--brand), #cf3a20);
+    box-shadow: 0 8px 18px -12px rgba(255, 107, 74, .9);
+    color: #fff; flex: 0 0 auto;
   }
   .brand .mark svg { width: 19px; height: 19px; }
-  .brand-text { display: grid; line-height: 1.2; }
-  .brand-name { font-weight: 650; font-size: 15.5px; letter-spacing: -.01em; }
-  .brand-sub { font-size: 12px; color: var(--faint); }
-  .spacer { flex: 1 1 auto; }
-  .version {
-    font-size: 12.5px; color: var(--muted);
-    padding: 4px 10px; border-radius: 999px;
-    background: rgba(255, 255, 255, .04);
-    border: 1px solid var(--line);
-    white-space: nowrap; max-width: 42vw; overflow: hidden; text-overflow: ellipsis;
-  }
-  .version:empty, .version[hidden] { display: none; }
+  .brand b { display: block; font-size: 15px; letter-spacing: -.01em; }
+  .brand small { display: block; font-size: 11.5px; color: var(--faint); margin-top: -1px; }
+  .grow { flex: 1 1 auto; }
 
-  /* -------------------------------------------------------------------- page */
-  main {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 72px;
-    display: grid;
-    gap: 20px;
-  }
-  main > * { min-width: 0; }
-  .card { min-width: 0; }
-  .grid, .row, .actions, .connect-grid { min-width: 0; }
-  .table-wrap { max-width: 100%; }
-
-  .hero { display: grid; gap: 14px; padding: 4px 2px 2px; }
-  .hero h1 { font-size: clamp(26px, 4.2vw, 34px); letter-spacing: -.028em; }
-  .hero .lede { margin: 0; color: var(--muted); font-size: 16.5px; max-width: 62ch; }
-  .facts {
-    list-style: none; margin: 6px 0 0; padding: 0;
-    display: grid; gap: 10px;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  }
-  .facts li {
-    display: flex; gap: 11px; align-items: flex-start;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, .022);
-  }
-  .facts .ico {
-    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px;
-    display: grid; place-items: center;
-    background: var(--primary-soft); color: #a9b8ff;
-  }
-  .facts .ico svg { width: 17px; height: 17px; }
-  .facts b { display: block; font-size: 14px; font-weight: 600; }
-  .facts span { font-size: 13px; color: var(--muted); }
-
-  /* ---------------------------------------------------------------- stepper */
-  .stepper {
-    list-style: none; margin: 2px 0 0; padding: 0;
-    display: flex; flex-wrap: wrap; gap: 8px 18px;
-    font-size: 13.5px; color: var(--faint);
-  }
-  .stepper li { display: flex; align-items: center; gap: 8px; }
-  .stepper .n {
-    width: 22px; height: 22px; border-radius: 50%;
-    display: grid; place-items: center;
-    font-size: 12px; font-weight: 700;
-    border: 1px solid var(--line-strong);
-    color: var(--muted);
-  }
-  .stepper li + li::before {
-    content: ""; width: 22px; height: 1px;
-    background: var(--line-strong); margin-right: 10px;
-  }
-  .stepper li.is-current { color: var(--text); font-weight: 600; }
-  .stepper li.is-current .n {
-    background: var(--primary); border-color: transparent; color: #fff;
-    box-shadow: 0 0 0 4px var(--primary-soft);
-  }
-  .stepper li.is-done { color: var(--muted); }
-  .stepper li.is-done .n { background: rgba(27, 185, 129, .16); border-color: rgba(27, 185, 129, .35); color: var(--ok); }
-  main:has(#connect-card:not(.hidden)) .stepper li[data-step="2"] { color: var(--text); font-weight: 600; }
-  main:has(#connect-card:not(.hidden)) .stepper li[data-step="2"] .n {
-    background: var(--primary); border-color: transparent; color: #fff; box-shadow: 0 0 0 4px var(--primary-soft);
-  }
-  main:has(#app:not(.hidden)) .stepper li[data-step="1"] { color: var(--muted); }
-  main:has(#app:not(.hidden)) .stepper li[data-step="1"] .n {
-    background: rgba(27, 185, 129, .16); border-color: rgba(27, 185, 129, .35); color: var(--ok);
-  }
-  main:has(#app:not(.hidden)) .stepper li[data-step="3"] { color: var(--text); font-weight: 600; }
-  main:has(#app:not(.hidden)) .stepper li[data-step="3"] .n {
-    background: var(--primary); border-color: transparent; color: #fff; box-shadow: 0 0 0 4px var(--primary-soft);
-  }
-
-  /* ----------------------------------------------------------------- cartes */
-  .card {
-    background: linear-gradient(180deg, rgba(255, 255, 255, .022), transparent 42%), var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: clamp(18px, 3vw, 26px);
-    box-shadow: var(--shadow);
-  }
-  .card + .card, #app > .card + .card { margin-top: 20px; }
-
-  .step-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 18px; }
-  .step-num {
-    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 11px;
-    display: grid; place-items: center;
-    font-size: 15px; font-weight: 700;
-    background: var(--primary-soft);
-    border: 1px solid rgba(61, 90, 241, .34);
-    color: #b3c1ff;
-  }
-  .step-title h2 { font-size: 19px; }
-  .step-sub { margin: 5px 0 0; color: var(--muted); font-size: 14.5px; max-width: 66ch; }
-  .card-head h2 { font-size: 17px; }
-  .card-sub { margin: 5px 0 0; color: var(--muted); font-size: 14px; max-width: 66ch; }
-  .card-head { margin-bottom: 16px; }
-
-  /* ------------------------------------------------------------- formulaire */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-  .item {
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--line);
     background: var(--surface-2);
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    white-space: nowrap;
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .chip.on { color: #a7f0cd; border-color: rgba(34, 197, 139, .32); background: rgba(34, 197, 139, .12); }
+  .chip.on .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(34, 197, 139, .18); }
+  .chip.off { color: #ffc0be; border-color: rgba(239, 83, 80, .3); background: rgba(239, 83, 80, .12); }
+  .chip.off .dot { background: var(--err); box-shadow: 0 0 0 3px rgba(239, 83, 80, .16); }
+  .chip .version { color: var(--faint); font-weight: 500; }
+
+  /* ------------------------------------------------------------- messages */
+  #banner { margin: 12px 0 0; }
+  .banner {
+    position: relative;
+    padding: 12px 16px 12px 44px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line-2);
+    background: var(--surface-2);
+    font-size: 13.5px; line-height: 1.5;
+  }
+  .banner::before { position: absolute; left: 16px; top: 11px; font-weight: 700; }
+  .banner.info { background: rgba(68, 96, 241, .1); border-color: rgba(68, 96, 241, .34); }
+  .banner.info::before { content: "i"; color: #9db0ff; font-style: italic; }
+  .banner.good { background: rgba(34, 197, 139, .1); border-color: rgba(34, 197, 139, .32); }
+  .banner.good::before { content: "✓"; color: #6fe3b4; }
+  .banner.warn { background: rgba(234, 166, 60, .1); border-color: rgba(234, 166, 60, .34); }
+  .banner.warn::before { content: "!"; color: #f2c078; }
+  .banner.err { background: rgba(239, 83, 80, .1); border-color: rgba(239, 83, 80, .34); }
+  .banner.err::before { content: "×"; color: #ff9b98; font-size: 17px; }
+
+  /* ---------------------------------------------------------------- ecrans */
+  main { min-height: 0; padding: 16px 0 8px; overflow: hidden; }
+  .view { display: none; height: 100%; min-height: 0; }
+  body[data-view="choix"] .view-choix,
+  body[data-view="install"] .view-install,
+  body[data-view="connect"] .view-connect,
+  body[data-view="app"] .view-app { display: flex; flex-direction: column; min-height: 0; }
+
+  .view-head {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 14px; flex: 0 0 auto;
+  }
+  .view-head h1 { font-size: 21px; }
+  .view-head p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: 1px solid var(--line-2); color: var(--muted);
+    height: 32px; padding: 0 11px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .back:hover { color: var(--text); background: var(--surface-2); }
+
+  /* --------------------------------------------------------- accueil : 2 choix */
+  .view-choix { justify-content: center; }
+  .welcome { text-align: center; margin-bottom: clamp(16px, 3vh, 30px); flex: 0 0 auto; }
+  .welcome h1 { font-size: clamp(24px, 3.4vw, 32px); letter-spacing: -.03em; }
+  .welcome p { margin: 8px auto 0; max-width: 52ch; color: var(--muted); font-size: 14.5px; }
+
+  .choices {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 860px; width: 100%; margin: 0 auto;
+    align-content: center;
+  }
+  .tile {
+    position: relative;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+    gap: 12px;
+    height: auto; min-height: 196px;
+    white-space: normal; text-align: left;
+    padding: 22px;
+    border-radius: var(--r-lg);
     border: 1px solid var(--line);
-    border-left: 3px solid rgba(255, 255, 255, .07);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .035), transparent 55%), var(--surface);
+    cursor: pointer; color: inherit;
+    transition: transform .16s ease, border-color .16s ease, background .16s ease;
+  }
+  .tile:hover { transform: translateY(-3px); border-color: rgba(68, 96, 241, .5); background: linear-gradient(180deg, rgba(68, 96, 241, .1), transparent 60%), var(--surface); }
+  .tile:focus-visible { outline: 2px solid #93a6ff; outline-offset: 3px; }
+  .tile .ico {
+    width: 46px; height: 46px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--primary-soft); color: #b6c4ff;
+  }
+  .tile.brand .ico { background: rgba(255, 107, 74, .14); color: #ffb3a2; }
+  .tile .ico svg { width: 24px; height: 24px; }
+  .tile h2 { font-size: 18px; }
+  .tile p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .tile .go {
+    margin-top: auto; padding-top: 6px;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13.5px; font-weight: 650; color: #a9b8ff;
+  }
+  .tile.brand .go { color: #ffb3a2; }
+  .tile .go svg { width: 16px; height: 16px; transition: transform .16s ease; }
+  .tile:hover .go svg { transform: translateX(3px); }
+
+  .foot-note {
+    margin: 22px auto 0; text-align: center;
+    font-size: 12px; color: var(--faint); max-width: 60ch;
+    flex: 0 0 auto;
+  }
+
+  /* ------------------------------------------------------------- cartes */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: clamp(18px, 2.4vw, 26px);
     min-width: 0;
   }
-  .item .label {
-    font-size: 12.5px; color: var(--faint); font-weight: 500;
-    text-transform: none; letter-spacing: 0;
-  }
-  .item .value {
-    font-size: 15px; font-weight: 600; margin-top: 3px;
-    overflow-wrap: anywhere;
-  }
-  .item .value.ok { color: #5fd6a5; }
-  .item .value.warn { color: #f0bd6a; }
-  .item .value.err { color: #ff8b88; }
-  .item:has(.value.ok) { border-left-color: rgba(27, 185, 129, .55); }
-  .item:has(.value.warn) { border-left-color: rgba(232, 163, 61, .55); }
-  .item:has(.value.err) { border-left-color: rgba(239, 83, 80, .55); }
+  .scroll-card { min-height: 0; overflow: auto; }
 
-  .row, .actions {
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-    margin-top: 16px;
-  }
+  .view-install, .view-connect { align-items: center; justify-content: center; }
+  .view-install .card, .view-connect .card { width: min(680px, 100%); }
+  .view-install .view-head, .view-connect .view-head { width: min(680px, 100%); }
 
-  label.field { display: block; min-width: 0; }
-  label.field > span {
-    display: block; font-size: 12.5px; color: var(--muted);
-    margin-bottom: 6px; font-weight: 500;
+  .steps-line { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 18px; padding: 0; list-style: none; }
+  .steps-line li {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--muted);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px 6px 8px;
+  }
+  .steps-line .n {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    background: var(--primary-soft); color: #b6c4ff;
   }
 
+  /* --------------------------------------------------------- formulaire */
+  .field { display: block; min-width: 0; }
+  .field > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
   input[type=text], input[type=number], input[type=password] {
-    width: 100%;
-    background: #0d1420;
-    border: 1px solid var(--line-strong);
-    color: var(--text);
-    border-radius: 10px;
-    padding: 11px 13px;
-    font-size: 15px;
-    min-width: 0;
+    width: 100%; height: 44px;
+    background: var(--bg-2); border: 1px solid var(--line-2); color: var(--text);
+    border-radius: var(--r-sm); padding: 0 13px; font: inherit; font-size: 14.5px;
     transition: border-color .15s, box-shadow .15s;
   }
-  input::placeholder { color: #5f6d85; }
-  input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-soft);
+  input::placeholder { color: #5f6b81; }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+  .fields { display: grid; grid-template-columns: 1.6fr 0.7fr 1.6fr; gap: 10px; }
+  @media (max-width: 720px) { .fields { grid-template-columns: 1fr; } }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .actions.stack { margin-top: 16px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .auto-note {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin-top: 14px; padding: 11px 13px;
+    border-radius: var(--r-md); border: 1px dashed var(--line-2);
+    background: rgba(255, 255, 255, .02);
+    font-size: 12.5px; color: var(--muted); line-height: 1.5;
   }
+  .auto-note svg { width: 17px; height: 17px; flex: 0 0 auto; color: #9db0ff; margin-top: 1px; }
 
-  .connect-grid { display: grid; grid-template-columns: 2fr 96px 1.6fr; gap: 12px; }
-  @media (max-width: 720px) { .connect-grid { grid-template-columns: 1fr; } }
-
-  /* --------------------------------------------------------------- boutons */
+  /* ------------------------------------------------------------- boutons */
   button {
-    font: inherit;
-    font-size: 14.5px;
-    font-weight: 600;
-    letter-spacing: -.005em;
-    color: #fff;
-    background: linear-gradient(180deg, var(--primary), var(--primary-hover));
-    border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 11px;
-    padding: 11px 18px;
-    min-height: 44px;
+    font: inherit; font-size: 14px; font-weight: 650; letter-spacing: -.005em;
+    color: #fff; height: 42px; padding: 0 17px;
+    border-radius: var(--r-sm); border: 1px solid rgba(255, 255, 255, .1);
+    background: linear-gradient(180deg, var(--primary), var(--primary-2));
     cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    transition: transform .12s ease, filter .15s ease, background .15s ease;
+    transition: filter .15s, transform .1s, background .15s;
+    white-space: nowrap;
   }
   button:hover { filter: brightness(1.08); }
   button:active { transform: translateY(1px); }
   button:focus-visible { outline: 2px solid #93a6ff; outline-offset: 2px; }
-  button:disabled { opacity: .45; cursor: not-allowed; filter: none; transform: none; }
-  button.big { font-size: 15.5px; padding: 13px 22px; min-height: 50px; border-radius: 12px; }
-  button.secondary {
-    background: var(--surface-2);
-    border-color: var(--line-strong);
-    color: var(--text);
-  }
+  button:disabled { opacity: .42; cursor: not-allowed; filter: none; transform: none; }
+  button.big { height: 48px; font-size: 15px; padding: 0 22px; border-radius: var(--r-md); }
+  button.secondary { background: var(--surface-2); border-color: var(--line-2); color: var(--text); }
   button.secondary:hover { background: var(--surface-3); }
-  button.ghost {
-    background: transparent;
-    border-color: var(--line-strong);
-    color: var(--muted);
-  }
+  button.ghost { background: transparent; border-color: var(--line-2); color: var(--muted); }
   button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
-  button.danger {
-    background: linear-gradient(180deg, #d93b39, #b62e2c);
-    border-color: rgba(255, 255, 255, .1);
+  button.danger { background: linear-gradient(180deg, #d63c3a, #b02c2a); }
+  button.tiny { height: 30px; font-size: 12.5px; padding: 0 11px; border-radius: 8px; }
+
+  /* -------------------------------------------------------- tableau de bord */
+  .dash { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 12px; }
+  .dash.hidden { display: none !important; }
+
+  .tabs {
+    display: flex; gap: 4px; padding: 4px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 999px; align-self: flex-start; flex: 0 0 auto;
+  }
+  .tabs button {
+    height: 34px; padding: 0 16px; border-radius: 999px;
+    background: transparent; border: 0; color: var(--muted);
+    font-size: 13px; font-weight: 600;
+  }
+  .tabs button:hover { color: var(--text); filter: none; }
+  .tabs button[aria-selected="true"] {
+    background: var(--primary); color: #fff;
+    box-shadow: 0 6px 16px -10px rgba(68, 96, 241, .9);
   }
 
-  .hint { color: var(--muted); font-size: 13.5px; }
-  .muted { color: var(--muted); }
-  .small { font-size: 13px; }
-  .grow { flex: 1 1 240px; }
+  .panels { position: relative; flex: 1 1 auto; min-height: 0; }
+  .panel { display: none; height: 100%; min-height: 0; overflow: auto; padding-right: 2px; }
+  .panel.is-active { display: flex; flex-direction: column; gap: 12px; }
 
-  /* ----------------------------------------------------------------- table */
-  .table-wrap { margin-top: 18px; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
-  th { white-space: nowrap; }
-  th {
-    font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--faint); font-weight: 600; background: rgba(255, 255, 255, .025);
+  .panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 0 0 auto; }
+  .panel-head h2 { font-size: 16px; }
+  .panel-head .hint { flex: 1 1 200px; }
+
+  /* --------------------------------------------------------------- tuiles */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 10px; flex: 0 0 auto; }
+  .item {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-left: 3px solid rgba(255, 255, 255, .08);
+    border-radius: var(--r-md); padding: 11px 13px; min-width: 0;
   }
-  tbody tr:hover td { background: rgba(255, 255, 255, .028); }
+  .item .label { font-size: 11.5px; color: var(--faint); font-weight: 500; }
+  .item .value { font-size: 14.5px; font-weight: 650; margin-top: 2px; overflow-wrap: anywhere; }
+  .item .value.ok { color: #6fe3b4; }
+  .item .value.warn { color: #f2c078; }
+  .item .value.err { color: #ff9b98; }
+  .item:has(.value.ok) { border-left-color: rgba(34, 197, 139, .5); }
+  .item:has(.value.warn) { border-left-color: rgba(234, 166, 60, .5); }
+  .item:has(.value.err) { border-left-color: rgba(239, 83, 80, .5); }
+
+  /* --------------------------------------------------------------- tableau */
+  .table-wrap {
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    border: 1px solid var(--line); border-radius: var(--r-md);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: #131822;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint);
+    text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  tbody td[colspan] { text-align: center; padding: 34px 12px; color: var(--muted); }
+
+  .verdict {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin: 0; padding: 12px 14px;
+    border-radius: var(--r-md); border: 1px solid var(--line-2);
+    background: var(--surface-2); font-size: 13.5px; line-height: 1.5;
+  }
+  .verdict b { font-weight: 650; }
+  .verdict.ok { background: rgba(34, 197, 139, .1); border-color: rgba(34, 197, 139, .3); }
+  .verdict.warn { background: rgba(234, 166, 60, .1); border-color: rgba(234, 166, 60, .32); }
+  .verdict.err { background: rgba(239, 83, 80, .1); border-color: rgba(239, 83, 80, .32); }
+  .verdict::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex: 0 0 auto; background: var(--faint); }
+  .verdict.ok::before { background: var(--ok); }
+  .verdict.warn::before { background: var(--warn); }
+  .verdict.err::before { background: var(--err); }
+  tbody tr:hover td { background: rgba(255, 255, 255, .03); }
   tbody tr:last-child td { border-bottom: 0; }
-  td.muted, td .muted { color: var(--muted); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; }
 
-  /* -------------------------------------------------------- details / code */
-  details {
-    border-top: 1px solid var(--line);
-    margin-top: 18px;
-    padding-top: 12px;
-  }
+  /* -------------------------------------------------------------- details */
+  details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; flex: 0 0 auto; }
   details summary {
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 14px;
-    font-weight: 500;
-    list-style: none;
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 0;
+    list-style: none; cursor: pointer; color: var(--muted);
+    font-size: 13px; font-weight: 550; display: flex; align-items: center; gap: 8px;
   }
   details summary::-webkit-details-marker { display: none; }
   details summary::before {
-    content: "";
-    width: 7px; height: 7px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(-45deg);
-    transition: transform .15s ease;
-    margin-right: 2px;
-    opacity: .8;
+    content: ""; width: 6px; height: 6px; margin-left: 3px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg); transition: transform .15s;
   }
-  details[open] > summary::before { transform: rotate(45deg); }
+  details[open] summary::before { transform: rotate(45deg); }
   details summary:hover { color: var(--text); }
-  details > *:not(summary) { margin-top: 12px; }
-  details ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
-  details p { margin: 10px 0 0; }
+  details > *:not(summary) { margin-top: 10px; }
+  details ol { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  details p { margin: 8px 0 0; }
 
-  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
   pre {
-    background: #070b12;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 14px;
-    max-height: 300px;
-    overflow: auto;
+    background: #070a10; border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 12px; margin: 0; max-height: 180px; overflow: auto;
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-    font-size: 12.5px;
-    line-height: 1.55;
-    white-space: pre-wrap;
-    word-break: break-word;
-    margin: 0;
-    color: #cdd8ea;
+    font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    color: #c7d2e5;
   }
 
-  /* ---------------------------------------------------------------- etats */
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 13px 6px 11px;
-    border-radius: 999px;
-    font-size: 13px; font-weight: 600;
-    background: var(--surface-2);
-    border: 1px solid var(--line-strong);
-    white-space: nowrap;
+  /* --------------------------------------------------------------- dialogue */
+  dialog {
+    border: 1px solid var(--line-2); border-radius: var(--r-lg);
+    background: var(--surface); color: var(--text);
+    padding: 22px; max-width: min(560px, 92vw);
+    box-shadow: 0 40px 80px -40px #000;
   }
-  .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--faint);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, .05);
-  }
-  .pill.on .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(27, 185, 129, .2); }
-  .pill.off .dot { background: #f2665f; box-shadow: 0 0 0 3px rgba(239, 83, 80, .18); }
+  dialog::backdrop { background: rgba(4, 6, 10, .72); backdrop-filter: blur(3px); }
+  dialog h2 { font-size: 16px; margin-bottom: 10px; }
+  dialog p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+  dialog .actions { margin-top: 16px; }
 
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
-
-  .banner {
-    border-radius: var(--radius-sm);
-    padding: 14px 16px 14px 46px;
-    border: 1px solid;
-    position: relative;
-    font-size: 14.5px;
-    line-height: 1.5;
-  }
-  .banner::before {
-    position: absolute; left: 16px; top: 13px;
-    font-size: 16px; line-height: 1.2;
-  }
-  .banner.info { background: rgba(61, 90, 241, .1); border-color: rgba(61, 90, 241, .35); }
-  .banner.info::before { content: "ℹ"; color: #9db0ff; }
-  .banner.good { background: rgba(27, 185, 129, .1); border-color: rgba(27, 185, 129, .34); }
-  .banner.good::before { content: "✓"; color: #5fd6a5; font-weight: 700; }
-  .banner.warn { background: rgba(232, 163, 61, .1); border-color: rgba(232, 163, 61, .34); }
-  .banner.warn::before { content: "!"; color: #f0bd6a; font-weight: 700; }
-  .banner.err { background: rgba(239, 83, 80, .1); border-color: rgba(239, 83, 80, .36); }
-  .banner.err::before { content: "×"; color: #ff8b88; font-weight: 700; font-size: 18px; }
-
-  /* --------------------------------------------------------------- pied */
   footer {
-    text-align: center;
-    color: var(--faint);
-    font-size: 12.5px;
-    padding: 4px 16px 40px;
-    max-width: 60ch;
-    margin: 0 auto;
+    padding: 8px 0 12px; text-align: center;
+    font-size: 11.5px; color: var(--faint);
   }
 
   .hidden { display: none !important; }
 
-  /* --------------------------------------- page connectee : on compacte */
-  main:has(#app:not(.hidden)) .hero .facts { display: none; }
-  main:has(#app:not(.hidden)) .hero h1 { font-size: clamp(22px, 3vw, 26px); }
-  main:has(#app:not(.hidden)) #copy-card { padding-block: 16px; }
-  main:has(#app:not(.hidden)) #copy-card #payload-grid,
-  main:has(#app:not(.hidden)) #copy-card .step-sub { display: none; }
-  main:has(#app:not(.hidden)) #copy-card .step-num { display: none; }
-  main:has(#app:not(.hidden)) #copy-card .step-head { margin-bottom: 0; align-items: center; }
-  main:has(#app:not(.hidden)) #copy-card .step-title h2 { font-size: 15.5px; color: var(--muted); }
-  main:has(#app:not(.hidden)) #copy-card #btn-download-cmd {
-    background: var(--surface-2);
-    border-color: var(--line-strong);
-    color: var(--text);
-    font-size: 14px;
-    min-height: 40px;
-    padding: 9px 15px;
-    border-radius: 10px;
-    box-shadow: none;
-  }
-  main:has(#app:not(.hidden)) #copy-card #btn-download-cmd:hover { background: var(--surface-3); }
-
-  /* --------------------------------------------------------- mobile */
-  @media (max-width: 640px) {
-    body { font-size: 15.5px; }
-    header.topbar { gap: 10px; padding: 12px 16px; }
-    .brand-sub { display: none; }
-    .actions { align-items: stretch; }
-    .actions > button, .row > button { flex: 1 1 100%; }
-    .actions > .hint { flex: 1 1 100%; }
-    .stepper { gap: 6px 12px; font-size: 12.5px; }
-    .stepper li + li::before { width: 10px; margin-right: 4px; }
-    .version { display: none; }
+  /* --------------------------------------------------------------- mobile */
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    .shell { height: auto; min-height: 100dvh; }
+    main { overflow: visible; }
+    .choices { grid-template-columns: 1fr; }
+    .view-install, .view-connect { justify-content: flex-start; }
+    .panel { overflow: visible; height: auto; }
+    .view-choix { justify-content: flex-start; }
+    .brand small { display: none; }
+    .actions > button { flex: 1 1 100%; }
+    .tabs { align-self: stretch; overflow-x: auto; }
+    header.topbar { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+    .brand { flex: 1 1 auto; }
+    header .grow { display: none; }
+    .version { display: none !important; }
+    #btn-disconnect { order: 3; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+    * { transition: none !important; animation: none !important; }
   }
 </style>
 </head>
 <body>
-<header class="topbar">
-  <a class="brand" href="#top" aria-label="Recalbox RFID, haut de page">
-    <span class="mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-           stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/>
-        <circle cx="9" cy="11" r="1.7"/>
-      </svg>
-    </span>
-    <span class="brand-text">
-      <span class="brand-name">Recalbox RFID</span>
-      <span class="brand-sub">Un badge, un jeu</span>
-    </span>
-  </a>
-  <span class="spacer"></span>
-  <span class="version" id="version"></span>
-  <span class="pill off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
-</header>
+<div class="shell">
 
-<main id="top">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/>
+          <circle cx="9" cy="11" r="1.7"/>
+        </svg>
+      </span>
+      <span>
+        <b>Recalbox RFID</b>
+        <small>Un badge, un jeu</small>
+      </span>
+    </div>
+    <span class="grow"></span>
+    <span class="version" id="version" hidden></span>
+    <span class="chip off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
+    <button class="ghost tiny hidden" id="btn-disconnect" type="button">Déconnecter</button>
+    <button class="ghost tiny" id="btn-help" type="button" aria-label="Aide">?</button>
+  </header>
 
-  <section class="hero">
-    <h1>Posez un badge, le jeu démarre.</h1>
-    <p class="lede">
-      Cette page installe et configure votre Recalbox. Trois étapes, aucun réglage
-      compliqué : le fichier s'occupe du reste.
-    </p>
-    <ul class="facts">
-      <li>
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 4.5v9.5"/><path d="M8.5 10.5 12 14l3.5-3.5"/><path d="M5 17.5v1.5h14v-1.5"/>
-          </svg>
-        </span>
-        <div><b>Un seul fichier</b><span>Double-clic, tout est copié.</span></div>
-      </li>
-      <li>
-        <span class="ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 7h14M5 12h14M5 17h14"/><circle cx="9" cy="7" r="1.8"/>
-            <circle cx="15" cy="12" r="1.8"/><circle cx="8" cy="17" r="1.8"/>
-          </svg>
-        </span>
-        <div><b>Rien à régler</b><span>Tout se fait depuis cette page.</span></div>
-      </li>
-      <li>
-        <span class="ico" aria-hidden="true">
+  <div class="banner-slot"><div id="banner" class="banner info" hidden></div></div>
+
+  <main>
+
+    <!-- ================================================== ecran 1 : le choix -->
+    <section class="view view-choix">
+      <div class="welcome">
+        <h1>Que voulez-vous faire&nbsp;?</h1>
+        <p>Deux chemins possibles. Choisissez celui qui correspond à votre situation.</p>
+      </div>
+      <div class="choices">
+        <button class="tile brand" type="button" data-goto="install">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 4.5v9.5"/><path d="M8.5 10.5 12 14l3.5-3.5"/><path d="M5 17.5v1.5h14v-1.5"/>
+            </svg>
+          </span>
+          <h2>Installer sur la Recalbox</h2>
+          <p>Pour la première fois. Un seul fichier à double-cliquer&nbsp;: il copie tout, installe le lecteur de badges et le service.</p>
+          <span class="go">Commencer l'installation
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg>
+          </span>
+        </button>
+
+        <button class="tile" type="button" data-goto="connect">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 15l6-6"/>
+              <path d="M10.5 6.5 12 5a3.5 3.5 0 1 1 5 5l-1.5 1.5"/>
+              <path d="M13.5 17.5 12 19a3.5 3.5 0 1 1-5-5l1.5-1.5"/>
+            </svg>
+          </span>
+          <h2>Gérer mes badges</h2>
+          <p>La Recalbox est déjà installée. Connectez cette page pour associer des badges, vérifier le matériel ou mettre à jour.</p>
+          <span class="go">Se connecter
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg>
+          </span>
+        </button>
+      </div>
+      <p class="foot-note"></p>
+    </section>
+
+    <!-- ================================================ ecran 2 : installation -->
+    <section class="view view-install">
+      <div class="view-head">
+        <button class="back" type="button" data-goto="choix">← Accueil</button>
+        <div>
+          <h1>Installer sur la Recalbox</h1>
+          <p>Un seul fichier s'occupe de tout. Comptez cinq minutes, redémarrage compris.</p>
+        </div>
+      </div>
+
+      <section class="card" id="copy-card" hidden>
+        <ol class="steps-line">
+          <li><span class="n">1</span>Télécharger le fichier</li>
+          <li><span class="n">2</span>Le double-cliquer</li>
+          <li><span class="n">3</span>Redémarrer la Recalbox</li>
+        </ol>
+        <div class="grid" id="payload-grid" style="margin-bottom:16px"></div>
+        <div class="actions">
+          <button class="big" id="btn-download-cmd">Télécharger l'installateur</button>
+          <span class="hint">Fichier <code>recalbox-rfid-installation.cmd</code>, à laisser dans « Téléchargements ».</span>
+        </div>
+        <details>
+          <summary>Ce qui va se passer, étape par étape</summary>
+          <ol class="small muted">
+            <li>Le fichier se télécharge sur cet ordinateur.</li>
+            <li>Double-clic : si Windows prévient, « Informations complémentaires » puis « Exécuter quand même ».</li>
+            <li>Une fenêtre noire travaille seule et affiche « Terminé » : vous pouvez la fermer.</li>
+            <li>Redémarrez la Recalbox. Elle peut redémarrer deux fois : c'est normal (activation du lecteur).</li>
+            <li>Revenez ici et choisissez <b>Gérer mes badges</b> : la connexion se fait toute seule.</li>
+          </ol>
+          <p class="small muted">
+            Mot de passe root personnalisé ? Ouvrez le fichier avec le Bloc-notes et
+            remplacez la ligne <code>set PASS=recalboxroot</code>.
+          </p>
+        </details>
+        <details>
+          <summary>Autre méthode : copier depuis ce navigateur</summary>
+          <p class="small muted">
+            Utile si votre antivirus bloque le fichier <code>.cmd</code>. Nécessite Edge ou Chrome.
+          </p>
+          <div class="actions">
+            <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier</button>
+            <span class="muted small" id="copy-hint"></span>
+          </div>
+          <pre id="copy-log" hidden></pre>
+        </details>
+      </section>
+    </section>
+
+    <!-- ================================================== ecran 3 : connexion -->
+    <section class="view view-connect">
+      <div class="view-head">
+        <button class="back" type="button" data-goto="choix">← Accueil</button>
+        <div>
+          <h1>Se connecter à la Recalbox</h1>
+          <p>Aucun mot de passe à recopier : la page récupère le sien toute seule.</p>
+        </div>
+      </div>
+
+      <section class="card" id="connect-card">
+        <div class="fields">
+          <label class="field"><span>Adresse de la Recalbox</span>
+            <input type="text" id="host" placeholder="recalbox.local" autocomplete="off">
+          </label>
+          <label class="field"><span>Port</span>
+            <input type="number" id="port" placeholder="8765" min="1" max="65535">
+          </label>
+          <label class="field"><span>Jeton (facultatif)</span>
+            <input type="password" id="token" placeholder="laisser vide" autocomplete="off">
+          </label>
+        </div>
+        <div class="actions stack">
+          <button class="big" id="btn-connect">Se connecter</button>
+          <button class="secondary" id="btn-token-file">J'ai le fichier token.txt</button>
+          <input type="file" id="file-token" accept=".txt,text/plain" hidden>
+          <span class="muted small" id="connect-hint"></span>
+        </div>
+        <div class="auto-note">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3.8 19 6.2v5.3c0 4.1-3 7.2-7 8.6-4-1.4-7-4.5-7-8.6V6.2z"/>
             <path d="m9 12 2.2 2.2L15.5 10"/>
           </svg>
-        </span>
-        <div><b>Rester chez vous</b><span>Rien ne quitte votre réseau.</span></div>
-      </li>
-    </ul>
-    <ol class="stepper" aria-label="Les trois étapes">
-      <li data-step="1"><span class="n">1</span>Installer</li>
-      <li data-step="2"><span class="n">2</span>Relier</li>
-      <li data-step="3"><span class="n">3</span>Associer</li>
-    </ol>
-  </section>
-
-  <!-- Étape 1 : installation en un seul fichier -->
-  <section class="card" id="copy-card" hidden>
-    <div class="step-head">
-      <span class="step-num" aria-hidden="true">1</span>
-      <div class="step-title">
-        <h2>Installer sur la Recalbox</h2>
-        <p class="step-sub">
-          Téléchargez un seul fichier et double-cliquez dessus : il se connecte à la
-          Recalbox et copie tout à votre place.
-        </p>
-      </div>
-    </div>
-    <div class="grid" id="payload-grid"></div>
-    <div class="actions">
-      <button class="big" id="btn-download-cmd">Télécharger l'installateur</button>
-      <span class="hint">Fichier <code>recalbox-rfid-installation.cmd</code> — il s'ouvre d'un double-clic.</span>
-    </div>
-    <details>
-      <summary>Que va-t-il se passer&nbsp;?</summary>
-      <ol class="small muted">
-        <li>Le fichier apparaît dans votre dossier « Téléchargements ».</li>
-        <li>Double-cliquez dessus. Si Windows affiche un avertissement, cliquez sur
-            « Informations complémentaires » puis « Exécuter quand même ».</li>
-        <li>Une fenêtre noire s'ouvre, travaille toute seule, puis affiche
-            « Terminé ». Vous pouvez la fermer.</li>
-        <li>Redémarrez la Recalbox : l'installation se termine au démarrage
-            (elle peut redémarrer une seconde fois pour activer le lecteur).</li>
-      </ol>
-      <p class="small muted">
-        Si votre mot de passe root est personnalisé, ouvrez le fichier avec le
-        Bloc-notes et remplacez la ligne <code>set PASS=recalboxroot</code>.
-      </p>
-    </details>
-    <details>
-      <summary>Autre méthode : copier depuis ce navigateur (Edge ou Chrome)</summary>
-      <p class="small muted">
-        Pratique si le fichier <code>.cmd</code> est bloqué par votre antivirus :
-        le navigateur écrit directement sur le partage de la Recalbox.
-      </p>
-      <div class="row">
-        <button class="secondary" id="btn-copy">Choisir \\RECALBOX\share et copier</button>
-        <span class="muted small" id="copy-hint"></span>
-      </div>
-      <pre id="copy-log" hidden></pre>
-    </details>
-  </section>
-
-  <!-- Étape 2 : connexion -->
-  <section class="card" id="connect-card">
-    <div class="step-head">
-      <span class="step-num" aria-hidden="true">2</span>
-      <div class="step-title">
-        <h2>Relier cette page à la Recalbox</h2>
-        <p class="step-sub">
-          <b>Rien à recopier</b> : laissez le jeton vide et cliquez sur « Se connecter ».
-          La page le récupère toute seule sur la Recalbox (possible pendant les minutes qui
-          suivent son démarrage, une seule fois).
-        </p>
-      </div>
-    </div>
-    <div class="connect-grid">
-      <label class="field"><span>Adresse de la Recalbox</span>
-        <input type="text" id="host" placeholder="recalbox.local" autocomplete="off">
-      </label>
-      <label class="field"><span>Port</span>
-        <input type="number" id="port" placeholder="8765" min="1" max="65535">
-      </label>
-      <label class="field"><span>Jeton de sécurité (facultatif)</span>
-        <input type="password" id="token" placeholder="laisser vide : récupéré tout seul" autocomplete="off">
-      </label>
-    </div>
-    <div class="actions">
-      <button class="big" id="btn-connect">Se connecter</button>
-      <button class="secondary" id="btn-token-file">J'ai le fichier token.txt</button>
-      <input type="file" id="file-token" accept=".txt,text/plain" hidden>
-      <span class="muted small" id="connect-hint"></span>
-    </div>
-    <details>
-      <summary>La récupération automatique ne marche pas&nbsp;?</summary>
-      <p class="small muted">
-        <b>1. Redémarrez la Recalbox.</b> La transmission automatique du jeton n'est
-        ouverte que dans les 15 minutes qui suivent son démarrage — et une seule fois.
-        C'est aussi au démarrage que le programme s'installe et que l'agent se lance.
-      </p>
-      <p class="small muted">
-        <b>2. Toujours rien ?</b> En SSH sur la Recalbox :
-        <code>rfidctl pair</code> réouvre la fenêtre, puis cliquez de nouveau sur
-        « Se connecter ». Il n'y a aucun fichier à chercher.
-      </p>
-      <p class="small muted">
-        <b>3. Dernier recours, à la main.</b> Le fichier <code>token.txt</code> est sur le
-        partage de la Recalbox. Le plus sûr : cliquer sur « Copier l'adresse du dossier »
-        ci-dessous, puis coller dans la barre de l'Explorateur (<kbd>Ctrl</kbd>+<kbd>V</kbd>
-        puis <kbd>Entrée</kbd>) — inutile de taper le chemin. Un jeton ressemble à
-        <code>70C2633536122BAA</code> : <b>16 caractères</b>, chiffres et lettres A à F.
-      </p>
-      <div class="row">
-        <button class="secondary" id="btn-copy-path">Copier l'adresse du dossier</button>
-        <button class="secondary" id="btn-netuse">Faire un diagnostic</button>
-        <span class="muted small" id="token-hint"></span>
-      </div>
-    </details>
-  </section>
-
-  <div id="banner" class="banner info" hidden></div>
-
-  <!-- Étape 3 : badges, puis vérifications et maintenance -->
-  <div id="app" class="hidden" style="display:block">
-
-    <section class="card">
-      <div class="step-head">
-        <span class="step-num" aria-hidden="true">3</span>
-        <div class="step-title">
-          <h2>Associer un badge à un jeu</h2>
-          <p class="step-sub">
-            Dans Recalbox, mettez un jeu en surbrillance. Appuyez une seconde sur le
-            bouton du boîtier, puis posez le badge sur le lecteur. C'est mémorisé
-            pour toujours.
+          <span>
+            La connexion est automatique pendant les minutes qui suivent le démarrage de la
+            Recalbox. Si la fenêtre est fermée, relancez le fichier d'installation : cela la rouvre.
+          </span>
+        </div>
+        <details>
+          <summary>La connexion ne marche pas&nbsp;?</summary>
+          <p class="small muted">
+            <b>1.</b> Redémarrez la Recalbox : c'est au démarrage que l'agent se lance.
+            <b>2.</b> Vérifiez l'adresse, ou cliquez sur « Faire un diagnostic » ci-dessous.
+            <b>3.</b> En dernier recours, le jeton est dans le fichier
+            <code>token.txt</code> du partage (16 caractères, chiffres et lettres A-F).
           </p>
-        </div>
-      </div>
-      <div class="grid" id="current-grid"></div>
-      <div class="actions">
-        <button class="big" id="btn-associate">Associer le prochain badge</button>
-        <button class="secondary" id="btn-associate-delete">Effacer un badge</button>
-        <span class="muted small" id="armed-text"></span>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Badge</th><th>Console</th><th>Jeu</th><th>Scans</th><th>Dernière utilisation</th><th></th></tr>
-          </thead>
-          <tbody id="tags-body"></tbody>
-        </table>
-      </div>
-      <p class="muted small" id="tags-count" style="margin:12px 0 0"></p>
-
-      <details>
-        <summary>Ajouter un badge à la main (sans le boîtier)</summary>
-        <form class="row" id="form-add">
-          <input type="text" id="add-uid" placeholder="Identifiant du badge (A1:B2:C3:D4)" size="22" required>
-          <input type="text" id="add-system" placeholder="Console (snes)" size="12" required>
-          <input class="grow" type="text" id="add-game" placeholder="Fichier du jeu (Super Mario World.smc)" required>
-          <input type="text" id="add-name" placeholder="Nom affiché (facultatif)" size="18">
-          <button type="submit">Ajouter ce badge</button>
-        </form>
-      </details>
-
-      <details>
-        <summary>Sauvegarde, journal et dépannage</summary>
-        <div class="row">
-          <button class="ghost" id="btn-export">Exporter en CSV</button>
-          <button class="ghost" id="btn-import">Importer un CSV</button>
-          <input type="file" id="file-import" accept=".csv,text/csv" hidden>
-        </div>
-        <div class="row">
-          <button class="ghost" id="btn-logs">Journal du service</button>
-          <button class="ghost" id="btn-logs-agent">Journal de l'agent</button>
-        </div>
-        <pre id="service-log" hidden></pre>
-        <form class="row" id="form-scan">
-          <input type="text" id="scan-uid" placeholder="Simuler la lecture d'un badge (A1:B2:C3:D4)" size="28">
-          <button class="secondary" type="submit">Simuler le scan</button>
-        </form>
-      </details>
+          <div class="actions">
+            <button class="secondary tiny" id="btn-copy-path">Copier l'adresse du dossier</button>
+            <button class="secondary tiny" id="btn-netuse">Faire un diagnostic</button>
+            <span class="muted small" id="token-hint"></span>
+          </div>
+        </details>
+      </section>
     </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Le matériel est-il bien branché&nbsp;?</h2>
-        <p class="card-sub">
-          Ces informations viennent de la Recalbox. Tout doit être au vert pour que
-          les badges fonctionnent.
-        </p>
+    <!-- ================================================== ecran 4 : gestion -->
+    <section class="view view-app">
+      <div class="view-head">
+        <div>
+          <h1>Gestion</h1>
+          <p id="app-subtitle">Associez un badge, vérifiez le matériel, mettez à jour.</p>
+        </div>
       </div>
-      <div class="grid" id="hardware-grid"></div>
-    </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Installation et service</h2>
-        <p class="card-sub">
-          À utiliser pour mettre à jour le programme, redémarrer Recalbox ou relancer
-          le service après un changement.
-        </p>
-      </div>
-      <div class="grid" id="install-grid"></div>
-      <div class="actions">
-        <button id="btn-install">Installer / mettre à jour</button>
-        <button class="danger" id="btn-reboot">Redémarrer la Recalbox</button>
-      </div>
-      <div class="grid" id="service-grid" style="margin-top:16px"></div>
-      <div class="actions">
-        <button class="secondary" id="btn-start">Démarrer le service</button>
-        <button class="secondary" id="btn-stop">Arrêter</button>
-        <button class="secondary" id="btn-restart">Redémarrer</button>
-      </div>
-      <details open>
-        <summary>Journal d'installation</summary>
-        <pre id="install-log">(aucune installation lancée)</pre>
-      </details>
-      <details>
-        <summary>Mettre à jour depuis un fichier ZIP ou une adresse</summary>
-        <div class="row">
-          <button class="secondary" id="btn-upload">Choisir un fichier ZIP</button>
-          <input type="file" id="file-update" accept=".zip" hidden>
+      <div id="app" class="dash hidden">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-tab="badges" aria-selected="true">Badges</button>
+          <button type="button" role="tab" data-tab="materiel" aria-selected="false">Matériel</button>
+          <button type="button" role="tab" data-tab="maintenance" aria-selected="false">Maintenance</button>
         </div>
-        <div class="row">
-          <input class="grow" type="text" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip">
-          <button class="secondary" id="btn-url">Installer depuis cette adresse</button>
+
+        <div class="panels">
+          <section class="panel is-active" data-panel="badges">
+            <div class="panel-head">
+              <h2>Associer un badge</h2>
+              <span class="hint">
+                Dans Recalbox, surlignez un jeu, appuyez une seconde sur le bouton du boîtier,
+                puis posez le badge sur le lecteur.
+              </span>
+            </div>
+            <div class="grid" id="current-grid"></div>
+            <div class="actions">
+              <button id="btn-associate">Associer le prochain badge</button>
+              <button class="secondary" id="btn-associate-delete">Effacer un badge</button>
+              <span class="muted small" id="armed-text"></span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Badge</th><th>Console</th><th>Jeu</th><th>Scans</th><th>Dernier usage</th><th></th></tr>
+                </thead>
+                <tbody id="tags-body"></tbody>
+              </table>
+            </div>
+            <div class="panel-head">
+              <span class="muted small" id="tags-count"></span>
+              <span class="grow"></span>
+              <button class="ghost tiny" id="btn-export">Exporter en CSV</button>
+              <button class="ghost tiny" id="btn-import">Importer un CSV</button>
+              <input type="file" id="file-import" accept=".csv,text/csv" hidden>
+            </div>
+            <details>
+              <summary>Ajouter un badge à la main, journal, dépannage</summary>
+              <form class="actions" id="form-add">
+                <input type="text" id="add-uid" placeholder="Identifiant (A1:B2:C3:D4)" style="width:190px" required>
+                <input type="text" id="add-system" placeholder="Console (snes)" style="width:120px" required>
+                <input type="text" id="add-game" placeholder="Fichier du jeu (Super Mario World.smc)" class="grow" required>
+                <input type="text" id="add-name" placeholder="Nom affiché (facultatif)" style="width:170px">
+                <button type="submit" class="secondary">Ajouter</button>
+              </form>
+              <div class="actions">
+                <button class="ghost tiny" id="btn-logs">Journal du service</button>
+                <button class="ghost tiny" id="btn-logs-agent">Journal de l'agent</button>
+              </div>
+              <pre id="service-log" hidden></pre>
+              <form class="actions" id="form-scan">
+                <input type="text" id="scan-uid" placeholder="Simuler la lecture (A1:B2:C3:D4)" style="width:230px">
+                <button class="secondary tiny" type="submit">Simuler le scan</button>
+              </form>
+            </details>
+          </section>
+
+          <section class="panel" data-panel="materiel">
+            <div class="panel-head">
+              <h2>Le matériel est-il bien branché&nbsp;?</h2>
+              <span class="hint">Ces informations viennent de la Recalbox. Tout doit être au vert.</span>
+            </div>
+            <div class="grid" id="hardware-grid"></div>
+            <p class="verdict" id="hardware-verdict"></p>
+            <details>
+              <summary>Comment brancher le lecteur et le bouton</summary>
+              <p class="small muted">
+                Lecteur RC522 sur le bus SPI (CE0, SCLK, MOSI, MISO, RST sur GPIO25) et bouton
+                poussoir entre une broche GPIO et la masse. Le détail des broches est dans
+                <code>docs/CABLAGE.md</code>.
+              </p>
+            </details>
+          </section>
+
+          <section class="panel" data-panel="maintenance">
+            <div class="panel-head">
+              <h2>Installation et service</h2>
+              <span class="hint">Mettre à jour, redémarrer Recalbox, relancer le service.</span>
+            </div>
+            <div class="grid" id="install-grid"></div>
+            <div class="actions">
+              <button id="btn-install">Installer / mettre à jour</button>
+              <button class="danger" id="btn-reboot">Redémarrer la Recalbox</button>
+            </div>
+            <div class="grid" id="service-grid" style="margin-top:4px"></div>
+            <div class="actions">
+              <button class="secondary" id="btn-start">Démarrer le service</button>
+              <button class="secondary" id="btn-stop">Arrêter</button>
+              <button class="secondary" id="btn-restart">Redémarrer</button>
+            </div>
+            <details open>
+              <summary>Journal d'installation</summary>
+              <pre id="install-log">(aucune installation lancée)</pre>
+            </details>
+            <details>
+              <summary>Mettre à jour depuis un fichier ZIP ou une adresse</summary>
+              <div class="actions">
+                <button class="secondary" id="btn-upload">Choisir un fichier ZIP</button>
+                <input type="file" id="file-update" accept=".zip" hidden>
+                <input type="text" id="update-url" placeholder="https://exemple.fr/recalbox-rfid.zip" class="grow">
+                <button class="secondary" id="btn-url">Installer depuis cette adresse</button>
+              </div>
+            </details>
+          </section>
         </div>
-      </details>
+      </div>
     </section>
+  </main>
+
+  <footer>Page locale · connexion directe à la Recalbox, rien ne sort du réseau</footer>
+</div>
+
+<dialog id="help-dialog">
+  <h2>Besoin d'aide&nbsp;?</h2>
+  <p><b>Installer</b> : téléchargez le fichier, double-cliquez dessus, puis redémarrez la Recalbox.</p>
+  <p><b>Se connecter</b> : laissez le jeton vide. La page le récupère seule pendant les minutes qui suivent le démarrage.</p>
+  <p><b>Un badge</b> : surlignez un jeu dans Recalbox, appuyez sur le bouton, posez le badge.</p>
+  <p>
+    Le diagnostic complet se trouve dans « Se connecter » → « La connexion ne marche pas ? »
+    → « Faire un diagnostic ».
+  </p>
+  <div class="actions">
+    <button type="button" id="btn-help-close" class="secondary">Fermer</button>
   </div>
-</main>
-
-<footer>
-  Page locale : elle parle directement à votre Recalbox sur le réseau de la maison.
-  Aucune donnée n'est envoyée sur Internet.
-</footer>
+</dialog>
 
 <script>
 "use strict";
@@ -1255,6 +1241,9 @@ function setConnected(ui) {
   $("#app").classList.remove("hidden");
   $("#connect-card").classList.add("hidden");
   $("#version").textContent = "v" + (ui.version || state?.app_version || "");
+  $("#version").hidden = false;
+  $("#btn-disconnect").classList.remove("hidden");
+  setView("app");
 }
 
 /* ------------------------------------------------------------------- rendu */
@@ -1268,8 +1257,8 @@ function render(status) {
 
   if (!status.installed) {
     showBanner("warn",
-      "Le lanceur n'est pas encore installé sur la Recalbox. Utilisez l'étape 1 (le fichier .cmd), " +
-      "ou le bouton « Installer / mettre à jour » plus bas si les fichiers sont déjà sur le partage.");
+      "Le lanceur n'est pas encore installé sur la Recalbox. Revenez à l'accueil et choisissez " +
+      "« Installer sur la Recalbox », ou utilisez « Installer / mettre à jour » dans l'onglet Maintenance.");
   } else if (!status.spi) {
     showBanner("warn",
       "Le bus du lecteur n'est pas encore activé. Redémarrez la Recalbox (bouton plus bas) : " +
@@ -1309,6 +1298,7 @@ function renderInstall(status) {
 function renderHardware(status) {
   const service = status.service && status.service.status;
   const reader = service && service.reader ? "0x" + String(service.reader).replace(/^0x/, "") : "";
+  const running = status.service && status.service.running;
   $("#hardware-grid").replaceChildren(
     item("Bus du lecteur (SPI)", status.spi ? "activé" : "à activer", status.spi ? "ok" : "err"),
     item("Lecteur de badges", reader || "non détecté", reader ? "ok" : "warn"),
@@ -1318,6 +1308,28 @@ function renderHardware(status) {
     item("Lancement des jeux", status.frontend === null ? "hors Recalbox" :
          (status.frontend ? "compatible" : "version trop ancienne"), status.frontend ? "ok" : "warn")
   );
+
+  /* Verdict : une seule phrase, et l'action a faire. */
+  const verdict = $("#hardware-verdict");
+  if (verdict) {
+    let tone = "ok";
+    let text = "<b>Tout est prêt.</b> Surlignez un jeu dans Recalbox, appuyez sur le bouton, puis posez un badge.";
+    if (!status.spi) {
+      tone = "warn";
+      text = "<b>Le bus du lecteur n'est pas encore activé.</b> Redémarrez la Recalbox (onglet Maintenance) : c'est au démarrage qu'il s'active.";
+    } else if (!reader) {
+      tone = "err";
+      text = "<b>Le lecteur RC522 n'est pas détecté.</b> Vérifiez le câblage (SPI + RST) et que le module est bien alimenté en 3,3 V.";
+    } else if (!service || !service.button) {
+      tone = "warn";
+      text = "<b>Le bouton du boîtier n'est pas reconnu.</b> Vérifiez qu'il relie bien la broche GPIO17 à la masse.";
+    } else if (!running) {
+      tone = "warn";
+      text = "<b>Le service est arrêté.</b> Démarrez-le dans l'onglet Maintenance : sans lui, aucun badge n'est lu.";
+    }
+    verdict.className = "verdict " + tone;
+    verdict.innerHTML = text;
+  }
 }
 
 function renderCurrent(status) {
@@ -1492,10 +1504,12 @@ agent.onClosed = () => {
   setLink(false, "connexion perdue");
   showBanner("err",
     "La connexion avec la Recalbox est perdue (agent redémarré ou Recalbox éteinte). " +
-    "Cliquez sur « Reconnecter ».");
+    "Cliquez sur « Se connecter ».");
   $("#app").classList.add("hidden");
   $("#connect-card").classList.remove("hidden");
+  $("#btn-disconnect").classList.add("hidden");
   $("#connect-hint").textContent = "Connexion perdue. Vérifiez la Recalbox puis reconnectez-vous.";
+  setView("connect");
   if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
 };
 
@@ -1795,6 +1809,7 @@ async function tryReconnect(silent) {
     ? "La Recalbox répond mais refuse le jeton."
     : "Aucune réponse de la Recalbox (" + settings.host + ").";
   showBanner("err", refused ? pairingClosedMessage(url) : agentDownMessage(url));
+  setView("connect");
 }
 
 $("#btn-connect").addEventListener("click", () => tryReconnect(false));
@@ -2065,6 +2080,7 @@ async function copyPayload() {
   }
   if (hash.get("token")) {
     $("#connect-hint").textContent = "Connexion automatique…";
+    setView("connect");
     setTimeout(() => tryReconnect(true), 400);
     return;
   }
@@ -2077,7 +2093,53 @@ async function copyPayload() {
   }
   updateTokenPath();
   $("#host").addEventListener("input", updateTokenPath);
+  setView("choix");
 })();
+
+/* ------------------------------------------------------------- navigation */
+function setView(name) {
+  const known = ["choix", "install", "connect", "app"];
+  if (!known.includes(name)) name = "choix";
+  document.body.dataset.view = name;
+  const main = document.querySelector("main");
+  if (main) main.scrollTop = 0;
+}
+
+function setTab(name) {
+  document.querySelectorAll("[data-tab]").forEach((node) => {
+    node.setAttribute("aria-selected", node.dataset.tab === name ? "true" : "false");
+  });
+  document.querySelectorAll("[data-panel]").forEach((node) => {
+    node.classList.toggle("is-active", node.dataset.panel === name);
+  });
+}
+
+document.querySelectorAll("[data-goto]").forEach((node) => {
+  node.addEventListener("click", () => {
+    setView(node.dataset.goto);
+    if (node.dataset.goto === "connect") setTimeout(() => $("#host").focus(), 60);
+  });
+});
+document.querySelectorAll("[data-tab]").forEach((node) => {
+  node.addEventListener("click", () => setTab(node.dataset.tab));
+});
+
+$("#btn-help").addEventListener("click", () => {
+  const dialog = $("#help-dialog");
+  if (dialog && dialog.showModal) dialog.showModal();
+});
+$("#btn-help-close").addEventListener("click", () => $("#help-dialog").close());
+$("#btn-disconnect").addEventListener("click", () => {
+  agent.close();
+  $("#app").classList.add("hidden");
+  $("#connect-card").classList.remove("hidden");
+  $("#btn-disconnect").classList.add("hidden");
+  setLink(false, "déconnecté");
+  $("#connect-hint").textContent = "Déconnecté. Vous pouvez vous reconnecter.";
+  setView("connect");
+});
+setTab("badges");
+
 window.addEventListener("beforeunload", () => agent.close());
 </script>
 </body>

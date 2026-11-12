@@ -324,14 +324,14 @@ Causes fréquentes :
   recréé au démarrage de l'agent) — pensez à ressaisir le nouveau jeton dans
   `installer.html`.
 
-### « Connecter » ne trouve pas le jeton
+### « Se connecter » ne trouve pas le jeton
 
 | Message / symptôme | Cause / solution |
 | --- | --- |
 | demande le dossier puis « jeton introuvable » | l'agent n'a jamais démarré : redémarrez Recalbox (`token.txt` est créé au démarrage de l'agent) |
 | « jeton vide » | même cause, ou fichier tronqué : supprimez `token.txt` et redémarrez |
-| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez « Charger token.txt… » ou Edge/Chrome |
-| autorisation refusée | recliquez sur « Connecter » et acceptez l'accès au dossier ; sinon « Charger token.txt… » |
+| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez « J'ai le fichier token.txt » ou Edge/Chrome |
+| autorisation refusée | recliquez sur « Se connecter » et acceptez l'accès au dossier ; sinon « J'ai le fichier token.txt » |
 | accès au dossier impossible | Windows ne s'authentifie pas au partage : lancez `acces-recalbox.cmd` (bouton « Autoriser Windows… ») ou `net use Z: \\RECALBOX\share /user:root recalboxroot` |
 
 Le jeton est mémorisé dans le navigateur par sécurité uniquement pour la
@@ -451,7 +451,8 @@ net use Z: \\RECALBOX\share /user:root recalboxroot /persistent:yes
 
 ### Le bouton « Faire un diagnostic »
 
-Dans `installer.html`, ouvrez **« Où trouver le jeton ? »** puis cliquez sur
+Dans `installer.html`, allez sur l'écran **« Gérer mes badges »** (connexion),
+ouvrez **« La connexion ne marche pas ? »** puis cliquez sur
 **« Faire un diagnostic »** : la page télécharge `diagnostic-recalbox.cmd`, à
 double-cliquer. Il n'installe rien et n'écrit rien, il affiche :
 

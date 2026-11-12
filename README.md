@@ -84,7 +84,7 @@ programme.
    `\\RECALBOX\share\userscripts\`.
 3. **Redémarrez Recalbox.**
 4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet) et
-   cliquez sur « Connecter ».
+   cliquez sur « Se connecter ».
 
 > L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
 > place, propose l'installation par SSH et ouvre `installer.html` à la fin.
@@ -163,7 +163,7 @@ périmé).
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 
 * **Connexion** : `ws://<ip>:8765`, jeton lu dans
-  `\\RECALBOX\share\system\rfid\token.txt` (bouton « Charger token.txt… » pour
+  `\\RECALBOX\share\system\rfid\token.txt` (bouton « J'ai le fichier token.txt » pour
   éviter le copier-coller). Les paramètres sont mémorisés dans le navigateur.
 * **Sécurité** : l'agent n'accepte que les commandes authentifiées par le jeton
   (3 échecs ferment la connexion). Le jeton vit sur le partage : ne l'ouvrez pas
@@ -320,7 +320,7 @@ python tests/run_tests.py
 | Le jeu ne se lance pas | Recalbox < 9, ou `rfidctl frontend` en échec |
 | Rien ne se passe après un appui | le jeu doit être **sélectionné** dans la liste (pas dossier) |
 | `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, bon jeton, journal `logs/agent.log` |
-| « Jeton invalide » | recopier `\\RECALBOX\share\system\rfid\token.txt` (bouton « Charger token.txt… ») |
+| « Jeton invalide » | recopier `\\RECALBOX\share\system\rfid\token.txt` (bouton « J'ai le fichier token.txt ») |
 | Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/DEPANNAGE.md` |
 | `\\RECALBOX\share` demande un mot de passe | Windows 11 bloque les invités : identifiant `root` / `recalboxroot` (ou autoriser les invités) |
 

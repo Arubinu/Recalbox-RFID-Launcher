@@ -57,10 +57,10 @@ UNC : c'est une méthode de repli, à utiliser si elle fonctionne chez vous.
      (démarrage automatique de l'agent).
 3. **Redémarrez Recalbox.**
 4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, et
-   cliquez sur **« Connecter »** — le jeton est lu automatiquement dans
+   cliquez sur **« Se connecter »** — le jeton est lu automatiquement dans
    `\\RECALBOX\share\system\rfid\token.txt` (une autorisation de dossier la
    première fois, mémorisée ensuite).
-5. Cliquez sur **« Installer / mettre à jour maintenant »**, puis sur
+5. Cliquez sur **« Installer / mettre à jour »**, puis sur
    **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
 
 En cas de navigateur non compatible (ou d'API d'écriture refusée), utilisez la
@@ -141,7 +141,7 @@ WebSocket protégé qui tourne sur la Recalbox.
      à l'appairage automatique (fenêtre de 15 minutes ouverte après le
      redémarrage de la Recalbox). Il n'y a aucun fichier à chercher.
 5. Cliquez sur **« Se connecter »**, puis sur **« Installer / mettre à jour »**
-   (carte « Installation et service ») : le journal défile en direct.
+   (onglet « Maintenance ») : le journal défile en direct.
 6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer la Recalbox »**
    (indispensable pour que le lecteur soit reconnu).
 

@@ -17,33 +17,42 @@ la page s'ouvre en local (`file://`) et se connecte à l'agent WebSocket de la
 Recalbox. Aucune interface n'est hébergée par la Recalbox, aucun serveur n'est
 nécessaire sur le PC.
 
+La page tient sur un écran, sans défilement, et commence par un **choix** :
+
+| Écran | À quoi ça sert |
+| --- | --- |
+| **Accueil** | deux tuiles : *Installer sur la Recalbox* ou *Gérer mes badges* |
+| **Installer** | télécharger le fichier `.cmd` (3 étapes affichées), plus la copie depuis le navigateur en repli |
+| **Se connecter** | adresse, port et jeton **facultatif** : la page le récupère seule par appairage |
+| **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
+
+Dans **Gestion**, le bandeau du haut donne l'état (connecté, service actif) et le
+bouton **Déconnecter** revient à l'écran de connexion.
+
 Champs de connexion :
 
 | Champ | Valeur |
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | rempli automatiquement par l'installateur `.cmd`, sinon « Connecter » le lit sur le partage, sinon « Charger token.txt… » |
+| Jeton | **laisser vide** : récupéré automatiquement pendant les minutes qui suivent le démarrage (fenêtre d'appairage) ; sinon « J'ai le fichier token.txt » |
 
 L'installateur `.cmd` relancé après l'installation ouvre la page avec
 `#host=…&port=…&token=…` : la connexion est immédiate, sans rien saisir (le jeton
 est aussi copié dans le presse-papiers).
 
-Si le navigateur ne permet pas l'accès au dossier (Firefox, Safari), deux
-replis : **« Charger token.txt… »** (sélection du fichier) ou copier-coller le
-contenu du fichier.
+Si l'appairage n'est pas disponible, deux replis : **« J'ai le fichier
+token.txt »** (sélection du fichier) ou copier-coller son contenu.
 
-Le bouton **« Autoriser Windows à accéder au partage »** (section de copie)
-télécharge un `acces-recalbox.cmd` : double-clic et Windows se connecte au
-partage (`net use \\RECALBOX\share /user:root recalboxroot`, mot de passe
-modifiable dans le fichier), puis ouvre l'Explorateur.
+Le bouton **« Faire un diagnostic »** (écran *Se connecter* → *La connexion ne
+marche pas ?*) télécharge `diagnostic-recalbox.cmd` : double-clic, et il affiche
+l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
 
-| Section | Actions |
+| Onglet | Actions |
 | --- | --- |
-| Installation & mise à jour | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, journal en direct |
-| Matériel | état du bus SPI, du lecteur RC522, du bouton, du frontend |
-| Badges | associer le prochain badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
-| Service | démarrer / arrêter / redémarrer, journaux du service et de l'agent |
+| Badges | associer le prochain badge au jeu sélectionné, effacer, tableau des badges, export et import CSV |
+| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire |
+| Maintenance | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, démarrer/arrêter/redémarrer le service, journaux en direct |
 
 Points utiles :
 

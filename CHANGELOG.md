@@ -4,6 +4,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.9.0]
+
+### Modifié
+
+* **Refonte de l'interface : un choix, puis des écrans, sans défilement.**
+  * l'accueil propose **deux tuiles visuelles** — *Installer sur la Recalbox* ou
+    *Gérer mes badges* — au lieu d'enchaîner des blocs les uns sous les autres ;
+  * chaque parcours occupe **un seul écran** (installation ou connexion), avec un
+    bouton retour, et les explications longues sont repliées ;
+  * une fois connecté, place à un **tableau de bord à onglets** (Badges,
+    Matériel, Maintenance) qui tient dans la fenêtre : seule la liste des badges
+    et les journaux défilent, jamais la page (hauteur fixe `100dvh`, grille
+    `minmax(0, 1fr)`) ;
+  * l'onglet **Matériel** affiche un **verdict en une phrase avec l'action à
+    faire** (« Le bus du lecteur n'est pas encore activé → redémarrez la
+    Recalbox »), calculé à partir de l'état réel ;
+  * en-tête permanent : marque, version, état de connexion, `Déconnecter`, aide
+    dans une boîte de dialogue (`<dialog>`).
+
+### Corrigé
+
+* Cascade CSS : les tuiles de l'accueil (des `<button>`) héritaient de la hauteur
+  et du `nowrap` des boutons standards.
+* Défilement horizontal résiduel sur mobile (colonne de grille élastique et
+  `min-width: auto` des éléments flex) — la largeur est désormais bornée.
+* Documentation alignée sur les nouveaux libellés (`J'ai le fichier token.txt`,
+  onglet Maintenance, « Se connecter »).
+
 ## [1.8.3]
 
 ### Corrigé (Recalbox 10 : installation en échec et service arrêté)
