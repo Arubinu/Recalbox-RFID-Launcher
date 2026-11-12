@@ -137,9 +137,9 @@ WebSocket protégé qui tourne sur la Recalbox.
    projet, sur votre PC). Renseignez :
    * l'adresse : `recalbox.local` (ou l'IP affichée dans `RÉSEAU` > `INFORMATIONS`) ;
    * le port : `8765` ;
-   * le jeton : **laissez le champ vide**. La page le récupère toute seule grâce
-     à l'appairage automatique (fenêtre de 15 minutes ouverte après le
-     redémarrage de la Recalbox). Il n'y a aucun fichier à chercher.
+   * le jeton : **laissez le champ vide**. Cliquez sur « Se connecter », puis gardez
+     le bouton du boîtier appuyé 3 secondes pendant le compte à rebours (30 s) :
+     c'est la preuve de présence. Il n'y a aucun fichier à chercher.
 5. Cliquez sur **« Se connecter »**, puis sur **« Installer / mettre à jour »**
    (onglet « Maintenance ») : le journal défile en direct.
 6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer la Recalbox »**

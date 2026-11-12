@@ -11,6 +11,7 @@ et boucle de service. Seule une connexion authentifiée par un jeton peut agir.
 
 Commandes (JSON, une réponse par `id`) :
 
+* ``pair.request`` / ``pair.check`` / ``pair.cancel`` (appairage confirme au bouton) ;
 * ``auth`` (jeton), ``status``, ``version``, ``log`` ;
 * ``install`` (dossier du partage ou URL), ``upload.begin/chunk/end`` (ZIP) ;
 * ``tags.list/add/remove/export/import`` ;
@@ -39,6 +40,7 @@ import time
 import zipfile
 
 from . import __version__
+from . import pairing
 from .consts import AGENT_COMMAND_FILENAME, DB_FILENAME, TOKEN_FILENAME
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import current_target, read_state, supports_start_command
@@ -535,6 +537,9 @@ class Agent:
         if command == "pair":
             return self._handle_pair(client, request_id)
 
+        if command in ("pair.request", "pair.check", "pair.cancel"):
+            return self._handle_pairing(client, request_id, command, message)
+
         if command == "auth":
             if secrets.compare_digest(str(message.get("token") or ""), self.token):
                 client.authenticated = True
@@ -585,6 +590,86 @@ class Agent:
         return True
 
     # ------------------------------------------------------------- appairage
+    def _handle_pairing(self, client, request_id, command, message) -> bool:
+        """Appairage confirme au bouton : demande, attente, jetons.
+
+        Aucune authentification (c'est le but), mais trois garde-fous : reseau
+        local uniquement, une seule demande a la fois, et validation par un
+        appui long sur le bouton physique de la Recalbox.
+        """
+        source = getattr(client, "address", "")
+        if not is_private_address(source):
+            client.send({
+                "id": request_id,
+                "ok": False,
+                "error": "appairage refuse : adresse hors du reseau local",
+            })
+            return True
+
+        try:
+            if command == "pair.request":
+                if not process_alive(read_pid(self.home)):
+                    client.send({
+                        "id": request_id,
+                        "ok": False,
+                        "error": "le service RFID n'est pas demarre : demarrez-le dans "
+                                 "l'onglet Maintenance, puis reessayez",
+                    })
+                    return True
+                request = pairing.create_request(self.home, source=str(source))
+                if self.log:
+                    self.log.info(
+                        "Appairage : demande %s (appui de %.0f s sur le bouton attendu)"
+                        % (request["id"], pairing.CONFIRM_HOLD_S)
+                    )
+                client.send({
+                    "id": request_id,
+                    "ok": True,
+                    "data": {
+                        "request": request["id"],
+                        "seconds": int(max(0.0, request["until"] - time.time())),
+                        "hold": pairing.CONFIRM_HOLD_S,
+                    },
+                })
+                return True
+
+            if command == "pair.check":
+                wanted = str(message.get("request") or "").strip()
+                if pairing.take_grant(self.home, wanted):
+                    if self.log:
+                        self.log.warning("Appairage : demande %s acceptee au bouton" % wanted)
+                    client.send({
+                        "id": request_id,
+                        "ok": True,
+                        "data": {"accepted": True, "token": self.token},
+                    })
+                    return True
+                current = pairing.pending(self.home)
+                remaining = 0
+                if current:
+                    remaining = int(max(0.0, float(current.get("until", 0)) - time.time()))
+                client.send({
+                    "id": request_id,
+                    "ok": True,
+                    "data": {
+                        "accepted": False,
+                        "pending": bool(current) and str(current.get("id")) == wanted,
+                        "seconds": remaining,
+                    },
+                })
+                return True
+
+            pairing.cancel(self.home)
+            client.send({"id": request_id, "ok": True, "data": {"cancelled": True}})
+            return True
+        except pairing.PairingError as exc:
+            client.send({"id": request_id, "ok": False, "error": str(exc)})
+        except Exception as exc:  # noqa: BLE001 - l'agent ne doit jamais tomber
+            if self.log:
+                self.log.error("Appairage : erreur sur %s : %s" % (command, exc))
+            client.send({"id": request_id, "ok": False, "error": "appairage impossible : %s" % exc})
+        return True
+
     def _handle_pair(self, client, request_id) -> bool:
         """Donne le jeton une seule fois, sur le reseau local, fenetre limitee."""
         source = getattr(client, "address", "")

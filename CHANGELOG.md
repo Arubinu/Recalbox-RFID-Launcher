@@ -4,6 +4,42 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.0.0]
+
+### Ajouté
+
+* **Appairage confirmé physiquement au bouton.** Plus besoin de relancer le `.cmd`
+  pour autoriser un navigateur :
+  1. la page dépose une **demande d'appairage** — une seule à la fois, valable
+     **30 secondes** ;
+  2. la Recalbox attend un **appui continu de 3 secondes** sur le bouton du
+     boîtier (preuve de présence) ;
+  3. le service enregistre un accord qui porte l'identifiant exact de la demande,
+     et la page échange cet accord contre le jeton, **une seule fois**.
+* **Protection contre la course entre demandes** : un accord donné pour la
+  demande A ne peut jamais valider la demande B, même si celle-ci arrive juste
+  après l'expiration de A (l'identifiant et l'échéance de la demande sont
+  recopiés dans l'accord). Un appui commencé **avant** la demande est également
+  refusé (marge de 250 ms) : impossible de valider une demande qui n'était pas
+  la vôtre en gardant le doigt posé.
+* Nouveaux gestes du bouton : appui court = associer, appui long (2 s) =
+  effacer, **appui très long (3 s) = confirmer l'appairage**. Pendant une
+  demande d'appairage, l'appui long n'arme pas l'effacement.
+* Réglage `hold_press_s` dans `config.ini` (`[button]`) pour ajuster la durée de
+  confirmation.
+* Commandes d'agent `pair.request` / `pair.check` / `pair.cancel`, réservées au
+  réseau local et refusées si le service du lecteur est arrêté.
+
+### Modifié
+
+* L'écran « Se connecter » explique l'appui de 3 secondes et affiche un compte à
+  rebours pendant l'attente (« Gardez le bouton appuyé 3 s… il reste 24 s ») ; le
+  bouton est désactivé pendant la demande.
+* Les messages d'erreur distinguent : service arrêté, demande déjà en attente,
+  appui trop court, agent injoignable.
+* Le fichier `pair-request` et `rfidctl pair` restent disponibles comme solution
+  de secours quand le service ne tourne pas.
+
 ## [1.9.2]
 
 ### Modifié

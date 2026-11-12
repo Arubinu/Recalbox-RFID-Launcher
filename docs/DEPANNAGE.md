@@ -275,6 +275,9 @@ L'agent est lancé par le script permanent
 | Symptôme | Cause probable |
 | --- | --- |
 | « Impossible de joindre la Recalbox après 3 tentatives » | l'agent ne tourne pas : Recalbox **pas redémarrée** depuis l'installation, mauvaise adresse, ou userscript de l'agent absent |
+| « Le service du lecteur est arrêté » | sans le service, personne ne surveille le bouton : Maintenance → **Démarrer** |
+| « Une autre demande d'appairage est déjà en attente » | une seule demande à la fois (30 s) : attendez la fin du compte à rebours et recommencez |
+| « Le bouton n'a pas été maintenu assez longtemps » | il faut **3 secondes** d'appui continu pendant le compte à rebours |
 | « La Recalbox répond mais refuse le jeton » | jeton mal recopié (16 caractères A-F attendus) ou `token.txt` recréé depuis |
 | « Un jeton Recalbox fait 16 caractères… » | le presse-papiers contenait autre chose (texte copié ailleurs) : relisez `token.txt` |
 | « délai dépassé » | adresse injoignable : testez `ping recalbox.local`, préférez l'IP |
@@ -287,16 +290,29 @@ L'agent est lancé par le script permanent
 2. **La Recalbox a-t-elle redémarré depuis l'installation ?** C'est au démarrage
    que le programme est installé, que l'agent démarre et que `token.txt` est
    créé. Sans ce redémarrage, la page ne peut rien joindre.
-3. **Le jeton** : laissez le champ **vide** et cliquez sur « Se connecter » —
-   l'agent le transmet une fois automatiquement dans les 15 minutes qui suivent
-   son démarrage. Sinon, en SSH : `rfidctl pair` réouvre la fenêtre. En dernier
-   recours seulement, le fichier est `\\RECALBOX\share\system\rfid\token.txt`
-   (16 caractères, chiffres et lettres A-F).
+3. **L'appairage** : champ jeton **vide**, « Se connecter », puis **bouton du
+   boîtier maintenu 3 secondes** pendant le compte à rebours (30 s). Une seule
+   demande à la fois. Replis : `rfidctl pair` en SSH, ou relancer le `.cmd`
+   (il dépose une demande), ou le fichier
+   `\\RECALBOX\share\system\rfid\token.txt` (16 caractères, chiffres et A-F).
 4. **L'adresse** : `recalbox.local` ou l'IP affichée dans
    `RÉSEAU` > `INFORMATIONS` ; le port `8765`. En cas de doute :
    « Faire un diagnostic » (bouton dans l'aide du jeton) teste le port.
 5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
    un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
+
+### L'appui long sur le bouton ne confirme pas
+
+Vérifiez, dans cet ordre :
+
+1. **Le service tourne** (onglet Maintenance) : c'est lui qui lit le bouton ;
+   l'agent seul ne suffit pas.
+2. **Le bouton est reconnu** (onglet Matériel) : sinon, câblage GPIO17 → masse.
+3. **L'appui est continu** : 3 secondes, sans relâcher, *après* avoir cliqué sur
+   « Se connecter » (la demande n'est valable que 30 s). Un appui commencé avant
+   la demande est ignoré, par sécurité.
+4. Pendant une demande d'appairage, l'appui long **ne déclenche pas**
+   l'effacement d'un badge : c'est volontaire.
 
 ### « Le lanceur n'est pas installé » alors qu'il l'est
 

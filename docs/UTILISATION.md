@@ -23,7 +23,7 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | --- | --- |
 | **Accueil** | deux tuiles : *Installer sur la Recalbox* ou *Gérer mes badges* |
 | **Installer** | télécharger le fichier `.cmd` (3 étapes affichées), plus la copie depuis le navigateur en repli |
-| **Se connecter** | adresse, port et jeton **facultatif** : la page le récupère seule par appairage |
+| **Se connecter** | adresse, port et jeton **facultatif** : l'appairage se confirme au bouton du boîtier |
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
 Dans **Gestion**, le bandeau du haut donne l'état (connecté, service actif) et le
@@ -35,7 +35,13 @@ Champs de connexion :
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | **laisser vide** : récupéré automatiquement pendant les minutes qui suivent le démarrage (fenêtre d'appairage) ; sinon l'icône d'import à droite du champ jeton |
+| Jeton | **laisser vide** : cliquez sur « Se connecter », puis **gardez le bouton du boîtier appuyé 3 secondes** pendant le compte à rebours. Une seule demande à la fois, valable 30 s ; l'icône d'import du champ sert de repli |
+
+L'appairage est **confirmé physiquement** : la page dépose une demande (une seule à la
+fois, 30 s), le service de la Recalbox attend un appui long (3 s) sur le bouton, puis
+transmet le jeton une seule fois. Un appui commencé avant la demande, ou destiné à une
+demande précédente, est refusé : on ne peut donc pas valider une demande qui n'était pas
+la vôtre.
 
 L'installateur `.cmd` relancé après l'installation ouvre la page avec
 `#host=…&port=…&token=…` : la connexion est immédiate, sans rien saisir (le jeton

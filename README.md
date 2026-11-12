@@ -66,11 +66,10 @@ programme.
    script de démarrage — sans rien demander.
 4. **Redémarrez Recalbox.** L'installation se fait toute seule au démarrage
    (SPI, service, agent) et Recalbox redémarre une fois de plus si nécessaire.
-5. **Ouvrez `installer.html` et cliquez sur « Se connecter »** : le jeton est
-   récupéré automatiquement par appairage (fenêtre de 15 minutes ouverte après le
-   démarrage), **rien à recopier et aucun fichier à chercher**. Le `.cmd` rouvre
-   cette page tout seul ; vous pouvez aussi le relancer, il lit le jeton et ouvre
-   la page déjà connectée.
+5. **Ouvrez `installer.html`, cliquez sur « Se connecter », puis gardez le bouton du
+   boîtier appuyé 3 secondes** (demande valable 30 s, une seule à la fois) : le jeton
+   est transmis une fois, **rien à recopier et aucun fichier à chercher**. Le `.cmd`
+   rouvre cette page tout seul ; le relancer reste une solution de secours.
 
 > Le `.cmd` tente `root` / `recalboxroot`, puis l'accès invité. Mot de passe root
 > personnalisé ? Ouvrez le fichier avec le Bloc-notes et modifiez

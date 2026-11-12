@@ -12,7 +12,8 @@ class Button:
 
     ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne
     ``"short"`` a la fin d'un appui court, ``"long"`` a la fin d'un appui long,
-    sinon ``None``.
+    ``"hold"`` a la fin d'un appui tres long (confirmation d'appairage), sinon
+    ``None``.
     """
 
     def __init__(
@@ -22,6 +23,7 @@ class Button:
         active_low: bool = True,
         debounce_s: float = 0.04,
         long_press_s: float = 2.0,
+        hold_press_s: float = 3.0,
         log=None,
         clock=None,
     ):
@@ -30,6 +32,7 @@ class Button:
         self.active_low = bool(active_low)
         self.debounce_s = max(0.005, float(debounce_s))
         self.long_press_s = max(0.1, float(long_press_s))
+        self.hold_press_s = max(self.long_press_s, float(hold_press_s))
         self.log = log
         self.clock = clock or time.monotonic
         self.available = False
@@ -100,6 +103,8 @@ class Button:
         self._pressed_at = None
         if self.log:
             self.log.info("Bouton relache apres %.2f s" % duration)
+        if duration >= self.hold_press_s:
+            return "hold"
         return "long" if duration >= self.long_press_s else "short"
 
     def close(self) -> None:

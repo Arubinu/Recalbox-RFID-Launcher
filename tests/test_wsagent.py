@@ -309,6 +309,70 @@ class PairingTest(AgentTestCase):
         self.assertFalse(wsagent.is_private_address(("172.40.0.1", 1)))
 
 
+class ButtonPairingTest(AgentTestCase):
+    """Appairage confirme au bouton : demande, accord, jeton."""
+
+    def fake_service(self):
+        """Simule un service en cours (le PID courant est bien vivant)."""
+        with open(os.path.join(self.home, "rfid.pid"), "w", encoding="ascii") as handle:
+            handle.write(str(os.getpid()))
+
+    def test_demande_refusee_sans_service(self):
+        self.start_agent()
+        client = self.client()
+        with self.assertRaises(WsError) as context:
+            client.call("pair.request")
+        self.assertIn("service", str(context.exception))
+
+    def test_demande_puis_validation_au_bouton(self):
+        self.fake_service()
+        self.start_agent()
+        client = self.client()
+        data = client.call("pair.request")
+        request_id = data["request"]
+        self.assertEqual(len(request_id), 8)
+        self.assertGreater(data["seconds"], 0)
+
+        # Rien tant que le bouton n'a pas ete tenu.
+        premier = client.call("pair.check", request=request_id)
+        self.assertFalse(premier["accepted"])
+        self.assertTrue(premier["pending"])
+
+        # Le service enregistre l'appui long sur la demande en cours.
+        pending = wsagent.pairing.pending(self.home)
+        # L'appui commence apres la demande (marge anti-rejeu de 250 ms).
+        self.assertTrue(wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0))
+
+        accepte = client.call("pair.check", request=request_id)
+        self.assertTrue(accepte["accepted"])
+        self.assertEqual(accepte["token"], self.agent.token)
+        # L'accord est consomme : un second appel ne redonne pas le jeton.
+        self.assertFalse(client.call("pair.check", request=request_id)["accepted"])
+
+    def test_une_seule_demande_a_la_fois(self):
+        self.fake_service()
+        self.start_agent()
+        premier = self.client()
+        premier.call("pair.request")
+        second = self.client()
+        with self.assertRaises(WsError) as context:
+            second.call("pair.request")
+        self.assertIn("deja en attente", str(context.exception))
+
+    def test_accord_d_une_autre_demande_ignore(self):
+        self.fake_service()
+        self.start_agent()
+        client = self.client()
+        premiere = client.call("pair.request")["request"]
+        pending = wsagent.pairing.pending(self.home)
+        # L'appui commence apres la demande (marge anti-rejeu de 250 ms).
+        self.assertTrue(wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0))
+        # Un autre client demande un jeton pour un identifiant qu'il invente.
+        data = client.call("pair.check", request="AUTRE123")
+        self.assertFalse(data["accepted"])
+        self.assertNotIn("token", data)
+
+
 class ProtocolTest(AgentTestCase):
     def test_handshake_non_websocket(self):
         self.start_agent()

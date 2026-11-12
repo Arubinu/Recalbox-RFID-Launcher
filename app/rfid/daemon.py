@@ -16,6 +16,7 @@ from .controller import Controller
 from .esbridge import EsLauncher, supports_start_command
 from .feedback import Feedback
 from .hardware import build_button, build_gpio, build_reader
+from . import pairing
 from .logutil import Logger
 from .storage import TagStore
 
@@ -153,6 +154,7 @@ class Service:
         self.feedback = None
         self.launcher = None
         self._web_command_signature = None
+        self._press_started_at = None
         self.last_error_at = 0.0
         self.last_uid = ""
         self.last_uid_at = 0.0
@@ -267,9 +269,10 @@ class Service:
                         self.controller.on_badge(uid)
 
                 if self.button is not None:
+                    self._track_press()
                     gesture = self.button.poll()
                     if gesture:
-                        self.controller.on_button(gesture)
+                        self._handle_gesture(gesture)
 
                 self._consume_agent_command()
 
@@ -289,6 +292,53 @@ class Service:
         finally:
             self._shutdown(lock)
         return 0
+
+    # ------------------------------------------------------------------ bouton
+    def _track_press(self) -> None:
+        """Memorise l'instant (horloge murale) ou l'appui a commence."""
+        try:
+            pressed = self.button.is_pressed()
+        except Exception:  # noqa: BLE001 - bouton retire a chaud
+            return
+        if pressed and self._press_started_at is None:
+            self._press_started_at = time.time()
+        elif not pressed:
+            self._press_started_at = None
+
+    def _handle_gesture(self, gesture: str) -> None:
+        """Un appui tres long confirme une demande d'appairage en cours."""
+        request = None
+        try:
+            request = pairing.pending(self.home)
+        except Exception as exc:  # noqa: BLE001 - fichier d'etat illisible
+            if self.log:
+                self.log.warning("Demande d'appairage illisible : %s" % exc)
+
+        if request is not None:
+            if gesture == "hold":
+                started = self._press_started_at or time.time()
+                if pairing.grant(self.home, request, started):
+                    self.feedback.ok()
+                    if self.log:
+                        self.log.info(
+                            "Appairage confirme au bouton (demande %s)" % request.get("id")
+                        )
+                else:
+                    self.feedback.error()
+                    if self.log:
+                        self.log.warning(
+                            "Appui commence avant la demande d'appairage : ignore"
+                        )
+                return
+            if gesture == "long":
+                # Pendant une demande, l'appui long ne doit pas armer l'effacement.
+                if self.log:
+                    self.log.info("Appui long ignore : demande d'appairage en cours")
+                return
+
+        if gesture == "hold":
+            return   # sans demande en cours, l'appui tres long ne fait rien
+        self.controller.on_button(gesture)
 
     # ----------------------------------------------------------- commandes agent
     def _consume_agent_command(self) -> None:
