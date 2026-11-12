@@ -856,5 +856,100 @@ class ConfigCommandTest(AgentTestCase):
             client.call("config.get")
 
 
+class CalibrationCommandTest(AgentTestCase):
+    """Mesure automatique du lecteur : lancement, suivi, annulation, remise a zero."""
+
+    def setUp(self):
+        super().setUp()
+        Config(self.config_path).create_default()
+        self.calibration_path = os.path.join(self.home, "calibration.json")
+
+    def ecrire_etat(self, **valeurs):
+        etat = {"phase": "idle", "finished": True, "instruct": "", "measures": {},
+                "applied": {}, "error": ""}
+        etat.update(valeurs)
+        with open(self.calibration_path, "w", encoding="utf-8") as handle:
+            json.dump(etat, handle)
+        return etat
+
+    def commande_deposee(self):
+        path = os.path.join(self.home, "agent-command.json")
+        if not os.path.isfile(path):
+            return None
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def service_actif(self):
+        with open(os.path.join(self.home, "rfid.pid"), "w", encoding="ascii") as handle:
+            handle.write(str(os.getpid()))
+        with open(os.path.join(self.home, "status.json"), "w", encoding="utf-8") as handle:
+            json.dump({"version": wsagent.__version__}, handle)
+
+    def test_refuse_sans_service(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError) as contexte:
+            client.call("calibrate.start")
+        self.assertIn("service", str(contexte.exception))
+
+    def test_lance_la_mesure(self):
+        self.service_actif()
+        client = self.authenticated_client()
+        data = client.call("calibrate.start")
+        self.assertTrue(data["started"])
+        commande = self.commande_deposee()
+        self.assertEqual(commande["cmd"], "calibrate_start")
+
+    def test_refuse_si_une_mesure_tourne(self):
+        self.service_actif()
+        self.ecrire_etat(phase="read", finished=False)
+        client = self.authenticated_client()
+        with self.assertRaises(WsError) as contexte:
+            client.call("calibrate.start")
+        self.assertIn("deja en cours", str(contexte.exception))
+
+    def test_relance_apres_une_mesure_terminee(self):
+        self.service_actif()
+        self.ecrire_etat(phase="done", finished=True)
+        client = self.authenticated_client()
+        self.assertTrue(client.call("calibrate.start")["started"])
+
+    def test_etat_absent(self):
+        client = self.authenticated_client()
+        data = client.call("calibrate.status")
+        self.assertEqual(data["phase"], "idle")
+
+    def test_etat_transmis(self):
+        self.ecrire_etat(phase="remove", finished=False, instruct="remove_badge",
+                         measures={"read_ms": 47.2})
+        client = self.authenticated_client()
+        data = client.call("calibrate.status")
+        self.assertEqual(data["instruct"], "remove_badge")
+        self.assertEqual(data["measures"], {"read_ms": 47.2})
+
+    def test_annulation(self):
+        self.service_actif()
+        client = self.authenticated_client()
+        self.assertTrue(client.call("calibrate.cancel")["cancelled"])
+        self.assertEqual(self.commande_deposee()["cmd"], "calibrate_cancel")
+
+    def test_reinitialisation(self):
+        self.service_actif()
+        client = self.authenticated_client()
+        # Le service ecrit l'etat « reset » pendant que l'agent attend.
+        def repondre(*args, **kwargs):
+            self.ecrire_etat(phase="reset", applied={"rfid.poll_interval_ms": ["80", "150"]})
+            return None
+
+        with mock.patch.object(wsagent.Agent, "_write_command", side_effect=repondre):
+            data = client.call("calibrate.reset", timeout=15)
+        self.assertEqual(data["applied"]["rfid.poll_interval_ms"], ["80", "150"])
+
+    def test_acces_authentifie_obligatoire(self):
+        self.start_agent()
+        client = self.client()
+        with self.assertRaises(WsError):
+            client.call("calibrate.status")
+
+
 if __name__ == "__main__":
     unittest.main()

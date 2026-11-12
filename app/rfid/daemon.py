@@ -10,9 +10,12 @@ import tempfile
 import time
 
 from . import __version__
+from . import calibration
 from .config import Config
 from .consts import (
     AGENT_COMMAND_FILENAME,
+    CALIBRATION_BACKUP_FILENAME,
+    CALIBRATION_FILENAME,
     LOCK_FILE,
     READER_TEST_FILENAME,
     db_path,
@@ -21,7 +24,8 @@ from .consts import (
 from .controller import Controller
 from .esbridge import EsLauncher, read_state, state_snapshot, supports_start_command
 from .feedback import Feedback
-from .drivers.rc522 import PICC_WUPA, Rc522Error
+from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
+from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
 from . import pairing
 from .logutil import Logger
@@ -177,6 +181,8 @@ class Service:
         self.last_uid_at = 0.0
         self.started_at = time.time()
         self._reader_test = None
+        self._calibration = None
+        self._calibration_signature = None
         self._status_signature = None
         self._status_written = 0.0
 
@@ -275,7 +281,8 @@ class Service:
                     if self.reader is None:
                         self._write_status()
 
-                if self.reader is not None and self._reader_test is None and now >= next_slot:
+                if (self.reader is not None and self._reader_test is None
+                        and self._calibration is None and now >= next_slot):
                     # Relu a chaque tour : le reglage s'applique sans redemarrage.
                     interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
                     next_slot = now + interval
@@ -296,8 +303,10 @@ class Service:
                 # Le badge est-il toujours pose ? La lecture peut echouer ou etre
                 # filtree (anti-rebond) : seule une absence REPONDUE par le
                 # lecteur compte.
-                self._check_presence()
-                self._service_stop()
+                if self._calibration is None:
+                    self._check_presence()
+                    self._service_stop()
+                self._calibration_step()
                 self._consume_agent_command()
                 self._reader_test_step()
 
@@ -359,7 +368,8 @@ class Service:
         if self._active_uid is None or self.reader is None:
             return
         # Pendant un test du lecteur, c'est le test qui interroge le module.
-        if getattr(self, "_reader_test", None) is not None:
+        if (getattr(self, "_reader_test", None) is not None
+                or getattr(self, "_calibration", None) is not None):
             return
         maintenant = time.monotonic()
         # Une lecture positive recente suffit : pas besoin d'interroger a nouveau.
@@ -521,6 +531,12 @@ class Service:
         elif command == "arm_delete":
             self._forget_latch()
             self.controller.on_button("long")
+        elif command == "calibrate_start":
+            self._start_calibration()
+        elif command == "calibrate_cancel":
+            self._finish_calibration("cancelled")
+        elif command == "calibrate_reset":
+            self._reset_calibration_settings()
         elif command == "reader_test":
             self._start_reader_test(float(payload.get("seconds") or 5))
         elif command == "simulate_scan":
@@ -529,6 +545,399 @@ class Service:
                 self.controller.on_badge(uid)
         else:
             self.log.warning("Commande agent inconnue : %s" % command)
+
+    # ------------------------------------------------- reglage automatique
+    def _start_calibration(self) -> None:
+        """Demarre la sequence de mesure du lecteur (jamais bloquante)."""
+        self._calibration = {
+            "phase": "speed",
+            "instruct": "",
+            "started_at": self._now_text(),
+            "deadline": time.monotonic() + 30.0,
+            "error": "",
+            "measures": {
+                "speeds": [],
+                "best_speed": None,
+                "read_ms": None,
+                "reads": 0,
+                "uids": [],
+                "reqa_ok": 0,
+                "wupa_ok": 0,
+                "noise": 0,
+                "absence_ms": None,
+                "reinsert_ms": None,
+            },
+            "applied": {},
+            "reader_ready": self.reader is not None,
+        }
+        self._calibration_signature = None
+        if self.log:
+            self.log.info("Reglage automatique du lecteur demande")
+        self._publish_calibration()
+
+    def _calibration_step(self) -> None:
+        """Avance d'un cran dans la sequence (appelee a chaque tour de boucle)."""
+        etat = self._calibration
+        if etat is None:
+            return
+        if self.reader is None:
+            self._finish_calibration("no_reader")
+            return
+        phase = etat["phase"]
+        try:
+            if phase == "speed":
+                self._calibration_speed(etat)
+            elif phase == "read":
+                self._calibration_read(etat)
+            elif phase == "presence":
+                self._calibration_presence(etat)
+            elif phase == "remove":
+                self._calibration_remove(etat)
+            elif phase == "reinsert":
+                self._calibration_reinsert(etat)
+        except (Rc522Error, OSError) as exc:
+            if self.log:
+                self.log.warning("Reglage automatique interrompu : %s" % exc)
+            self._finish_calibration("no_reader")
+            return
+        self._publish_calibration()
+
+    # -- phase 1 : quelle vitesse de bus tient vraiment ? ------------------
+    def _probe_speed(self, vitesse: int) -> bool:
+        puce = None
+        try:
+            spi = open_spi(self.cfg.get("rfid", "spi_device", "/dev/spidev0.0"), vitesse)
+            puce = Rc522(spi, self.log)
+            reference = puce.begin()
+            if reference in (0x00, 0xFF):
+                return False
+            for _ in range(40):
+                if puce.read_version() != reference:
+                    return False
+            return True
+        except Exception:  # noqa: BLE001 - une vitesse qui echoue est eliminee
+            return False
+        finally:
+            try:
+                if puce is not None:
+                    puce.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _calibration_speed(self, etat) -> None:
+        mesures = etat["measures"]
+        meilleure = None
+        for vitesse in calibration.SPEEDS:
+            ok = self._probe_speed(vitesse)
+            mesures["speeds"].append([vitesse, 1 if ok else 0])
+            if ok:
+                meilleure = vitesse
+                break
+        if meilleure is None:
+            self._finish_calibration("spi_failed")
+            return
+        mesures["best_speed"] = meilleure
+        # Le sondage a touche aux registres du module : on reinitialise le
+        # lecteur du service avant de continuer.
+        try:
+            self.reader.start()
+        except Exception as exc:  # noqa: BLE001
+            if self.log:
+                self.log.warning("Lecteur non reinitialise : %s" % exc)
+            self._finish_calibration("no_reader")
+            return
+        etat["phase"] = "read"
+        etat["instruct"] = "pose_badge"
+        etat["deadline"] = time.monotonic() + 60.0
+
+    # -- phase 2 : duree reelle d'une lecture (badge pose) -----------------
+    def _badge_is_there(self) -> bool:
+        try:
+            return self.reader.tag_present() is True
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _calibration_read(self, etat) -> None:
+        if not self._badge_is_there():
+            if time.monotonic() > etat["deadline"]:
+                self._finish_calibration("timeout_pose")
+            return
+        mesures = etat["measures"]
+        durees = []
+        for _ in range(20):
+            debut = time.monotonic()
+            try:
+                raw = self.reader.rc522.read_uid()
+            except (Rc522Error, OSError):
+                raw = None
+            if raw:
+                durees.append((time.monotonic() - debut) * 1000.0)
+                uid = raw.hex().upper()
+                if uid not in mesures["uids"]:
+                    mesures["uids"].append(uid)
+        if not durees:
+            self._finish_calibration("badge_unreadable")
+            return
+        mesures["reads"] = len(durees)
+        mesures["read_ms"] = round(sum(durees) / len(durees), 1)
+        etat["phase"] = "presence"
+        etat["instruct"] = "hold_badge"
+        etat["deadline"] = time.monotonic() + 20.0
+
+    # -- phase 3 : REQA et WUPA repondent-ils ? ----------------------------
+    def _calibration_presence(self, etat) -> None:
+        if not self._badge_is_there():
+            if time.monotonic() > etat["deadline"]:
+                self._finish_calibration("no_badge")
+            return
+        mesures = etat["measures"]
+        puce = self.reader.rc522
+        reqa = wupa = 0
+        for _ in range(20):
+            try:
+                if puce.request(PICC_REQA) is not None:
+                    reqa += 1
+            except (Rc522Error, OSError):
+                pass
+            try:
+                if puce.request(PICC_WUPA) is not None:
+                    wupa += 1
+            except (Rc522Error, OSError):
+                pass
+        mesures["reqa_ok"] = reqa
+        mesures["wupa_ok"] = wupa
+        silences = 0
+        for _ in range(10):
+            try:
+                if self.reader.tag_present() is False:
+                    silences += 1
+            except Exception:  # noqa: BLE001
+                silences += 1
+        mesures["noise"] = silences
+        etat["phase"] = "remove"
+        etat["instruct"] = "remove_badge"
+        etat["deadline"] = time.monotonic() + 60.0
+        etat["absence_since"] = None
+        etat["absences"] = 0
+        etat["repose_since"] = None
+
+    # -- phase 4 : latence de retrait (badge a retirer) --------------------
+    def _calibration_remove(self, etat) -> None:
+        maintenant = time.monotonic()
+        try:
+            verdict = self.reader.tag_present()
+        except Exception:  # noqa: BLE001
+            verdict = None
+        if verdict is None:
+            return
+        if verdict:
+            etat["absence_since"] = None
+            etat["absences"] = 0
+            if maintenant > etat["deadline"]:
+                self._finish_calibration("timeout_remove")
+            return
+        if etat["absence_since"] is None:
+            etat["absence_since"] = maintenant
+        etat["absences"] = etat.get("absences", 0) + 1
+        if etat["absences"] < 4:
+            return
+        etat["measures"]["absence_ms"] = round(
+            (maintenant - etat["absence_since"]) * 1000.0
+        )
+        etat["phase"] = "reinsert"
+        etat["instruct"] = "replace_badge"
+        etat["deadline"] = time.monotonic() + 60.0
+        etat["repose_since"] = None
+
+    # -- phase 5 : le badge est-il vu tout de suite ? ----------------------
+    def _calibration_reinsert(self, etat) -> None:
+        maintenant = time.monotonic()
+        try:
+            verdict = self.reader.tag_present()
+        except Exception:  # noqa: BLE001
+            verdict = None
+        if verdict is None:
+            return
+        if not verdict:
+            etat["repose_since"] = None
+            if maintenant > etat["deadline"]:
+                self._finish_calibration("timeout_replace")
+            return
+        if etat.get("repose_since") is None:
+            etat["repose_since"] = maintenant
+        try:
+            raw = self.reader.rc522.read_uid()
+        except (Rc522Error, OSError):
+            raw = None
+        if raw is None:
+            if maintenant > etat["deadline"]:
+                self._finish_calibration("timeout_replace")
+            return
+        etat["measures"]["reinsert_ms"] = round(
+            (maintenant - etat["repose_since"]) * 1000.0
+        )
+        self._finish_calibration()
+
+    # -- fin, application, publication ------------------------------------
+    def _finish_calibration(self, erreur: str = "") -> None:
+        """Termine la sequence : applique les reglages mesures, ou rien."""
+        etat = self._calibration
+        if etat is None:
+            return
+        if erreur:
+            etat["phase"] = "error"
+            etat["error"] = erreur
+            etat["instruct"] = ""
+            if self.log:
+                self.log.info("Reglage automatique : %s" % calibration.error_text(erreur))
+        else:
+            reglages = calibration.settings_from(etat["measures"])
+            etat["applied"] = self._apply_calibration_settings(reglages)
+            etat["phase"] = "done"
+            etat["instruct"] = ""
+            if self.log:
+                self.log.info(
+                    "Reglage automatique applique : %s"
+                    % ", ".join(
+                        "%s %s -> %s" % (cle, valeurs[0], valeurs[1])
+                        for cle, valeurs in sorted(etat["applied"].items())
+                    )
+                )
+                mesures = etat["measures"]
+                self.log.info(
+                    "  mesures : %s, lecture %.0f ms, presence %s, retrait %s ms, repose %s ms"
+                    % (
+                        calibration.speed_label(mesures.get("best_speed")),
+                        float(mesures.get("read_ms") or 0.0),
+                        calibration.presence_verdict(mesures),
+                        mesures.get("absence_ms"),
+                        mesures.get("reinsert_ms"),
+                    )
+                )
+        etat["finished"] = True
+        self._calibration = None
+        self._publish_calibration(etat)
+
+    def _apply_calibration_settings(self, reglages: dict) -> dict:
+        """Enregistre les valeurs mesurees et rouvre le lecteur a la bonne vitesse."""
+        avant = {}
+        for cle in reglages:
+            section, nom = cle.split(".", 1)
+            avant[cle] = self.cfg.get(section, nom)
+        try:
+            self._write_json(
+                os.path.join(self.home, CALIBRATION_BACKUP_FILENAME),
+                {"values": avant, "at": self._now_text()},
+            )
+            self.cfg.write_values(reglages)
+        except Exception as exc:  # noqa: BLE001 - on ne casse rien
+            if self.log:
+                self.log.error("Reglages non enregistres : %s" % exc)
+            return {}
+        self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
+        if not self._reopen_reader_at_speed():
+            # La vitesse mesuree se comporte mal : on revient a la valeur sure.
+            if self.log:
+                self.log.warning(
+                    "Vitesse %s inutilisable : retour a %s"
+                    % (calibration.speed_label(reglages["rfid.spi_speed_hz"]),
+                       calibration.speed_label(calibration.SPEED_FALLBACK))
+                )
+            self.cfg.write_values({"rfid.spi_speed_hz": str(calibration.SPEED_FALLBACK)})
+            self._reopen_reader_at_speed()
+            reglages["rfid.spi_speed_hz"] = str(calibration.SPEED_FALLBACK)
+        return {cle: [avant[cle], reglages[cle]] for cle in reglages}
+
+    def _reopen_reader_at_speed(self) -> bool:
+        """Rouvre le lecteur avec la configuration courante et verifie qu'il repond."""
+        if self.reader is not None:
+            try:
+                self.reader.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self.reader = None
+        if not self._open_reader():
+            return False
+        try:
+            version = self.reader.rc522.read_version()
+        except Exception:  # noqa: BLE001
+            version = 0
+        return bool(version) and version != 0xFF
+
+    def _reset_calibration_settings(self) -> None:
+        """Remet les trois reglages du lecteur a leur valeur d'origine."""
+        avant = {}
+        for cle in calibration.DEFAULTS:
+            section, nom = cle.split(".", 1)
+            avant[cle] = self.cfg.get(section, nom)
+        try:
+            self.cfg.write_values(calibration.DEFAULTS)
+        except Exception as exc:  # noqa: BLE001
+            if self.log:
+                self.log.error("Reinitialisation impossible : %s" % exc)
+            return
+        self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
+        self._reopen_reader_at_speed()
+        if self.log:
+            self.log.info(
+                "Reglages du lecteur reinitialises : %s"
+                % ", ".join(
+                    "%s %s -> %s" % (cle, avant[cle], valeur)
+                    for cle, valeur in sorted(calibration.DEFAULTS.items())
+                )
+            )
+        self._publish_calibration(
+            {
+                "phase": "reset",
+                "finished": True,
+                "instruct": "",
+                "error": "",
+                "started_at": self._now_text(),
+                "finished_at": self._now_text(),
+                "reader_ready": self.reader is not None,
+                "measures": {},
+                "applied": {
+                    cle: [avant[cle], valeur]
+                    for cle, valeur in calibration.DEFAULTS.items()
+                },
+                "version": getattr(self.reader, "version", None),
+            }
+        )
+
+    def _publish_calibration(self, etat: dict = None) -> None:
+        """Ecrit l'etat de la mesure (lu par la page via l'agent)."""
+        etat = self._calibration if etat is None else etat
+        if etat is None:
+            return
+        payload = dict(etat)
+        payload["steps"] = list(calibration.STEPS)
+        payload["step"] = (
+            calibration.STEPS.index(payload["phase"])
+            if payload.get("phase") in calibration.STEPS else len(calibration.STEPS)
+        )
+        payload["total"] = len(calibration.STEPS)
+        payload["finished"] = bool(payload.get("phase") in ("done", "error", "reset")
+                                   or payload.get("finished"))
+        payload["finished_at"] = payload.get("finished_at") or (
+            self._now_text() if payload["finished"] else ""
+        )
+        payload["version"] = getattr(self.reader, "version", None)
+        payload["defaults"] = dict(calibration.DEFAULTS)
+        signature = json.dumps(payload, sort_keys=True, default=str)
+        if signature == self._calibration_signature:
+            return
+        self._calibration_signature = signature
+        self._write_json(os.path.join(self.home, CALIBRATION_FILENAME), payload)
+
+    def _write_json(self, chemin: str, payload: dict) -> None:
+        temporaire = chemin + ".tmp"
+        try:
+            with open(temporaire, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, default=str)
+            os.replace(temporaire, chemin)
+        except OSError as exc:
+            if self.log:
+                self.log.warning("Ecriture impossible (%s) : %s" % (chemin, exc))
 
     # ------------------------------------------------------------ test lecteur
     def _now_text(self) -> str:

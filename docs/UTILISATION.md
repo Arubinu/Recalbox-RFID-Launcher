@@ -81,9 +81,37 @@ l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
 | Onglet | Actions |
 | --- | --- |
 | Badges | associer le prochain badge au jeu sélectionné, effacer, tableau des badges, export et import CSV |
-| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire ; bouton **Tester avec un badge** (5 s) qui dit si une carte est vue, lue, ou pas détectée du tout |
+| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire ; bouton **Tester avec un badge** (5 s) qui dit si une carte est vue, lue, ou pas détectée du tout ; bouton **Régler automatiquement** qui mesure le lecteur et applique les bons réglages |
 | Options | **tous les réglages** du lanceur, sans ouvrir de fichier : action au scan, lancement pendant une partie, arrêt du jeu au retrait du badge, délai de pose, appui d'autorisation, intervalle de lecture, anti-rebond, vitesse SPI, bips, niveau de journal. Chaque changement est enregistré sur la Recalbox et appliqué aussitôt |
 | Maintenance | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, démarrer/arrêter/redémarrer le service, journaux en direct |
+
+**Réglage automatique du lecteur** (onglet **Matériel**) — le service mesure
+le matériel, puis applique trois valeurs ; rien à comprendre, il suffit de
+suivre les quatre consignes (≈ 30 secondes) :
+
+1. posez un badge, sans bouger ;
+2. laissez-le en place (mesure de la présence) ;
+3. retirez-le (mesure de la latence de retrait) ;
+4. reposez-le (vérification).
+
+Ce qui est mesuré puis appliqué :
+
+| Réglage | Ce qui décide la valeur |
+| --- | --- |
+| Vitesse du bus SPI | la vitesse la plus rapide qui lit le lecteur 40 fois de suite sans erreur |
+| Intervalle de lecture | la durée réelle d'une lecture, plus 30 ms (bornée 60–500 ms) |
+| Délai d'absence | la latence mesurée au retrait, × 1,5 (bornée 1–4 s) |
+
+* Le rapport affiche aussi la durée d'une lecture, le dialogue de présence
+  (**REQA / WUPA**), la latence de repose et l'identifiant lu.
+* **Rien n'est écrit si une étape échoue** : le message dit pourquoi (aucun
+  badge, badge illisible, retrait manquant, lecteur muet) et les réglages
+  restent ceux d'avant.
+* **Réinitialiser** remet la vitesse du bus, l'intervalle de lecture et le délai
+  d'absence à leurs valeurs d'origine (1 MHz, 150 ms, 1,2 s) ; les valeurs
+  d'avant la mesure sont gardées dans `calibration-backup.json`.
+* Si la vitesse mesurée ne tient pas à la réouverture du lecteur, le service
+  revient tout seul à 1 MHz.
 
 **Onglet Options** — le tableau des réglages :
 

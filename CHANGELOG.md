@@ -4,6 +4,43 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.8.0]
+
+### Ajouté — « Régler le lecteur automatiquement »
+
+Onglet **Matériel** : le service mesure le lecteur, puis règle trois valeurs
+tout seul. Plus besoin de chercher un bon réglage à tâtons : c'est le matériel
+qui donne les chiffres.
+
+* `rfid.spi_speed_hz` — la vitesse de bus la plus rapide qui lit le registre de
+  version **40 fois de suite sans une erreur** (8, 4, 2, 1 MHz, puis 500 kHz) ;
+* `rfid.poll_interval_ms` — la cadence de lecture, calée sur la **durée réelle
+  d'une lecture** (durée + 30 ms, bornée 60–500 ms) ;
+* `rfid.rearm_absent_ms` — le délai d'absence, calé sur la **latence mesurée au
+  retrait** (× 1,5, borné 1–4 s).
+
+Séquence guidée (≈ 30 secondes) : *posez un badge* → *laissez-le* → *retirez-le*
+→ *reposez-le*, avec barre de progression, numéro d'étape et bouton **Arrêter**.
+La mesure tourne **dans le service** (seul propriétaire du bus SPI) : la page ne
+fait qu'afficher, elle peut être fermée sans interrompre la mesure.
+
+Rapport affiché en clair, sans jargon : vitesse du bus, intervalle de lecture,
+délai d'absence, durée d'une lecture, **présence REQA / WUPA**, latence de
+retrait, latence de repose et UID lu.
+
+### Sécurité
+
+* **Rien n'est écrit si une étape échoue** (aucun badge posé, badge illisible,
+  retrait ou repose manquant, lecteur muet) : un message dit pourquoi et les
+  réglages restent intacts.
+* Les valeurs d'avant la mesure sont conservées dans `calibration-backup.json`,
+  et le bouton **Réinitialiser** remet les trois valeurs d'origine (1 MHz,
+  150 ms, 1,2 s).
+* Si la vitesse mesurée ne tient pas à la réouverture du lecteur, le service
+  **revient seul à 1 MHz** et le note dans le journal.
+* L'agent refuse la mesure si le service n'est pas démarré ou s'il tourne encore
+  dans une version plus ancienne que la page.
+
 ## [2.7.6]
 
 ### Corrigé — un badge posé n'est plus jamais pris pour un badge retiré

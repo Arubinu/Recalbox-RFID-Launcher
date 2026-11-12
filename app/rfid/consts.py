@@ -21,6 +21,12 @@ LOCK_FILE = "/var/run/rfid-launcher.lock"
 #: Nom du fichier de configuration.
 CONFIG_FILENAME = "config.ini"
 
+#: Etat du reglage automatique du lecteur (ecrit par le service, lu par l'agent).
+CALIBRATION_FILENAME = "calibration.json"
+
+#: Valeurs d'avant le reglage automatique (pour revenir en arriere).
+CALIBRATION_BACKUP_FILENAME = "calibration-backup.json"
+
 #: Nom du fichier de base de donnees.
 DB_FILENAME = "tags.json"
 

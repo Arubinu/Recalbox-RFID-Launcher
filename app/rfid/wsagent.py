@@ -44,11 +44,13 @@ from . import __version__
 from . import pairing
 from .consts import (
     AGENT_COMMAND_FILENAME,
+    CALIBRATION_FILENAME,
     CONFIG_FILENAME,
     DB_FILENAME,
     READER_TEST_FILENAME,
     TOKEN_FILENAME,
 )
+from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import current_target, read_state, resolve_rom_path, supports_start_command
@@ -994,6 +996,82 @@ class Agent:
             if self.log:
                 self.log.warning("Rechargement du service impossible : %s" % exc)
             return False
+
+    def _calibration_path(self) -> str:
+        return os.path.join(self.home, CALIBRATION_FILENAME)
+
+    def _read_calibration(self):
+        try:
+            with open(self._calibration_path(), "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _require_service(self) -> None:
+        """Refuse les mesures quand le service n'est pas a jour et demarre."""
+        if not process_alive(read_pid(self.home)):
+            raise RuntimeError("le service RFID n'est pas demarre : demarrez-le dans "
+                               "l'onglet Maintenance, puis relancez la mesure")
+        service_version = str((read_status(self.home) or {}).get("version") or "")
+        if version_key(service_version) and version_key(service_version) < version_key(__version__):
+            raise RuntimeError(
+                "le service du lecteur tourne encore en %s alors que l'agent est en %s : "
+                "cliquez sur « Installer / mettre a jour » (ou redemarrez le service), "
+                "puis relancez la mesure" % (service_version, __version__)
+            )
+
+    def _cmd_calibrate_start(self, client, message):
+        """Lance la sequence de reglage du lecteur (reponse immediate)."""
+        self._require_service()
+        etat = self._read_calibration()
+        if etat and not etat.get("finished") and etat.get("phase") in CALIBRATION_STEPS:
+            raise RuntimeError("une mesure est deja en cours")
+        try:
+            os.remove(self._calibration_path())
+        except OSError:
+            pass
+        self._write_command("calibrate_start")
+        if self.log:
+            self.log.info("Mesure du lecteur demandee par la page")
+        # Le service publie son premier etat en quelques centaines de ms : on le
+        # renvoie pour que la page affiche tout de suite la bonne etape.
+        echeance = time.time() + 2.0
+        while time.time() < echeance:
+            etat = self._read_calibration()
+            if etat is not None:
+                return {"started": True, "state": etat}
+            time.sleep(0.1)
+        return {"started": True, "state": None}
+
+    def _cmd_calibrate_status(self, client, message):
+        """Etat de la mesure : instruction a afficher, mesures, valeurs appliquees."""
+        etat = self._read_calibration()
+        if etat is None:
+            return {"phase": "idle", "finished": True, "instruct": "",
+                    "measures": {}, "applied": {}, "error": ""}
+        return etat
+
+    def _cmd_calibrate_cancel(self, client, message):
+        self._require_service()
+        self._write_command("calibrate_cancel")
+        return {"cancelled": True}
+
+    def _cmd_calibrate_reset(self, client, message):
+        """Remet les reglages du lecteur a leur valeur d'origine."""
+        self._require_service()
+        try:
+            os.remove(self._calibration_path())
+        except OSError:
+            pass
+        self._write_command("calibrate_reset")
+        deadline = time.time() + 6.0
+        while time.time() < deadline:
+            etat = self._read_calibration()
+            if etat and etat.get("phase") == "reset":
+                return {"applied": etat.get("applied") or {}, "defaults": etat.get("defaults") or {}}
+            time.sleep(0.25)
+        raise RuntimeError("le service n'a pas confirme la reinitialisation")
 
     def _cmd_reader_test(self, client, message):
         """Teste le lecteur lui-meme : la carte est-elle vue, et lue ?

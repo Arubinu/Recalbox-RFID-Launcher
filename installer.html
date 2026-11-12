@@ -473,6 +473,16 @@
   .switch[aria-checked="true"]::after { transform: translateX(20px); }
   #options-state.warn { color: var(--warn-text); }
 
+  /* ------------------------------------------------- mesure du lecteur */
+  .progress {
+    height: 6px; border-radius: 999px; flex: 0 0 auto;
+    background: rgba(var(--ink-rgb), .1); overflow: hidden;
+  }
+  .progress > span {
+    display: block; height: 100%; width: 0; border-radius: 999px;
+    background: var(--primary); transition: width .3s ease;
+  }
+
   /* -------------------------------------------------------- tableau de bord */
   .dash { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 12px; }
   .dash.hidden { display: none !important; }
@@ -915,6 +925,26 @@
             </div>
             <p class="hint" id="reader-test-hint"></p>
             <pre class="log" id="reader-test-log" hidden></pre>
+
+            <div class="panel-head">
+              <h2>Régler le lecteur automatiquement</h2>
+              <span class="hint">
+                Le service mesure le lecteur puis applique les valeurs : vitesse du bus,
+                intervalle de lecture, délai d'absence. Prévoyez 30 secondes et un badge.
+              </span>
+            </div>
+            <div class="action-bar">
+              <span class="label">Mesure</span>
+              <span class="muted small" id="calib-state">jamais mesuré</span>
+              <span class="grow"></span>
+              <button class="secondary" id="btn-calibrate-cancel" hidden>Arrêter</button>
+              <button class="secondary" id="btn-calibrate-reset" hidden>Réinitialiser</button>
+              <button id="btn-calibrate">Régler automatiquement</button>
+            </div>
+            <div class="progress" id="calib-progress" hidden><span></span></div>
+            <p class="verdict" id="calib-instruction" hidden></p>
+            <div class="grid" id="calib-grid"></div>
+            <p class="verdict" id="calib-verdict" hidden></p>
             <details class="cablage-details">
               <summary>Comment brancher le lecteur et le bouton</summary>
               <div class="cablage">
@@ -1830,6 +1860,209 @@ async function renderTags(force) {
     ]));
     body.appendChild(row);
   }
+}
+
+/* ---------------------------------------------------- mesure du lecteur */
+/* Le service fait la mesure : la page ne fait qu'afficher l'etape en cours et
+   les valeurs appliquees. Rien n'est ecrit sans que le service ait mesure. */
+const CALIB_INSTRUCTIONS = {
+  pose_badge: "Posez un badge sur le lecteur",
+  hold_badge: "Laissez le badge en place",
+  remove_badge: "Retirez le badge du lecteur",
+  replace_badge: "Reposez le badge sur le lecteur",
+};
+
+const CALIB_ERRORS = {
+  no_reader: "Le lecteur RC522 ne répond pas : vérifiez le câblage et le 3,3 V.",
+  spi_failed: "Aucune vitesse de bus n'a fonctionné : le lecteur est mal alimenté ou le bus SPI est absent.",
+  no_badge: "Aucun badge n'a été posé sur le lecteur.",
+  timeout_pose: "Aucun badge n'a été posé à temps (60 secondes).",
+  badge_unreadable: "Un badge est posé, mais son identifiant n'a pas pu être lu : essayez un autre badge.",
+  timeout_remove: "Le badge n'a pas été retiré à temps (60 secondes).",
+  timeout_replace: "Le badge n'a pas été reposé à temps (60 secondes).",
+  cancelled: "Mesure annulée : rien n'a été modifié.",
+};
+
+let calibTimer = null;
+let calibState = null;
+
+function calibInstructions(etat) {
+  const code = etat && etat.instruct;
+  if (!code) return "";
+  return t(CALIB_INSTRUCTIONS[code] || code);
+}
+
+function calibRunning(etat) {
+  return Boolean(etat) && !etat.finished && (etat.total || 0) > (etat.step || 0);
+}
+
+function afficherCalibration(etat) {
+  calibState = etat;
+  const enCours = calibRunning(etat);
+  const phase = (etat && etat.phase) || "idle";
+  const mesures = (etat && etat.measures) || {};
+  const applique = (etat && etat.applied) || {};
+
+  const instruction = $("#calib-instruction");
+  const progression = $("#calib-progress");
+  const verdict = $("#calib-verdict");
+  const grille = $("#calib-grid");
+  const etatTexte = $("#calib-state");
+
+  $("#btn-calibrate").disabled = enCours || busy;
+  $("#btn-calibrate-cancel").hidden = !enCours;
+  $("#btn-calibrate-reset").hidden = enCours || !(calibState && calibState.defaults);
+  $("#btn-calibrate").textContent = calibState && calibState.measures && calibState.measures.best_speed
+    ? t("Refaire la mesure") : t("Régler automatiquement");
+
+  if (enCours) {
+    instruction.hidden = false;
+    instruction.className = "verdict";
+    instruction.textContent = calibInstructions(etat) + " "
+      + t("(étape {n} sur {m})", { n: (etat.step || 0) + 1, m: etat.total || 5 });
+    progression.hidden = false;
+    const part = etat.total ? ((etat.step || 0) / etat.total) * 100 : 5;
+    progression.firstElementChild.style.width = Math.max(5, part) + "%";
+    etatTexte.textContent = t("mesure en cours…");
+    verdict.hidden = true;
+  } else {
+    progression.hidden = true;
+    instruction.hidden = true;
+  }
+
+  /* Valeurs mesurees puis appliquees. */
+  const lignes = [];
+  if (mesures.best_speed || Object.keys(applique).length) {
+    const vitesse = applique["rfid.spi_speed_hz"];
+    const intervalle = applique["rfid.poll_interval_ms"];
+    const absence = applique["rfid.rearm_absent_ms"];
+    lignes.push(item("Vitesse du bus", vitesse
+      ? calibSpeed(Number(vitesse[1])) : calibSpeed(Number(mesures.best_speed)), "ok"));
+    lignes.push(item("Intervalle de lecture", intervalle
+      ? intervalle[1] + " ms" : (mesures.read_ms ? Math.round(mesures.read_ms + 30) + " ms" : "—"),
+      "ok"));
+    lignes.push(item("Délai d'absence", absence
+      ? calibSeconds(Number(absence[1])) : (mesures.absence_ms ? calibSeconds(mesures.absence_ms * 1.5) : "—"),
+      "ok"));
+  }
+  if (mesures.read_ms) lignes.push(item("Lecture d'un badge", mesures.read_ms + " ms"));
+  if (mesures.reqa_ok || mesures.wupa_ok) {
+    lignes.push(item("Présence", calibPresence(mesures)));
+  }
+  if (mesures.absence_ms) lignes.push(item("Retrait détecté en", calibSeconds(mesures.absence_ms)));
+  if (mesures.reinsert_ms) lignes.push(item("Badge reposé en", Math.round(mesures.reinsert_ms) + " ms"));
+  if (mesures.uids && mesures.uids.length) {
+    lignes.push(item("Badge lu", shortHex(mesures.uids.join(", "), 17)));
+  }
+  grille.replaceChildren(...lignes);
+  grille.hidden = lignes.length === 0;
+
+  if (enCours) return;
+
+  verdict.hidden = false;
+  if (phase === "done") {
+    verdict.className = "verdict ok";
+    verdict.textContent = t("Réglage appliqué : le lecteur est réglé au plus juste.");
+    etatTexte.textContent = t("réglé automatiquement");
+  } else if (phase === "reset") {
+    verdict.className = "verdict ok";
+    verdict.textContent = t("Réglages d'origine rétablis.");
+    etatTexte.textContent = t("valeurs d'origine");
+  } else if (phase === "error") {
+    verdict.className = "verdict err";
+    verdict.textContent = t(CALIB_ERRORS[etat.error] || "La mesure n'a pas abouti.");
+    etatTexte.textContent = t("mesure impossible");
+  } else {
+    verdict.hidden = true;
+  }
+}
+
+function calibSpeed(hz) {
+  if (!Number.isFinite(hz) || !hz) return "—";
+  return hz >= 1000000
+    ? (hz / 1000000) + " MHz"
+    : (hz / 1000) + " kHz";
+}
+
+function calibSeconds(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  return (Math.round(ms / 100) / 10).toFixed(1).replace(".", ",") + " s";
+}
+
+function calibPresence(mesures) {
+  const reqa = Number(mesures.reqa_ok) || 0;
+  const wupa = Number(mesures.wupa_ok) || 0;
+  if (reqa && wupa) return "REQA + WUPA";
+  if (reqa) return "REQA";
+  if (wupa) return "WUPA";
+  return "—";
+}
+
+async function startCalibration() {
+  if (busy) return;
+  busy = true;
+  try {
+    const data = await agent.send("calibrate.start", {}, 12000);
+    afficherCalibration(data && data.state
+      ? data.state
+      : { phase: "speed", instruct: "", finished: false, step: 0, total: 5,
+          measures: {}, applied: {} });
+    followCalibration();
+  } catch (error) {
+    alert("Erreur : " + error.message);
+  } finally {
+    busy = false;
+    afficherCalibration(calibState);
+  }
+}
+
+function followCalibration() {
+  if (calibTimer) clearInterval(calibTimer);
+  calibTimer = setInterval(async () => {
+    if (!agent.isOpen) { clearInterval(calibTimer); calibTimer = null; return; }
+    let etat;
+    try {
+      etat = await agent.send("calibrate.status");
+    } catch (error) {
+      return;
+    }
+    afficherCalibration(etat);
+    if (etat && etat.finished) { clearInterval(calibTimer); calibTimer = null; }
+  }, 500);
+}
+
+async function stopCalibration() {
+  try {
+    await agent.send("calibrate.cancel");
+  } catch (error) {
+    alert("Erreur : " + error.message);
+  }
+}
+
+async function resetCalibration() {
+  if (!confirm(t("Remettre la vitesse du bus, l'intervalle de lecture et le délai d'absence à leurs valeurs d'origine ?"))) return;
+  busy = true;
+  try {
+    await agent.send("calibrate.reset", {}, 12000);
+    afficherCalibration(await agent.send("calibrate.status"));
+  } catch (error) {
+    alert("Erreur : " + error.message);
+  } finally {
+    busy = false;
+    afficherCalibration(calibState);
+  }
+}
+
+async function refreshCalibration() {
+  if (!agent.isOpen) return;
+  if (calibRunning(calibState) && calibTimer) return;
+  let etat;
+  try {
+    etat = await agent.send("calibrate.status");
+  } catch (error) {
+    return;
+  }
+  if (etat && etat.phase !== "idle") afficherCalibration(etat);
 }
 
 /* ---------------------------------------------------------------- options */
@@ -3204,6 +3437,10 @@ function setTab(name) {
       && typeof agent !== "undefined" && agent && agent.isOpen) {
     renderOptions(true);
   }
+  if (name === "materiel" && typeof refreshCalibration === "function"
+      && typeof agent !== "undefined" && agent && agent.isOpen) {
+    refreshCalibration();
+  }
 }
 
 document.querySelectorAll("[data-goto]").forEach((node) => {
@@ -3234,6 +3471,9 @@ $("#btn-disconnect").addEventListener("click", () => {
   $("#connect-hint").textContent = "Déconnecté. Vous pouvez vous reconnecter.";
   setView("connect");
 });
+$("#btn-calibrate").addEventListener("click", startCalibration);
+$("#btn-calibrate-cancel").addEventListener("click", stopCalibration);
+$("#btn-calibrate-reset").addEventListener("click", resetCalibration);
 $("#btn-options-save").addEventListener("click", enregistrerOptions);
 $("#btn-options-cancel").addEventListener("click", annulerOptions);
 setTab("badges");

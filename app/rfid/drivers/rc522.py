@@ -175,6 +175,14 @@ class Rc522:
         self.version = self._read(REG_VERSION)
         return self.version
 
+    def read_version(self) -> int:
+        """Relit VersionReg (0x37) : integrite du bus a une vitesse donnee.
+
+        Utilise par le reglage automatique pour comparer les vitesses SPI sans
+        dependre de la presence d'un badge.
+        """
+        return self._read(REG_VERSION)
+
     # --------------------------------------------------------- transactions
     def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05, trace=None,
                     etape: str = ""):
