@@ -4,6 +4,26 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.8.2]
+
+### Corrigé (cause racine de l'installation incomplète)
+
+* **`robocopy` échouait silencieusement sur le partage Recalbox.** Le serveur
+  Samba refuse la modification des **attributs du dossier** de destination
+  (`ERREUR 50 : Cette demande n'est pas prise en charge`) ; `robocopy` abandonne
+  alors la copie… **en renvoyant le code 0**, que l'installateur interprétait
+  comme un succès. Résultat : le dossier `recalbox-rfid` était créé et **vide**,
+  le démarrage ne trouvait aucun programme (`auto-install.log` :
+  « dossier du projet introuvable ») et l'agent ne démarrait donc jamais.
+  * les copies utilisent désormais `/DCOPY:D /COPY:D` (données seules, aucune
+    écriture d'attribut) — vérifié sur une Recalbox réelle : 31 fichiers copiés,
+    code 1 ;
+  * **la réussite est vérifiée autrement que par le code** :
+    `recalbox-rfid\install.sh` et `recalbox-rfid\app\main.py` doivent exister ;
+  * si ce n'est pas le cas, un second essai passe par `xcopy` (qui n'écrit pas
+    d'attributs de dossier), puis l'échec est annoncé clairement avec la cause ;
+  * le même traitement est appliqué aux copies du script de démarrage.
+
 ## [1.8.1]
 
 ### Corrigé
