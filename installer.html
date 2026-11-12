@@ -740,12 +740,21 @@
             </div>
             <div class="grid" id="hardware-grid"></div>
             <p class="verdict" id="hardware-verdict"></p>
+            <div class="action-bar">
+              <span class="label">Test du lecteur</span>
+              <span class="grow"></span>
+              <button id="btn-reader-test">Tester avec un badge</button>
+            </div>
+            <p class="hint" id="reader-test-hint"></p>
+            <pre class="log" id="reader-test-log" hidden></pre>
             <details>
               <summary>Comment brancher le lecteur et le bouton</summary>
               <p class="small muted">
                 Lecteur RC522 sur le bus SPI (CE0, SCLK, MOSI, MISO, RST sur GPIO25) et bouton
                 poussoir entre une broche GPIO et la masse. Le détail des broches est dans
-                <code>docs/CABLAGE.md</code>.
+                <code>docs/CABLAGE.md</code>. Pour savoir si un badge est réellement vu,
+                utilisez « Tester avec un badge » : le test lit pendant 5 secondes et dit
+                si la carte répond, si elle est lue, ou si rien n'est détecté.
               </p>
             </details>
           </section>
@@ -1959,6 +1968,63 @@ async function copyText(text) {
 
 
 /* ---------------------------------------------------------------- boutons */
+/* ------------------------------------------------ test du lecteur (badges) */
+function readerTestReport(data) {
+  const atqas = Object.keys(data.atqas || {});
+  const uids = data.uids || [];
+  const lignes = [
+    "Lecteur           : " + (data.version ? "version 0x" + Number(data.version).toString(16).toUpperCase() : "non detecte"),
+    "Essais            : " + data.attempts + "   (pendant " + Math.round(data.seconds) + " s)",
+    "Reponses          : " + data.answers,
+    "REQA / WUPA       : " + data.reqa + " / " + data.wupa,
+    "UID lu            : " + (uids.length ? uids.join(", ") : "aucun"),
+    "ATQA (reponses)   : " + (atqas.length ? atqas.join(", ") : "aucun"),
+  ];
+  if ((data.errors || []).length) lignes.push("Erreurs           : " + data.errors.join(" | "));
+  return lignes.join("\n");
+}
+
+function readerTestVerdict(data) {
+  const uids = data.uids || [];
+  const atqas = Object.keys(data.atqas || {});
+  if (!data.reader_ready) {
+    return "Le lecteur ne répond pas du tout : vérifiez le câblage du module (SPI) " +
+      "et redémarrez la Recalbox.";
+  }
+  if (uids.length) {
+    return "Le badge est lu correctement (UID " + uids.join(", ") + ") : il peut être associé.";
+  }
+  if (atqas.length) {
+    return "Le badge répond au lecteur mais sa lecture complète échoue (code " +
+      atqas.join(", ") + "). C'est un badge exotique : notez ce code pour le diagnostic.";
+  }
+  return "Aucune carte 13,56 MHz vue pendant le test. Testez avec une carte bancaire " +
+    "sans contact (ou un téléphone) : si elle est vue, vos badges ne sont pas en " +
+    "13,56 MHz (les badges 125 kHz ne se lisent pas avec ce lecteur) ; si elle n'est " +
+    "pas vue non plus, le problème vient du lecteur (antenne ou câblage).";
+}
+
+async function runReaderTest() {
+  const bouton = $("#btn-reader-test");
+  const hint = $("#reader-test-hint");
+  const zone = $("#reader-test-log");
+  bouton.disabled = true;
+  hint.textContent = "Approchez un badge et gardez-le sur le lecteur pendant le test…";
+  zone.hidden = false;
+  zone.textContent = "Test en cours (5 secondes)…";
+  try {
+    const data = await agent.send("reader.test", { seconds: 5 });
+    zone.textContent = readerTestReport(data || {});
+    hint.textContent = readerTestVerdict(data || {});
+  } catch (error) {
+    zone.textContent = "Le test n'a pas abouti : " + ((error && error.message) || error);
+    hint.textContent = "Vérifiez que le service du lecteur est démarré (onglet Maintenance).";
+  } finally {
+    bouton.disabled = false;
+  }
+}
+
+$("#btn-reader-test").addEventListener("click", runReaderTest);
 $("#btn-install").addEventListener("click", () => run(async () => {
   logLines = [];
   $("#install-log").textContent = "";

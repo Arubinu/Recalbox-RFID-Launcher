@@ -65,6 +65,85 @@ class DaemonHelpersTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+class ReaderTestTest(unittest.TestCase):
+    """Test du lecteur : distingue "aucune carte", "carte vue" et "carte illisible"."""
+
+    def setUp(self):
+        from unittest import mock as _mock
+
+        from rfid import daemon as _daemon
+
+        self.daemon = _daemon
+        self.service = _daemon.Service.__new__(_daemon.Service)
+        self.service.home = tempfile.mkdtemp(prefix="rfid-rtest-")
+        self.service.log = None
+        self.service._reader_test = None
+        self.service.reader = _mock.Mock()
+        self.service.reader.version = 0x92
+        self.now = 100.0
+        self._patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now)
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+        shutil.rmtree(self.service.home, ignore_errors=True)
+
+    def _run(self, read_uid, request, passes=4):
+        chip = self.service.reader.rc522
+        chip.read_uid.return_value = read_uid
+        chip.request.return_value = request
+        self.service._start_reader_test(5)
+        for _ in range(passes):
+            self.service._reader_test_step()
+        self.service._finish_reader_test()
+        import json
+
+        path = os.path.join(self.service.home, self.daemon.READER_TEST_FILENAME)
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def test_uid_lu(self):
+        result = self._run(b"\xa1\xb2\xc3\xd4", None)
+        self.assertTrue(result["finished"])
+        self.assertEqual(result["uids"], ["A1B2C3D4"])
+        self.assertEqual(result["answers"], 4)
+        self.assertTrue(result["reader_ready"])
+        self.assertEqual(result["version"], 0x92)
+
+    def test_aucune_carte(self):
+        result = self._run(None, None)
+        self.assertEqual(result["uids"], [])
+        self.assertEqual(result["atqas"], {})
+        self.assertEqual(result["answers"], 0)
+        self.assertEqual(result["attempts"], 4)
+        self.assertTrue(result["reader_ready"])
+
+    def test_carte_vue_mais_illisible(self):
+        result = self._run(None, b"\x00\x04")
+        self.assertEqual(result["uids"], [])
+        self.assertEqual(result["atqas"], {"0004": 4})
+        self.assertEqual(result["answers"], 4)
+        self.assertEqual(result["reqa"], 4)
+
+    def test_lecteur_indisponible(self):
+        self.service.reader = None
+        self.service._start_reader_test(5)
+        self.service._reader_test_step()
+        import json
+
+        path = os.path.join(self.service.home, self.daemon.READER_TEST_FILENAME)
+        with open(path, encoding="utf-8") as handle:
+            result = json.load(handle)
+        self.assertFalse(result["reader_ready"])
+        self.assertTrue(result["errors"])
+
+    def test_delai_borne(self):
+        self.service._start_reader_test(500)
+        self.assertLessEqual(self.service._reader_test["seconds"], 15.0)
+        self.service._start_reader_test(0)
+        self.assertGreaterEqual(self.service._reader_test["seconds"], 2.0)
+
+
 class BadgeLatchTest(unittest.TestCase):
     """Mode "cartouche" : un badge laisse sur le lecteur n'agit qu'une fois."""
 

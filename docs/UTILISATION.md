@@ -67,7 +67,7 @@ l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
 | Onglet | Actions |
 | --- | --- |
 | Badges | associer le prochain badge au jeu sélectionné, effacer, tableau des badges, export et import CSV |
-| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire |
+| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire ; bouton **Tester avec un badge** (5 s) qui dit si une carte est vue, lue, ou pas détectée du tout |
 | Maintenance | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, démarrer/arrêter/redémarrer le service, journaux en direct |
 
 Points utiles :

@@ -4,6 +4,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.1]
+
+### Ajouté
+
+* **« Tester avec un badge » dans l'onglet Matériel.** Un clic lance 5 secondes de
+  lecture et donne une réponse claire, la seule qui manquait quand « il ne se
+  passe rien » :
+  * **le badge est lu** → son UID s'affiche, il peut être associé ;
+  * **le badge répond mais la lecture échoue** → le code ATQA est affiché (badge
+    exotique à signaler) ;
+  * **aucune carte vue** → la page propose de recommencer avec une carte bancaire
+    sans contact : si elle est vue, les badges ne sont pas en 13,56 MHz (les
+    badges 125 kHz sont illisibles par ce lecteur) ; si elle n'est pas vue non
+    plus, le problème est le lecteur (antenne ou câblage).
+* Commande d'agent **`reader.test`** : le bus SPI appartient au service, l'agent
+  lui dépose la demande et lit le résultat (`reader-test.json`). Le rapport
+  contient le nombre d'essais, les réponses REQA/WUPA, les ATQA vus, les UID lus
+  et les erreurs. Testé par six tests unitaires.
+
 ## [2.5.0]
 
 ### Sécurité

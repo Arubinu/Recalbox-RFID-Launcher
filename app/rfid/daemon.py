@@ -11,10 +11,17 @@ import time
 
 from . import __version__
 from .config import Config
-from .consts import AGENT_COMMAND_FILENAME, LOCK_FILE, db_path, home_dir
+from .consts import (
+    AGENT_COMMAND_FILENAME,
+    LOCK_FILE,
+    READER_TEST_FILENAME,
+    db_path,
+    home_dir,
+)
 from .controller import Controller
 from .esbridge import EsLauncher, supports_start_command
 from .feedback import Feedback
+from .drivers.rc522 import PICC_WUPA, Rc522Error
 from .hardware import build_button, build_gpio, build_reader
 from . import pairing
 from .logutil import Logger
@@ -162,6 +169,7 @@ class Service:
         self.last_uid = ""
         self.last_uid_at = 0.0
         self.started_at = time.time()
+        self._reader_test = None
         self._status_signature = None
         self._status_written = 0.0
 
@@ -260,7 +268,7 @@ class Service:
                     if self.reader is None:
                         self._write_status()
 
-                if self.reader is not None and now >= next_slot:
+                if self.reader is not None and self._reader_test is None and now >= next_slot:
                     next_slot = now + interval
                     uid = None
                     try:
@@ -279,6 +287,7 @@ class Service:
                         self._handle_gesture(gesture)
 
                 self._consume_agent_command()
+                self._reader_test_step()
 
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
@@ -403,12 +412,121 @@ class Service:
             self.controller.on_button("short")
         elif command == "arm_delete":
             self.controller.on_button("long")
+        elif command == "reader_test":
+            self._start_reader_test(float(payload.get("seconds") or 5))
         elif command == "simulate_scan":
             uid = str(payload.get("uid") or "")
             if uid:
                 self.controller.on_badge(uid)
         else:
             self.log.warning("Commande agent inconnue : %s" % command)
+
+    # ------------------------------------------------------------ test lecteur
+    def _now_text(self) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
+
+    def _start_reader_test(self, seconds: float) -> None:
+        """Demarre un test RF : une passe par tour de boucle, sans bloquer."""
+        seconds = max(2.0, min(15.0, float(seconds or 5)))
+        try:
+            os.remove(os.path.join(self.home, READER_TEST_FILENAME))
+        except OSError:
+            pass
+        self._reader_test = {
+            "seconds": seconds,
+            "until": time.monotonic() + seconds,
+            "started_at": self._now_text(),
+            "attempts": 0,
+            "answers": 0,
+            "reqa": 0,
+            "wupa": 0,
+            "atqas": {},
+            "uids": [],
+            "errors": [],
+            "reader_ready": self.reader is not None,
+        }
+        if self.log:
+            self.log.info("Test du lecteur demande (%.0f s)" % seconds)
+
+    def _reader_test_step(self) -> None:
+        test = self._reader_test
+        if test is None:
+            return
+        if time.monotonic() >= test["until"]:
+            self._finish_reader_test()
+            return
+        chip = getattr(self.reader, "rc522", None) if self.reader is not None else None
+        if chip is None:
+            test["reader_ready"] = False
+            test["errors"].append("lecteur RC522 indisponible")
+            self._finish_reader_test()
+            return
+        test["reader_ready"] = True
+        test["attempts"] += 1
+        try:
+            raw = chip.read_uid()
+        except (Rc522Error, OSError) as exc:
+            if len(test["errors"]) < 6:
+                test["errors"].append(str(exc))
+            return
+        if raw:
+            uid = raw.hex().upper()
+            test["answers"] += 1
+            if uid not in test["uids"]:
+                test["uids"].append(uid)
+            return
+        # Pas d'UID complet : est-ce que la carte repond au moins (ATQA) ?
+        try:
+            atqa = chip.request()
+            if atqa:
+                test["reqa"] += 1
+            else:
+                atqa = chip.request(PICC_WUPA)
+                if atqa:
+                    test["wupa"] += 1
+        except (Rc522Error, OSError) as exc:
+            if len(test["errors"]) < 6:
+                test["errors"].append(str(exc))
+            return
+        if atqa:
+            test["answers"] += 1
+            key = bytes(atqa).hex().upper()
+            test["atqas"][key] = test["atqas"].get(key, 0) + 1
+
+    def _finish_reader_test(self) -> None:
+        test = self._reader_test
+        if test is None:
+            return
+        self._reader_test = None
+        result = {
+            "finished": True,
+            "seconds": test["seconds"],
+            "attempts": test["attempts"],
+            "answers": test["answers"],
+            "reqa": test["reqa"],
+            "wupa": test["wupa"],
+            "atqas": test["atqas"],
+            "uids": test["uids"],
+            "errors": test["errors"],
+            "reader_ready": test["reader_ready"],
+            "version": getattr(self.reader, "version", None),
+            "started_at": test["started_at"],
+            "finished_at": self._now_text(),
+        }
+        if self.log:
+            self.log.info(
+                "Test lecteur : %d essai(s), %d reponse(s), UID %s, ATQA %s"
+                % (test["attempts"], test["answers"], test["uids"], sorted(test["atqas"]))
+            )
+        path = os.path.join(self.home, READER_TEST_FILENAME)
+        temporary = path + ".tmp"
+        try:
+            with open(temporary, "w", encoding="utf-8") as handle:
+                json.dump(result, handle)
+            os.replace(temporary, path)
+        except OSError as exc:
+            if self.log:
+                self.log.warning("Resultat du test lecteur non ecrit : %s" % exc)
 
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")

@@ -97,6 +97,17 @@ Symptômes dans `rfidctl test` ou dans le journal :
 
 ## 4. Un badge n'est pas détecté
 
+**Commencez par « Tester avec un badge »** (onglet **Matériel** de
+`installer.html`) : le test lit le lecteur pendant 5 secondes et distingue les
+trois seules causes possibles.
+
+| Ce que dit le test | Ce que ça veut dire | Quoi faire |
+| --- | --- | --- |
+| UID affiché | le badge est lu, il n'était simplement pas associé | l'associer (onglet Badges) |
+| « le badge répond mais la lecture complète échoue » (code ATQA) | le badge est bien 13,56 MHz mais exotique | noter le code ATQA ; l'UID partiel est dans le journal |
+| « aucune carte 13,56 MHz vue » avec un badge | soit le badge n'est pas 13,56 MHz, soit le lecteur ne voit rien | refaire le test **avec une carte bancaire sans contact** |
+| « aucune carte » aussi avec une carte bancaire | le lecteur ne voit aucune carte | antenne ou câblage : voir la section 3 |
+
 * Le badge doit être **13,56 MHz ISO 14443-A** (MIFARE Classic, Ultralight,
   NTAG…). Les badges 125 kHz (anciens contrôles d'accès) ne fonctionnent pas.
 * Approchez le badge **à moins de 3 cm**, à plat, centré sur l'antenne.

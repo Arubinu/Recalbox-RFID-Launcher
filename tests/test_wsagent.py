@@ -550,6 +550,24 @@ class InstallTest(AgentTestCase):
             client.call("upload.chunk", data=base64.b64encode(b"x" * 20).decode())
 
 
+class ReaderTestCommandTest(AgentTestCase):
+    """Le test du lecteur passe par le service (seul proprietaire du bus SPI)."""
+
+    def test_refuse_sans_service(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError) as context:
+            client.call("reader.test", seconds=3)
+        self.assertIn("service", str(context.exception))
+
+    def test_duree_bornee(self):
+        client = self.authenticated_client()
+        with self.assertRaises(WsError):
+            client.call("reader.test", seconds="beaucoup")
+        # duree absurde mais service arrete : le refus vient du service
+        with self.assertRaises(WsError):
+            client.call("reader.test", seconds=500)
+
+
 class ServiceTest(AgentTestCase):
     def test_association_sans_service(self):
         client = self.authenticated_client()

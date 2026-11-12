@@ -41,7 +41,12 @@ import zipfile
 
 from . import __version__
 from . import pairing
-from .consts import AGENT_COMMAND_FILENAME, DB_FILENAME, TOKEN_FILENAME
+from .consts import (
+    AGENT_COMMAND_FILENAME,
+    DB_FILENAME,
+    READER_TEST_FILENAME,
+    TOKEN_FILENAME,
+)
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import current_target, read_state, supports_start_command
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
@@ -851,6 +856,38 @@ class Agent:
             raise RuntimeError("le service RFID n'est pas demarre")
         self._write_command("arm_" + mode)
         return {"armed": mode}
+
+    def _cmd_reader_test(self, client, message):
+        """Teste le lecteur lui-meme : la carte est-elle vue, et lue ?
+
+        Le bus SPI appartient au service : l'agent lui depose la demande et lit
+        le resultat ecrit en retour (``reader-test.json``).
+        """
+        try:
+            seconds = float(message.get("seconds") or 5)
+        except (TypeError, ValueError):
+            raise ValueError("duree invalide")
+        seconds = max(2.0, min(15.0, seconds))
+        if not process_alive(read_pid(self.home)):
+            raise RuntimeError("le service RFID n'est pas demarre : demarrez-le dans "
+                               "l'onglet Maintenance, puis relancez le test")
+        path = os.path.join(self.home, READER_TEST_FILENAME)
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        self._write_command("reader_test", seconds=seconds)
+        deadline = time.time() + seconds + 10
+        while time.time() < deadline:
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+                if isinstance(data, dict) and data.get("finished"):
+                    return data
+            except (OSError, ValueError):
+                pass
+            time.sleep(0.25)
+        raise RuntimeError("le lecteur n'a pas repondu au test (service bloque ?)")
 
     def _cmd_scan(self, client, message):
         uid = str(message.get("uid") or "")

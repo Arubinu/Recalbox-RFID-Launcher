@@ -32,6 +32,8 @@ TOKEN_FILENAME = "token.txt"
 
 #: File de commandes entre l'agent WebSocket et le service RFID.
 AGENT_COMMAND_FILENAME = "agent-command.json"
+#: Resultat du test du lecteur (ecrit par le service, lu par l'agent).
+READER_TEST_FILENAME = "reader-test.json"
 
 #: Port par defaut de l'agent WebSocket.
 AGENT_PORT = 8765
