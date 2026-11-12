@@ -40,7 +40,7 @@ class FakeReader:
 
 
 class FakeButton:
-    """Bouton scriptable : ``press()`` pousse un geste ("short" ou "long")."""
+    """Bouton scriptable : ``press()`` pousse un geste ("short" ou "hold")."""
 
     name = "simulateur"
 
@@ -50,7 +50,7 @@ class FakeButton:
         self.available = True
 
     def press(self, gesture: str = "short") -> None:
-        self.queue.append("long" if gesture == "long" else "short")
+        self.queue.append("hold" if gesture == "hold" else "short")
 
     def poll(self):
         if not self.queue:

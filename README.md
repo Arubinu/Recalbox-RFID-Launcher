@@ -201,18 +201,26 @@ chargement habituel (nom + jaquette) — c'est le retour visuel.
 
 ### Effacer un badge
 
-1. **Appui long** (2 secondes) sur le bouton → deux bips graves.
-2. Scannez le badge à effacer → bips de confirmation.
+Depuis l'interface web : onglet **Badges** → **« Effacer un badge »**, puis posez
+le badge (10 secondes). Le bouton physique ne sert qu'à **associer** et à
+**autoriser un navigateur** — un badge réassocié écrase simplement l'ancienne
+correspondance.
 
 ### Retour sonore
 
 | Son | Signification |
 | --- | --- |
-| 1 bip aigu | mode association armé |
-| 2 bips graves | mode suppression armé |
-| 2 bips aigus montants | badge reconnu / association réussie |
+| 1 bip aigu | mode association armé (appui court) |
+| 2 bips aigus montants | badge reconnu / associé, jeu lancé |
+| 1 bip médium | badge reconnu sans action (`action = none`) |
+| 2 bips graves | suppression armée depuis l'interface |
 | 2 bips graves descendus | badge inconnu ou action refusée |
-| 3 bips descendants | délai dépassé |
+| 3 bips descendants | délai dépassé (10 s pour poser le badge) |
+
+Les bips sont générés à la volée (`/tmp/rfid-launcher/beep-*.wav`) et joués par
+`paplay` (PulseAudio) ou `aplay` (ALSA). Le service note au démarrage
+`Retour sonore actif (paplay)` : si cette ligne est absente, aucun son ne sera
+émis (voir `docs/DEPANNAGE.md`, section 7).
 
 > **Pourquoi pas une notification à l'écran ?** Le frontend Recalbox 9 n'expose
 > aucune API permettant à un script d'afficher un message : il *publie* ses
@@ -283,7 +291,7 @@ L'agent et `installer.html` se testent aussi sur un PC :
 ```sh
 python app/main.py --home ./data agent --source .
 # l'agent affiche ws://127.0.0.1:8765 : ouvrir installer.html avec 127.0.0.1
-# et le port 8765, puis « Se connecter » et un appui long sur le bouton
+# et le port 8765, puis « Se connecter » et 3 secondes sur le bouton
 # (en simulation, la commande hold du service tient lieu d'appui physique)
 ```
 

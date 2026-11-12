@@ -180,7 +180,7 @@ def dessin() -> list:
     add('<text x="%d" y="%d" font-size="15" font-weight="700" fill="%s">'
         'Bouton poussoir</text>' % (x_bt + 16, y_bt + 26, c("c-ink")))
     add('<text x="%d" y="%d" font-size="11.5" fill="%s">'
-        'appui court = associer · appui long = effacer · 3 s = autoriser</text>'
+        'appui court = associer · 3 s = autoriser un navigateur (effacement : dans l’interface)</text>'
         % (x_bt + 16, y_bt + 44, c("c-faint")))
 
     x0 = x_bt + 46

@@ -45,8 +45,6 @@ rearm_absent_ms = 1200
 # Le pull-up interne du Raspberry Pi est active : aucune resistance necessaire.
 enabled = 1
 pin = 17
-# Duree d'un appui long (secondes) : effacement d'un badge
-long_press_s = 2.0
 # Delai (secondes) accorde pour scanner le badge apres un appui
 arm_timeout_s = 10
 # Anti-rebond (millisecondes)

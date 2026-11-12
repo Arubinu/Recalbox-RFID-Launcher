@@ -4,6 +4,27 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.7]
+
+### Modifié
+
+* **Deux gestes seulement, et l'action au relâchement.** Agir au contact était
+  une erreur : un appui maintenu déclenchait à la fois l'appui court et l'appui
+  long. Les gestes sont de nouveau lus **au relâchement** :
+  * **appui court** → associer le jeu sélectionné (fenêtre de 10 s) ;
+  * **appui de 3 secondes** → autoriser un navigateur.
+* **Le geste « long » (2 s) qui armait l'effacement est supprimé** : réassocier
+  un badge existant écrase l'ancienne correspondance, et l'effacement reste
+  disponible dans l'interface (onglet Badges → « Effacer un badge »). Le réglage
+  `[button] long_press_s` disparaît de `config.ini`.
+* **L'interface suit l'événement en une seconde** (rafraîchissement de 2 s à 1 s)
+  et affiche « C'est prêt : posez le badge sur le lecteur (N s) » pendant la
+  fenêtre : on voit immédiatement que l'appui a été pris en compte.
+* Les bips sont documentés (README, UTILISATION) : un bip aigu à l'armement,
+  deux bips montants après l'association, deux graves si le badge est refusé,
+  trois descendants si le délai expire. Le service journalise
+  `Retour sonore actif (paplay)` au démarrage.
+
 ## [2.6.6]
 
 ### Corrigé

@@ -162,7 +162,6 @@ class Service:
         self.launcher = None
         self._web_command_signature = None
         self._press_started_at = None
-        self._press_handled = False
         self._active_uid = None
         self._absent_since = None
         self.rearm_absent_ms = 1200
@@ -353,28 +352,13 @@ class Service:
         self._absent_since = None
 
     def _handle_gesture(self, gesture: str) -> None:
-        """Gere un appui : court des le contact, long/hold au relachement."""
+        """Gere un geste recu au relachement (court ou tres long)."""
         request = None
         try:
             request = pairing.pending(self.home)
         except Exception as exc:  # noqa: BLE001 - fichier d'etat illisible
             if self.log:
                 self.log.warning("Demande d'appairage illisible : %s" % exc)
-
-        if gesture == "press":
-            # Agir des le contact : plus besoin de maintenir le bouton.
-            if request is not None:
-                return                    # appairage en cours : ne rien armer
-            if self.controller.armed:
-                return                    # deja arme
-            self._forget_latch()
-            self.controller.on_button("short")
-            self._press_handled = True
-            return
-
-        if gesture == "short" and self._press_handled:
-            self._press_handled = False
-            return                        # deja traite a l'appui
 
         if request is not None:
             if gesture == "hold":
@@ -392,16 +376,13 @@ class Service:
                             "Appui commence avant la demande d'appairage : ignore"
                         )
                 return
-            if gesture == "long":
-                # Pendant une demande, l'appui long ne doit pas armer l'effacement.
-                if self.log:
-                    self.log.info("Appui long ignore : demande d'appairage en cours")
-                return
 
-        if gesture == "hold":
-            return   # sans demande en cours, l'appui tres long ne fait rien
+        if gesture != "short":
+            # "hold" sans demande en cours ne fait rien ; le geste "long"
+            # n'existe plus (l'effacement se fait depuis l'interface web).
+            return
         self._forget_latch()
-        self.controller.on_button(gesture)
+        self.controller.on_button("short")
 
     # ----------------------------------------------------------- commandes agent
     def _consume_agent_command(self) -> None:

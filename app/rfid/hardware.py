@@ -73,7 +73,6 @@ def build_button(cfg: Config, log=None, gpio=None):
         pin,
         active_low=True,
         debounce_s=cfg.get_int("button", "debounce_ms", 40) / 1000.0,
-        long_press_s=cfg.get_float("button", "long_press_s", 2.0),
         hold_press_s=cfg.get_float("button", "hold_press_s", CONFIRM_HOLD_S),
         log=log,
     )

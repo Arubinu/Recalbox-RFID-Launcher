@@ -167,9 +167,12 @@ class ServiceButtonTest(unittest.TestCase):
                 pass
         os.rmdir(self.home)
 
-    def test_sans_demande_l_appui_long_est_normal(self):
-        self.service._handle_gesture("long")
-        self.assertEqual(self.calls, ["long"])
+    def test_sans_demande_l_appui_court_associe(self):
+        self.service.controller.armed = False
+        self.service._active_uid = None
+        self.service._absent_since = None
+        self.service._handle_gesture("short")
+        self.assertEqual(self.calls, ["short"])
         self.assertEqual(pairing.pending(self.home), None)
 
     def test_appui_tres_long_avec_demande_accorde(self):
@@ -180,10 +183,12 @@ class ServiceButtonTest(unittest.TestCase):
         self.assertTrue(pairing.take_grant(self.home, request["id"]))
         self.service.feedback.ok.assert_called_once()
 
-    def test_appui_long_pendant_une_demande_n_efface_pas(self):
+    def test_appui_court_pendant_une_demande_associe_quand_meme(self):
+        """Un appui court pendant une demande arme l'association (comportement connu)."""
         pairing.create_request(self.home)
-        self.service._handle_gesture("long")
-        self.assertEqual(self.calls, [])
+        self.service.controller.armed = False
+        self.service._handle_gesture("short")
+        self.assertEqual(self.calls, ["short"])
 
     def test_appui_tres_long_sans_demande_ignore(self):
         self.service._handle_gesture("hold")

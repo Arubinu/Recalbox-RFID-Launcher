@@ -328,7 +328,7 @@ L'agent est lancé par le script permanent
 5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
    un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
 
-### L'appui long sur le bouton ne confirme pas
+### L'appui de 3 secondes ne confirme pas
 
 Vérifiez, dans cet ordre :
 
@@ -338,7 +338,7 @@ Vérifiez, dans cet ordre :
 3. **L'appui est continu** : 3 secondes, sans relâcher, *après* avoir cliqué sur
    « Se connecter » (la demande n'est valable que 30 s). Un appui commencé avant
    la demande est ignoré, par sécurité.
-4. Pendant une demande d'autorisation, l'appui long **ne déclenche pas**
+4. Pendant une demande d'autorisation, un appui court **ne déclenche pas**
    l'effacement d'un badge : c'est volontaire.
 
 ### « Le lanceur n'est pas installé » alors qu'il l'est

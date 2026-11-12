@@ -10,12 +10,17 @@ from .gpio_backend import GpioError
 class Button:
     """Bouton entre une broche GPIO et GND (appui = niveau bas).
 
-    ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne :
+    ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne
+    le geste **au relachement** (jamais au contact, sinon un appui maintenu
+    declencherait aussi l'appui court) :
 
-    * ``"press"`` des que l'appui est confirme (anti-rebond), pour agir tout de
-      suite sans attendre le relachement ;
-    * ``"short"`` / ``"long"`` / ``"hold"`` au relachement, selon la duree ;
+    * ``"short"`` : appui plus court que ``hold_press_s`` ;
+    * ``"hold"`` : appui d'au moins ``hold_press_s`` (confirmation d'appairage) ;
     * ``None`` sinon.
+
+    Il n'y a plus de geste "long" : l'effacement d'un badge se fait depuis
+    l'interface web, et reassocier un badge existant ecrase l'ancienne
+    association.
     """
 
     def __init__(
@@ -24,7 +29,6 @@ class Button:
         pin: int,
         active_low: bool = True,
         debounce_s: float = 0.04,
-        long_press_s: float = 2.0,
         hold_press_s: float = 3.0,
         log=None,
         clock=None,
@@ -33,8 +37,7 @@ class Button:
         self.pin = int(pin)
         self.active_low = bool(active_low)
         self.debounce_s = max(0.005, float(debounce_s))
-        self.long_press_s = max(0.1, float(long_press_s))
-        self.hold_press_s = max(self.long_press_s, float(hold_press_s))
+        self.hold_press_s = max(0.3, float(hold_press_s))
         self.log = log
         self.clock = clock or time.monotonic
         self.available = False
@@ -96,7 +99,7 @@ class Button:
             self._pressed_at = now
             if self.log:
                 self.log.debug("Bouton appuye")
-            return "press"
+            return None
 
         # relachement confirme
         if self._pressed_at is None:
@@ -105,9 +108,7 @@ class Button:
         self._pressed_at = None
         if self.log:
             self.log.info("Bouton relache apres %.2f s" % duration)
-        if duration >= self.hold_press_s:
-            return "hold"
-        return "long" if duration >= self.long_press_s else "short"
+        return "hold" if duration >= self.hold_press_s else "short"
 
     def close(self) -> None:
         if self.backend is not None and self.available:

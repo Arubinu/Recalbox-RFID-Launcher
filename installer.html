@@ -797,7 +797,7 @@
             <div class="panel-head">
               <h2>Associer un badge</h2>
               <span class="hint">
-                Dans Recalbox, surlignez un jeu, appuyez une seconde sur le bouton du boîtier,
+                Dans Recalbox, surlignez un jeu, appuyez brièvement sur le bouton du boîtier
                 puis posez le badge sur le lecteur.
               </span>
             </div>
@@ -955,7 +955,7 @@
                     <text x="572" y="314" font-size="12.5" fill="var(--c-sub)">→ broche 1 du Pi</text>
                     <rect x="462" y="348" width="448" height="168" rx="12" fill="var(--c-card)" stroke="var(--c-line)"/>
                     <text x="478" y="374" font-size="15" font-weight="700" fill="var(--c-ink)">Bouton poussoir</text>
-                    <text x="478" y="392" font-size="11.5" fill="var(--c-faint)">appui court = associer · appui long = effacer · 3 s = autoriser</text>
+                    <text x="478" y="392" font-size="11.5" fill="var(--c-faint)">appui court = associer · 3 s = autoriser un navigateur (effacement : dans l’interface)</text>
                     <text x="508" y="432" font-size="12" fill="var(--c-sub)">borne 1 → broche 11 (GPIO17)</text>
                     <path d="M508 448 h34" stroke="#d6336c" stroke-width="3" fill="none"/>
                     <circle cx="508" cy="448" r="4" fill="#d6336c"/>
@@ -1762,7 +1762,8 @@ async function refresh() {
 
 function scheduleRefresh() {
   if (retryTimer) clearInterval(retryTimer);
-  retryTimer = setInterval(refresh, 2000);
+  /* 1 s : l'attente d'un badge (fenetre de 10 s) doit se voir tout de suite. */
+  retryTimer = setInterval(refresh, 1000);
 }
 
 /* ---------------------------------------------------------------- actions */

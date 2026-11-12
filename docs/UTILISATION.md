@@ -43,7 +43,7 @@ Champs de connexion :
 | Autorisation | **rien à saisir** : cliquez sur « Se connecter », puis **gardez le bouton du boîtier appuyé 3 secondes** pendant le compte à rebours. Une seule demande à la fois, valable 30 s |
 
 L'autorisation est **confirmée physiquement** : la page dépose une demande (une
-seule à la fois, 30 s), le service de la Recalbox attend un appui long (3 s) sur
+seule à la fois, 30 s), le service de la Recalbox attend 3 secondes d'appui sur
 le bouton, puis autorise ce poste. Un appui commencé avant la demande, ou destiné
 à une demande précédente, est refusé : on ne peut donc pas valider une demande
 qui n'était pas la vôtre. La demande est aussi refusée si le service du lecteur
@@ -154,11 +154,19 @@ joue, on le laisse. Un autre badge posé à la place agit immédiatement.
 
 ## Effacer un badge
 
-1. **Appui long** (environ 2 secondes) sur le bouton → 2 bips graves.
-2. Scannez le badge à supprimer → confirmation sonore.
+Uniquement depuis l'interface : onglet **Badges** → **« Effacer un badge »**,
+puis posez le badge sur le lecteur (10 secondes, 3 bips descendants si le délai
+expire).
 
-Astuce : un appui long inutile expire au bout de 30 secondes (3 bips
-descendants).
+Le bouton physique a deux gestes seulement :
+
+| Geste | Effet |
+| --- | --- |
+| **Appui court** | arme l'association du jeu sélectionné (1 bip aigu) ; posez le badge dans les 10 s |
+| **Appui de 3 secondes** | autorise un navigateur (demande d'appairage en cours) |
+
+Réassocier un badge déjà connu **écrase** l'ancienne correspondance : c'est la
+façon la plus simple de changer le jeu d'un badge, sans passer par l'effacement.
 
 ## Le son
 
@@ -245,7 +253,6 @@ partage réseau, avec le Bloc-notes par exemple). Après modification :
 | `[rfid] rearm_absent_ms` | `1200` | **mode cartouche** : temps d'absence du badge (ms) avant de pouvoir refaire l'action |
 | `[button] enabled` | `1` | `0` pour désactiver le bouton |
 | `[button] pin` | `17` | broche du bouton (BCM) |
-| `[button] long_press_s` | `2.0` | durée d'un appui long |
 | `[button] hold_press_s` | `3.0` | durée de l'appui qui autorise un poste |
 | `[button] arm_timeout_s` | `10` | délai pour scanner après un appui |
 | `[button] debounce_ms` | `40` | anti-rebond |

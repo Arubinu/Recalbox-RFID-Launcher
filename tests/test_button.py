@@ -18,7 +18,7 @@ class ButtonTest(unittest.TestCase):
             self.gpio,
             17,
             debounce_s=0.01,
-            long_press_s=0.30,
+            hold_press_s=0.30,
             clock=self.clock,
             **kwargs
         )
@@ -44,14 +44,30 @@ class ButtonTest(unittest.TestCase):
         self.gpio.levels[17] = 0  # appui
         self.assertIsNone(button.poll())
         self.clock.advance(0.02)
-        self.assertEqual(button.poll(), "press")   # geste immediat, sans attendre
+        self.assertIsNone(button.poll())   # appui confirme : pas encore de geste
 
         self.gpio.levels[17] = 1  # relachement
         self.assertIsNone(button.poll())
         self.clock.advance(0.02)
         self.assertEqual(button.poll(), "short")
 
-    def test_appui_long(self):
+    def test_appui_maintenu_confirme_l_appairage(self):
+        button = self.make_button()
+        self.clock.advance(0.02)
+        button.poll()
+
+        self.gpio.levels[17] = 0
+        button.poll()
+        self.clock.advance(0.02)
+        self.assertIsNone(button.poll())
+        self.clock.advance(0.40)  # appui maintenu au-dela de hold_press_s
+        self.gpio.levels[17] = 1
+        button.poll()
+        self.clock.advance(0.02)
+        self.assertEqual(button.poll(), "hold")
+
+    def test_appui_de_deux_secondes_ne_supprime_plus(self):
+        """Il n'y a plus de geste long : un appui de 2 s reste un simple appui."""
         button = self.make_button()
         self.clock.advance(0.02)
         button.poll()
@@ -60,11 +76,11 @@ class ButtonTest(unittest.TestCase):
         button.poll()
         self.clock.advance(0.02)
         button.poll()
-        self.clock.advance(0.40)  # appui maintenu
+        self.clock.advance(0.25)  # plus court que hold_press_s (0.30)
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)
-        self.assertEqual(button.poll(), "long")
+        self.assertEqual(button.poll(), "short")
 
     def test_rebond_ignore(self):
         button = self.make_button()
@@ -80,7 +96,7 @@ class ButtonTest(unittest.TestCase):
         self.gpio.levels[17] = 0
         button.poll()
         self.clock.advance(0.02)
-        self.assertEqual(button.poll(), "press")  # appui confirme : geste immediat
+        self.assertIsNone(button.poll())  # appui confirme : le geste viendra au relachement
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)
