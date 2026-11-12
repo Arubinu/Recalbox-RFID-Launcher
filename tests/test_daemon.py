@@ -297,6 +297,58 @@ class BadgeLatchTest(unittest.TestCase):
         self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
 
 
+class AdoptAfterTestTest(BadgeLatchTest):
+    """Apres un test ou une mesure, le badge pose ne doit pas agir."""
+
+    def test_badge_pose_apres_une_mesure_n_agit_pas(self):
+        self.service._calibration = None
+        self.service._arm_adoption()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, [])
+        self.assertEqual(self.service._active_uid, "A1B2C3D4")
+        self.assertFalse(self.service._adopt_next_read)
+
+    def test_le_badge_reste_verrouille_ensuite(self):
+        self.service._arm_adoption()
+        self.service._badge_seen("A1B2C3D4")
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, [])
+
+    def test_retirer_puis_reposer_agit(self):
+        self.service._arm_adoption()
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(False)
+        self.laisse_tourner(6.0)
+        self.presence(True)
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_un_autre_badge_agit_immediatement(self):
+        self.service._arm_adoption()
+        self.service._badge_seen("A1B2C3D4")
+        self.service._badge_seen("11223344")
+        self.assertEqual(self.actions, ["11223344"])
+
+    def test_un_mode_arme_peut_representer_le_badge(self):
+        self.service._arm_adoption()
+        self.service._forget_latch()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_l_adoption_expire(self):
+        # Un badge pose bien apres la mesure doit agir normalement.
+        self.service._arm_adoption(secondes=1.0)
+        self.avancer(5.0)
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+        self.assertFalse(self.service._adopt_next_read)
+
+    def test_sans_drapeau_le_badge_agit(self):
+        self.service._adopt_next_read = False
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+
 class StopOnRemoveTest(BadgeLatchTest):
     """Option « quitter le jeu quand le badge est retire »."""
 

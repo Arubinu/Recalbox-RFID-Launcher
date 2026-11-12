@@ -4,6 +4,21 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.8.2]
+
+### Corrigé
+
+* **Le badge posé à la fin du réglage automatique ne lance plus le jeu.** La
+  mesure interroge le lecteur lui-même : le badge resté en place n'avait donc
+  jamais été « vu » par la boucle du service et, la mesure terminée, il passait
+  pour un nouveau badge — d'où un jeu qui démarrait juste après la calibration.
+  Le badge présent est maintenant **adopté sans agir** (il faut le retirer puis
+  le reposer pour qu'il lance quelque chose).
+* Même correction après le **test du lecteur** et après une **réinitialisation**
+  des réglages, qui rouvrent aussi le lecteur.
+* Un mode armé (association, effacement) reste prioritaire : le badge déjà posé
+  peut toujours être présenté pour l'action demandée.
+
 ## [2.8.1]
 
 ### Corrigé

@@ -217,6 +217,30 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.assertEqual(etat["error"], "spi_failed")
         self.assertIn("spi_speed_hz = 1000000", self.config_texte())
 
+    def test_le_badge_pose_a_la_fin_n_agit_pas(self):
+        self.deroule_complet()
+        self.assertTrue(self.service._adopt_next_read)
+        self.assertGreater(self.service._adopt_until, self.now)
+        # La boucle voit le badge repose : il ne doit rien lancer.
+        self.service._active_uid = None
+        self.service._badge_seen("36000000")
+        self.service.controller.on_badge.assert_not_called()
+        self.assertEqual(self.service._active_uid, "36000000")
+
+    def test_l_adoption_est_arnee_meme_apres_une_annulation(self):
+        self.lance()
+        self.step()
+        self.service._finish_calibration("cancelled")
+        self.assertTrue(self.service._adopt_next_read)
+        self.assertGreater(self.service._adopt_until, self.now)
+
+    def test_l_adoption_est_arnee_apres_un_echec(self):
+        self.lance()
+        self.step()
+        self.service._finish_calibration("badge_unreadable")
+        self.assertTrue(self.service._adopt_next_read)
+        self.assertGreater(self.service._adopt_until, self.now)
+
     # ------------------------------------------------------------- echecs
     def test_aucun_badge_pose_ne_change_rien(self):
         self.lance()

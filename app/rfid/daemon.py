@@ -183,6 +183,11 @@ class Service:
         self._reader_test = None
         self._calibration = None
         self._calibration_signature = None
+        #: Passe a True apres un test/mesure : le badge deja pose est adopte
+        #: (verrouille) au lieu d'etre pris pour un nouveau badge.
+        #: L'adoption expire : un badge pose plus tard doit agir normalement.
+        self._adopt_next_read = False
+        self._adopt_until = 0.0
         self._status_signature = None
         self._status_written = 0.0
 
@@ -334,6 +339,24 @@ class Service:
         self.last_uid_at = time.time()
         maintenant = time.monotonic()
         self._last_read_at = maintenant
+        if getattr(self, "_adopt_next_read", False) and maintenant <= getattr(
+                self, "_adopt_until", 0.0):
+            # Un test ou une mesure vient d'interroger le lecteur lui-meme : le
+            # badge pose a la fin n'a jamais ete vu par la boucle. Sans cela il
+            # passait pour un nouveau badge et lancait le jeu juste apres la
+            # mesure.
+            self._adopt_next_read = False
+            self._active_uid = uid
+            self._active_seen_at = maintenant
+            self._absent_since = None
+            self._absent_hits = 0
+            if self.log:
+                self.log.info(
+                    "Badge %s deja pose : il n'agit pas (retirez-le pour le rescanner)" % uid
+                )
+            return
+        # Trop tard : le badge peut avoir ete change entre-temps, il agit.
+        self._adopt_next_read = False
         if uid == self._active_uid:
             # Le badge est toujours la : on rafraichit sa presence, sans agir.
             self._active_seen_at = maintenant
@@ -458,12 +481,23 @@ class Service:
         elif not pressed:
             self._press_started_at = None
 
+    def _arm_adoption(self, secondes: float = 10.0) -> None:
+        """Le prochain badge lu est verrouille sans agir (apres une mesure).
+
+        L'adoption expire au bout de quelques secondes : un badge pose bien
+        apres la mesure doit se comporter normalement.
+        """
+        self._adopt_next_read = True
+        self._adopt_until = time.monotonic() + secondes
+
     def _forget_latch(self) -> None:
         """Oublie le badge pose : un mode arme autorise a le representer."""
         self._active_uid = None
         self._absent_since = None
         self._absent_hits = 0
         self._last_read_at = 0.0
+        self._adopt_next_read = False
+        self._adopt_until = 0.0
 
     def _handle_gesture(self, gesture: str) -> None:
         """Gere un geste recu au relachement (court ou tres long)."""
@@ -816,6 +850,8 @@ class Service:
                 )
         etat["finished"] = True
         self._calibration = None
+        if self.reader is not None:
+            self._arm_adoption()
         self._publish_calibration(etat)
 
     def _apply_calibration_settings(self, reglages: dict) -> dict:
@@ -878,6 +914,8 @@ class Service:
             return
         self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
         self._reopen_reader_at_speed()
+        if self.reader is not None:
+            self._arm_adoption()
         if self.log:
             self.log.info(
                 "Reglages du lecteur reinitialises : %s"
@@ -1020,6 +1058,8 @@ class Service:
         if test is None:
             return
         self._reader_test = None
+        if self.reader is not None:
+            self._arm_adoption()
         result = {
             "finished": True,
             "seconds": test["seconds"],
