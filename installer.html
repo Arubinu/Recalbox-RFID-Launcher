@@ -2116,6 +2116,11 @@ async function copyText(text) {
 
 /* ---------------------------------------------------------------- boutons */
 /* ------------------------------------------------ test du lecteur (badges) */
+function shortHex(text, max) {
+  const value = String(text || "");
+  return value.length > max ? value.slice(0, max) + "…" : value;
+}
+
 function readerTestReport(data) {
   const atqas = Object.keys(data.atqas || {});
   const uids = data.uids || [];
@@ -2128,6 +2133,16 @@ function readerTestReport(data) {
     "ATQA (reponses)   : " + (atqas.length ? atqas.join(", ") : "aucun"),
   ];
   if ((data.errors || []).length) lignes.push("Erreurs           : " + data.errors.join(" | "));
+  const steps = (data.trace && data.trace.steps) || [];
+  if (steps.length) {
+    lignes.push("");
+    lignes.push("Trames échangées (envoi → réponse) :");
+    steps.slice(-6).forEach((step) => {
+      lignes.push("  " + shortHex(step.tx, 26) + "  →  " +
+        (step.rx ? shortHex(step.rx, 26) : "aucune réponse") +
+        "   (erreur " + (step.err || "?") + ")");
+    });
+  }
   return lignes.join("\n");
 }
 
@@ -2142,8 +2157,9 @@ function readerTestVerdict(data) {
     return "Le badge est lu correctement (UID " + uids.join(", ") + ") : il peut être associé.";
   }
   if (atqas.length) {
-    return "Le badge répond au lecteur mais sa lecture complète échoue (code " +
-      atqas.join(", ") + "). C'est un badge exotique : notez ce code pour le diagnostic.";
+    return "Le badge est bien vu par le lecteur (ATQA " + atqas.join(", ") + ") mais son " +
+      "identification échoue : les trames ci-dessous disent à quelle étape. " +
+      "Envoyez-les pour le diagnostic.";
   }
   return "Aucune carte 13,56 MHz vue pendant le test. Testez avec une carte bancaire " +
     "sans contact (ou un téléphone) : si elle est vue, vos badges ne sont pas en " +

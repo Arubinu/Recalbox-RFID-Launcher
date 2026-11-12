@@ -443,6 +443,7 @@ class Service:
             "atqas": {},
             "uids": [],
             "errors": [],
+            "trace": {},
             "reader_ready": self.reader is not None,
         }
         if self.log:
@@ -463,12 +464,15 @@ class Service:
             return
         test["reader_ready"] = True
         test["attempts"] += 1
+        trace = {"steps": []}
         try:
-            raw = chip.read_uid()
+            raw = chip.read_uid(trace=trace)
         except (Rc522Error, OSError) as exc:
             if len(test["errors"]) < 6:
                 test["errors"].append(str(exc))
             return
+        if trace.get("steps"):
+            test["trace"] = trace          # derniere tentative parlante
         if raw:
             uid = raw.hex().upper()
             test["answers"] += 1
@@ -508,6 +512,7 @@ class Service:
             "atqas": test["atqas"],
             "uids": test["uids"],
             "errors": test["errors"],
+            "trace": test.get("trace") or {},
             "reader_ready": test["reader_ready"],
             "version": getattr(self.reader, "version", None),
             "started_at": test["started_at"],
@@ -518,6 +523,12 @@ class Service:
                 "Test lecteur : %d essai(s), %d reponse(s), UID %s, ATQA %s"
                 % (test["attempts"], test["answers"], test["uids"], sorted(test["atqas"]))
             )
+            trace = test.get("trace") or {}
+            for step in (trace.get("steps") or [])[:6]:
+                self.log.info(
+                    "  trame : envoi %s -> recu %s (ErrorReg %s)"
+                    % (step.get("tx", ""), step.get("rx") or "rien", step.get("err", "?"))
+                )
         path = os.path.join(self.home, READER_TEST_FILENAME)
         temporary = path + ".tmp"
         try:

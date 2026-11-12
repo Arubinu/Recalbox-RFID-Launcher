@@ -30,9 +30,15 @@ class FakeRc522Spi:
 
     backend = "fake"
 
-    def __init__(self, uid=None, version: int = 0x92):
+    def __init__(self, uid=None, version: int = 0x92, bad_bcc: bool = False,
+                 wupa_only: bool = False):
         self.uid = bytes(uid) if uid else None
         self.version = version
+        #: Certains badges clones renvoient un BCC faux : le pilote doit lire
+        #: quand meme l'UID (il recalcule le BCC pour la selection).
+        self.bad_bcc = bad_bcc
+        #: Badge qui ne repond qu'a WUPA (etat de veille).
+        self.wupa_only = wupa_only
         self.registers = {}
         self.fifo = bytearray()
         self.irq = 0
@@ -184,6 +190,12 @@ class FakeRc522Spi:
 
         uid = self.uid
         if frame[:1] == b"\x26" and tx_last_bits == 7:  # REQA
+            if self.wupa_only:
+                self.irq = IRQ_TIMER
+                return
+            self._respond(b"\x04\x00")
+            return
+        if frame[:1] == b"\x52" and tx_last_bits == 7:  # WUPA
             self._respond(b"\x04\x00")
             return
         if frame[:2] == bytes([0x93, 0x20]):  # anticollision niveau 1
@@ -191,11 +203,13 @@ class FakeRc522Spi:
                 part = bytes([0x88]) + uid[:3]
             else:
                 part = uid[:4]
-            self._respond(part + bytes([part[0] ^ part[1] ^ part[2] ^ part[3]]))
+            bcc = 0 if self.bad_bcc else (part[0] ^ part[1] ^ part[2] ^ part[3])
+            self._respond(part + bytes([bcc]))
             return
         if frame[:2] == bytes([0x95, 0x20]) and len(uid) == 7:  # niveau 2
             part = uid[3:7]
-            self._respond(part + bytes([part[0] ^ part[1] ^ part[2] ^ part[3]]))
+            bcc = 0 if self.bad_bcc else (part[0] ^ part[1] ^ part[2] ^ part[3])
+            self._respond(part + bytes([bcc]))
             return
         if frame[:2] == bytes([0x93, 0x70]) or frame[:2] == bytes([0x95, 0x70]):
             # SELECT : 2 octets + UID (4) + BCC (1) + CRC_A (2) = 9 octets.

@@ -154,8 +154,18 @@ class Rc522:
         return self.version
 
     # --------------------------------------------------------- transactions
-    def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05):
-        """Envoie ``data`` et retourne (octets_recus, bits_valides) ou None."""
+    def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05, trace=None):
+        """Envoie ``data`` et retourne (octets_recus, bits_valides) ou None.
+
+        ``trace`` (dict optionnel) recoit la trame envoyee, la reponse brute et
+        l'ErrorReg : c'est ce qui permet de diagnostiquer une carte qui repond
+        mais dont l'identification echoue.
+
+        On accepte la reponse des qu'elle contient des octets : les cartes
+        clones signalent parfois un drapeau d'erreur sans que la trame soit
+        inutilisable, et c'est la selection (verifiee ensuite) qui valide
+        reellement l'UID.
+        """
         self._write(REG_COMMAND, CMD_IDLE)
         self._write(REG_COM_IRQ, 0x7F)          # efface les drapeaux
         self._write(REG_FIFO_LEVEL, 0x80)       # vide la FIFO
@@ -180,12 +190,19 @@ class Rc522:
         self._write(REG_BIT_FRAMING, tx_last_bits & 0x07)
 
         error = self._read(REG_ERROR)
-        if error & (ERR_PROTOCOL | ERR_PARITY | ERR_BUFFER_OVFL):
-            return None
-
-        length = self._read(REG_FIFO_LEVEL)
+        length = self._read(REG_FIFO_LEVEL) & 0x7F
         payload = self._read_many(REG_FIFO_DATA, length)
         valid_bits = self._read(REG_CONTROL) & 0x07
+        if trace is not None:
+            trace.setdefault("steps", []).append(
+                {
+                    "tx": bytes(data).hex().upper(),
+                    "rx": payload.hex().upper(),
+                    "err": "0x%02X" % error,
+                }
+            )
+        if not payload:
+            return None
         return payload, valid_bits
 
     def crc_a(self, data) -> bytes:
@@ -227,29 +244,30 @@ class Rc522:
         payload, _ = result
         return payload if len(payload) >= 2 else None
 
-    def _anticollision(self, command: int):
-        """Anticollision : retourne les 5 octets (UID partiel + BCC) ou None."""
-        result = self._transceive(bytes([command, PICC_NVB_ANTICOLL]))
+    def _anticollision(self, command: int, trace=None):
+        """Anticollision : retourne les 5 octets (UID partiel + BCC) ou None.
+
+        Le BCC renvoye n'est pas verifie ici : certains badges clones le
+        calculent faux, et la selection qui suit de toute facon est refaite avec
+        un BCC recalcule. La longueur et la selection restent les vrais
+        controles.
+        """
+        result = self._transceive(bytes([command, PICC_NVB_ANTICOLL]), trace=trace)
         if result is None:
             return None
         payload, _ = result
-        if len(payload) != 5:
+        if len(payload) < 5:
             return None
-        checksum = 0
-        for byte in payload[:4]:
-            checksum ^= byte
-        if checksum != payload[4]:
-            return None
-        return payload
+        return bytes(payload[:5])
 
-    def _select(self, command: int, uid_with_bcc) -> "int | None":
+    def _select(self, command: int, uid_with_bcc, trace=None) -> "int | None":
         """Selection : retourne le SAK (1 octet) ou None."""
         frame = bytes([command, PICC_NVB_SELECT]) + bytes(uid_with_bcc)
         try:
             frame += self.crc_a(frame)
         except Rc522Error:
             return None
-        result = self._transceive(frame)
+        result = self._transceive(frame, trace=trace)
         if result is None:
             return None
         payload, _ = result
@@ -264,37 +282,58 @@ class Rc522:
             return
         self._transceive(frame, timeout_s=0.03)
 
-    def read_uid(self):
-        """Lit l'UID du badge present (4 ou 7 octets), ou None."""
-        if self.request() is None:
-            return None
+    def read_uid(self, trace=None):
+        """Lit l'UID du badge present (4 ou 7 octets), ou None.
 
-        first = self._anticollision(PICC_SEL_CL1)
-        if first is None:
-            return None
-        sak = self._select(PICC_SEL_CL1, first)
-        if sak is None:
-            return None
-
-        if sak & SAK_CASCADE:
-            second = self._anticollision(PICC_SEL_CL2)
-            if second is None:
-                return None
-            next_sak = self._select(PICC_SEL_CL2, second)
-            if next_sak is None:
-                return None
-            if next_sak & SAK_CASCADE:
-                # UID de 10 octets : non gere (extremement rare sur des badges).
-                if self.log:
-                    self.log.warning("Badge a UID 10 octets ignore")
-                return None
-            uid = bytes(first[1:4]) + bytes(second[0:4])
+        Deux precautions pour les badges clones : WUPA en secours de REQA, et
+        BCC recalcule pour la selection (celui renvoye par la carte n'est pas
+        forcement juste, et une selection avec un BCC faux est ignoree par la
+        carte).
+        """
+        for tentative in range(2):
+            mode = PICC_REQA if tentative == 0 else PICC_WUPA
+            atqa = self.request(mode)
+            if trace is not None:
+                trace["atqa"] = bytes(atqa).hex().upper() if atqa else ""
+            if atqa is None:
+                continue
+            first = self._anticollision(PICC_SEL_CL1, trace)
+            if first is None:
+                continue
+            partie = bytes(first[0:4])
+            sak = self._select(PICC_SEL_CL1, partie + self._bcc(partie), trace)
+            if sak is None:
+                continue
+            if trace is not None:
+                trace["sak"] = "0x%02X" % sak
+            if sak & SAK_CASCADE:
+                second = self._anticollision(PICC_SEL_CL2, trace)
+                if second is None:
+                    continue
+                partie2 = bytes(second[0:4])
+                next_sak = self._select(PICC_SEL_CL2, partie2 + self._bcc(partie2), trace)
+                if next_sak is None:
+                    continue
+                if next_sak & SAK_CASCADE:
+                    # UID de 10 octets : non gere (extrement rare sur des badges).
+                    if self.log:
+                        self.log.warning("Badge a UID 10 octets ignore")
+                    return None
+                uid = bytes(first[1:4]) + bytes(second[0:4])
+                self.halt()
+                return uid
+            uid = bytes(first[0:4])
             self.halt()
             return uid
+        return None
 
-        uid = bytes(first[0:4])
-        self.halt()
-        return uid
+    @staticmethod
+    def _bcc(data) -> bytes:
+        """BCC : ou exclusif des octets transmis (ISO/CEI 14443-3)."""
+        checksum = 0
+        for byte in data:
+            checksum ^= byte
+        return bytes([checksum])
 
     def tag_present(self) -> bool:
         """Vrai si un badge est physiquement pose sur le lecteur.

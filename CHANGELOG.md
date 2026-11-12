@@ -4,6 +4,28 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.5]
+
+### Corrigé (badges lus par le lecteur mais sans UID)
+
+* Diagnostic mesuré sur la machine : `Réponses : 36`, `ATQA : 0400`, `UID lu :
+  aucun`. Le lecteur **voit** donc les badges (MIFARE Classic 4 octets), mais
+  l'identification échouait dans le pilote. Trois corrections :
+  * **BCC recalculé pour la sélection.** Le pilote recopiait le BCC renvoyé par
+    la carte dans la trame de sélection ; certains badges clones le calculent
+    faux, et la sélection était alors ignorée. Le BCC est maintenant recalculé
+    (ou exclusif des octets transmis) et le BCC reçu n'est plus un critère de
+    rejet.
+  * **WUPA en secours de REQA** : un badge en veille qui répond à WUPA est
+    désormais lu (deuxième tentative automatique).
+  * **Une réponse non vide n'est plus jetée** à cause d'un drapeau d'erreur
+    (parité, collision) : la trame est exploitée et c'est la sélection qui
+    valide l'UID.
+* **Le test du lecteur montre maintenant les trames échangées** (`envoi 9320 →
+  reçu 88A1B2C34F (erreur 0x00)`) et les journalise : si un badge reste
+  illisible, le rapport dit exactement à quelle étape.
+* Trois nouveaux tests sur simulateur (BCC faux, badge endormi, trace).
+
 ## [2.5.4]
 
 ### Corrigé
