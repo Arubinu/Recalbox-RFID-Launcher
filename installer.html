@@ -255,6 +255,7 @@
   .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .12); }
   .icon-btn svg { width: 17px; height: 17px; }
   .hint { color: var(--muted); font-size: 12.5px; }
+  .hint:empty, p.hint:empty { display: none; }
   .auto-note {
     display: flex; align-items: flex-start; gap: 9px;
     margin-top: 14px; padding: 11px 13px;
@@ -2234,7 +2235,8 @@ async function copyPayload() {
   }
 
   if (saved.token) {
-    $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Se connecter ».";
+    /* Rien a afficher : la page sait deja a quelle Recalbox se connecter. */
+    $("#connect-hint").textContent = "";
   } else {
     $("#connect-hint").textContent =
       "Laissez le jeton vide : il sera récupéré automatiquement sur la Recalbox.";

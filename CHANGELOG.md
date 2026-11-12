@@ -4,6 +4,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.0.1]
+
+### Modifié
+
+* La ligne « Dernière connexion enregistrée » a disparu de l'écran de connexion :
+  quand une connexion est déjà mémorisée, la carte va directement des champs au
+  bouton « Se connecter ».
+* Les messages d'état n'occupent plus de place quand ils sont vides
+  (`.hint:empty`), ce qui supprime les blancs inutiles dans la carte.
+
 ## [2.0.0]
 
 ### Ajouté
