@@ -1340,6 +1340,9 @@ function setConnected(ui) {
   $("#version").textContent = "v" + (ui.version || state?.app_version || "");
   $("#version").hidden = false;
   $("#btn-disconnect").classList.remove("hidden");
+  /* Une connexion reussie efface les messages de coupure precedents. */
+  clearOffline();
+  showBanner("good", "");
   setView("app");
 }
 
@@ -1907,25 +1910,25 @@ async function tryReconnect(silent) {
         setLink(false, "déconnecté");
         if (/deja en attente/i.test(raison)) {
           $("#connect-hint").textContent = "Une demande est déjà en attente.";
-          showBanner("warn",
+          if (!silent) showBanner("warn",
             "Une autre demande d'appairage est déjà en attente sur la Recalbox (30 s). " +
             "Attendez la fin du compte à rebours, puis cliquez de nouveau sur « Se connecter » : " +
             "une seule connexion peut être autorisée à la fois.");
         } else if (/service/i.test(raison)) {
           $("#connect-hint").textContent = "Le service du lecteur est arrêté.";
-          showBanner("err", serviceDownMessage(url));
+          if (!silent) showBanner("err", serviceDownMessage(url));
         } else if (/appui/i.test(raison)) {
           $("#connect-hint").textContent = "Le bouton n'a pas été maintenu assez longtemps.";
-          showBanner("warn",
+          if (!silent) showBanner("warn",
             "Le délai de 30 s est écoulé sans appui sur le bouton. Cliquez de nouveau sur " +
             "« Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant " +
             "que la page compte à rebours.");
         } else if (/connexion impossible|délai dépassé|adresse invalide/i.test(raison)) {
           $("#connect-hint").textContent = "Aucune réponse de la Recalbox (" + settings.host + ").";
-          showBanner("err", agentDownMessage(url));
+          if (!silent) showBanner("err", agentDownMessage(url));
         } else {
           $("#connect-hint").textContent = "Appairage refusé.";
-          showBanner("err",
+          if (!silent) showBanner("err",
             "L'appairage n'a pas abouti (" + raison + "). Réessayez ; en dernier recours, " +
             "relancez le fichier recalbox-rfid-installation.cmd puis redémarrez la Recalbox.");
         }
@@ -1986,7 +1989,7 @@ async function tryReconnect(silent) {
   $("#connect-hint").textContent = refused
     ? "La Recalbox répond mais refuse le jeton."
     : "Aucune réponse de la Recalbox (" + settings.host + ").";
-  showBanner("err", refused
+  if (!silent) showBanner("err", refused
     ? "La Recalbox répond mais refuse le jeton, et l'appairage au bouton n'a pas abouti. " +
       "Cliquez de nouveau sur « Se connecter » en gardant le bouton appuyé 3 secondes."
     : agentDownMessage(url));
@@ -2320,6 +2323,7 @@ $("#btn-disconnect").addEventListener("click", () => {
   $("#connect-card").classList.remove("hidden");
   $("#btn-disconnect").classList.add("hidden");
   setLink(false, "déconnecté");
+  showBanner("good", "");
   $("#connect-hint").textContent = "Déconnecté. Vous pouvez vous reconnecter.";
   setView("connect");
 });
@@ -2385,6 +2389,7 @@ function scheduleReconnect(delay) {
 }
 
 async function attemptReconnect() {
+  if (!offlineSince) return;        /* deja reconnecte entre-temps */
   const settings = currentSettings();
   if (!settings.token) {                    /* plus de jeton : retour au formulaire */
     clearOffline();

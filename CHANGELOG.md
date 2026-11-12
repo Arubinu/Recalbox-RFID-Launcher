@@ -4,6 +4,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.3.1]
+
+### Corrigé
+
+* **Fini les messages de coupure fantômes.** Un bandeau « Connexion perdue »
+  pouvait rester affiché après une simple actualisation de la page ou après une
+  connexion réussie :
+  * une **connexion réussie efface** désormais le bandeau d'état et le message
+    d'erreur (`setConnected` nettoie les deux) ;
+  * l'**auto-connexion au chargement** (jeton passé dans l'URL par le `.cmd`)
+    n'affiche plus d'alerte collante quand elle échoue : elle se contente du
+    message discret sous le formulaire, et l'utilisateur reste maître de cliquer ;
+  * la déconnexion volontaire efface aussi les messages ;
+  * une reconnexion automatique encore programmée est annulée dès qu'une
+    connexion manuelle réussit (plus de double connexion).
+
 ## [2.3.0]
 
 ### Corrigé (Recalbox 10.1.1 sur Raspberry Pi 3, vérifié sur la machine)
