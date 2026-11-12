@@ -52,6 +52,7 @@ AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
 PAIRING_FILENAME = "pairing.json"
 PAIRED_FILENAME = "paired.ok"
+PAIR_REQUEST_FILENAME = "pair-request"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
@@ -110,6 +111,23 @@ def pairing_is_open(home: str) -> bool:
         return float(data.get("until") or 0) > time.time()
     except (OSError, ValueError, TypeError):
         return False
+
+
+def consume_pair_request(home: str) -> bool:
+    """Ouvre la fenetre si le fichier ``pair-request`` existe (pose par le .cmd).
+
+    Le fichier peut etre cree par un simple ``echo. > pair-request`` depuis
+    Windows, ce qui permet de demander un appairage sans SSH.
+    """
+    request = os.path.join(home, PAIR_REQUEST_FILENAME)
+    if not os.path.isfile(request):
+        return False
+    try:
+        os.remove(request)
+    except OSError:
+        pass
+    open_pairing_window(home)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -283,6 +301,9 @@ class Agent:
         # un jeton deja en place mais jamais utilise (mise a jour, rollback...)
         # reste donc appariable sans passer par le partage reseau.
         if not existed or not os.path.isfile(os.path.join(self.home, PAIRED_FILENAME)):
+            open_pairing_window(self.home)
+        # Le .cmd peut demander explicitement un appairage (fichier depot).
+        if consume_pair_request(self.home):
             open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()

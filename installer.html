@@ -994,7 +994,14 @@ function buildInstallerCmd(host, zipBytes) {
     "set \"URLPATH=%~dp0\"",
     "set \"URLPATH=!URLPATH:\\=/!\"",
     "set \"URLPATH=!URLPATH: =%%20!\"",
+    "rem Demande d'appairage : l'agent ouvrira la fenetre a son prochain demarrage.",
+    "if not exist \"%SHARE%\\system\\rfid\" mkdir \"%SHARE%\\system\\rfid\" >nul 2>&1",
+    "if not exist \"%SHARE%\\system\\rfid\\pair-request\" echo. > \"%SHARE%\\system\\rfid\\pair-request\"",
     "if not exist \"%SHARE%\\system\\rfid\\token.txt\" goto redemarrer",
+    "echo    Attente de l'agent de la Recalbox (30 s maximum) ...",
+    "powershell -NoProfile -Command \"$fin=(Get-Date).AddSeconds(30); while((Get-Date) -lt $fin){ try { $c=New-Object Net.Sockets.TcpClient; $t=$c.ConnectAsync('%PAGEHOST%',8765); if($t.Wait(1500)){ $c.Close(); exit 0 } } catch {}; Start-Sleep -Milliseconds 1500 }; exit 4\" 2>nul",
+    "if errorlevel 4 echo    L'agent ne repond pas encore : redemarrez la Recalbox, attendez une minute, puis relancez ce fichier.",
+    "if not errorlevel 4 echo    Agent pret.",
     "set /p TOKEN=<\"%SHARE%\\system\\rfid\\token.txt\"",
     "echo    Jeton : !TOKEN!  (copie dans le presse-papiers)",
     "clip < \"%SHARE%\\system\\rfid\\token.txt\"",
@@ -1624,12 +1631,22 @@ function downloadNetUse() {
     "if not exist \"%SHARE%\\userscripts\\recalbox-rfid-agent(permanent).py3\" echo    MANQUE : userscripts\\recalbox-rfid-agent(permanent).py3",
     "if exist \"%SHARE%\\system\\rfid\\token.txt\" echo    OK    : jeton present",
     "if not exist \"%SHARE%\\system\\rfid\\token.txt\" echo    MANQUE : system\\rfid\\token.txt  -- normal tant que la Recalbox n'a pas redemarre",
+    "if exist \"%SHARE%\\system\\rfid\\paired.ok\" echo    OK    : un poste est deja apparie (appairage auto ferme)",
+    "if exist \"%SHARE%\\system\\rfid\\pair-request\" echo    NOTE  : demande d'appairage en attente (elle s'ouvrira au demarrage)",
     "echo.",
     "echo 5) Contenu du dossier system\\rfid",
     "if exist \"%SHARE%\\system\\rfid\" dir /b \"%SHARE%\\system\\rfid\"",
     "if not exist \"%SHARE%\\system\\rfid\" echo    dossier absent",
     "echo.",
-    "echo 6) A retenir",
+    "echo 6) Journal d'installation au demarrage (auto-install.log)",
+    "if exist \"%SHARE%\\system\\rfid\\logs\\auto-install.log\" powershell -NoProfile -Command \"Get-Content -LiteralPath '%SHARE%\\system\\rfid\\logs\\auto-install.log' -Tail 20\" 2>nul",
+    "if not exist \"%SHARE%\\system\\rfid\\logs\\auto-install.log\" echo    absent : le script de demarrage n'a jamais tourne sur la Recalbox",
+    "echo.",
+    "echo 7) Journal du service (rfid.log, 10 dernieres lignes)",
+    "if exist \"%SHARE%\\system\\rfid\\logs\\rfid.log\" powershell -NoProfile -Command \"Get-Content -LiteralPath '%SHARE%\\system\\rfid\\logs\\rfid.log' -Tail 10\" 2>nul",
+    "if not exist \"%SHARE%\\system\\rfid\\logs\\rfid.log\" echo    absent : le service ne s'est jamais lance",
+    "echo.",
+    "echo 8) A retenir",
     "echo    - \\\\%HOST%  tout seul ne s'ouvre pas sous Windows : c'est normal.",
     "echo      Il faut toujours  \\\\%HOST%\\share  (ou l'adresse IP affichee plus haut).",
     "echo    - code 86 ou 1326 : mot de passe Samba refuse (en SSH : smbpasswd -a root)",
@@ -1655,10 +1672,30 @@ async function tryPairing(url) {
     if (!token) throw new Error("jeton absent de la réponse");
     $("#token").value = token;
     $("#token-hint").textContent = "Jeton récupéré automatiquement depuis la Recalbox.";
-    return token;
+    return { token };
   } catch (error) {
-    return "";
+    return { token: "", error: error.message || String(error) };
   }
+}
+
+/* L'agent ne repond pas du tout : le programme n'est pas installe ou pas lance. */
+function agentDownMessage(url) {
+  return "La Recalbox ne répond pas sur " + url + " : l'agent n'est pas lancé. " +
+    "C'est le cas quand le script de démarrage n'a pas été installé, ou quand la Recalbox " +
+    "n'a pas redémarré depuis l'installation. À faire, dans cet ordre : " +
+    "1) relancez le fichier recalbox-rfid-installation.cmd (il réinstalle le script de " +
+    "démarrage) ; 2) redémarrez la Recalbox ; 3) revenez ici et cliquez de nouveau sur " +
+    "« Se connecter ». Si cela persiste, cliquez sur « Faire un diagnostic » et envoyez le " +
+    "rapport : il lit le journal d'installation de la Recalbox.";
+}
+
+/* L'agent repond mais la fenetre d'appairage est fermee. */
+function pairingClosedMessage(url) {
+  return "La Recalbox répond sur " + url + ", mais l'appairage automatique est fermé " +
+    "(fenêtre de 15 minutes expirée, ou déjà utilisé par un autre PC). Deux solutions, " +
+    "sans SSH : relancez le fichier recalbox-rfid-installation.cmd puis redémarrez la " +
+    "Recalbox (il redemande un appairage) ; ou, en SSH : rfidctl pair. Ensuite, cliquez de " +
+    "nouveau sur « Se connecter ».";
 }
 
 async function tryReconnect(silent) {
@@ -1667,9 +1704,9 @@ async function tryReconnect(silent) {
   let pairedNow = false;
 
   if (!settings.token) {
-    const paired = await tryPairing(url);
-    if (paired) {
-      settings.token = paired;
+    const pairing = await tryPairing(url);
+    if (pairing.token) {
+      settings.token = pairing.token;
       store.write(settings);
       showBanner("info", "Jeton récupéré automatiquement : rien à recopier.");
     } else {
@@ -1682,12 +1719,11 @@ async function tryReconnect(silent) {
         store.write(settings);
       } catch (error) {
         setLink(false, "déconnecté");
-        $("#connect-hint").textContent = "Aucune réponse de la Recalbox.";
-        showBanner("err",
-          "Impossible de joindre la Recalbox sur " + url + " et l'appairage automatique " +
-          "n'est pas ouvert. Le plus courant : elle n'a pas redémarré depuis l'installation " +
-          "(c'est au démarrage que l'agent se lance). Sinon, vérifiez l'adresse " +
-          "(essayez son adresse IP) ou cliquez sur « Faire un diagnostic ».");
+        const mute = /connexion impossible|délai dépassé|adresse invalide/i.test(pairing.error || "");
+        $("#connect-hint").textContent = mute
+          ? "Aucune réponse de la Recalbox (" + settings.host + ")."
+          : "La Recalbox répond mais refuse l'appairage.";
+        showBanner("err", mute ? agentDownMessage(url) : pairingClosedMessage(url));
         return;
       }
     }
@@ -1722,10 +1758,10 @@ async function tryReconnect(silent) {
       /* Jeton refuse : on tente l'appairage (fenetre ouverte au 1er demarrage). */
       if (!pairedNow && /jeton|refus/i.test(message)) {
         pairedNow = true;
-        const paired = await tryPairing(url);
-        if (paired) {
-          settings.token = paired;
-          $("#token").value = paired;
+        const pairing = await tryPairing(url);
+        if (pairing.token) {
+          settings.token = pairing.token;
+          $("#token").value = pairing.token;
           store.write(settings);
           attempt = 0;   /* on recommence le compte des tentatives */
           continue;
@@ -1741,14 +1777,7 @@ async function tryReconnect(silent) {
   $("#connect-hint").textContent = refused
     ? "La Recalbox répond mais refuse le jeton."
     : "Aucune réponse de la Recalbox (" + settings.host + ").";
-  showBanner("err", refused
-    ? "La Recalbox répond sur " + url + " mais refuse le jeton, et l'appairage automatique " +
-      "n'est plus ouvert. Sur la Recalbox (SSH) : rfidctl pair, puis cliquez de nouveau sur " +
-      "« Se connecter »."
-    : "Impossible de joindre la Recalbox sur " + url + " après " + attempts + " tentatives. " +
-      "Trois causes possibles : 1) elle n'a pas redémarré depuis l'installation (obligatoire " +
-      "pour que l'agent démarre) ; 2) l'adresse est fausse (essayez son adresse IP) ; " +
-      "3) l'agent n'est pas installé. Cliquez sur « Faire un diagnostic » pour savoir laquelle.");
+  showBanner("err", refused ? pairingClosedMessage(url) : agentDownMessage(url));
 }
 
 $("#btn-connect").addEventListener("click", () => tryReconnect(false));

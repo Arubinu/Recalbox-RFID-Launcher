@@ -4,6 +4,32 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.8.1]
+
+### Corrigé
+
+* **Le message d'échec distingue enfin les deux causes**, qui n'ont rien à voir :
+  * *« La Recalbox ne répond pas sur ws://… »* → l'agent n'est pas lancé
+    (script de démarrage absent ou Recalbox non redémarrée), avec la marche à
+    suivre : relancer le `.cmd`, redémarrer, recliquer ;
+  * *« La Recalbox répond mais l'appairage automatique est fermé »* → l'agent
+    tourne, la fenêtre a expiré : relancer le `.cmd` (il redemande un appairage)
+    ou `rfidctl pair`.
+
+### Ajouté
+
+* **Demande d'appairage par fichier** : le `.cmd` dépose
+  `system\rfid\pair-request` sur le partage ; au démarrage suivant, l'agent
+  ouvre la fenêtre d'appairage. Plus besoin de SSH pour appairer un nouveau PC,
+  même si un poste est déjà appairé.
+* Le `.cmd` **attend l'agent jusqu'à 30 s** quand le jeton existe déjà (cas du
+  « redémarrez puis relancez ») : il affiche `Agent pret.` et ouvre la page, ou
+  prévient que l'agent ne répond pas encore et qu'il faut redémarrer.
+* Le **diagnostic** lit désormais les journaux de la Recalbox depuis le partage :
+  `logs\auto-install.log` (ce que le démarrage a fait) et `logs\rfid.log`, et
+  indique si un poste est déjà appairé ou si une demande d'appairage est en
+  attente. C'est le rapport qui dit pourquoi l'agent ne tourne pas.
+
 ## [1.8.0]
 
 ### Ajouté

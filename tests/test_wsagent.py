@@ -267,6 +267,24 @@ class PairingTest(AgentTestCase):
         data = self.client().call("pair")
         self.assertEqual(data["token"], self.agent.token)
 
+    def test_demande_d_appairage_par_fichier(self):
+        # Le .cmd pose un simple fichier 'pair-request' : l'agent ouvre la fenetre
+        # meme si le poste est deja apparie (donc sans SSH).
+        path = os.path.join(self.home, "token.txt")
+        wsagent.ensure_token(path)
+        with open(os.path.join(self.home, wsagent.PAIRED_FILENAME), "w", encoding="utf-8") as handle:
+            handle.write("2024-01-01T00:00:00\n")
+        with open(os.path.join(self.home, wsagent.PAIR_REQUEST_FILENAME), "w", encoding="utf-8") as handle:
+            handle.write("\n")
+        self.start_agent()
+        self.assertTrue(wsagent.pairing_is_open(self.home), "fenetre non ouverte")
+        self.assertFalse(
+            os.path.isfile(os.path.join(self.home, wsagent.PAIR_REQUEST_FILENAME)),
+            "demande non consommee",
+        )
+        data = self.client().call("pair")
+        self.assertEqual(data["token"], self.agent.token)
+
     def test_auth_reussie_ferme_la_fenetre(self):
         self.start_agent()
         wsagent.open_pairing_window(self.home, 5)
