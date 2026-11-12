@@ -50,8 +50,65 @@ MAX_UPLOAD = 64 * 1024 * 1024
 AUTH_FAILURES = 3
 AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
+PAIRING_FILENAME = "pairing.json"
+PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
+
+
+# ---------------------------------------------------------------------------
+# Appairage : recuperer le jeton sans partage reseau ni copier-coller
+# ---------------------------------------------------------------------------
+def is_private_address(address) -> bool:
+    """Vrai si la connexion vient du reseau local (appairage autorise)."""
+    if isinstance(address, (tuple, list)):
+        address = address[0] if address else ""
+    host = str(address or "").split("%")[0].strip()
+    if host.startswith("::ffff:"):
+        host = host[7:]
+    if host in ("", "::1", "localhost"):
+        return True
+    if host.startswith(("127.", "10.", "192.168.")):
+        return True
+    if host.startswith("172."):
+        try:
+            return 16 <= int(host.split(".")[1]) <= 31
+        except (IndexError, ValueError):
+            return False
+    # IPv6 lien-local et uniques locales (fd00::/8, fc00::/7)
+    return host.startswith(("fe80:", "fd", "fc"))
+
+
+def pairing_path(home: str) -> str:
+    return os.path.join(home, PAIRING_FILENAME)
+
+
+def open_pairing_window(home: str, minutes: int = PAIRING_MINUTES) -> float:
+    """Ouvre une fenetre d'appairage (usage unique) et renvoie son echeance."""
+    os.makedirs(home, exist_ok=True)
+    until = time.time() + max(1, int(minutes)) * 60
+    try:
+        with open(pairing_path(home), "w", encoding="utf-8") as handle:
+            json.dump({"until": until}, handle)
+    except OSError:
+        pass
+    return until
+
+
+def close_pairing_window(home: str) -> None:
+    try:
+        os.remove(pairing_path(home))
+    except OSError:
+        pass
+
+
+def pairing_is_open(home: str) -> bool:
+    try:
+        with open(pairing_path(home), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return float(data.get("until") or 0) > time.time()
+    except (OSError, ValueError, TypeError):
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +276,12 @@ class Agent:
         self.db_path = db or os.path.join(self.home, DB_FILENAME)
         self.port = int(port) if port is not None else cfg.get_int("agent", "port", DEFAULT_PORT)
         self.token_path = os.path.join(self.home, TOKEN_FILENAME)
+        existed = os.path.isfile(self.token_path)
         self.token = ensure_token(self.token_path)
+        # Premier demarrage (jeton cree) : on laisse une fenetre d'appairage, le
+        # temps que la page recupere le jeton sans partage reseau.
+        if not existed:
+            open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
         self._install_lock = threading.Lock()
@@ -344,7 +406,12 @@ class Agent:
                 else None
             ),
             "install": {"running": self._install_running},
-            "agent": {"port": self.port, "token": self.token, "token_path": self.token_path},
+            "agent": {
+                "port": self.port,
+                "token": self.token,
+                "token_path": self.token_path,
+                "pairing": pairing_is_open(self.home),
+            },
         }
 
     # ------------------------------------------------------------- installation
@@ -440,9 +507,13 @@ class Agent:
         request_id = message.get("id")
         command = str(message.get("cmd") or "").strip()
 
+        if command == "pair":
+            return self._handle_pair(client, request_id)
+
         if command == "auth":
             if secrets.compare_digest(str(message.get("token") or ""), self.token):
                 client.authenticated = True
+                close_pairing_window(self.home)
                 client.send(
                     {
                         "id": request_id,
@@ -481,6 +552,30 @@ class Agent:
             if self.log:
                 self.log.error("Agent : erreur sur %s : %s" % (command, exc))
             client.send({"id": request_id, "ok": False, "error": "erreur interne : %s" % exc})
+        return True
+
+    # ------------------------------------------------------------- appairage
+    def _handle_pair(self, client, request_id) -> bool:
+        """Donne le jeton une seule fois, sur le reseau local, fenetre limitee."""
+        source = getattr(client, "address", "")
+        if not is_private_address(source):
+            client.send({
+                "id": request_id,
+                "ok": False,
+                "error": "appairage refuse : adresse hors du reseau local",
+            })
+            return True
+        if not pairing_is_open(self.home):
+            client.send({
+                "id": request_id,
+                "ok": False,
+                "error": "appairage ferme : redemarrez la Recalbox, ou lancez rfidctl pair",
+            })
+            return True
+        close_pairing_window(self.home)
+        if self.log:
+            self.log.warning("Agent : appairage depuis %s (jeton transmis une fois)" % (source,))
+        client.send({"id": request_id, "ok": True, "data": {"token": self.token}})
         return True
 
     # ------------------------------------------------------- commandes simples

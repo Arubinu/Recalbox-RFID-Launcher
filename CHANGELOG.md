@@ -4,6 +4,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.8.0]
+
+### Ajouté
+
+* **Appairage automatique : plus aucun jeton à recopier, plus aucun fichier à
+  chercher.** Au premier démarrage après l'installation, l'agent ouvre une
+  **fenêtre d'appairage de 15 minutes** ; la page récupère alors le jeton toute
+  seule quand on clique sur « Se connecter », sans partage réseau, sans
+  Explorateur Windows et sans copier-coller.
+  * transmission **une seule fois** (le fichier `pairing.json` est supprimé
+    dès qu'un client l'a obtenu, et à la première authentification réussie) ;
+  * **réseau local uniquement** (10/8, 172.16/12, 192.168/16, lien-local, `::1`) ;
+    toute autre adresse est refusée avec un message explicite ;
+  * `rfidctl pair` (en SSH) réouvre la fenêtre quand on veut appairer un autre
+    PC plus tard.
+* Le `.cmd` **ouvre la page même quand le jeton n'existe pas encore** : après le
+  redémarrage, il n'y a plus qu'à cliquer sur « Se connecter ».
+* Le statut de l'agent expose `agent.pairing` (fenêtre ouverte ou non).
+
+### Modifié
+
+* Étape 2 de la page : le champ « Jeton de sécurité » devient **facultatif**, le
+  texte explique que la page le récupère seule, et l'aide « La récupération
+  automatique ne marche pas ? » donne les solutions dans l'ordre (redémarrer,
+  `rfidctl pair`, puis copie manuelle en dernier recours).
+* Le diagnostic et la documentation ne renvoient plus à l'Explorateur en
+  première intention.
+
 ## [1.7.3]
 
 ### Ajouté

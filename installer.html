@@ -579,8 +579,9 @@
       <div class="step-title">
         <h2>Relier cette page à la Recalbox</h2>
         <p class="step-sub">
-          L'adresse est presque toujours <code>recalbox.local</code>. Le jeton est un
-          mot de passe unique, écrit par la Recalbox.
+          <b>Rien à recopier</b> : laissez le jeton vide et cliquez sur « Se connecter ».
+          La page le récupère toute seule sur la Recalbox (possible pendant les minutes qui
+          suivent son démarrage, une seule fois).
         </p>
       </div>
     </div>
@@ -591,8 +592,8 @@
       <label class="field"><span>Port</span>
         <input type="number" id="port" placeholder="8765" min="1" max="65535">
       </label>
-      <label class="field"><span>Jeton de sécurité</span>
-        <input type="password" id="token" placeholder="collez le jeton ici" autocomplete="off">
+      <label class="field"><span>Jeton de sécurité (facultatif)</span>
+        <input type="password" id="token" placeholder="laisser vide : récupéré tout seul" autocomplete="off">
       </label>
     </div>
     <div class="actions">
@@ -602,33 +603,23 @@
       <span class="muted small" id="connect-hint"></span>
     </div>
     <details>
-      <summary>Où trouver le jeton&nbsp;?</summary>
+      <summary>La récupération automatique ne marche pas&nbsp;?</summary>
       <p class="small muted">
-        <b>Le plus simple</b> : relancez le fichier
-        <code>recalbox-rfid-installation.cmd</code> téléchargé à l'étape 1. Il lit le
-        jeton, le copie dans votre presse-papiers et rouvre cette page déjà connectée.
+        <b>1. Redémarrez la Recalbox.</b> La transmission automatique du jeton n'est
+        ouverte que dans les 15 minutes qui suivent son démarrage — et une seule fois.
+        C'est aussi au démarrage que le programme s'installe et que l'agent se lance.
       </p>
       <p class="small muted">
-        Sinon, dans l'Explorateur Windows, collez cette adresse dans la barre du haut
-        (<kbd>Ctrl</kbd>+<kbd>V</kbd> puis <kbd>Entrée</kbd>) :
-        <code id="token-path">\\RECALBOX\share\system\rfid</code> — le fichier
-        <code>token.txt</code> s'y trouve. Ouvrez-le, copiez tout son contenu et
-        collez-le dans le champ « Jeton de sécurité ».
+        <b>2. Toujours rien ?</b> En SSH sur la Recalbox :
+        <code>rfidctl pair</code> réouvre la fenêtre, puis cliquez de nouveau sur
+        « Se connecter ». Il n'y a aucun fichier à chercher.
       </p>
       <p class="small muted">
-        Un jeton ressemble à <code>70C2633536122BAA</code> : <b>16 caractères</b>,
-        chiffres et lettres A à F, sans espace ni retour à la ligne. Si ce n'est pas
-        ça, ce n'est pas le bon fichier.
-      </p>
-      <p class="small muted">
-        <b>À savoir</b> : <code>\\RECALBOX</code> tout seul ne s'ouvre pas sous Windows
-        (« Windows ne peut pas accéder à \\RECALBOX ») — c'est normal, il faut toujours
-        le <code>\share</code>. Si le nom pose problème, utilisez l'adresse IP.
-      </p>
-      <p class="small muted">
-        Astuce : laissez le champ vide et cliquez sur « Se connecter » — la page
-        demandera une seule fois le dossier du partage et lira le jeton toute seule
-        (Edge ou Chrome, partage monté en lecteur).
+        <b>3. Dernier recours, à la main.</b> Le fichier <code>token.txt</code> est sur le
+        partage de la Recalbox. Le plus sûr : cliquer sur « Copier l'adresse du dossier »
+        ci-dessous, puis coller dans la barre de l'Explorateur (<kbd>Ctrl</kbd>+<kbd>V</kbd>
+        puis <kbd>Entrée</kbd>) — inutile de taper le chemin. Un jeton ressemble à
+        <code>70C2633536122BAA</code> : <b>16 caractères</b>, chiffres et lettres A à F.
       </p>
       <div class="row">
         <button class="secondary" id="btn-copy-path">Copier l'adresse du dossier</button>
@@ -999,15 +990,15 @@ function buildInstallerCmd(host, zipBytes) {
     "echo    OK",
     "",
     "echo 4/4 Termine.",
+    "if not exist \"%~dp0installer.html\" copy /y \"%WORK%\\recalbox-rfid\\installer.html\" \"%~dp0\" >nul 2>&1",
+    "set \"URLPATH=%~dp0\"",
+    "set \"URLPATH=!URLPATH:\\=/!\"",
+    "set \"URLPATH=!URLPATH: =%%20!\"",
     "if not exist \"%SHARE%\\system\\rfid\\token.txt\" goto redemarrer",
     "set /p TOKEN=<\"%SHARE%\\system\\rfid\\token.txt\"",
     "echo    Jeton : !TOKEN!  (copie dans le presse-papiers)",
     "clip < \"%SHARE%\\system\\rfid\\token.txt\"",
-    "if not exist \"%~dp0installer.html\" copy /y \"%WORK%\\recalbox-rfid\\installer.html\" \"%~dp0\" >nul 2>&1",
-    "if not exist \"%~dp0installer.html\" goto redemarrer",
-    "set \"URLPATH=%~dp0\"",
-    "set \"URLPATH=!URLPATH:\\=/!\"",
-    "set \"URLPATH=!URLPATH: =%%20!\"",
+    "if not exist \"%~dp0installer.html\" goto fin",
     "start \"\" \"file:///!URLPATH!installer.html#host=%PAGEHOST%&port=8765&token=!TOKEN!\"",
     "goto fin",
     ":redemarrer",
@@ -1015,8 +1006,10 @@ function buildInstallerCmd(host, zipBytes) {
     "echo    C'est au demarrage qu'elle installe le programme, demarre l'agent et",
     "echo    cree le jeton. Tant que ce n'est pas fait, la page ne peut pas se connecter.",
     "echo.",
-    "echo    Apres le redemarrage (environ 1 minute), relancez ce fichier :",
-    "echo    il lira le jeton et ouvrira la page deja connectee.",
+    "echo    La page va s'ouvrir : apres le redemarrage (environ 1 minute),",
+    "echo    cliquez simplement sur \"Se connecter\" -- elle recupere le jeton toute seule.",
+    "if not exist \"%~dp0installer.html\" goto fin",
+    "start \"\" \"file:///!URLPATH!installer.html#host=%PAGEHOST%\"",
     "goto fin",
     "",
     ":echec_acces",
@@ -1082,7 +1075,7 @@ class Agent {
     return this.socket && this.socket.readyState === WebSocket.OPEN;
   }
 
-  connect(url, token, timeoutMs = 8000) {
+  connect(url, token, timeoutMs = 8000, adopt = true) {
     return new Promise((resolve, reject) => {
       let socket;
       try {
@@ -1097,8 +1090,12 @@ class Agent {
       }, timeoutMs);
 
       socket.onopen = () => {
-        // Authentification obligatoire en premier message.
-        socket.send(JSON.stringify({ id: -1, cmd: "auth", token }));
+        // Sans jeton on demande l'appairage (une seule fois, reseau local),
+        // sinon on s'authentifie normalement.
+        const first = token
+          ? { id: -1, cmd: "auth", token }
+          : { id: -1, cmd: "pair" };
+        socket.send(JSON.stringify(first));
       };
       socket.onmessage = (event) => {
         let message;
@@ -1110,6 +1107,12 @@ class Agent {
         if (message.id === -1) {
           clearTimeout(timer);
           if (message.ok) {
+            if (!adopt) {
+              /* Appairage : la session ne sert plus, on la referme sans bruit. */
+              try { socket.close(); } catch (error) { /* ignore */ }
+              resolve(message.data || {});
+              return;
+            }
             this.socket = socket;
             socket.onmessage = (inner) => this.handle(inner);
             socket.onclose = () => this.handleClose();
@@ -1129,7 +1132,9 @@ class Agent {
       };
       socket.onclose = () => {
         clearTimeout(timer);
-        reject(new Error("connexion fermée par la Recalbox (jeton refusé ?)"));
+        reject(new Error(token
+          ? "connexion fermée par la Recalbox (jeton refusé ?)"
+          : "appairage fermé : la Recalbox ne propose plus de jeton automatique"));
       };
     });
   }
@@ -1639,21 +1644,52 @@ function downloadNetUse() {
   downloadText("diagnostic-recalbox.cmd", lines.join("\r\n"), "application/octet-stream");
 }
 
+/* --------------------------------------------------------------- appairage */
+/* Recupere le jeton sans partage reseau ni copier-coller : la Recalbox le
+   transmet une seule fois, dans les minutes qui suivent son redemarrage. */
+async function tryPairing(url) {
+  try {
+    $("#connect-hint").textContent = "Récupération automatique du jeton…";
+    const data = await agent.connect(url, null, 6000, false);
+    const token = String((data && data.token) || "").trim();
+    if (!token) throw new Error("jeton absent de la réponse");
+    $("#token").value = token;
+    $("#token-hint").textContent = "Jeton récupéré automatiquement depuis la Recalbox.";
+    return token;
+  } catch (error) {
+    return "";
+  }
+}
+
 async function tryReconnect(silent) {
   const settings = currentSettings();
+  const url = "ws://" + settings.host + ":" + settings.port;
+  let pairedNow = false;
+
   if (!settings.token) {
-    $("#connect-hint").textContent = "Recherche du jeton sur le partage…";
-    try {
-      const token = await readTokenFromShare();
-      $("#token").value = token;
-      settings.token = token;
+    const paired = await tryPairing(url);
+    if (paired) {
+      settings.token = paired;
       store.write(settings);
-    } catch (error) {
-      setLink(false, "déconnecté");
-      $("#connect-hint").textContent =
-        "Jeton introuvable (" + error.message + ") : utilisez « J'ai le fichier token.txt ».";
-      if (!silent) showBanner("err", "Jeton introuvable : " + error.message);
-      return;
+      showBanner("info", "Jeton récupéré automatiquement : rien à recopier.");
+    } else {
+      /* Dernier recours : lire token.txt sur le partage via le navigateur. */
+      $("#connect-hint").textContent = "Recherche du jeton sur le partage…";
+      try {
+        const token = await readTokenFromShare();
+        $("#token").value = token;
+        settings.token = token;
+        store.write(settings);
+      } catch (error) {
+        setLink(false, "déconnecté");
+        $("#connect-hint").textContent = "Aucune réponse de la Recalbox.";
+        showBanner("err",
+          "Impossible de joindre la Recalbox sur " + url + " et l'appairage automatique " +
+          "n'est pas ouvert. Le plus courant : elle n'a pas redémarré depuis l'installation " +
+          "(c'est au démarrage que l'agent se lance). Sinon, vérifiez l'adresse " +
+          "(essayez son adresse IP) ou cliquez sur « Faire un diagnostic ».");
+        return;
+      }
     }
   }
 
@@ -1662,13 +1698,8 @@ async function tryReconnect(silent) {
     $("#token-hint").textContent =
       "Un jeton Recalbox fait 16 caractères (chiffres et lettres A-F) ; celui-ci en fait " +
       settings.token.length + ". Le presse-papiers contient peut-être autre chose.";
-    showBanner("warn",
-      "Le jeton ne ressemble pas à un jeton Recalbox : il doit faire 16 caractères " +
-      "(chiffres et lettres A-F). Ouvrez \\\\RECALBOX\\share\\system\\rfid\\token.txt, " +
-      "copiez tout son contenu et collez-le à la place. La connexion est tentée quand même.");
   }
 
-  const url = "ws://" + settings.host + ":" + settings.port;
   const attempts = 3;
   let message = "";
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -1688,8 +1719,19 @@ async function tryReconnect(silent) {
       return;
     } catch (error) {
       message = error.message || String(error);
-      /* Jeton refuse : inutile de reessayer, la reponse est immediate. */
-      if (!/connexion impossible/i.test(message)) break;
+      /* Jeton refuse : on tente l'appairage (fenetre ouverte au 1er demarrage). */
+      if (!pairedNow && /jeton|refus/i.test(message)) {
+        pairedNow = true;
+        const paired = await tryPairing(url);
+        if (paired) {
+          settings.token = paired;
+          $("#token").value = paired;
+          store.write(settings);
+          attempt = 0;   /* on recommence le compte des tentatives */
+          continue;
+        }
+      }
+      if (!/connexion impossible|délai dépassé/i.test(message)) break;
       if (attempt < attempts) await new Promise((done) => setTimeout(done, 1500));
     }
   }
@@ -1700,9 +1742,9 @@ async function tryReconnect(silent) {
     ? "La Recalbox répond mais refuse le jeton."
     : "Aucune réponse de la Recalbox (" + settings.host + ").";
   showBanner("err", refused
-    ? "La Recalbox répond sur " + url + " mais refuse le jeton. Relisez " +
-      "\\\\RECALBOX\\share\\system\\rfid\\token.txt (16 caractères, chiffres et lettres A-F) " +
-      "et collez-le en entier."
+    ? "La Recalbox répond sur " + url + " mais refuse le jeton, et l'appairage automatique " +
+      "n'est plus ouvert. Sur la Recalbox (SSH) : rfidctl pair, puis cliquez de nouveau sur " +
+      "« Se connecter »."
     : "Impossible de joindre la Recalbox sur " + url + " après " + attempts + " tentatives. " +
       "Trois causes possibles : 1) elle n'a pas redémarré depuis l'installation (obligatoire " +
       "pour que l'agent démarre) ; 2) l'adresse est fausse (essayez son adresse IP) ; " +
@@ -1715,9 +1757,13 @@ $("#host").addEventListener("keydown", (event) => { if (event.key === "Enter") t
 $("#btn-netuse").addEventListener("click", downloadNetUse);
 
 /* Adresse du dossier du jeton, affichée et copiable en un clic. */
+function tokenFolderPath() {
+  return "\\\\" + currentSettings().host + "\\share\\system\\rfid";
+}
+
 function updateTokenPath() {
-  const host = currentSettings().host;
-  $("#token-path").textContent = "\\\\" + host + "\\share\\system\\rfid";
+  const node = $("#token-path");
+  if (node) node.textContent = tokenFolderPath();
 }
 
 async function copyText(text) {
@@ -1740,7 +1786,7 @@ async function copyText(text) {
 }
 
 $("#btn-copy-path").addEventListener("click", async () => {
-  const path = $("#token-path").textContent;
+  const path = tokenFolderPath();
   const done = await copyText(path);
   $("#token-hint").textContent = done
     ? "Adresse copiée : dans l'Explorateur, Ctrl+V dans la barre du haut puis Entrée."
@@ -1981,7 +2027,7 @@ async function copyPayload() {
     $("#connect-hint").textContent = "Dernière connexion enregistrée : cliquez sur « Se connecter ».";
   } else {
     $("#connect-hint").textContent =
-      "Pas encore de jeton : « Se connecter » ira le chercher sur le partage (une autorisation la première fois).";
+      "Laissez le jeton vide : il sera récupéré automatiquement sur la Recalbox.";
   }
   updateTokenPath();
   $("#host").addEventListener("input", updateTokenPath);

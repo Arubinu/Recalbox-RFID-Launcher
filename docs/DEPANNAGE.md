@@ -287,12 +287,14 @@ L'agent est lancé par le script permanent
 2. **La Recalbox a-t-elle redémarré depuis l'installation ?** C'est au démarrage
    que le programme est installé, que l'agent démarre et que `token.txt` est
    créé. Sans ce redémarrage, la page ne peut rien joindre.
-3. **L'adresse** : `recalbox.local` ou l'IP affichée dans
+3. **Le jeton** : laissez le champ **vide** et cliquez sur « Se connecter » —
+   l'agent le transmet une fois automatiquement dans les 15 minutes qui suivent
+   son démarrage. Sinon, en SSH : `rfidctl pair` réouvre la fenêtre. En dernier
+   recours seulement, le fichier est `\\RECALBOX\share\system\rfid\token.txt`
+   (16 caractères, chiffres et lettres A-F).
+4. **L'adresse** : `recalbox.local` ou l'IP affichée dans
    `RÉSEAU` > `INFORMATIONS` ; le port `8765`. En cas de doute :
-   « Faire un diagnostic » (bouton dans « Où trouver le jeton ? ») teste le port.
-4. **Le jeton** : `\\RECALBOX\share\system\rfid\token.txt`, 16 caractères
-   (chiffres et lettres A-F). Utilisez le bouton « J'ai le fichier token.txt »
-   plutôt qu'un copier-coller.
+   « Faire un diagnostic » (bouton dans l'aide du jeton) teste le port.
 5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
    un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
 

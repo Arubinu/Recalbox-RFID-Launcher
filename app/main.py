@@ -64,6 +64,7 @@ Commandes :
   frontend                 Verifie que Recalbox sait lancer un jeu par script
   self-update [URL]        Met a jour le programme (ZIP en ligne ou dossier copie)
   agent                    Demarre l'agent WebSocket (utilise par installer.html)
+  pair                     Reouvre la fenetre d'appairage (jeton transmis une fois)
   simulate                 Mode simulation (test sur PC, sans Raspberry Pi)
   config                   Affiche la configuration effective
   config-init              Ecrit le fichier de configuration par defaut
@@ -555,6 +556,19 @@ def cmd_self_update(options) -> int:
     return subprocess.call(command)
 
 
+def cmd_pair(options) -> int:
+    """Reouvre la fenetre d'appairage (le jeton se transmet une fois, en local)."""
+    from rfid.wsagent import PAIRING_MINUTES, open_pairing_window
+
+    until = open_pairing_window(options.home, PAIRING_MINUTES)
+    print("Fenetre d'appairage ouverte pour %d minutes." % PAIRING_MINUTES)
+    print("Sur le PC, ouvrez installer.html et cliquez sur « Se connecter » :")
+    print("le jeton sera transmis automatiquement, une seule fois.")
+    print("Echeance : %s" % time.strftime("%H:%M", time.localtime(until)))
+    print("(l'agent doit tourner : rfidctl start)")
+    return 0
+
+
 def cmd_agent(options) -> int:
     """Demarre l'agent WebSocket (utilise par installer.html)."""
     from rfid.wsagent import Agent
@@ -700,6 +714,7 @@ COMMANDS = {
     "frontend": cmd_frontend,
     "self-update": cmd_self_update,
     "agent": cmd_agent,
+    "pair": cmd_pair,
     "simulate": cmd_simulate,
 }
 

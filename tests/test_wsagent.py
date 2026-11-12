@@ -222,6 +222,57 @@ class TokenTest(AgentTestCase):
         self.assertTrue(wsagent.ensure_token(path))
 
 
+class PairingTest(AgentTestCase):
+    """Appairage : le jeton se transmet une fois, sans partage reseau."""
+
+    def test_jeton_transmis_une_seule_fois(self):
+        self.start_agent()
+        client = self.client()
+        data = client.call("pair")
+        token = (data or {}).get("token") or ""
+        self.assertEqual(token, self.agent.token)
+        self.assertRegex(token, r"^[0-9A-F]{16}$")
+        self.assertFalse(wsagent.pairing_is_open(self.home), "fenetre non refermee")
+
+        second = self.client()
+        with self.assertRaises(WsError) as context:
+            second.call("pair")
+        self.assertIn("appairage", str(context.exception).lower())
+
+    def test_jeton_recupere_permet_de_se_connecter(self):
+        self.start_agent()
+        client = self.client()
+        token = client.call("pair")["token"]
+        verifie = self.client()
+        verifie.call("auth", token=token)
+        self.assertEqual(verifie.call("version")["version"], wsagent.__version__)
+
+    def test_pas_d_appairage_si_le_jeton_existe_deja(self):
+        path = os.path.join(self.home, "token.txt")
+        wsagent.ensure_token(path)
+        self.start_agent()
+        client = self.client()
+        with self.assertRaises(WsError) as context:
+            client.call("pair")
+        self.assertIn("appairage", str(context.exception).lower())
+
+    def test_fenetre_ouverte_sur_demande(self):
+        self.start_agent()
+        client = self.client()
+        client.call("pair")
+        wsagent.open_pairing_window(self.home, 5)
+        data = self.client().call("pair")
+        self.assertEqual(data["token"], self.agent.token)
+
+    def test_adresse_privee(self):
+        self.assertTrue(wsagent.is_private_address(("192.168.42.46", 5555)))
+        self.assertTrue(wsagent.is_private_address(("10.0.0.2", 1)))
+        self.assertTrue(wsagent.is_private_address(("172.20.1.1", 1)))
+        self.assertTrue(wsagent.is_private_address(("127.0.0.1", 1)))
+        self.assertFalse(wsagent.is_private_address(("8.8.8.8", 53)))
+        self.assertFalse(wsagent.is_private_address(("172.40.0.1", 1)))
+
+
 class ProtocolTest(AgentTestCase):
     def test_handshake_non_websocket(self):
         self.start_agent()
