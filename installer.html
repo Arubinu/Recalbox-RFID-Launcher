@@ -1501,6 +1501,16 @@ function renderInstall(status) {
     item("Emplacement", status.home)
   );
   const install = status.install || {};
+  /* Le service tourne encore l'ancien code : c'est la seule chose a faire, et
+     c'est exactement ce qui manquait quand une mise a jour semblait sans effet. */
+  if (!install.running && installed && serviceVersion && serviceVersion !== installed) {
+    $("#install-hint").textContent =
+      "Le service tourne encore en " + serviceVersion + " alors que le programme est en " +
+      installed + " : cliquez sur « Redémarrer » dans la ligne Service (juste en dessous) " +
+      "pour qu'il charge la nouvelle version.";
+  } else if (!install.running) {
+    $("#install-hint").textContent = "";
+  }
   $("#btn-install").disabled = busy || install.running;
   $("#btn-upload").disabled = busy || install.running;
   $("#btn-url").disabled = busy || install.running || !$("#update-url").value.trim();

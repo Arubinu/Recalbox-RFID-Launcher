@@ -4,6 +4,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.4]
+
+### Corrigé
+
+* **Après « Installer / mettre à jour », le service continuait de tourner avec
+  l'ancien code.** L'installation se fait avec `--no-restart` et seul l'agent se
+  rechargeait : la Recalbox affichait donc « installé 2.5.2 » avec un service
+  encore en 2.5.0, jusqu'au redémarrage suivant. Conséquence visible : le
+  **test du lecteur échouait** (« le lecteur n'a pas répondu au test »), puisque
+  c'est le service qui possède le bus SPI et qu'il ne connaissait pas la
+  commande. Le service est maintenant relancé juste après l'installation, avec
+  trois tests unitaires dédiés.
+
+### Note
+
+* Si votre Recalbox affiche deux versions différentes (onglet Maintenance), un
+  clic sur « Installer / mettre à jour » suffit désormais à tout aligner, sans
+  redémarrage de la machine.
+
 ## [2.5.3]
 
 ### Ajouté

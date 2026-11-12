@@ -681,6 +681,36 @@ class InstallSkipTest(AgentTestCase):
         self.assertEqual(data.get("installed_version"), "2.5.2")
 
 
+class RestartAfterInstallTest(AgentTestCase):
+    """Apres une installation, le service doit recharger le nouveau code."""
+
+    def setUp(self):
+        super().setUp()
+        os.makedirs(os.path.join(self.home, "app"), exist_ok=True)
+        with open(os.path.join(self.home, "app", "main.py"), "w", encoding="utf-8") as handle:
+            handle.write("#\n")
+        self.service = wsagent.Agent(Config(self.config_path), None, home=self.home, port=0)
+
+    def test_service_arrete_demarre(self):
+        recorded = {}
+        with mock.patch.object(wsagent.subprocess, "run", lambda command, **k: recorded.update(command=command)):
+            self.service._restart_service()
+        self.assertEqual(recorded["command"][2], "start")
+
+    def test_service_actif_redemarre(self):
+        with open(os.path.join(self.home, "rfid.pid"), "w", encoding="ascii") as handle:
+            handle.write(str(os.getpid()))
+        recorded = {}
+        with mock.patch.object(wsagent.subprocess, "run", lambda command, **k: recorded.update(command=command)):
+            self.service._restart_service()
+        self.assertEqual(recorded["command"][2], "restart")
+
+    def test_sans_programme_aucun_lancement(self):
+        os.remove(os.path.join(self.home, "app", "main.py"))
+        with mock.patch.object(wsagent.subprocess, "run", side_effect=AssertionError("lancement")):
+            self.service._restart_service()
+
+
 class ReaderTestCommandTest(AgentTestCase):
     """Le test du lecteur passe par le service (seul proprietaire du bus SPI)."""
 

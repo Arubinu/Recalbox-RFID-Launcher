@@ -500,18 +500,34 @@ class Agent:
             if code == 0:
                 self._after_install(client)
 
-    def _after_install(self, client: _Client) -> None:
-        # Démarre le service (le script permanent le fera aussi au prochain boot).
+    def _restart_service(self) -> None:
+        """Relance le service pour qu'il charge le code fraichement installe.
+
+        ``install.sh`` est appele avec ``--no-restart`` : sans cette relance, le
+        service continuait de tourner avec l'ancien code (et ne connaissait donc
+        pas les nouvelles commandes) jusqu'au redemarrage suivant.
+        """
+        programme = self.main_py()
+        if not os.path.isfile(programme):
+            return
+        action = "restart" if process_alive(read_pid(self.home)) else "start"
         try:
-            if os.path.isfile(self.main_py()):
-                subprocess.Popen(
-                    [sys.executable, self.main_py(), "start", "--home", self.home],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-        except OSError:
-            pass
+            subprocess.run(
+                [sys.executable, programme, action, "--home", self.home],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=45,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            if self.log:
+                self.log.warning("Relance du service apres installation impossible : %s" % exc)
+            return
+        if self.log:
+            self.log.info("Service relance apres installation (%s)" % action)
+
+    def _after_install(self, client: _Client) -> None:
+        # Le service doit repartir avec le nouveau code (agent, lui, se re-execute).
+        self._restart_service()
         client.send({"event": "restart_agent", "in": 2})
         threading.Timer(2.0, self._reexec).start()
 
