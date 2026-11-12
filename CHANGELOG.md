@@ -4,6 +4,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.3]
+
+### Ajouté
+
+* **Schéma de câblage, en image.** Une figure générée par
+  `python tools/build_cablage.py` montre les neuf broches du connecteur à
+  utiliser, les huit broches du module RC522 en face, et le bouton poussoir.
+  Elle est visible :
+  * dans l'onglet **Matériel** de `installer.html` (replié sous
+    « Le branchement, en image »), sans aucune ressource externe ;
+  * dans le `README.md` et `docs/CABLAGE.md` (`docs/cablage.svg`).
+
+### Corrigé
+
+* **Le numéro de version affiché était celui de la Recalbox, pas celui de la
+  page.** L'en-tête affiche maintenant deux informations distinctes — « page
+  2.5.3 » et « Recalbox 2.5.x » — et la seconde passe en rouge quand les deux
+  diffèrent, avec l'explication en infobulle.
+* **Le bandeau « connexion perdue » proposait « Réessayer maintenant », qui ne
+  pouvait pas réussir** quand le secret de session était perdu (redémarrage
+  complet). Il propose désormais **« Autoriser cet ordinateur »** : l'appui de
+  3 secondes se fait depuis le tableau de bord, sans repasser par l'écran de
+  connexion. Le bouton « Réessayer » reste pour les coupures réseau ordinaires.
+* **« Le lecteur n'a pas répondu au test (service bloqué ?) » est remplacé par
+  la vraie cause** : quand le service tourne encore une version plus ancienne
+  que l'agent (il ne connaît pas la commande), le message le dit et renvoie vers
+  « Installer / mettre à jour ».
+
 ## [2.5.2]
 
 ### Corrigé

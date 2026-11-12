@@ -102,6 +102,7 @@
   .chip.off { color: #ffc0be; border-color: rgba(239, 83, 80, .3); background: rgba(239, 83, 80, .12); }
   .chip.off .dot { background: var(--err); box-shadow: 0 0 0 3px rgba(239, 83, 80, .16); }
   .chip .version { color: var(--faint); font-weight: 500; }
+  .version.diff { color: #ffc0be; }
 
   /* ------------------------------------------------------------- messages */
   /* Sans cette regle, un simple `display: flex` sur un composant annule
@@ -288,6 +289,8 @@
     font-size: 12.5px; color: var(--muted); line-height: 1.5;
   }
   .auto-note svg { width: 17px; height: 17px; flex: 0 0 auto; color: #9db0ff; margin-top: 1px; }
+  .cablage { margin: 12px 0 10px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line-2); }
+  .cablage svg { display: block; width: 100%; height: auto; }
 
   /* ------------------------------------------------------------- boutons */
   button {
@@ -502,7 +505,8 @@
       </span>
     </div>
     <span class="grow"></span>
-    <span class="version" id="version" hidden></span>
+    <span class="version" id="version" title="Version de cette page"></span>
+    <span class="version" id="box-version" title="Version installée sur la Recalbox" hidden></span>
     <span class="chip off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
     <button class="ghost tiny hidden" id="btn-disconnect" type="button">Déconnecter</button>
     <button class="ghost tiny" id="btn-help" type="button" aria-label="Aide">?</button>
@@ -515,6 +519,7 @@
       <span id="offline-text">Connexion perdue.</span>
       <span class="grow"></span>
       <button class="tiny secondary" id="btn-retry" type="button">Réessayer maintenant</button>
+      <button class="tiny" id="btn-reauth" type="button" hidden>Autoriser cet ordinateur</button>
     </div>
   </div>
 
@@ -748,7 +753,116 @@
             <p class="hint" id="reader-test-hint"></p>
             <pre class="log" id="reader-test-log" hidden></pre>
             <details>
-              <summary>Comment brancher le lecteur et le bouton</summary>
+              <summary>Le branchement, en image</summary>
+              <div class="cablage">
+                <!-- cablage:debut (genere par tools/build_cablage.py) -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="cablage-titre" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+                <title id="cablage-titre">Branchement du lecteur RC522 et du bouton poussoir sur le Raspberry Pi</title>
+                <rect x="0" y="0" width="940" height="588" rx="14" fill="#f8f9fa"/>
+                <text x="30" y="42" font-size="21" font-weight="700" fill="#212529">Branchement du lecteur RC522 et du bouton</text>
+                <text x="30" y="66" font-size="13.5" fill="#495057">Le lecteur se branche sur le bus SPI, le bouton entre une broche GPIO et la masse. Aucune résistance.</text>
+                <rect x="30" y="78" width="470" height="26" rx="7" fill="#fff5f5" stroke="#ffc9c9"/>
+                <text x="42" y="96" font-size="13" font-weight="600" fill="#c92a2a">⚠ 3,3 V uniquement : le 5 V détruit le module et la carte.</text>
+                <rect x="30" y="120" width="400" height="356" rx="12" fill="#ffffff" stroke="#dee2e6"/>
+                <text x="46" y="146" font-size="15" font-weight="700" fill="#212529">Raspberry Pi — broches à utiliser</text>
+                <text x="46" y="164" font-size="11.5" fill="#868e96">numéros du connecteur 40 broches, vue de dessus</text>
+                <rect x="46" y="168" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="183" r="6" fill="#e03131"/>
+                <text x="80" y="188" font-size="13" font-weight="700" fill="#212529">broche 1</text>
+                <text x="162" y="188" font-size="12.5" fill="#495057">3V3</text>
+                <text x="398" y="188" font-size="12.5" font-weight="600" fill="#e03131" text-anchor="end">3.3V</text>
+                <rect x="46" y="200" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="215" r="6" fill="#6c757d"/>
+                <text x="80" y="220" font-size="13" font-weight="700" fill="#212529">broche 6</text>
+                <text x="162" y="220" font-size="12.5" fill="#495057">GND</text>
+                <text x="398" y="220" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">GND</text>
+                <rect x="46" y="232" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="247" r="6" fill="#f08c00"/>
+                <text x="80" y="252" font-size="13" font-weight="700" fill="#212529">broche 24</text>
+                <text x="162" y="252" font-size="12.5" fill="#495057">GPIO8 · CE0</text>
+                <text x="398" y="252" font-size="12.5" font-weight="600" fill="#f08c00" text-anchor="end">SDA</text>
+                <rect x="46" y="264" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="279" r="6" fill="#2f9e44"/>
+                <text x="80" y="284" font-size="13" font-weight="700" fill="#212529">broche 23</text>
+                <text x="162" y="284" font-size="12.5" fill="#495057">GPIO11 · SCLK</text>
+                <text x="398" y="284" font-size="12.5" font-weight="600" fill="#2f9e44" text-anchor="end">SCK</text>
+                <rect x="46" y="296" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="311" r="6" fill="#1971c2"/>
+                <text x="80" y="316" font-size="13" font-weight="700" fill="#212529">broche 19</text>
+                <text x="162" y="316" font-size="12.5" fill="#495057">GPIO10 · MOSI</text>
+                <text x="398" y="316" font-size="12.5" font-weight="600" fill="#1971c2" text-anchor="end">MOSI</text>
+                <rect x="46" y="328" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="343" r="6" fill="#7048e8"/>
+                <text x="80" y="348" font-size="13" font-weight="700" fill="#212529">broche 21</text>
+                <text x="162" y="348" font-size="12.5" fill="#495057">GPIO9 · MISO</text>
+                <text x="398" y="348" font-size="12.5" font-weight="600" fill="#7048e8" text-anchor="end">MISO</text>
+                <rect x="46" y="360" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="375" r="6" fill="#0c8599"/>
+                <text x="80" y="380" font-size="13" font-weight="700" fill="#212529">broche 22</text>
+                <text x="162" y="380" font-size="12.5" fill="#495057">GPIO25</text>
+                <text x="398" y="380" font-size="12.5" font-weight="600" fill="#0c8599" text-anchor="end">RST</text>
+                <rect x="46" y="392" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="407" r="6" fill="#6c757d"/>
+                <text x="80" y="412" font-size="13" font-weight="700" fill="#212529">broche 9</text>
+                <text x="162" y="412" font-size="12.5" fill="#495057">GND</text>
+                <text x="398" y="412" font-size="12.5" font-weight="600" fill="#6c757d" text-anchor="end">bouton · masse</text>
+                <rect x="46" y="424" width="368" height="30" rx="8" fill="#f1f3f5"/>
+                <circle cx="64" cy="439" r="6" fill="#d6336c"/>
+                <text x="80" y="444" font-size="13" font-weight="700" fill="#212529">broche 11</text>
+                <text x="162" y="444" font-size="12.5" fill="#495057">GPIO17</text>
+                <text x="398" y="444" font-size="12.5" font-weight="600" fill="#d6336c" text-anchor="end">bouton · signal</text>
+                <rect x="462" y="120" width="448" height="212" rx="12" fill="#ffffff" stroke="#dee2e6"/>
+                <text x="478" y="146" font-size="15" font-weight="700" fill="#212529">Lecteur RC522 (13,56 MHz)</text>
+                <text x="478" y="164" font-size="11.5" fill="#868e96">les 8 broches du module, dans l’ordre du connecteur</text>
+                <rect x="478" y="176" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="184" r="5" fill="#f08c00"/>
+                <text x="508" y="188" font-size="12.5" font-weight="700" fill="#212529">SDA</text>
+                <text x="572" y="188" font-size="12.5" fill="#495057">→ broche 24 du Pi</text>
+                <rect x="478" y="194" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="202" r="5" fill="#2f9e44"/>
+                <text x="508" y="206" font-size="12.5" font-weight="700" fill="#212529">SCK</text>
+                <text x="572" y="206" font-size="12.5" fill="#495057">→ broche 23 du Pi</text>
+                <rect x="478" y="212" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="220" r="5" fill="#1971c2"/>
+                <text x="508" y="224" font-size="12.5" font-weight="700" fill="#212529">MOSI</text>
+                <text x="572" y="224" font-size="12.5" fill="#495057">→ broche 19 du Pi</text>
+                <rect x="478" y="230" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="238" r="5" fill="#7048e8"/>
+                <text x="508" y="242" font-size="12.5" font-weight="700" fill="#212529">MISO</text>
+                <text x="572" y="242" font-size="12.5" fill="#495057">→ broche 21 du Pi</text>
+                <rect x="478" y="248" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="256" r="5" fill="#adb5bd"/>
+                <text x="508" y="260" font-size="12.5" font-weight="700" fill="#212529">IRQ</text>
+                <text x="572" y="260" font-size="12.5" fill="#868e96">→ non connectée</text>
+                <rect x="478" y="266" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="274" r="5" fill="#6c757d"/>
+                <text x="508" y="278" font-size="12.5" font-weight="700" fill="#212529">GND</text>
+                <text x="572" y="278" font-size="12.5" fill="#495057">→ broche 6 du Pi</text>
+                <rect x="478" y="284" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="292" r="5" fill="#0c8599"/>
+                <text x="508" y="296" font-size="12.5" font-weight="700" fill="#212529">RST</text>
+                <text x="572" y="296" font-size="12.5" fill="#495057">→ broche 22 du Pi</text>
+                <rect x="478" y="302" width="416" height="17" rx="5" fill="#f1f3f5"/>
+                <circle cx="494" cy="310" r="5" fill="#e03131"/>
+                <text x="508" y="314" font-size="12.5" font-weight="700" fill="#212529">3.3V</text>
+                <text x="572" y="314" font-size="12.5" fill="#495057">→ broche 1 du Pi</text>
+                <rect x="462" y="348" width="448" height="168" rx="12" fill="#ffffff" stroke="#dee2e6"/>
+                <text x="478" y="374" font-size="15" font-weight="700" fill="#212529">Bouton poussoir</text>
+                <text x="478" y="392" font-size="11.5" fill="#868e96">appui court = associer · appui long = effacer · 3 s = autoriser</text>
+                <text x="508" y="432" font-size="12" fill="#495057">borne 1 → broche 11 (GPIO17)</text>
+                <path d="M508 448 h34" stroke="#d6336c" stroke-width="3" fill="none"/>
+                <circle cx="508" cy="448" r="4" fill="#d6336c"/>
+                <path d="M542 448 q13 -20 28 -2" stroke="#212529" stroke-width="2.5" fill="none"/>
+                <path d="M572 448 h34" stroke="#6c757d" stroke-width="3" fill="none"/>
+                <circle cx="606" cy="448" r="4" fill="#6c757d"/>
+                <text x="626" y="464" font-size="12" fill="#495057">borne 2 → broche 9 (GND)</text>
+                <text x="478" y="502" font-size="12" font-weight="600" fill="#2f9e44">aucune résistance : le pull-up interne du Pi suffit</text>
+                <text x="30" y="536" font-size="12.5" fill="#495057">• Le module doit être alimenté en 3,3 V (broche 1) et partager la masse (broche 6 ou 9).</text>
+                <text x="30" y="556" font-size="12.5" fill="#495057">• MISO (broche 21) et MOSI (broche 19) ne se croisent pas : MISO vers MISO, MOSI vers MOSI.</text>
+                <text x="30" y="576" font-size="12.5" fill="#495057">• Si vos badges ne sont pas lus, lancez « Tester avec un badge » : le test dit si une carte répond.</text>
+                </svg>
+                <!-- cablage:fin -->
+              </div>
               <p class="small muted">
                 Lecteur RC522 sur le bus SPI (CE0, SCLK, MOSI, MISO, RST sur GPIO25) et bouton
                 poussoir entre une broche GPIO et la masse. Le détail des broches est dans
@@ -847,6 +961,13 @@ function readPayload() {
   if (!node) return null;
   try { return JSON.parse(node.textContent); } catch (error) { return null; }
 }
+
+/* Version de CETTE page (vide quand installer.html est ouvert sans contenu
+   embarque) : elle ne doit jamais etre confondue avec celle de la Recalbox. */
+const PAGE_VERSION = (() => {
+  const payload = readPayload();
+  return payload && payload.version ? String(payload.version) : "";
+})();
 
 function base64ToBytes(text) {
   const binary = atob(String(text).replace(/\s+/g, ""));
@@ -1314,8 +1435,6 @@ function setConnected(ui) {
   setLink(true, "connecté");
   $("#app").classList.remove("hidden");
   $("#connect-card").classList.add("hidden");
-  $("#version").textContent = "v" + (ui.version || state?.app_version || "");
-  $("#version").hidden = false;
   $("#btn-disconnect").classList.remove("hidden");
   /* Une connexion reussie efface les messages de coupure precedents. */
   clearOffline();
@@ -1326,8 +1445,17 @@ function setConnected(ui) {
 /* ------------------------------------------------------------------- rendu */
 function render(status) {
   state = status;
-  $("#version").textContent = "v" + status.app_version +
-    (status.installed && status.installed_version ? " (installé : " + status.installed_version + ")" : "");
+  /* Deux versions differentes, deux affichages distincts : cette page d'un cote,
+     la Recalbox de l'autre (sinon on lit un numero qui n'est pas le sien). */
+  const box = status.app_version || "?";
+  const ecart = Boolean(PAGE_VERSION) && box !== PAGE_VERSION;
+  $("#box-version").hidden = false;
+  $("#box-version").textContent = "Recalbox " + box;
+  $("#box-version").classList.toggle("diff", ecart);
+  $("#box-version").title = ecart
+    ? "Cette page est en " + PAGE_VERSION + " et la Recalbox en " + box +
+      " : mettez-la à jour dans l'onglet Maintenance."
+    : "Version installée sur la Recalbox";
 
   const running = status.service && status.service.running;
   setLink(true, running ? "connecté · service actif" : "connecté · service arrêté");
@@ -2249,6 +2377,12 @@ async function copyPayload() {
   const saved = store.read();
   $("#host").value = saved.host || "recalbox.local";
   $("#port").value = saved.port || 8765;
+  if (PAGE_VERSION) {
+    $("#version").textContent = "page " + PAGE_VERSION;
+    $("#version").title = "Version de cette page (aucune installation n'est nécessaire pour la mettre à jour)";
+  } else {
+    $("#version").hidden = true;
+  }
   if ($("#token")) $("#token").value = saved.token || "";
 
   // Paramètres passés dans l'URL (#host=…&port=…), par exemple par
@@ -2351,6 +2485,9 @@ function clearOffline() {
   document.body.classList.remove("is-offline");
   const strip = $("#offline");
   if (strip) { strip.hidden = true; strip.classList.remove("ok"); }
+  /* Etat par defaut du bandeau : nouvelle tentative, pas de reautorisation. */
+  if ($("#btn-retry")) $("#btn-retry").hidden = false;
+  if ($("#btn-reauth")) $("#btn-reauth").hidden = true;
 }
 
 function goOffline() {
@@ -2399,9 +2536,11 @@ async function attemptReconnect() {
       /* Inutile de spammer : la Recalbox a redemarre, il faut un nouvel appui.
          On arrete aussi le compte a rebours, sinon il reecrit ce message. */
       stopRetries();
+      $("#btn-retry").hidden = true;
+      $("#btn-reauth").hidden = false;
       showOfflineStrip("warn",
-        "La Recalbox a redémarré : ouvrez « Se connecter » et gardez le bouton appuyé " +
-        "3 secondes pour rétablir l'accès.");
+        "La Recalbox a redémarré : cliquez sur « Autoriser cet ordinateur », puis gardez " +
+        "le bouton du boîtier appuyé 3 secondes.");
       setLink(false, "autorisation expirée");
       return;
     }
@@ -2410,6 +2549,39 @@ async function attemptReconnect() {
     scheduleReconnect(delay);
   }
 }
+
+/* Le secret a expire (redemarrage complet) : on refait l'appui depuis le
+   bandeau, sans renvoyer l'utilisateur a l'ecran de connexion. */
+async function reautoriser() {
+  const bouton = $("#btn-reauth");
+  const settings = currentSettings();
+  const url = "ws://" + settings.host + ":" + settings.port;
+  bouton.disabled = true;
+  showOfflineStrip("warn", "Gardez le bouton du boîtier appuyé 3 secondes…");
+  try {
+    const pairing = await pairWithButton(url, (seconds, hold) => {
+      showOfflineStrip("warn", "Gardez le bouton du boîtier appuyé " + hold +
+        " s (" + seconds + " s)…");
+    });
+    if (!pairing.token) throw new Error(pairing.error || "appui non détecté");
+    settings.token = pairing.token;
+    $("#token").value = pairing.token;
+    store.write(settings);
+    await agent.connect(url, settings.token, 6000);
+    await goOnline();
+  } catch (error) {
+    stopRetries();
+    showOfflineStrip("warn",
+      "Autorisation non accordée : " + ((error && error.message) || error) +
+      ". Vous pouvez réessayer.");
+    $("#btn-reauth").hidden = false;
+    $("#btn-retry").hidden = true;
+  } finally {
+    bouton.disabled = false;
+  }
+}
+
+$("#btn-reauth").addEventListener("click", reautoriser);
 
 async function goOnline() {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }

@@ -1,5 +1,8 @@
 # Câblage
 
+![Branchement du lecteur RC522 et du bouton](cablage.svg)
+
+
 ## Le lecteur RC522 (nf-SL001)
 
 Le module utilise le bus **SPI0** du Raspberry Pi et doit être alimenté en

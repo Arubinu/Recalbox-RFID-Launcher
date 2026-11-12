@@ -33,7 +33,11 @@ Scannez un badge RFID → le jeu Recalbox associé se lance.
 
 ## 2. Câblage (5 minutes)
 
-Voir le schéma détaillé : [`docs/CABLAGE.md`](docs/CABLAGE.md).
+![Branchement du lecteur RC522 et du bouton](docs/cablage.svg)
+
+*Figure générée par `python tools/build_cablage.py` — le même schéma est dans
+l'onglet **Matériel** de `installer.html`. Détails et variantes :
+[`docs/CABLAGE.md`](docs/CABLAGE.md).*
 
 | RC522 | Broche RC522 | Raspberry Pi (GPIO BCM) | Broche physique |
 | --- | --- | --- | --- |

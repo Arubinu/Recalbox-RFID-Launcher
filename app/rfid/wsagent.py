@@ -933,6 +933,15 @@ class Agent:
         if not process_alive(read_pid(self.home)):
             raise RuntimeError("le service RFID n'est pas demarre : demarrez-le dans "
                                "l'onglet Maintenance, puis relancez le test")
+        # Un service plus ancien ne connait pas encore cette commande : le dire
+        # clairement plutot que d'attendre puis annoncer un blocage.
+        service_version = str((read_status(self.home) or {}).get("version") or "")
+        if version_key(service_version) and version_key(service_version) < version_key(__version__):
+            raise RuntimeError(
+                "le service du lecteur tourne encore en %s alors que l'agent est en %s : "
+                "cliquez sur « Installer / mettre à jour » (ou redémarrez le service), "
+                "puis relancez le test" % (service_version, __version__)
+            )
         path = os.path.join(self.home, READER_TEST_FILENAME)
         try:
             os.remove(path)
@@ -949,7 +958,11 @@ class Agent:
             except (OSError, ValueError):
                 pass
             time.sleep(0.25)
-        raise RuntimeError("le lecteur n'a pas repondu au test (service bloque ?)")
+        service_version = str((read_status(self.home) or {}).get("version") or "")
+        raise RuntimeError(
+            "le lecteur n'a pas répondu au test : le service %s n'a pas réagi "
+            "(est-il bien démarré ?)" % (service_version or "inconnu")
+        )
 
     def _cmd_scan(self, client, message):
         uid = str(message.get("uid") or "")
