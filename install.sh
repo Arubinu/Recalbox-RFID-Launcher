@@ -13,7 +13,7 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="1.8.2"
+VERSION="1.8.3"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
@@ -307,17 +307,39 @@ else
     if [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG" ]; then
         if grep -q '^[[:space:]]*dtparam=spi=on' "$BOOT_CONFIG" 2>/dev/null; then
             ok "SPI deja configure dans $BOOT_CONFIG"
+            NEED_REBOOT=1
         else
-            cp -f "$BOOT_CONFIG" "$BOOT_CONFIG.bak-rfid-launcher"
-            {
+            # Sur Recalbox 9/10, /boot est monte en lecture seule : on le remonte
+            # en ecriture le temps de la modification, puis on le remet en lecture.
+            BOOT_RW=0
+            if touch "$BOOT_CONFIG.rfid-test" 2>/dev/null; then
+                rm -f "$BOOT_CONFIG.rfid-test" 2>/dev/null
+            elif mount -o remount,rw /boot 2>/dev/null; then
+                BOOT_RW=1
+                ok "Partition /boot remontee en ecriture"
+            fi
+            if cp -f "$BOOT_CONFIG" "$BOOT_CONFIG.bak-rfid-launcher" 2>/dev/null; then
+                say "  Sauvegarde : $BOOT_CONFIG.bak-rfid-launcher"
+            fi
+            if {
                 printf '\n# Active le bus SPI pour le lecteur RFID RC522\n'
                 printf '# (ajoute par %s)\n' "$APP_NAME"
                 printf 'dtparam=spi=on\n'
-            } >> "$BOOT_CONFIG"
-            ok "SPI active dans $BOOT_CONFIG"
-            say "  Sauvegarde : $BOOT_CONFIG.bak-rfid-launcher"
+            } >> "$BOOT_CONFIG" 2>/dev/null; then
+                ok "SPI active dans $BOOT_CONFIG"
+                NEED_REBOOT=1
+            else
+                warn "Impossible d'ecrire dans $BOOT_CONFIG (lecture seule)."
+                say "  Activez le SPI a la main, puis redemarrez :"
+                say "    - en SSH : mount -o remount,rw /boot, ajoutez 'dtparam=spi=on'"
+                say "      a $BOOT_CONFIG, puis mount -o remount,ro /boot ;"
+                say "    - ou depuis un PC : partition 'boot' de la carte SD, meme ligne."
+                say "  Le reste de l'installation est termine malgre cela."
+            fi
+            if [ "$BOOT_RW" = "1" ]; then
+                mount -o remount,ro /boot 2>/dev/null || true
+            fi
         fi
-        NEED_REBOOT=1
     else
         warn "Impossible d'activer le SPI automatiquement."
         say "  Ajoutez cette ligne dans $BOOT_CONFIG :"

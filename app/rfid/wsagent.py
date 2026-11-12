@@ -106,7 +106,8 @@ def close_pairing_window(home: str) -> None:
 
 def pairing_is_open(home: str) -> bool:
     try:
-        with open(pairing_path(home), "r", encoding="utf-8") as handle:
+        # utf-8-sig : tolere le BOM qu'un editeur Windows peut ajouter.
+        with open(pairing_path(home), "r", encoding="utf-8-sig") as handle:
             data = json.load(handle)
         return float(data.get("until") or 0) > time.time()
     except (OSError, ValueError, TypeError):
@@ -136,11 +137,12 @@ def consume_pair_request(home: str) -> bool:
 def ensure_token(path: str) -> str:
     """Lit (ou crée) le jeton d'accès de l'agent."""
     try:
-        with open(path, "r", encoding="ascii") as handle:
+        # utf-8-sig : un token.txt edite avec Notepad peut commencer par un BOM.
+        with open(path, "r", encoding="utf-8-sig") as handle:
             token = handle.read().strip()
         if token:
             return token
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         pass
 
     token = secrets.token_hex(8).upper()
@@ -593,11 +595,15 @@ class Agent:
                 "error": "appairage refuse : adresse hors du reseau local",
             })
             return True
+        # Une demande explicite (fichier 'pair-request' pose par le .cmd) ouvre
+        # la fenetre immediatement, sans redemarrage.
+        consume_pair_request(self.home)
         if not pairing_is_open(self.home):
             client.send({
                 "id": request_id,
                 "ok": False,
-                "error": "appairage ferme : redemarrez la Recalbox, ou lancez rfidctl pair",
+                "error": "appairage ferme : relancez recalbox-rfid-installation.cmd, "
+                         "ou lancez rfidctl pair sur la Recalbox",
             })
             return True
         close_pairing_window(self.home)

@@ -4,6 +4,28 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.8.3]
+
+### Corrigé (Recalbox 10 : installation en échec et service arrêté)
+
+* **`/boot` est monté en lecture seule sur Recalbox 9/10** : `install.sh`
+  échouait en écrivant `dtparam=spi=on` (`cp: can't create … : Read-only file
+  system`), `set -e` interrompait tout, le script renvoyait 1 et **le service
+  n'était jamais démarré** (d'où un agent présent mais aucun lecteur de badges).
+  * `install.sh` remonte désormais `/boot` en écriture (`mount -o remount,rw`),
+    écrit la ligne, puis le remet en lecture seule ;
+  * en cas d'échec d'écriture, il **avertit et continue** au lieu de tout
+    interrompre, avec les instructions manuelles (`mount` en SSH ou partition
+    `boot` de la carte SD).
+* **Le script de démarrage lance le service même si l'installation retourne une
+  erreur** : un échec partiel ne laisse plus la Recalbox sans lecteur.
+
+### Ajouté
+
+* L'agent honore la **demande d'appairage (`pair-request`) au moment où la page
+  demande le jeton**, plus seulement au démarrage : relancer le `.cmd` suffit à
+  réouvrir l'appairage, sans redémarrage.
+
 ## [1.8.2]
 
 ### Corrigé (cause racine de l'installation incomplète)

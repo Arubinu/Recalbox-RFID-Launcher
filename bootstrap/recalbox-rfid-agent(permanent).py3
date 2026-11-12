@@ -244,7 +244,8 @@ def main():
 
     log("installation automatique depuis %s" % source)
     if run_install(source) != 0:
-        log("installation en echec : ouverture de l'interface de secours")
+        log("installation en echec : le service est demarre quand meme")
+        start_service()       # l'agent et le lecteur restent utilisables
         launch_agent(source)  # agent depuis le partage pour diagnostiquer
         return 1
 
