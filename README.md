@@ -190,9 +190,12 @@ périmé).
 1. Dans Recalbox, naviguez jusqu'au jeu voulu (il doit être **sélectionné** dans
    la liste, pas lancé).
 2. **Appui court** sur le bouton → un bip aigu confirme le mode association
-   (30 secondes pour scanner).
+   (10 secondes pour scanner).
 3. **Scannez le badge** → deux bips : le badge est enregistré et le jeu se lance
    immédiatement pour confirmer.
+
+Autoriser un navigateur : **maintenez le bouton 3 secondes** — la validation part
+**dès la 3ᵉ seconde**, sans avoir à relâcher (un bip confirme).
 
 ### Lancer un jeu
 

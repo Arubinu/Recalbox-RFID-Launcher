@@ -51,7 +51,8 @@ class ButtonTest(unittest.TestCase):
         self.clock.advance(0.02)
         self.assertEqual(button.poll(), "short")
 
-    def test_appui_maintenu_confirme_l_appairage(self):
+    def test_appui_maintenu_valide_sans_relacher(self):
+        """Des que l'appui atteint 3 s, la validation part, doigt encore pose."""
         button = self.make_button()
         self.clock.advance(0.02)
         button.poll()
@@ -60,11 +61,33 @@ class ButtonTest(unittest.TestCase):
         button.poll()
         self.clock.advance(0.02)
         self.assertIsNone(button.poll())
-        self.clock.advance(0.40)  # appui maintenu au-dela de hold_press_s
+        self.clock.advance(0.20)      # encore sous hold_press_s (0.30)
+        self.assertIsNone(button.poll())
+        self.clock.advance(0.12)      # depasse hold_press_s, toujours appuye
+        self.assertEqual(button.poll(), "hold")
+        # l'appui continue : plus rien ne doit partir
+        self.clock.advance(0.50)
+        self.assertIsNone(button.poll())
+
+        self.gpio.levels[17] = 1      # relachement : pas de second geste
+        button.poll()
+        self.clock.advance(0.02)
+        self.assertIsNone(button.poll())
+
+    def test_relachement_avant_3_s_associe(self):
+        button = self.make_button()
+        self.clock.advance(0.02)
+        button.poll()
+
+        self.gpio.levels[17] = 0
+        button.poll()
+        self.clock.advance(0.02)
+        button.poll()
+        self.clock.advance(0.10)
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)
-        self.assertEqual(button.poll(), "hold")
+        self.assertEqual(button.poll(), "short")
 
     def test_appui_de_deux_secondes_ne_supprime_plus(self):
         """Il n'y a plus de geste long : un appui de 2 s reste un simple appui."""

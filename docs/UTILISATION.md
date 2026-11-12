@@ -163,7 +163,7 @@ Le bouton physique a deux gestes seulement :
 | Geste | Effet |
 | --- | --- |
 | **Appui court** | arme l'association du jeu sélectionné (1 bip aigu) ; posez le badge dans les 10 s |
-| **Appui de 3 secondes** | autorise un navigateur (demande d'appairage en cours) |
+| **Appui de 3 secondes** | autorise un navigateur : la validation part **dès la 3e seconde**, inutile de relâcher (un bip confirme) |
 
 Réassocier un badge déjà connu **écrase** l'ancienne correspondance : c'est la
 façon la plus simple de changer le jeu d'un badge, sans passer par l'effacement.

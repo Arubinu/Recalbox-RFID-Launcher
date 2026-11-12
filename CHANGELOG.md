@@ -4,6 +4,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.8]
+
+### Modifié
+
+* **L'appui de 3 secondes valide dès la 3ᵉ seconde**, sans avoir à relâcher le
+  bouton. Avant, le geste n'était lu qu'au relâchement : il fallait tenir 3 s
+  *puis* lâcher. Maintenant le geste part à l'instant où la durée est atteinte
+  (bip de confirmation), et le relâchement qui suit ne déclenche rien d'autre.
+* L'appui court reste lu au relâchement (pour ne jamais déclencher les deux
+  gestes), et le journal note la durée : « Bouton maintenu 3.01 s : validation ».
+
 ## [2.6.7]
 
 ### Modifié
