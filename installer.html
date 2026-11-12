@@ -289,7 +289,15 @@
     font-size: 12.5px; color: var(--muted); line-height: 1.5;
   }
   .auto-note svg { width: 17px; height: 17px; flex: 0 0 auto; color: #9db0ff; margin-top: 1px; }
-  .cablage { margin: 12px 0 10px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line-2); }
+  .cablage-bloc { flex: 0 0 auto; }
+  .cablage-titre {
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); margin: 4px 0 0;
+  }
+  .cablage {
+    margin: 10px 0 8px; border-radius: var(--r-md); overflow: hidden;
+    border: 1px solid var(--line-2); max-width: 700px;
+  }
   .cablage svg { display: block; width: 100%; height: auto; }
 
   /* ------------------------------------------------------------- boutons */
@@ -752,8 +760,8 @@
             </div>
             <p class="hint" id="reader-test-hint"></p>
             <pre class="log" id="reader-test-log" hidden></pre>
-            <details>
-              <summary>Le branchement, en image</summary>
+            <div class="cablage-bloc">
+              <h3 class="cablage-titre">Le branchement, en image</h3>
               <div class="cablage">
                 <!-- cablage:debut (genere par tools/build_cablage.py) -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="cablage-titre" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
@@ -870,7 +878,7 @@
                 utilisez « Tester avec un badge » : le test lit pendant 5 secondes et dit
                 si la carte répond, si elle est lue, ou si rien n'est détecté.
               </p>
-            </details>
+            </div>
           </section>
 
           <section class="panel" data-panel="maintenance">
@@ -1460,7 +1468,18 @@ function render(status) {
   const running = status.service && status.service.running;
   setLink(true, running ? "connecté · service actif" : "connecté · service arrêté");
 
-  if (!status.installed) {
+  /* Priorite absolue : une page qui ne correspond pas a la Recalbox affiche des
+     ecrans qui n'existent peut-etre plus (c'est ce qui faisait chercher un
+     schema absent). */
+  if (ecart) {
+    const pagePlusAncienne = versionPlusGrande(box, PAGE_VERSION);
+    showBanner("warn", pagePlusAncienne
+      ? "Cette page est en " + PAGE_VERSION + " alors que la Recalbox est en " + box +
+        " : ouvrez le fichier le plus récent (dist\recalbox-rfid-installer-" + box +
+        ".html), sinon certains écrans ne correspondent pas."
+      : "La Recalbox est en " + box + " et cette page en " + PAGE_VERSION +
+        " : mettez à jour la Recalbox (onglet Maintenance) pour retrouver les mêmes écrans.");
+  } else if (!status.installed) {
     showBanner("warn",
       "Le lanceur n'est pas encore installé sur la Recalbox. Revenez à l'accueil et choisissez " +
       "« Installer sur la Recalbox », ou utilisez « Installer / mettre à jour » dans l'onglet Maintenance.");
@@ -2116,6 +2135,19 @@ async function copyText(text) {
 
 /* ---------------------------------------------------------------- boutons */
 /* ------------------------------------------------ test du lecteur (badges) */
+/* Vrai si la premiere version est plus recente que la seconde. */
+function versionPlusGrande(a, b) {
+  const decouper = (valeur) => String(valeur || "0").split(".").map((part) => parseInt(part, 10) || 0);
+  const gauche = decouper(a);
+  const droite = decouper(b);
+  for (let index = 0; index < Math.max(gauche.length, droite.length); index++) {
+    const x = gauche[index] || 0;
+    const y = droite[index] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 function shortHex(text, max) {
   const value = String(text || "");
   return value.length > max ? value.slice(0, max) + "…" : value;

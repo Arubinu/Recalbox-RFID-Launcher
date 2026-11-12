@@ -4,6 +4,33 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.5.6]
+
+### Corrigé (cause réelle des badges illisibles)
+
+* La trace de 2.5.5 a montré que l'**anticollision réussit** (`envoi 9320 →
+  reçu 7700000000`) : le lecteur lit bien l'UID des badges, et le BCC était
+  juste. C'est la **sélection** qui échouait, sans aucune réponse de la carte —
+  signature d'un CRC_A invalide.
+* **Le CRC_A de la trame de sélection est désormais calculé en logiciel**
+  (`crc_a_software`, polynôme 0x8408, initialisation 0x6363, vérifié sur le
+  vecteur de référence HALT `50 00 → 57 CD`) au lieu de dépendre du
+  coprocesseur du MFRC522. La carte validait
+  le CRC et ignorait silencieusement la trame.
+* La trace indique maintenant `crc_sw` **et** `crc_hw` pour chaque sélection :
+  si les deux diffèrent, c'est le coprocesseur qui est en cause.
+* La trace enregistre aussi les trames **sans réponse** (avant, elles étaient
+  perdues) : un échec de sélection est enfin visible.
+
+### Modifié
+
+* **Le schéma de câblage n'est plus replié** dans l'onglet Matériel : il est
+  visible dès l'ouverture, sous le verdict matériel.
+* **Bandeau d'avertissement quand la page et la Recalbox n'ont pas la même
+  version** : « cette page est en 2.5.6 alors que la Recalbox est en 2.5.2 :
+  ouvrez le fichier le plus récent ». C'est ce décalage qui faisait chercher un
+  schéma absent d'un écran ancien.
+
 ## [2.5.5]
 
 ### Corrigé (badges lus par le lecteur mais sans UID)

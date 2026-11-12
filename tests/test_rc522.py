@@ -8,7 +8,7 @@ import unittest
 import support  # noqa: F401  (ajoute app/ au sys.path)
 from fake_rc522 import FakeRc522Spi
 
-from rfid.drivers.rc522 import Rc522, Rc522Reader
+from rfid.drivers.rc522 import Rc522, Rc522Reader, crc_a_software
 from rfid.drivers.spi_port import (
     SPI_IOC_WR_MAX_SPEED_HZ,
     SPI_IOC_WR_MODE,
@@ -61,6 +61,37 @@ class Rc522UidTest(unittest.TestCase):
         reader = Rc522(FakeRc522Spi(b"\x11\x22\x33\x44", wupa_only=True))
         reader.begin()
         self.assertEqual(reader.read_uid(), b"\x11\x22\x33\x44")
+
+    def test_crc_a_vecteur_halt(self):
+        """Le CRC_A du HALT est 57 CD : reference de la fiche ISO 14443-3."""
+        self.assertEqual(crc_a_software(b"\x50\x00"), b"\x57\xCD")
+
+    def test_selection_meme_si_le_coprocesseur_est_faux(self):
+        """Le CRC de la selection ne doit pas dependre du coprocesseur du lecteur."""
+        reader = Rc522(FakeRc522Spi(b"\x77\x00\x00\x00", broken_crc=True))
+        reader.begin()
+        self.assertEqual(reader.read_uid(), b"\x77\x00\x00\x00")
+
+    def test_trace_montre_une_selection_sans_reponse(self):
+        """Une carte muette a la selection : la trace montre l'envoi complet."""
+        spi = FakeRc522Spi(b"\x77\x00\x00\x00")
+        original = spi._respond
+
+        def silencieux(payload):
+            if len(payload) == 3 and payload[0] == 0x08:   # reponse de selection
+                spi.irq = 0x01                              # TIMER : pas de reponse
+                spi.fifo.clear()
+                return
+            original(payload)
+
+        spi._respond = silencieux  # type: ignore[method-assign]
+        reader = Rc522(spi)
+        reader.begin()
+        trace = {}
+        self.assertIsNone(reader.read_uid(trace=trace))
+        trames = [step["tx"][:4] for step in trace["steps"]]
+        self.assertIn("9370", trames)
+        self.assertEqual(trace["crc_sw"], trace["crc_hw"])
 
     def test_trace_des_trames(self):
         """La trace decrit la trame envoyee et la reponse, pour le diagnostic."""

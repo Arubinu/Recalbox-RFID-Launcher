@@ -31,7 +31,7 @@ class FakeRc522Spi:
     backend = "fake"
 
     def __init__(self, uid=None, version: int = 0x92, bad_bcc: bool = False,
-                 wupa_only: bool = False):
+                 wupa_only: bool = False, broken_crc: bool = False):
         self.uid = bytes(uid) if uid else None
         self.version = version
         #: Certains badges clones renvoient un BCC faux : le pilote doit lire
@@ -39,6 +39,8 @@ class FakeRc522Spi:
         self.bad_bcc = bad_bcc
         #: Badge qui ne repond qu'a WUPA (etat de veille).
         self.wupa_only = wupa_only
+        #: Coprocesseur CRC defectueux (renvoie n'importe quoi).
+        self.broken_crc = broken_crc
         self.registers = {}
         self.fifo = bytearray()
         self.irq = 0
@@ -149,19 +151,27 @@ class FakeRc522Spi:
         self.bit_framing = 0
         self.crc = b"\x00\x00"
 
-    def _calculate_crc(self) -> None:
-        """Calcule 2 octets deterministes a partir de la FIFO.
+    @staticmethod
+    def crc_a(data) -> bytes:
+        """CRC_A ISO/CEI 14443-3, calcule independamment du pilote.
 
-        Le simulateur ne verifie pas la valeur du CRC_A (c'est le vrai
-        composant qui la calcule) : il verifie que le pilote lit bien les deux
-        octets de resultat et les ajoute a la trame.
+        Les deux implementations se controlent mutuellement : le pilote ne
+        depend pas du coprocesseur, le simulateur ne depend pas du pilote.
+        Reference : HALT (50 00) -> 57 CD.
         """
-        low = 0
-        high = 0
-        for index, byte in enumerate(self.fifo):
-            low = (low + byte + index) & 0xFF
-            high = (high ^ ((byte << 1) & 0xFF) ^ index) & 0xFF
-        self.crc = bytes([low, high])
+        crc = 0x6363
+        for byte in bytes(data):
+            crc ^= byte
+            for _ in range(8):
+                crc = (crc >> 1) ^ 0x8408 if crc & 1 else crc >> 1
+        return bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+    def _calculate_crc(self) -> None:
+        """CRC_A reel des octets presents dans la FIFO (comme le composant)."""
+        if self.broken_crc:
+            self.crc = b"\x00\x00"
+        else:
+            self.crc = self.crc_a(bytes(self.fifo))
         self.div_irq |= 0x04
 
     def _respond(self, payload: bytes) -> None:
@@ -214,7 +224,7 @@ class FakeRc522Spi:
         if frame[:2] == bytes([0x93, 0x70]) or frame[:2] == bytes([0x95, 0x70]):
             # SELECT : 2 octets + UID (4) + BCC (1) + CRC_A (2) = 9 octets.
             self.select_frames.append(frame)
-            if len(frame) != 9 or frame[7:9] != self.crc:
+            if len(frame) != 9 or frame[7:9] != self.crc_a(frame[:7]):
                 self.irq = IRQ_TIMER  # trame incomplete ou CRC faux : pas de reponse
                 return
             if frame[0] == 0x93:

@@ -84,6 +84,24 @@ ERR_BUFFER_OVFL = 0x10
 SAK_CASCADE = 0x04
 
 
+def crc_a_software(data) -> bytes:
+    """CRC_A ISO/CEI 14443-3 (0x6363, polynome 0x8408, poids faible d'abord).
+
+    Reference verifiable : le CRC du HALT (50 00) vaut 57 CD. On ne depend pas
+    du coprocesseur du MFRC522 pour cela : la selection est trop importante pour
+    reposer sur un calcul dont on ne maitrise pas l'etat.
+    """
+    crc = 0x6363
+    for byte in bytes(data):
+        crc ^= byte
+        for _ in range(8):
+            if crc & 1:
+                crc = (crc >> 1) ^ 0x8408
+            else:
+                crc >>= 1
+    return bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+
 class Rc522Error(Exception):
     """Erreur de communication avec le lecteur."""
 
@@ -166,6 +184,10 @@ class Rc522:
         inutilisable, et c'est la selection (verifiee ensuite) qui valide
         reellement l'UID.
         """
+        step = None
+        if trace is not None:
+            step = {"tx": bytes(data).hex().upper(), "rx": "", "err": ""}
+            trace.setdefault("steps", []).append(step)
         self._write(REG_COMMAND, CMD_IDLE)
         self._write(REG_COM_IRQ, 0x7F)          # efface les drapeaux
         self._write(REG_FIFO_LEVEL, 0x80)       # vide la FIFO
@@ -181,10 +203,14 @@ class Rc522:
                 break
             if irq & IRQ_TIMER:
                 self._write(REG_BIT_FRAMING, tx_last_bits & 0x07)
+                if step is not None:
+                    step["err"] = "pas de reponse (timer)"
                 return None
             if time.monotonic() > deadline:
                 self._write(REG_BIT_FRAMING, tx_last_bits & 0x07)
                 self._write(REG_COMMAND, CMD_IDLE)
+                if step is not None:
+                    step["err"] = "pas de reponse (delai)"
                 return None
 
         self._write(REG_BIT_FRAMING, tx_last_bits & 0x07)
@@ -193,14 +219,9 @@ class Rc522:
         length = self._read(REG_FIFO_LEVEL) & 0x7F
         payload = self._read_many(REG_FIFO_DATA, length)
         valid_bits = self._read(REG_CONTROL) & 0x07
-        if trace is not None:
-            trace.setdefault("steps", []).append(
-                {
-                    "tx": bytes(data).hex().upper(),
-                    "rx": payload.hex().upper(),
-                    "err": "0x%02X" % error,
-                }
-            )
+        if step is not None:
+            step["rx"] = payload.hex().upper()
+            step["err"] = "0x%02X" % error
         if not payload:
             return None
         return payload, valid_bits
@@ -261,13 +282,21 @@ class Rc522:
         return bytes(payload[:5])
 
     def _select(self, command: int, uid_with_bcc, trace=None) -> "int | None":
-        """Selection : retourne le SAK (1 octet) ou None."""
+        """Selection : retourne le SAK (1 octet) ou None.
+
+        Le CRC_A est calcule en logiciel : la tablette le verifie, et un CRC faux
+        se traduit par un silence total de la carte (aucune erreur cote
+        lecteur) — c'est exactement ce qui rendait les badges illisibles.
+        """
         frame = bytes([command, PICC_NVB_SELECT]) + bytes(uid_with_bcc)
-        try:
-            frame += self.crc_a(frame)
-        except Rc522Error:
-            return None
-        result = self._transceive(frame, trace=trace)
+        crc = crc_a_software(frame)
+        if trace is not None:
+            trace["crc_sw"] = crc.hex().upper()
+            try:
+                trace["crc_hw"] = self.crc_a(frame).hex().upper()
+            except Rc522Error as exc:
+                trace["crc_hw"] = "erreur : %s" % exc
+        result = self._transceive(frame + crc, trace=trace)
         if result is None:
             return None
         payload, _ = result
@@ -276,11 +305,7 @@ class Rc522:
     def halt(self) -> None:
         # Le badge ne repond pas a HALT : le temps mort est normal.
         frame = bytes([PICC_HALTA, 0x00])
-        try:
-            frame += self.crc_a(frame)
-        except Rc522Error:
-            return
-        self._transceive(frame, timeout_s=0.03)
+        self._transceive(frame + crc_a_software(frame), timeout_s=0.03)
 
     def read_uid(self, trace=None):
         """Lit l'UID du badge present (4 ou 7 octets), ou None.
