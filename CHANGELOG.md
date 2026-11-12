@@ -4,6 +4,22 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.3]
+
+### Modifié
+
+* **Sans choix explicite, c'est la langue du système qui décide.** La page lit la
+  liste de préférences du navigateur (`navigator.languages`, qui suit la langue
+  de l'OS) et retient la **première langue disponible** : un Windows en allemand
+  ouvre la page en allemand, un Windows en français en français. Si aucune
+  langue de la liste n'est disponible (OS en néerlandais, par exemple),
+  l'anglais est utilisé ; en dernier recours, le français (langue source).
+* La page suit aussi un **changement de langue du système** en direct
+  (`languagechange`) tant qu'aucun choix n'a été fait.
+* **Appui long sur le bouton de langue** : oublie le choix et revient à la
+  langue du système (comme l'appui long du bouton de thème). Une infobulle
+  rappelle les deux gestes.
+
 ## [2.7.2]
 
 ### Modifié

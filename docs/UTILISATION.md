@@ -27,8 +27,10 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
 Un bouton **`FR` / `EN` / `DE` / `ES` / `IT` / `PT`** (à côté) change la langue de l'interface : un simple clic
-passe à la langue suivante. La page démarre dans la langue du navigateur quand
-elle est disponible, puis retient le choix. Chaque langue est un fichier
+passe à la langue suivante et **fixe** le choix. Tant qu'aucune langue n'a été
+choisie, la page suit celle du **système** (la première langue disponible dans les
+préférences du navigateur ; à défaut, l'anglais). Un **appui long** sur le bouton
+revient à la langue du système. Chaque langue est un fichier
 `i18n/<code>.json` compilé dans la page ; un texte non traduit reste en français.
 
 Un bouton **soleil / lune** dans l'en-tête change de thème : la page suit d'abord

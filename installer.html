@@ -2772,7 +2772,7 @@ function appliquerLangue(code, memoriser) {
   if (bouton) {
     bouton.textContent = code.toUpperCase();
     const nom = NOMS_LANGUES[code] || code.toUpperCase();
-    bouton.title = nom + " — cliquer pour changer de langue";
+    bouton.title = nom + " — cliquer pour changer de langue, appui long pour suivre le système";
     bouton.setAttribute("aria-label", "Langue : " + nom + ". Cliquer pour changer.");
   }
   if (memoriser) {
@@ -2782,13 +2782,48 @@ function appliquerLangue(code, memoriser) {
   if (typeof refresh === "function" && typeof agent !== "undefined" && agent.isOpen) refresh();
 }
 
+/* Langue du systeme : premiere langue disponible dans les preferences du
+   navigateur (navigator.languages suit la langue de l'OS). A defaut d'accord,
+   l'anglais est le meilleur terrain commun ; en dernier recours, la langue
+   source. */
+function langueSysteme() {
+  const preferees = [];
+  if (Array.isArray(navigator.languages)) {
+    navigator.languages.forEach((brut) => preferees.push(brut));
+  }
+  if (navigator.language) preferees.push(navigator.language);
+  const disponibles = languesDisponibles();
+  for (const brut of preferees) {
+    const code = String(brut || "").slice(0, 2).toLowerCase();
+    if (disponibles.includes(code)) return code;
+  }
+  return disponibles.includes("en") ? "en" : LANGUE_SOURCE;
+}
+
+function choixExplicite() {
+  try { return localStorage.getItem(LANG_KEY); } catch (error) { return null; }
+}
+
 function langueInitiale() {
-  let choix = null;
-  try { choix = localStorage.getItem(LANG_KEY); } catch (error) { choix = null; }
+  const choix = choixExplicite();
   const disponibles = languesDisponibles();
   if (choix && disponibles.includes(choix)) return choix;
-  const navigateur = (navigator.language || "fr").slice(0, 2).toLowerCase();
-  return disponibles.includes(navigateur) ? navigateur : LANGUE_SOURCE;
+  return langueSysteme();
+}
+
+/* Sans choix explicite, la langue suit celle du systeme. */
+function suivreLangueSysteme() {
+  if (choixExplicite()) return;
+  appliquerLangue(langueSysteme(), false);
+}
+
+/* Appui long sur le bouton : oublie le choix, revient a la langue du systeme. */
+function revenirALaLangueSysteme() {
+  try { localStorage.removeItem(LANG_KEY); } catch (error) { /* mode prive */ }
+  appliquerLangue(langueSysteme(), false);
+  const nom = NOMS_LANGUES[LANGUE_ACTIVE] || LANGUE_ACTIVE.toUpperCase();
+  showBanner("info", "Langue : celle du système (" + nom + ").");
+  setTimeout(() => { if (!offlineSince) showBanner("good", ""); }, 2500);
 }
 
 function langueSuivante() {
@@ -2807,9 +2842,24 @@ function langueSuivante() {
       bouton.hidden = true;
     } else {
       bouton.addEventListener("click", () => appliquerLangue(langueSuivante(), true));
+      let minuterie = null;
+      const annuler = () => {
+        if (minuterie) { clearTimeout(minuterie); minuterie = null; }
+      };
+      bouton.addEventListener("pointerdown", () => {
+        annuler();
+        minuterie = setTimeout(() => {
+          minuterie = null;
+          revenirALaLangueSysteme();
+        }, 700);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => {
+        bouton.addEventListener(type, annuler);
+      });
     }
   }
   appliquerLangue(langueInitiale(), false);
+  window.addEventListener("languagechange", suivreLangueSysteme);
 })();
 
 /* ------------------------------------------------------------- navigation */
