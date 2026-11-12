@@ -13,12 +13,13 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="2.1.0"
+VERSION="2.3.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
+BOOT_CONFIG_MAIN="/boot/config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -345,6 +346,48 @@ else
         say "  Ajoutez cette ligne dans $BOOT_CONFIG :"
         say "      dtparam=spi=on"
         say "  puis redemarrez Recalbox."
+    fi
+fi
+
+# --------------------------------------------------------------------------- #
+# Recalbox 10 : garantir la ligne dans /boot/config.txt lui-meme
+# --------------------------------------------------------------------------- #
+# Sur Recalbox 10, le fichier utilisateur peut ne pas etre pris en compte (ou
+# etre ecrase) : la ligne doit figurer dans la section globale de config.txt.
+if [ "$DO_SPI" != "0" ] && [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG_MAIN" ]; then
+    if [ -e /dev/spidev0.0 ]; then
+        say "  (SPI deja actif : /dev/spidev0.0 present)"
+    elif grep -q '^[[:space:]]*dtparam=spi=on' "$BOOT_CONFIG_MAIN" 2>/dev/null; then
+        ok "SPI deja present dans $BOOT_CONFIG_MAIN"
+        NEED_REBOOT=1
+    else
+        BOOT_RW=0
+        if touch "$BOOT_CONFIG_MAIN.rfid-test" 2>/dev/null; then
+            rm -f "$BOOT_CONFIG_MAIN.rfid-test" 2>/dev/null
+        elif mount -o remount,rw /boot 2>/dev/null; then
+            BOOT_RW=1
+        fi
+        if cp -f "$BOOT_CONFIG_MAIN" "$BOOT_CONFIG_MAIN.bak-rfid-launcher" 2>/dev/null; then
+            say "  Sauvegarde : $BOOT_CONFIG_MAIN.bak-rfid-launcher"
+        fi
+        # Insertion juste apres la premiere ligne dtparam (section globale).
+        if awk -v ligne='dtparam=spi=on' '
+            { print }
+            !fait && $0 ~ /^[[:space:]]*dtparam=/ { print ligne; fait = 1 }
+            END { if (!fait) print ligne }
+        ' "$BOOT_CONFIG_MAIN" > "$BOOT_CONFIG_MAIN.rfid-new" 2>/dev/null &&
+            mv -f "$BOOT_CONFIG_MAIN.rfid-new" "$BOOT_CONFIG_MAIN" 2>/dev/null; then
+            ok "SPI ajoute dans $BOOT_CONFIG_MAIN (section globale)"
+            NEED_REBOOT=1
+        else
+            rm -f "$BOOT_CONFIG_MAIN.rfid-new" 2>/dev/null
+            warn "Impossible d'ecrire dans $BOOT_CONFIG_MAIN."
+            say "  En SSH : mount -o remount,rw /boot, puis ajoutez"
+            say "  'dtparam=spi=on' dans $BOOT_CONFIG_MAIN, puis mount -o remount,ro /boot."
+        fi
+        if [ "$BOOT_RW" = "1" ]; then
+            mount -o remount,ro /boot 2>/dev/null || true
+        fi
     fi
 fi
 

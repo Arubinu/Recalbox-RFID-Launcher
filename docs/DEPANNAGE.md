@@ -37,25 +37,32 @@ Recalbox ou lancez `rfidctl start`.
 
 Le bus SPI n'est pas activé.
 
-```sh
-grep -n "dtparam=spi=on" /boot/recalbox-user-config.txt
-ls /boot/
-```
-
-Si la ligne est absente :
+**Recalbox 10 (Raspberry Pi 3, vérifié) :** la ligne doit être dans
+`/boot/config.txt` — le fichier `/boot/recalbox-user-config.txt` **n'est pas
+appliqué** par cette version, même s'il est présent et bien rempli.
 
 ```sh
-echo "dtparam=spi=on" >> /boot/recalbox-user-config.txt
+grep -n "dtparam=spi" /boot/config.txt
+mount -o remount,rw /boot
+# ajoutez la ligne dans la section globale (avant les sections [pi3], [pi4]…)
+grep -q '^dtparam=spi=on' /boot/config.txt || \
+  sed -i 's/^dtparam=audio=on$/dtparam=audio=on\ndtparam=spi=on/' /boot/config.txt
+mount -o remount,ro /boot
 reboot
 ```
 
-Ou relancez l'installateur :
+L'installateur fait cela tout seul depuis la version 2.3.0 (avec sauvegarde
+`/boot/config.txt.bak-rfid-launcher`). Pour les versions antérieures de
+Recalbox, `dtparam=spi=on` dans `/boot/recalbox-user-config.txt` suffit.
+
+Ou relancez l'installateur (il écrit dans les deux fichiers) :
 
 ```sh
 sh /recalbox/share/system/rfid/install.sh
 ```
 
-Puis vérifiez après redémarrage : `ls -l /dev/spidev0.0`.
+Puis vérifiez après redémarrage : `ls -l /dev/spidev0.0`
+(`spidev0.0` **et** `spidev0.1` apparaissent).
 
 ---
 
@@ -118,6 +125,14 @@ Symptômes dans `rfidctl test` ou dans le journal :
    broche 13, puis `rfidctl restart`.
 6. Si `rfidctl test` indique « Bouton indisponible » avec un backend `aucun`,
    les modules GPIO ne sont pas accessibles : vérifiez que vous êtes en root.
+7. **Recalbox 10 / noyau 6.12 :** si le journal montre
+   « export de la broche 17 impossible : Invalid argument » et un backend
+   `/sys/class/gpio`, c'est que l'ancienne interface sysfs est refusée. Depuis la
+   version 2.3.0, le backend `RPi.GPIO` est utilisé (le service change
+   temporairement de répertoire de travail, car lgpio crée ses tubes de
+   notification dans le dossier courant et le système est en lecture seule).
+   Après mise à jour, redémarrez le service (`rfidctl restart`) : le journal doit
+   afficher `GPIO : backend RPi.GPIO`.
 
 ---
 

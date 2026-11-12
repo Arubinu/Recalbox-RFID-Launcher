@@ -4,6 +4,65 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.3.0]
+
+### Corrigé (Recalbox 10.1.1 sur Raspberry Pi 3, vérifié sur la machine)
+
+* **Le bus SPI n'était jamais activé.** L'installateur écrivait
+  `dtparam=spi=on` dans `/boot/recalbox-user-config.txt`, que Recalbox 10
+  n'applique pas (l'`include` de ce fichier est sans effet). La ligne est
+  désormais écrite **directement dans `/boot/config.txt`**, dans la section
+  globale (juste après `dtparam=audio=on`), avec sauvegarde
+  `.bak-rfid-launcher` et remontage temporaire de `/boot` en écriture.
+  Résultat constaté après redémarrage : `/dev/spidev0.0` et `/dev/spidev0.1`
+  apparaissent et le lecteur est détecté (`version 0x92`).
+* **Le bouton poussoir n'était pas reconnu** (« export de la broche 17
+  impossible : Invalid argument »). Le service démarre avec `PWD=/` (système en
+  lecture seule) ; lgpio crée ses tubes de notification dans le répertoire
+  courant, son import échouait donc et le programme retombait sur
+  `/sys/class/gpio`, refusé par le noyau 6.12. Le backend GPIO change
+  maintenant de répertoire de travail (et de `HOME` si nécessaire) vers un
+  dossier inscriptible (`RFID_GPIO_DIR`, `/tmp`, `TMPDIR`, `/run`) le temps de
+  l'initialisation. `RPi.GPIO` fonctionne alors et le pull-up interne est
+  disponible.
+
+### Ajouté
+
+* Commande d'agent **`diag`** (authentifiée, lecture seule) : version de
+  Recalbox, modèle, `/boot/config.txt`, `/dev/spidev*`, GPIO disponibles,
+  `dmesg`, points de montage, script d'overlays. C'est ce diagnostic qui a
+  permis d'identifier les deux causes ci-dessus **sans SSH**.
+
+### Modifié
+
+* L'installateur ne considère plus le SPI comme configuré sur la seule foi du
+  fichier utilisateur : il vérifie aussi `config.txt`, et n'échoue jamais sur
+  cette étape (avertissement + suite de l'installation).
+
+## [2.2.0]
+
+### Corrigé
+
+* **« Installer / mettre à jour » ne mettait rien à jour** : l'agent lançait
+  toujours le `install.sh` **déjà installé**, dont le dossier source est le
+  dossier d'installation lui-même — d'où « Sources déjà en place, copie inutile »
+  et une version qui ne bougeait jamais. Il choisit maintenant le dossier du
+  projet **sur le partage** quand sa version est supérieure ou égale, et ne
+  rétrograde jamais le programme.
+* Le bus SPI n'était pas activé alors que l'installation affirmait le contraire :
+  Recalbox 10 recharge `/boot` au démarrage (`S99overlaysync`), la ligne
+  `dtparam=spi=on` écrite par l'installateur ne survit donc pas. Un diagnostic
+  embarqué permet de vérifier le mécanisme (voir ci-dessous) et la documentation
+  indique la marche à suivre propre à Recalbox 10.
+
+### Ajouté
+
+* Commande d'agent **`diag`** (authentifiée) : renvoie, en lecture seule, la
+  version de Recalbox, le contenu utile de `/boot` (`config.txt`,
+  `recalbox-user-config.txt`), la présence de `/dev/spidev*`, les points de
+  montage et le début du script `S99overlaysync`. Objectif : diagnostiquer le
+  matériel **sans SSH**.
+
 ## [2.1.0]
 
 ### Ajouté

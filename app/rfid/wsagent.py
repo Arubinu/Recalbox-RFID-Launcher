@@ -172,6 +172,27 @@ def ensure_token(path: str) -> str:
     return token
 
 
+def read_version(folder: str) -> str:
+    """Version indiquee par le fichier VERSION d'un dossier (ou chaine vide)."""
+    try:
+        with open(os.path.join(folder, "VERSION"), "r", encoding="utf-8-sig") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+def version_key(text: str):
+    """Cle de comparaison de versions : (1, 8, 2) pour "1.8.2", () si vide."""
+    raw = str(text or "").strip()
+    if not raw:
+        return ()
+    parts = []
+    for chunk in raw.split("."):
+        digits = "".join(car for car in chunk if car.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
 def find_source(share: str = "/recalbox/share", home: str = None):
     """Cherche le dossier du projet (app/main.py + install.sh) sur le partage."""
     import glob
@@ -366,14 +387,28 @@ class Agent:
 
     # ------------------------------------------------------------------ outils
     def installer(self):
-        candidates = []
-        if self.source:
-            candidates.append(os.path.join(self.source, "install.sh"))
-        candidates.append(os.path.join(self.home, "install.sh"))
-        for candidate in candidates:
-            if os.path.isfile(candidate):
-                return candidate
-        return None
+        """Script d'installation a lancer.
+
+        Priorite au dossier du projet sur le partage (c'est lui qui porte la
+        nouvelle version), mais jamais au detriment d'une version plus recente
+        deja installee : sinon « Installer / mettre a jour » ne ferait rien ou
+        retrograderait le programme.
+        """
+        source = self.source
+        if not source:
+            try:
+                source = find_source(home=self.home)
+            except Exception:  # noqa: BLE001 - partage absent ou illisible
+                source = None
+        installed = os.path.join(self.home, "install.sh")
+        if source:
+            shared = os.path.join(source, "install.sh")
+            if os.path.isfile(shared):
+                partage = version_key(read_version(source))
+                local = version_key(read_version(self.home))
+                if not partage or not local or partage >= local:
+                    return shared
+        return installed if os.path.isfile(installed) else None
 
     def main_py(self) -> str:
         return os.path.join(self.home, "app", "main.py")
@@ -696,6 +731,59 @@ class Agent:
             self.log.warning("Agent : appairage depuis %s (jeton transmis une fois)" % (source,))
         client.send({"id": request_id, "ok": True, "data": {"token": self.token}})
         return True
+
+    # ------------------------------------------------------------- diagnostic
+    def _cmd_diag(self, client, message):
+        """Diagnostic systeme en lecture seule (utile quand il n'y a pas de SSH).
+
+        Sert notamment a comprendre pourquoi le bus SPI n'est pas actif :
+        contenu de ``/boot``, presence de ``/dev/spidev*`` et mecanisme de
+        synchronisation des overlays de Recalbox.
+        """
+        commands = [
+            ("version", "cat /recalbox/recalbox.version 2>&1"),
+            ("uname", "uname -a 2>&1"),
+            ("modele", "cat /proc/device-tree/model 2>&1; echo; "
+                       "grep -m2 -E '^(Model|Hardware|Revision)' /proc/cpuinfo 2>&1"),
+            ("boot_files", "ls -l /boot/config.txt /boot/cmdline.txt /boot/recalbox-user-config.txt "
+                           "/boot/recalbox-boot.conf 2>&1"),
+            ("boot_config", "cat /boot/config.txt 2>&1"),
+            ("boot_config_spi", "grep -n -i -E 'spi|include|recalbox-user' /boot/config.txt 2>&1 | head -30"),
+            ("user_config_spi", "grep -n -i spi /boot/recalbox-user-config.txt 2>&1 | head -20"),
+            ("boot_conf_spi", "grep -n -i spi /boot/recalbox-boot.conf 2>&1 | head -20"),
+            ("spidev", "ls -l /dev/spidev* 2>&1"),
+            ("spi_devices", "ls /sys/bus/spi/devices 2>&1; "
+                            "cat /sys/bus/spi/devices/*/modalias 2>&1"),
+            ("gpio", "ls -l /dev/gpiochip* 2>&1; command -v gpiodetect gpioinfo gpioget gpioset 2>&1; "
+                     "python3 -c 'import RPi.GPIO as g; print(\"RPi.GPIO\", g.VERSION)' 2>&1 | head -3; "
+                     "python3 -c 'import lgpio; print(\"lgpio ok\")' 2>&1 | head -3; "
+                     "ls -d /usr/lib/python3*/site-packages 2>&1 | head; "
+                     "cat /sys/class/gpio/gpiochip0/label 2>&1"),
+            ("gpio_home", "echo HOME=$HOME PWD=$PWD; "
+                          "cd /tmp && HOME=/tmp python3 -c 'import lgpio; print(\"lgpio\", lgpio.version)' 2>&1 | tail -2; "
+                          "cd /tmp && HOME=/tmp python3 -c 'import RPi.GPIO as g; g.setmode(g.BCM); "
+                          "g.setup(17, g.IN, pull_up_down=g.PUD_UP); print(\"pin17=\", g.input(17)); g.cleanup()' 2>&1 | tail -4"),
+            ("dmesg_spi", "dmesg 2>&1 | grep -i -E 'spi|spidev|mcp' | tail -25"),
+            ("modules_spi", "grep -i spi /proc/modules 2>&1 | head; "
+                            "ls /lib/modules/$(uname -r)/kernel/drivers/spi 2>&1 | head"),
+            ("mounts", "mount | grep -i -E 'boot|mmcblk' 2>&1"),
+            ("overlaysync", "ls -l /etc/init.d/S99overlaysync 2>&1; "
+                            "head -50 /etc/init.d/S99overlaysync 2>&1"),
+        ]
+        output = {}
+        for name, command in commands:
+            try:
+                result = subprocess.run(
+                    ["sh", "-c", command],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    timeout=15,
+                    text=True,
+                )
+                output[name] = ((result.stdout or "").strip() or "(vide)")[:2000]
+            except Exception as exc:  # noqa: BLE001 - un diagnostic ne doit jamais tomber
+                output[name] = "erreur : %s" % exc
+        return {"spi": os.path.exists("/dev/spidev0.0"), "commands": output}
 
     # ------------------------------------------------------- commandes simples
     def _cmd_status(self, client, message):

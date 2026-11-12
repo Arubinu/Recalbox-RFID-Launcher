@@ -14,12 +14,53 @@ lit 1 au repos et 0 quand on appuie, sans aucune resistance a souder.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 
 
 class GpioError(Exception):
     """Erreur d'acces aux broches GPIO."""
+
+
+# ---------------------------------------------------------------------------
+# Repertoire de travail sur (lgpio cree ses tubes de notification dans le
+# repertoire courant). Sur Recalbox, le service demarre avec PWD=/ qui est en
+# lecture seule : sans ce repli, l'import de lgpio/RPi.GPIO echoue et on tombe
+# sur le backend sysfs, refuse par les noyaux recents (erreur 22 a l'export).
+# ---------------------------------------------------------------------------
+def _writable_dir() -> str:
+    candidates = [os.environ.get("RFID_GPIO_DIR"), "/tmp", os.environ.get("TMPDIR"), "/run"]
+    for folder in candidates:
+        if not folder or not os.path.isdir(folder):
+            continue
+        try:
+            probe = os.path.join(folder, ".rfid-gpio-test")
+            with open(probe, "w", encoding="ascii") as handle:
+                handle.write("ok")
+            os.remove(probe)
+            return folder
+        except OSError:
+            continue
+    return ""
+
+
+@contextlib.contextmanager
+def _workdir(folder: str):
+    """Change temporairement de repertoire (et de HOME au besoin)."""
+    previous_dir = os.getcwd()
+    previous_home = os.environ.get("HOME", "")
+    try:
+        if folder:
+            os.chdir(folder)
+            if not previous_home or not os.access(previous_home, os.W_OK):
+                os.environ["HOME"] = folder
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            os.chdir(previous_dir)
+        if previous_home:
+            os.environ["HOME"] = previous_home
 
 
 # ---------------------------------------------------------------------------
@@ -30,12 +71,17 @@ class RpiGpioBackend:
 
     def __init__(self):
         try:
-            import RPi.GPIO as GPIO  # type: ignore
+            # L'import lui-meme ouvre les tubes de notification de lgpio : il doit
+            # se faire depuis un repertoire inscriptible.
+            with _workdir(_writable_dir()):
+                import RPi.GPIO as GPIO  # type: ignore
         except ImportError as exc:
             raise GpioError("module RPi.GPIO absent : %s" % exc)
         self._gpio = GPIO
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BCM)
+        with contextlib.suppress(Exception):
+            GPIO.setwarnings(False)
+        with _workdir(_writable_dir()):
+            GPIO.setmode(GPIO.BCM)
         self._claimed = set()
 
     def setup_input(self, pin: int, pull_up: bool = True) -> None:
@@ -70,12 +116,14 @@ class LgpioBackend:
 
     def __init__(self, chip: int = 0):
         try:
-            import lgpio  # type: ignore
+            with _workdir(_writable_dir()):
+                import lgpio  # type: ignore
         except ImportError as exc:
             raise GpioError("module lgpio absent : %s" % exc)
         self._lgpio = lgpio
         try:
-            self._handle = lgpio.gpiochip_open(chip)
+            with _workdir(_writable_dir()):
+                self._handle = lgpio.gpiochip_open(chip)
         except Exception as exc:  # noqa: BLE001
             raise GpioError("ouverture de gpiochip%d impossible : %s" % (chip, exc))
 

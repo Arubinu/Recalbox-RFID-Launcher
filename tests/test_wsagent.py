@@ -373,6 +373,42 @@ class ButtonPairingTest(AgentTestCase):
         self.assertNotIn("token", data)
 
 
+class InstallerChoiceTest(AgentTestCase):
+    """Le bon install.sh est choisi : partage si plus recent, jamais de retour arriere."""
+
+    def prepare(self, installed, shared):
+        source = os.path.join(self.tmp, "share-src")
+        os.makedirs(source, exist_ok=True)
+        with open(os.path.join(source, "install.sh"), "w", encoding="utf-8") as handle:
+            handle.write("#!/bin/sh\n")
+        with open(os.path.join(source, "VERSION"), "w", encoding="utf-8") as handle:
+            handle.write(shared + "\n")
+        with open(os.path.join(self.home, "install.sh"), "w", encoding="utf-8") as handle:
+            handle.write("#!/bin/sh\n")
+        with open(os.path.join(self.home, "VERSION"), "w", encoding="utf-8") as handle:
+            handle.write(installed + "\n")
+        self.agent = wsagent.Agent(Config(self.config_path), None, home=self.home, port=0)
+        self.agent.source = source
+        return self.agent
+
+    def test_partage_plus_recent(self):
+        agent = self.prepare("2.0.2", "2.2.0")
+        self.assertEqual(agent.installer(), os.path.join(agent.source, "install.sh"))
+
+    def test_partage_plus_ancien_ignore(self):
+        agent = self.prepare("2.2.0", "1.8.2")
+        self.assertEqual(agent.installer(), os.path.join(self.home, "install.sh"))
+
+    def test_versions_egales_utilisent_le_partage(self):
+        agent = self.prepare("2.2.0", "2.2.0")
+        self.assertEqual(agent.installer(), os.path.join(agent.source, "install.sh"))
+
+    def test_version_key(self):
+        self.assertEqual(wsagent.version_key("2.10.1"), (2, 10, 1))
+        self.assertGreater(wsagent.version_key("2.10.0"), wsagent.version_key("2.9.9"))
+        self.assertEqual(wsagent.version_key(""), ())
+
+
 class ProtocolTest(AgentTestCase):
     def test_handshake_non_websocket(self):
         self.start_agent()
