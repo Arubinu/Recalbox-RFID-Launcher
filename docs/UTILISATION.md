@@ -35,7 +35,7 @@ Champs de connexion :
 | --- | --- |
 | Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
 | Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Jeton | **laisser vide** : récupéré automatiquement pendant les minutes qui suivent le démarrage (fenêtre d'appairage) ; sinon « J'ai le fichier token.txt » |
+| Jeton | **laisser vide** : récupéré automatiquement pendant les minutes qui suivent le démarrage (fenêtre d'appairage) ; sinon l'icône d'import à droite du champ jeton |
 
 L'installateur `.cmd` relancé après l'installation ouvre la page avec
 `#host=…&port=…&token=…` : la connexion est immédiate, sans rien saisir (le jeton

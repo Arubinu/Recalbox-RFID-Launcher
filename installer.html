@@ -240,6 +240,20 @@
 
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .actions.stack { margin-top: 16px; }
+  .actions.connect-actions { justify-content: flex-end; margin-top: 14px; }
+
+  /* champ avec action integree (import du jeton) */
+  .input-wrap { position: relative; display: block; }
+  .input-wrap input[type=password] { padding-right: 42px; }
+  .icon-btn {
+    position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px; padding: 0;
+    border-radius: 8px; border: 1px solid transparent;
+    background: transparent; color: var(--muted);
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .12); }
+  .icon-btn svg { width: 17px; height: 17px; }
   .hint { color: var(--muted); font-size: 12.5px; }
   .auto-note {
     display: flex; align-items: flex-start; gap: 9px;
@@ -583,14 +597,23 @@
             <input type="number" id="port" placeholder="8765" min="1" max="65535">
           </label>
           <label class="field"><span>Jeton (facultatif)</span>
-            <input type="password" id="token" placeholder="laisser vide" autocomplete="off">
+            <span class="input-wrap">
+              <input type="password" id="token" placeholder="laisser vide" autocomplete="off">
+              <button class="icon-btn" id="btn-token-file" type="button"
+                      title="Importer le fichier token.txt" aria-label="Importer le fichier token.txt">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 16V7"/><path d="m8.5 10.5 3.5-3.5 3.5 3.5"/>
+                  <path d="M5 16.5V18a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18v-1.5"/>
+                </svg>
+              </button>
+              <input type="file" id="file-token" accept=".txt,text/plain" hidden>
+            </span>
           </label>
         </div>
-        <div class="actions stack">
+        <p class="hint" id="connect-hint"></p>
+        <div class="actions connect-actions">
           <button id="btn-connect">Se connecter</button>
-          <button id="btn-token-file">J'ai le fichier token.txt</button>
-          <input type="file" id="file-token" accept=".txt,text/plain" hidden>
-          <span class="muted small" id="connect-hint"></span>
         </div>
         <div class="auto-note">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"

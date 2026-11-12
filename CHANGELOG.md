@@ -4,6 +4,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.9.2]
+
+### Modifié
+
+* Écran **Se connecter** : le bouton « Se connecter » est **aligné à droite** de
+  la carte, comme une action de formulaire.
+* Le bouton « J'ai le fichier token.txt » disparaît : il devient une **icône
+  d'import placée dans le champ « Jeton »** (au survol : « Importer le fichier
+  token.txt »). Le champ réserve la place de l'icône, et le message d'état
+  s'affiche sur sa propre ligne.
+* Documentation alignée (l'icône remplace le bouton).
+
 ## [1.9.1]
 
 ### Modifié

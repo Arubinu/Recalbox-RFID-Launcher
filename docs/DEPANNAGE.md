@@ -330,8 +330,8 @@ Causes fréquentes :
 | --- | --- |
 | demande le dossier puis « jeton introuvable » | l'agent n'a jamais démarré : redémarrez Recalbox (`token.txt` est créé au démarrage de l'agent) |
 | « jeton vide » | même cause, ou fichier tronqué : supprimez `token.txt` et redémarrez |
-| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez « J'ai le fichier token.txt » ou Edge/Chrome |
-| autorisation refusée | recliquez sur « Se connecter » et acceptez l'accès au dossier ; sinon « J'ai le fichier token.txt » |
+| « ce navigateur ne permet pas la lecture du partage » | Firefox/Safari : utilisez l'icône d'import du champ jeton (Edge/Chrome pour la lecture du partage) |
+| autorisation refusée | recliquez sur « Se connecter » et acceptez l'accès au dossier ; sinon l'icône d'import à droite du champ jeton |
 | accès au dossier impossible | Windows ne s'authentifie pas au partage : lancez `acces-recalbox.cmd` (bouton « Autoriser Windows… ») ou `net use Z: \\RECALBOX\share /user:root recalboxroot` |
 
 Le jeton est mémorisé dans le navigateur par sécurité uniquement pour la
