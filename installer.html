@@ -2270,10 +2270,11 @@ function readerTestReport(data) {
   if (steps.length) {
     lignes.push("");
     lignes.push("Trames échangées (envoi → réponse) :");
-    steps.slice(-6).forEach((step) => {
-      lignes.push("  " + shortHex(step.tx, 26) + "  →  " +
-        (step.rx ? shortHex(step.rx, 26) : "aucune réponse") +
-        "   (erreur " + (step.err || "?") + ")");
+    steps.slice(-8).forEach((step) => {
+      lignes.push("  " + (step.etape ? "[" + step.etape + "] " : "") +
+        shortHex(step.tx, 22) + "  →  " +
+        (step.rx ? shortHex(step.rx, 22) : "aucune réponse") +
+        "   (" + (step.err || "?") + ")");
     });
   }
   return lignes.join("\n");

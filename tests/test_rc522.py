@@ -93,6 +93,25 @@ class Rc522UidTest(unittest.TestCase):
         self.assertIn("9370", trames)
         self.assertEqual(trace["crc_sw"], trace["crc_hw"])
 
+    def test_clone_qui_exige_son_bcc_errone(self):
+        """Un clone qui compare le BCC recu est lu par la strategie BCC recu."""
+        spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
+        spi.only_received_bcc = True
+        reader = Rc522(spi)
+        reader.begin()
+        trace = {}
+        self.assertEqual(reader.read_uid(trace=trace), b"\x36\x00\x00\x00")
+        self.assertEqual(trace.get("strategie"), "bcc-recu")
+        self.assertEqual(trace.get("bcc_recu"), "00")
+
+    def test_badge_normal_utilise_le_bcc_recalcule(self):
+        """Un badge qui recalcule le BCC passe par la strategie recalculee."""
+        reader = Rc522(FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True))
+        reader.begin()
+        trace = {}
+        self.assertEqual(reader.read_uid(trace=trace), b"\x36\x00\x00\x00")
+        self.assertEqual(trace.get("strategie"), "bcc-recalcule")
+
     def test_trace_des_trames(self):
         """La trace decrit la trame envoyee et la reponse, pour le diagnostic."""
         reader = Rc522(FakeRc522Spi(b"\x01\x02\x03\x04"))

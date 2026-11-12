@@ -172,7 +172,8 @@ class Rc522:
         return self.version
 
     # --------------------------------------------------------- transactions
-    def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05, trace=None):
+    def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05, trace=None,
+                    etape: str = ""):
         """Envoie ``data`` et retourne (octets_recus, bits_valides) ou None.
 
         ``trace`` (dict optionnel) recoit la trame envoyee, la reponse brute et
@@ -186,7 +187,7 @@ class Rc522:
         """
         step = None
         if trace is not None:
-            step = {"tx": bytes(data).hex().upper(), "rx": "", "err": ""}
+            step = {"tx": bytes(data).hex().upper(), "rx": "", "err": "", "etape": etape}
             trace.setdefault("steps", []).append(step)
         self._write(REG_COMMAND, CMD_IDLE)
         self._write(REG_COM_IRQ, 0x7F)          # efface les drapeaux
@@ -281,22 +282,31 @@ class Rc522:
             return None
         return bytes(payload[:5])
 
-    def _select(self, command: int, uid_with_bcc, trace=None) -> "int | None":
+    def _select(self, command: int, uid_with_bcc, trace=None, etape: str = "",
+                crc_materiel: bool = False) -> "int | None":
         """Selection : retourne le SAK (1 octet) ou None.
 
-        Le CRC_A est calcule en logiciel : la tablette le verifie, et un CRC faux
-        se traduit par un silence total de la carte (aucune erreur cote
-        lecteur) — c'est exactement ce qui rendait les badges illisibles.
+        Deux variantes sont essayees par ``read_uid`` :
+        * CRC_A calcule en logiciel (reference ISO, independant du composant) ;
+        * CRC_A ajoute par le coprocesseur (TxCRCEn), pour les badges qui ne
+          repondent qu'a cette forme de trame.
         """
         frame = bytes([command, PICC_NVB_SELECT]) + bytes(uid_with_bcc)
-        crc = crc_a_software(frame)
-        if trace is not None:
-            trace["crc_sw"] = crc.hex().upper()
+        if crc_materiel:
+            self._set_bits(REG_TX_MODE, 0x10)      # TxCRCEn : le composant ajoute le CRC
             try:
-                trace["crc_hw"] = self.crc_a(frame).hex().upper()
-            except Rc522Error as exc:
-                trace["crc_hw"] = "erreur : %s" % exc
-        result = self._transceive(frame + crc, trace=trace)
+                result = self._transceive(frame, trace=trace, etape=etape + "-crc-hw")
+            finally:
+                self._clear_bits(REG_TX_MODE, 0x10)
+        else:
+            crc = crc_a_software(frame)
+            if trace is not None:
+                trace["crc_sw"] = crc.hex().upper()
+                try:
+                    trace["crc_hw"] = self.crc_a(frame).hex().upper()
+                except Rc522Error as exc:
+                    trace["crc_hw"] = "erreur : %s" % exc
+            result = self._transceive(frame + crc, trace=trace, etape=etape + "-crc-sw")
         if result is None:
             return None
         payload, _ = result
@@ -310,13 +320,19 @@ class Rc522:
     def read_uid(self, trace=None):
         """Lit l'UID du badge present (4 ou 7 octets), ou None.
 
-        Deux precautions pour les badges clones : WUPA en secours de REQA, et
-        BCC recalcule pour la selection (celui renvoye par la carte n'est pas
-        forcement juste, et une selection avec un BCC faux est ignoree par la
-        carte).
+        Plusieurs strategies sont essayees, car les badges clones different sur
+        deux points : le BCC qu'ils attendent dans la trame de selection (celui
+        qu'ils renvoient, ou celui recalcule a partir de l'UID) et la facon dont
+        le CRC doit etre ajoute (par nous, ou par le composant). Une carte
+        genue accepte la premiere ; une carte clonee en accepte souvent une
+        autre. La trace dit laquelle a fonctionne.
         """
-        for tentative in range(2):
-            mode = PICC_REQA if tentative == 0 else PICC_WUPA
+        strategies = (
+            ("bcc-recu", False, False),
+            ("bcc-recalcule", True, False),
+            ("bcc-recalcule-crc-materiel", True, True),
+        )
+        for tentative, mode in enumerate((PICC_REQA, PICC_WUPA, PICC_REQA)):
             atqa = self.request(mode)
             if trace is not None:
                 trace["atqa"] = bytes(atqa).hex().upper() if atqa else ""
@@ -325,31 +341,43 @@ class Rc522:
             first = self._anticollision(PICC_SEL_CL1, trace)
             if first is None:
                 continue
-            partie = bytes(first[0:4])
-            sak = self._select(PICC_SEL_CL1, partie + self._bcc(partie), trace)
-            if sak is None:
-                continue
             if trace is not None:
-                trace["sak"] = "0x%02X" % sak
-            if sak & SAK_CASCADE:
-                second = self._anticollision(PICC_SEL_CL2, trace)
-                if second is None:
+                trace["anticoll"] = first.hex().upper()
+                trace["bcc_recu"] = "%02X" % first[4]
+            partie = bytes(first[0:4])
+            for nom, recalcule, materiel in strategies:
+                bcc = self._bcc(partie) if recalcule else bytes(first[4:5])
+                sak = self._select(
+                    PICC_SEL_CL1, partie + bcc, trace,
+                    etape="select-%s-%s" % (nom, "wupa" if mode == PICC_WUPA else "reqa"),
+                    crc_materiel=materiel,
+                )
+                if sak is None:
                     continue
-                partie2 = bytes(second[0:4])
-                next_sak = self._select(PICC_SEL_CL2, partie2 + self._bcc(partie2), trace)
-                if next_sak is None:
-                    continue
-                if next_sak & SAK_CASCADE:
-                    # UID de 10 octets : non gere (extrement rare sur des badges).
-                    if self.log:
-                        self.log.warning("Badge a UID 10 octets ignore")
-                    return None
-                uid = bytes(first[1:4]) + bytes(second[0:4])
+                if trace is not None:
+                    trace["sak"] = "0x%02X" % sak
+                    trace["strategie"] = nom
+                    trace["tentative"] = tentative + 1
+                if sak & SAK_CASCADE:
+                    second = self._anticollision(PICC_SEL_CL2, trace)
+                    if second is None:
+                        break
+                    partie2 = bytes(second[0:4])
+                    next_sak = self._select(PICC_SEL_CL2, partie2 + self._bcc(partie2), trace,
+                                            etape="select2", crc_materiel=materiel)
+                    if next_sak is None:
+                        break
+                    if next_sak & SAK_CASCADE:
+                        # UID de 10 octets : non gere (extrement rare sur des badges).
+                        if self.log:
+                            self.log.warning("Badge a UID 10 octets ignore")
+                        return None
+                    uid = bytes(first[1:4]) + bytes(second[0:4])
+                    self.halt()
+                    return uid
+                uid = bytes(first[0:4])
                 self.halt()
                 return uid
-            uid = bytes(first[0:4])
-            self.halt()
-            return uid
         return None
 
     @staticmethod

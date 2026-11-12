@@ -4,6 +4,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.1]
+
+### Corrigé (badges qui répondent mais dont la sélection reste muette)
+
+* La trace de 2.5.6 a montré que le **CRC était juste** (`crc_sw = crc_hw =
+  6062`) : ma correction précédente ne visait pas la bonne cause. Les faits
+  mesurés sont précis : `ATQA 0400`, anticollision reçue `36 00 00 00` avec un
+  **BCC renvoyé à `00`** (au lieu de `36`), puis silence total sur la trame de
+  sélection, quelle que soit la variante.
+* Le pilote essaie désormais **plusieurs stratégies de sélection** au lieu d'une
+  seule :
+  1. BCC **renvoyé par la carte** (les clones comparent souvent celui-là) ;
+  2. BCC **recalculé** à partir de l'UID (les vraies cartes recalculent) ;
+  3. idem avec le **CRC ajouté par le coprocesseur** (`TxCRCEn`) au lieu d'être
+     calculé en logiciel — certaines trames ne sont acceptées que sous cette
+     forme.
+  Chaque tentative est rejouée après un `REQA` puis un `WUPA`.
+* La trace du test nomme chaque étape (`select-bcc-recu-reqa`,
+  `select-bcc-recalcule-wupa`…) et indique la **stratégie gagnante** : si un
+  badge finit par être lu, on saura exactement pourquoi.
+* Simulateur : il vérifie désormais le BCC de la sélection comme une vraie carte
+  (et sait simuler un clone qui exige son propre BCC erroné). Deux tests de plus.
+
 ## [2.6.0]
 
 ### Ajouté

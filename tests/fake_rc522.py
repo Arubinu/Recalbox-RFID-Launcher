@@ -41,6 +41,8 @@ class FakeRc522Spi:
         self.wupa_only = wupa_only
         #: Coprocesseur CRC defectueux (renvoie n'importe quoi).
         self.broken_crc = broken_crc
+        #: Badge clone qui n'accepte que le BCC renvoye par lui (BCC errone).
+        self.only_received_bcc = False
         self.registers = {}
         self.fifo = bytearray()
         self.irq = 0
@@ -226,6 +228,15 @@ class FakeRc522Spi:
             self.select_frames.append(frame)
             if len(frame) != 9 or frame[7:9] != self.crc_a(frame[:7]):
                 self.irq = IRQ_TIMER  # trame incomplete ou CRC faux : pas de reponse
+                return
+            # Une carte verifie le BCC de la trame de selection : celui qu'elle
+            # recalcule (cas normal), ou celui qu'elle a envoye (clone whose BCC
+            # est errone).
+            attendu = frame[2] ^ frame[3] ^ frame[4] ^ frame[5]
+            if self.only_received_bcc and self.bad_bcc:
+                attendu = 0
+            if frame[6] != attendu:
+                self.irq = IRQ_TIMER
                 return
             if frame[0] == 0x93:
                 sak = 0x04 if len(uid) == 7 else 0x08
