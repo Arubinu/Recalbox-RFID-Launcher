@@ -252,26 +252,49 @@
 
   /* ------------------------------------------------------------- boutons */
   button {
-    font: inherit; font-size: 14px; font-weight: 650; letter-spacing: -.005em;
-    color: #fff; height: 42px; padding: 0 17px;
-    border-radius: var(--r-sm); border: 1px solid rgba(255, 255, 255, .1);
-    background: linear-gradient(180deg, var(--primary), var(--primary-2));
+    font: inherit; font-size: 13.5px; font-weight: 600; letter-spacing: -.005em;
+    color: var(--text);
+    height: 40px; padding: 0 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(255, 255, 255, .05);
     cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    transition: filter .15s, transform .1s, background .15s;
+    transition: background .15s, border-color .15s, color .15s;
     white-space: nowrap;
   }
-  button:hover { filter: brightness(1.08); }
-  button:active { transform: translateY(1px); }
-  button:focus-visible { outline: 2px solid #93a6ff; outline-offset: 2px; }
-  button:disabled { opacity: .42; cursor: not-allowed; filter: none; transform: none; }
-  button.big { height: 48px; font-size: 15px; padding: 0 22px; border-radius: var(--r-md); }
-  button.secondary { background: var(--surface-2); border-color: var(--line-2); color: var(--text); }
-  button.secondary:hover { background: var(--surface-3); }
-  button.ghost { background: transparent; border-color: var(--line-2); color: var(--muted); }
-  button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
-  button.danger { background: linear-gradient(180deg, #d63c3a, #b02c2a); }
+  button:hover { background: rgba(255, 255, 255, .09); border-color: rgba(255, 255, 255, .2); }
+  button:active { background: rgba(255, 255, 255, .11); }
+  button:focus-visible { outline: 2px solid #8fa2ff; outline-offset: 2px; }
+  button:disabled { opacity: .38; cursor: not-allowed; background: rgba(255, 255, 255, .03); }
+  button.big { height: 46px; font-size: 14.5px; padding: 0 20px; border-radius: 12px; }
+  button.secondary { background: transparent; border-color: rgba(255, 255, 255, .1); color: var(--muted); }
+  button.secondary:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+  button.ghost { background: transparent; border-color: rgba(255, 255, 255, .1); color: var(--muted); }
+  button.ghost:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+  button.danger {
+    background: rgba(239, 83, 80, .08);
+    border-color: rgba(239, 83, 80, .28);
+    color: #ffb9b6;
+  }
+  button.danger:hover { background: rgba(239, 83, 80, .14); border-color: rgba(239, 83, 80, .42); }
   button.tiny { height: 30px; font-size: 12.5px; padding: 0 11px; border-radius: 8px; }
+
+  /* barre d'actions : nettement differente des onglets */
+  .action-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 10px 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, .022);
+    flex: 0 0 auto;
+  }
+  .action-bar .label {
+    font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700;
+  }
+  .action-bar .grow { flex: 1 1 auto; }
+  .action-bar > button { flex: 0 0 auto; }
 
   /* -------------------------------------------------------- tableau de bord */
   .dash { display: flex; flex-direction: column; min-height: 0; height: 100%; gap: 12px; }
@@ -564,8 +587,8 @@
           </label>
         </div>
         <div class="actions stack">
-          <button class="big" id="btn-connect">Se connecter</button>
-          <button class="secondary" id="btn-token-file">J'ai le fichier token.txt</button>
+          <button id="btn-connect">Se connecter</button>
+          <button id="btn-token-file">J'ai le fichier token.txt</button>
           <input type="file" id="file-token" accept=".txt,text/plain" hidden>
           <span class="muted small" id="connect-hint"></span>
         </div>
@@ -623,10 +646,12 @@
               </span>
             </div>
             <div class="grid" id="current-grid"></div>
-            <div class="actions">
-              <button id="btn-associate">Associer le prochain badge</button>
-              <button class="secondary" id="btn-associate-delete">Effacer un badge</button>
+            <div class="action-bar">
+              <span class="label">Association</span>
               <span class="muted small" id="armed-text"></span>
+              <span class="grow"></span>
+              <button id="btn-associate">Associer le prochain badge</button>
+              <button id="btn-associate-delete">Effacer un badge</button>
             </div>
             <div class="table-wrap">
               <table>
@@ -687,15 +712,19 @@
               <span class="hint">Mettre à jour, redémarrer Recalbox, relancer le service.</span>
             </div>
             <div class="grid" id="install-grid"></div>
-            <div class="actions">
+            <div class="action-bar">
+              <span class="label">Mise à jour</span>
+              <span class="grow"></span>
               <button id="btn-install">Installer / mettre à jour</button>
               <button class="danger" id="btn-reboot">Redémarrer la Recalbox</button>
             </div>
-            <div class="grid" id="service-grid" style="margin-top:4px"></div>
-            <div class="actions">
-              <button class="secondary" id="btn-start">Démarrer le service</button>
-              <button class="secondary" id="btn-stop">Arrêter</button>
-              <button class="secondary" id="btn-restart">Redémarrer</button>
+            <div class="grid" id="service-grid"></div>
+            <div class="action-bar">
+              <span class="label">Service</span>
+              <span class="grow"></span>
+              <button id="btn-start">Démarrer</button>
+              <button id="btn-stop">Arrêter</button>
+              <button id="btn-restart">Redémarrer</button>
             </div>
             <details open>
               <summary>Journal d'installation</summary>
@@ -1206,6 +1235,9 @@ function el(tag, options = {}, children = []) {
   if (options.text !== undefined) node.textContent = options.text;
   if (options.title) node.title = options.title;
   if (options.onclick) node.addEventListener("click", options.onclick);
+  for (const [name, value] of Object.entries(options.attrs || {})) {
+    node.setAttribute(name, String(value));
+  }
   for (const child of children) if (child) node.appendChild(child);
   return node;
 }
@@ -1384,7 +1416,7 @@ async function renderTags(force) {
   body.replaceChildren();
   if (!payload.tags.length) {
     body.appendChild(el("tr", {}, [el("td", {
-      colspan: 6, className: "muted",
+      attrs: { colspan: 6 }, className: "muted",
       text: "Aucun badge pour l'instant : associez-en un avec le bouton ci-dessus.",
     })]));
     return;

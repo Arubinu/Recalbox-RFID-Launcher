@@ -4,6 +4,27 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.9.1]
+
+### Modifié
+
+* **Boutons neutres, hiérarchie par la taille et non par la couleur** : plus de
+  bleu saturé ni de rouge vif. Tous les boutons partagent la même surface
+  discrète ; seuls les boutons structurants sont plus grands, et les actions
+  destructrices (« Redémarrer la Recalbox », « Effacer un badge ») utilisent un
+  liseré rouge sourd.
+* **Barres d'actions** dans les onglets : les boutons ne flottent plus à gauche
+  (ce qui imitait l'agencement des onglets). Chaque groupe est posé dans un
+  encadré avec un intitulé à gauche (`MISE À JOUR`, `SERVICE`, `ASSOCIATION`) et
+  les boutons alignés à droite.
+* Sur l'écran de connexion, « Se connecter » et « J'ai le fichier token.txt » ont
+  désormais **exactement le même style**.
+
+### Corrigé
+
+* Le message « aucun badge » du tableau s'affiche enfin centré sur toute la
+  largeur (l'attribut `colspan` n'était pas posé par le générateur d'éléments).
+
 ## [1.9.0]
 
 ### Modifié
