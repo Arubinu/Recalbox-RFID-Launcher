@@ -26,7 +26,7 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
-Un bouton **`FR` / `EN`** (à côté) change la langue de l'interface : un simple clic
+Un bouton **`FR` / `EN` / `DE` / `ES` / `IT` / `PT`** (à côté) change la langue de l'interface : un simple clic
 passe à la langue suivante. La page démarre dans la langue du navigateur quand
 elle est disponible, puis retient le choix. Chaque langue est un fichier
 `i18n/<code>.json` compilé dans la page ; un texte non traduit reste en français.

@@ -4,6 +4,32 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.1]
+
+### Ajouté
+
+* **Les six langues de Recalbox que nous pouvons traduire proprement** :
+  français, anglais, **allemand, espagnol, italien et portugais** — un fichier
+  par langue (`i18n/de.json`, `es.json`, `it.json`, `pt.json`, 175 entrées
+  chacun). Le bouton de l'en-tête fait défiler les six ; son infobulle donne le
+  nom de la langue (`Deutsch`, `Español`…).
+  * les libellés du tableau de bord construits par la page (« Jeu sélectionné »,
+    « Version en service », « Bus du lecteur (SPI) »…) passent désormais par la
+    table de traduction, ainsi que les messages les plus visibles (« Aucun badge
+    pour l'instant », « ancien nombre de badges », « C'est prêt : posez le badge
+    sur le lecteur (N s) », « Connexion perdue depuis N s »).
+* Le basque, le turc et le chinois de Recalbox ne sont **pas** livrés : une
+  traduction approximative serait pire que le français. Le mécanisme est prêt :
+  déposer `i18n/eu.json` (ou `tr`, `zh`) suffit, la page le propose
+  automatiquement.
+
+### Note
+
+* Les messages longs construits à la volée (détail des bandeaux d'erreur,
+  verdicts du test du lecteur, textes du `.cmd` de diagnostic) restent en
+  français pour l'instant : la fonction `t()` est en place, il ne manque que
+  leurs traductions.
+
 ## [2.7.0]
 
 ### Ajouté
@@ -11,7 +37,7 @@ et affichée par `rfidctl version`.
 * **Interface multilingue.** Un bouton dans l'en-tête affiche la langue courante
   en deux lettres (`FR`, `EN`) et passe à la langue suivante d'un simple clic.
   La langue suit d'abord celle du navigateur, puis le choix est mémorisé.
-  * chaque langue est un fichier `i18n/<code>.json` (clé = texte français,
+  * chaque langue est un fichier `i18n/<code>.json` (fr, en, de, es, it, pt) — clé = texte français,
     valeur = traduction), compilé dans la page par `tools/build_installer.py`
     comme le reste du contenu — la page reste un fichier unique, sans réseau ;
   * un texte sans traduction reste en français : on peut donc ajouter une

@@ -1518,7 +1518,7 @@ function el(tag, options = {}, children = []) {
 
 function item(label, value, extraClass) {
   return el("div", { className: "item" }, [
-    el("div", { className: "label", text: label }),
+    el("div", { className: "label", text: t(label) }),
     el("div", { className: "value " + (extraClass || ""), text: value }),
   ]);
 }
@@ -1648,7 +1648,7 @@ function renderHardware(status) {
     item("Lecteur de badges", reader || "non détecté", reader ? "ok" : "warn"),
     item("Bouton du boîtier", service && service.button ? "reconnu" : "non reconnu",
          service && service.button ? "ok" : "warn"),
-    item("Dernier badge posé", service && service.last_uid ? service.last_uid : "aucun"),
+    item("Dernier badge posé", service && service.last_uid ? service.last_uid : t("aucun")),
     item("Lancement des jeux", status.frontend === null ? "hors Recalbox" :
          (status.frontend ? "compatible" : "version trop ancienne"), status.frontend ? "ok" : "warn")
   );
@@ -1686,14 +1686,15 @@ function renderCurrent(status) {
     );
   } else {
     $("#current-grid").replaceChildren(
-      item("Jeu sélectionné", "aucun", "warn")
+      item("Jeu sélectionné", t("aucun"), "warn")
     );
   }
   const controller = status.service && status.service.status && status.service.status.controller;
   const armed = controller && controller.mode;
   $("#armed-text").textContent = armed
-    ? (armed === "associate" ? "C'est prêt : posez le badge sur le lecteur (" :
-       "Posez le badge à effacer sur le lecteur (") +
+    ? (armed === "associate"
+        ? t("C'est prêt : posez le badge sur le lecteur") + " ("
+        : t("Posez le badge à effacer sur le lecteur") + " (") +
       Math.round(controller.seconds_left || 0) + " s)"
     : "";
   $("#btn-associate").disabled = busy || !status.service.running || !current;
@@ -1723,13 +1724,13 @@ async function renderTags(force) {
   lastTagsJson = json;
   $("#tags-count").textContent = payload.count === 1
     ? "1 badge enregistré"
-    : payload.count + " badges enregistrés";
+    : t("{n} badges enregistrés", { n: payload.count });
   const body = $("#tags-body");
   body.replaceChildren();
   if (!payload.tags.length) {
     body.appendChild(el("tr", {}, [el("td", {
       attrs: { colspan: 6 }, className: "muted",
-      text: "Aucun badge pour l'instant : associez-en un avec le bouton ci-dessus.",
+      text: t("Aucun badge pour l'instant : associez-en un avec le bouton ci-dessus."),
     })]));
     return;
   }
@@ -2674,11 +2675,16 @@ initTheme();
    francais, la valeur sa traduction. Un texte sans traduction reste en
    francais. Le bouton de l'en-tete fait defiler les langues disponibles. */
 const LANG_KEY = "rfid-lang";
-let LANGUE_ACTIVE = "fr";
-let LANGUES = { fr: {} };
-let LANGUE_SOURCE = "fr";
-let textesOriginaux = [];      // [{ noeud, texte }]
-let attributsOriginaux = [];   // [{ noeud, attribut, texte }]
+/* Noms des langues, pour l'infobulle du bouton. */
+const NOMS_LANGUES = {
+  fr: "Français", en: "English", de: "Deutsch", es: "Español",
+  it: "Italiano", pt: "Português", eu: "Euskara", tr: "Türkçe", zh: "中文",
+};
+var LANGUE_ACTIVE = "fr";
+var LANGUES = null;            // rempli par lireLangues()
+var LANGUE_SOURCE = "fr";
+var textesOriginaux = [];      // [{ noeud, texte }]
+var attributsOriginaux = [];   // [{ noeud, attribut, texte }]
 
 function normaliserTexte(texte) {
   return String(texte || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
@@ -2697,13 +2703,16 @@ function lireLangues() {
 }
 
 function languesDisponibles() {
+  if (!LANGUES) return ["fr"];
   const codes = Object.keys(LANGUES).filter((code) => /^[a-z]{2}$/.test(code));
   if (!codes.includes(LANGUE_SOURCE)) codes.push(LANGUE_SOURCE);
   return codes.sort();
 }
 
 function traduire(texte) {
-  if (LANGUE_ACTIVE === LANGUE_SOURCE) return texte;
+  /* Avant l'initialisation du bloc (ou sans traductions), on renvoie le texte
+     source : `item()` peut appeler t() des le chargement de la page. */
+  if (!LANGUES || LANGUE_ACTIVE === LANGUE_SOURCE) return texte;
   const dictionnaire = LANGUES[LANGUE_ACTIVE] || {};
   return dictionnaire[normaliserTexte(texte)] || texte;
 }
@@ -2760,7 +2769,12 @@ function appliquerLangue(code, memoriser) {
     entree.noeud.setAttribute(entree.attribut, traduire(entree.texte));
   });
   const bouton = $("#btn-lang");
-  if (bouton) bouton.textContent = code.toUpperCase();
+  if (bouton) {
+    bouton.textContent = code.toUpperCase();
+    const nom = NOMS_LANGUES[code] || code.toUpperCase();
+    bouton.title = nom + " — cliquer pour changer de langue";
+    bouton.setAttribute("aria-label", "Langue : " + nom + ". Cliquer pour changer.");
+  }
   if (memoriser) {
     try { localStorage.setItem(LANG_KEY, code); } catch (error) { /* mode privé */ }
   }
@@ -2864,7 +2878,7 @@ function updateOfflineText(prefix) {
   const text = $("#offline-text");
   if (!text || !offlineSince) return;
   const essai = reconnectAttempt > 0 ? " · tentative " + reconnectAttempt : "";
-  text.textContent = (prefix || "Connexion perdue") + " depuis " + offlineSeconds() + " s" + essai +
+  text.textContent = (prefix || t("Connexion perdue")) + " depuis " + offlineSeconds() + " s" + essai +
     ". La Recalbox a peut-être redémarré.";
 }
 

@@ -168,7 +168,7 @@ périmé).
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 | Apparence | thème clair / sombre (bouton soleil-lune : suit le système, un clic le fixe, appui long pour revenir) ; il s'applique aussi au schéma de câblage |
-| Langue | bouton `FR` / `EN` dans l'en-tête : un clic passe à la langue suivante (suit d'abord celle du navigateur, puis mémorise le choix) |
+| Langue | bouton de langue dans l'en-tête (`FR`, `EN`, `DE`, `ES`, `IT`, `PT`) : un clic passe à la langue suivante (suit d'abord celle du navigateur, puis mémorise le choix) |
 
 * **Connexion** : `ws://<ip>:8765`, adresse et port seulement. Cliquez sur
   « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant le
