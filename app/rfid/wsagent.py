@@ -51,6 +51,7 @@ AUTH_FAILURES = 3
 AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
 PAIRING_FILENAME = "pairing.json"
+PAIRED_FILENAME = "paired.ok"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
@@ -278,9 +279,10 @@ class Agent:
         self.token_path = os.path.join(self.home, TOKEN_FILENAME)
         existed = os.path.isfile(self.token_path)
         self.token = ensure_token(self.token_path)
-        # Premier demarrage (jeton cree) : on laisse une fenetre d'appairage, le
-        # temps que la page recupere le jeton sans partage reseau.
-        if not existed:
+        # Fenetre d'appairage tant qu'aucun client ne s'est jamais connecte :
+        # un jeton deja en place mais jamais utilise (mise a jour, rollback...)
+        # reste donc appariable sans passer par le partage reseau.
+        if not existed or not os.path.isfile(os.path.join(self.home, PAIRED_FILENAME)):
             open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
@@ -514,6 +516,11 @@ class Agent:
             if secrets.compare_digest(str(message.get("token") or ""), self.token):
                 client.authenticated = True
                 close_pairing_window(self.home)
+                try:
+                    with open(os.path.join(self.home, PAIRED_FILENAME), "w", encoding="utf-8") as handle:
+                        handle.write(time.strftime("%Y-%m-%dT%H:%M:%S") + "\n")
+                except OSError:
+                    pass
                 client.send(
                     {
                         "id": request_id,

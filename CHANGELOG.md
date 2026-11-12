@@ -15,6 +15,9 @@ et affichée par `rfidctl version`.
   Explorateur Windows et sans copier-coller.
   * transmission **une seule fois** (le fichier `pairing.json` est supprimé
     dès qu'un client l'a obtenu, et à la première authentification réussie) ;
+  * la fenêtre se rouvre à chaque démarrage **tant qu'aucun poste ne s'est
+    connecté** (marqueur `paired.ok`) : après une mise à jour ou une
+    réinstallation, l'appairage fonctionne donc encore, sans SSH ;
   * **réseau local uniquement** (10/8, 172.16/12, 192.168/16, lien-local, `::1`) ;
     toute autre adresse est refusée avec un message explicite ;
   * `rfidctl pair` (en SSH) réouvre la fenêtre quand on veut appairer un autre

@@ -247,14 +247,32 @@ class PairingTest(AgentTestCase):
         verifie.call("auth", token=token)
         self.assertEqual(verifie.call("version")["version"], wsagent.__version__)
 
-    def test_pas_d_appairage_si_le_jeton_existe_deja(self):
+    def test_pas_d_appairage_une_fois_le_poste_appaire(self):
         path = os.path.join(self.home, "token.txt")
         wsagent.ensure_token(path)
+        with open(os.path.join(self.home, wsagent.PAIRED_FILENAME), "w", encoding="utf-8") as handle:
+            handle.write("2024-01-01T00:00:00\n")
         self.start_agent()
         client = self.client()
         with self.assertRaises(WsError) as context:
             client.call("pair")
         self.assertIn("appairage", str(context.exception).lower())
+
+    def test_jeton_existant_jamais_utilise_reste_appariable(self):
+        # Cas d'une mise a jour : le jeton existe deja, aucun client ne s'est
+        # encore connecte -> la fenetre doit s'ouvrir au demarrage.
+        path = os.path.join(self.home, "token.txt")
+        wsagent.ensure_token(path)
+        self.start_agent()
+        data = self.client().call("pair")
+        self.assertEqual(data["token"], self.agent.token)
+
+    def test_auth_reussie_ferme_la_fenetre(self):
+        self.start_agent()
+        wsagent.open_pairing_window(self.home, 5)
+        self.client().call("auth", token=self.agent.token)
+        self.assertFalse(wsagent.pairing_is_open(self.home))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, wsagent.PAIRED_FILENAME)))
 
     def test_fenetre_ouverte_sur_demande(self):
         self.start_agent()
