@@ -4,6 +4,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.8.1]
+
+### Corrigé
+
+* **Le rond des interrupteurs de l'onglet Options est maintenant centre** dans
+  sa piste. Il etait colle au bas du bouton (2 px en haut, 0 en bas) : il est
+  desormais a 2 px des deux bords, allume comme eteint, sur ordinateur comme sur
+  telephone.
+
 ## [2.8.0]
 
 ### Ajouté — « Régler le lecteur automatiquement »

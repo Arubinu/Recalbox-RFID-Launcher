@@ -166,5 +166,30 @@ class CommittedInstallerTest(unittest.TestCase):
         self.assertEqual(others, [], "anciennes versions présentes dans dist/")
 
 
+class InterrupteurTest(unittest.TestCase):
+    """Le rond des interrupteurs doit etre centre dans sa piste.
+
+    Regression : `top: 2px` sur un rond de 22 px (bordure comprise) dans une
+    piste interieure de 24 px le collait en bas. On verifie donc la construction
+    qui garantit le centrage, pas une valeur en pixels.
+    """
+
+    def test_rond_centre_verticalement(self):
+        texte = build_installer.build_html()
+        debut = texte.index(".switch::after {")
+        bloc = texte[debut:debut + 500]
+        self.assertIn("top: 50%", bloc)
+        self.assertIn("translateY(-50%)", bloc)
+        self.assertIn("box-sizing: border-box", bloc)
+        self.assertNotIn("top: 2px", bloc)
+
+    def test_rond_centre_une_fois_active(self):
+        texte = build_installer.build_html()
+        self.assertIn(
+            '.switch[aria-checked="true"]::after { transform: translate(20px, -50%); }',
+            texte,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

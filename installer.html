@@ -462,15 +462,19 @@
     transition: background .18s, border-color .18s;
   }
   .switch:hover { background: rgba(var(--ink-rgb), .16); border-color: rgba(var(--ink-rgb), .26); }
+  /* Le bouton (bordure comprise) fait 26 px de haut : le rond doit etre centre
+     dans la zone interieure (24 px), sinon il colle au bas de la piste. */
   .switch::after {
-    content: ""; position: absolute; top: 2px; left: 2px;
+    content: ""; position: absolute; top: 50%; left: 2px;
     width: 20px; height: 20px; border-radius: 50%;
+    box-sizing: border-box;
     background: var(--surface); border: 1px solid rgba(var(--ink-rgb), .14);
+    transform: translateY(-50%);
     transition: transform .18s;
   }
   .switch[aria-checked="true"] { background: var(--primary); border-color: transparent; }
   .switch[aria-checked="true"]:hover { background: var(--primary); filter: brightness(1.06); }
-  .switch[aria-checked="true"]::after { transform: translateX(20px); }
+  .switch[aria-checked="true"]::after { transform: translate(20px, -50%); }
   #options-state.warn { color: var(--warn-text); }
 
   /* ------------------------------------------------- mesure du lecteur */
