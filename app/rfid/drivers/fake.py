@@ -31,6 +31,10 @@ class FakeReader:
             return None
         return self.queue.popleft()
 
+    def tag_present(self) -> bool:
+        """Simulateur : un badge est present si la file n'est pas vide."""
+        return bool(self.queue)
+
     def close(self) -> None:
         self.started = False
 

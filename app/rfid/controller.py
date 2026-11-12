@@ -16,6 +16,10 @@ MODE_IDLE = ""
 MODE_ASSOCIATE = "associate"
 MODE_DELETE = "delete"
 
+# Action a effectuer quand un badge deja enregistre est scanne.
+ACTION_LAUNCH = "launch"   # lance le jeu (comportement historique)
+ACTION_NONE = "none"       # bip de confirmation et journal, sans rien lancer
+
 
 class Controller:
     """Machine a etats : repos <-> association / suppression."""
@@ -40,11 +44,13 @@ class Controller:
 
         self.launch_after_bind = True
         self.ignore_when_running = True
-        self.arm_timeout_s = 30.0
+        self.arm_timeout_s = 10.0
+        self.action = ACTION_LAUNCH
         if cfg is not None:
             self.launch_after_bind = cfg.get_bool("launch", "launch_after_bind", True)
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
-            self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 30.0)
+            self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
+            self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
 
         self.mode = MODE_IDLE
         self.target = None
@@ -147,6 +153,16 @@ class Controller:
                 self._log("info", "Jeu deja en cours : badge %s ignore" % pretty_uid(uid))
                 return "ignored"
 
+        # action = none : le badge est reconnu mais rien n'est lance
+        if self.action == ACTION_NONE:
+            self.feedback.recognized()
+            self._log(
+                "info",
+                "Badge %s reconnu : %s (%s) -- action desactivee (action = none)"
+                % (pretty_uid(uid), entry.get("name") or entry.get("game"), entry.get("system")),
+            )
+            return "recognized"
+
         return self._launch(entry, uid)
 
     # ------------------------------------------------------------------ interne
@@ -197,7 +213,7 @@ class Controller:
             self._log("error", "Effacement impossible : %s" % exc)
             return "failed"
         if removed:
-            self.feedback.ok()
+            self.feedback.removed()
             self._log("info", "Badge %s efface" % pretty_uid(uid))
             return "deleted"
         self.feedback.error()

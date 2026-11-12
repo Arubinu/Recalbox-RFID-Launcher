@@ -149,5 +149,34 @@ class ControllerTest(unittest.TestCase):
         self.assertGreater(status["seconds_left"], 0)
 
 
+class ActionTest(ControllerTest):
+    """Action au scan : lancer le jeu, ou seulement confirmer."""
+
+    def set_action(self, value):
+        with open(self.config.path, "w", encoding="utf-8") as handle:
+            handle.write("[launch]\naction = %s\n" % value)
+        self.config.reload()
+        self.controller = self.make_controller()
+        self.controller.store.put("A1B2C3D4", "snes", "Super Mario World.smc", "Mario")
+        return self.controller
+
+    def test_action_launch_par_defaut(self):
+        self.controller.store.put("A1B2C3D4", "snes", "Super Mario World.smc")
+        self.assertEqual(self.controller.on_badge("A1B2C3D4"), "launched")
+        self.assertEqual(self.launcher.calls[-1][1], "Super Mario World.smc")
+
+    def test_action_none_ne_lance_rien(self):
+        controller = self.set_action("none")
+        self.assertEqual(controller.on_badge("A1B2C3D4"), "recognized")
+        self.assertEqual(self.launcher.calls, [])
+        self.assertIn("recognized", self.feedback.events)
+        self.assertNotIn("error", self.feedback.events)
+
+    def test_delai_arme_dix_secondes(self):
+        controller = self.make_controller()
+        controller.on_button("short")
+        self.assertAlmostEqual(controller.arm_timeout_s, 10.0, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -64,3 +64,66 @@ class DaemonHelpersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class BadgeLatchTest(unittest.TestCase):
+    """Mode "cartouche" : un badge laisse sur le lecteur n'agit qu'une fois."""
+
+    def setUp(self):
+        from unittest import mock as _mock
+
+        from rfid import daemon as _daemon
+
+        self.daemon = _daemon
+        self.service = _daemon.Service.__new__(_daemon.Service)
+        self.service.home = tempfile.mkdtemp(prefix="rfid-latch-")
+        self.service.log = None
+        self.service.rearm_absent_ms = 1200.0
+        self.service._active_uid = None
+        self.service._absent_since = None
+        self.service.last_uid = None
+        self.service.last_uid_at = 0
+        self.actions = []
+        self.service.controller = _mock.Mock()
+        self.service.controller.on_badge = lambda uid: self.actions.append(uid)
+        self.service.reader = _mock.Mock()
+        self.service.reader.tag_present.return_value = True
+        self.now = 100.0
+        self._patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now)
+        self._patch.start()
+
+    def tearDown(self):
+        self._patch.stop()
+        shutil.rmtree(self.service.home, ignore_errors=True)
+
+    def test_badge_laisse_n_agit_qu_une_fois(self):
+        for _ in range(5):
+            self.service._badge_seen("A1B2C3D4")
+            self.now += 0.15
+            self.service._release_latch()      # badge toujours present
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_retirer_puis_representer_refait_l_action(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.service.reader.tag_present.return_value = False
+        self.now += 0.2
+        self.service._release_latch()          # debut de l'absence
+        self.now += 1.3
+        self.service._release_latch()          # absence assez longue
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
+
+    def test_absence_trop_courte_ne_rearme_pas(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.service.reader.tag_present.return_value = False
+        self.now += 0.2
+        self.service._release_latch()
+        self.now += 0.4
+        self.service._release_latch()
+        self.service._badge_seen("A1B2C3D4")
+        self.assertEqual(self.actions, ["A1B2C3D4"])
+
+    def test_autre_badge_agit_immediatement(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.service._badge_seen("11223344")
+        self.assertEqual(self.actions, ["A1B2C3D4", "11223344"])
+

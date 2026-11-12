@@ -102,7 +102,8 @@ Le jeton se trouve sur le partage (déjà protégé par le réseau local) :
    * 2 bips graves : problème (badge illisible, base non accessible…).
 
 Un badge déjà associé est simplement réassocié : la nouvelle association
-remplace l'ancienne.
+remplace l'ancienne. La fenêtre d'attente est de **10 secondes**
+(`[button] arm_timeout_s`).
 
 ## Lancer un jeu
 
@@ -113,6 +114,18 @@ jaquette) puis lance l'émulateur.
   `ignore_when_game_running`). Quittez d'abord le jeu.
 * Un badge inconnu est signalé par deux bips graves et une ligne dans le
   journal.
+* L'option `[launch] action = none` remplace le lancement par un simple bip de
+  confirmation : le badge est reconnu, rien n'est lancé.
+
+## Mode « cartouche » (badge laissé sur le lecteur)
+
+Laisser le badge en place ne déclenche l'action **qu'une seule fois** : elle
+n'est pas répétée tant que le badge reste posé. Pour la refaire (ou pour la
+refaire après avoir changer de jeu), il suffit de **retirer le badge environ une
+seconde puis de le reposer** (`[rfid] rearm_absent_ms`, `1200` ms par défaut).
+
+C'est ce qui permet d'utiliser un badge comme une cartouche : on le pose, on
+joue, on le laisse. Un autre badge posé à la place agit immédiatement.
 
 ## Effacer un badge
 
@@ -204,12 +217,15 @@ partage réseau, avec le Bloc-notes par exemple). Après modification :
 | `[rfid] reset_pin` | `25` | broche RST du RC522 (`-1` si non branché) |
 | `[rfid] poll_interval_ms` | `150` | fréquence d'interrogation du lecteur |
 | `[rfid] same_tag_cooldown_s` | `2.5` | ignore les relectures du même badge |
+| `[rfid] rearm_absent_ms` | `1200` | **mode cartouche** : temps d'absence du badge (ms) avant de pouvoir refaire l'action |
 | `[button] enabled` | `1` | `0` pour désactiver le bouton |
 | `[button] pin` | `17` | broche du bouton (BCM) |
 | `[button] long_press_s` | `2.0` | durée d'un appui long |
-| `[button] arm_timeout_s` | `30` | délai pour scanner après un appui |
+| `[button] hold_press_s` | `3.0` | durée de l'appui qui valide un appairage |
+| `[button] arm_timeout_s` | `10` | délai pour scanner après un appui |
 | `[button] debounce_ms` | `40` | anti-rebond |
 | `[launch] udp_host` / `udp_port` | `127.0.0.1` / `1337` | interface du frontend |
+| `[launch] action` | `launch` | `launch` = lance le jeu ; `none` = bip seulement (mode cartouche) |
 | `[launch] ignore_when_game_running` | `1` | ignore les scans pendant un jeu |
 | `[launch] launch_after_bind` | `1` | lance le jeu après une association |
 | `[feedback] sound` | `1` | bips |

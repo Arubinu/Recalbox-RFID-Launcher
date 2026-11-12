@@ -4,6 +4,35 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.4.0]
+
+### Modifié
+
+* **Fenêtre d'association ramenée à 10 secondes** (`[button] arm_timeout_s`,
+  au lieu de 30) : appui court, puis scan dans les 10 s. La réassociation d'un
+  badge déjà connu reste le même geste : elle écrase l'ancienne correspondance.
+* **Appui de 3 secondes** : il ne sert plus qu'à confirmer une demande
+  d'appairage de l'interface (aucun autre effet sinon).
+* **Bips enrichis** : un signal distinct pour un badge reconnu sans action
+  (mode cartouche) et pour un effacement.
+
+### Ajouté
+
+* **Mode « cartouche »** : un badge laissé sur le lecteur ne déclenche l'action
+  **qu'une seule fois**. Il faut l'éloigner `[rfid] rearm_absent_ms`
+  (1,2 s par défaut) pour pouvoir le rescanner et refaire l'action ; un autre
+  badge posé à la place agit immédiatement. Le service sonde la présence réelle
+  du badge (`tag_present`) pour ne pas confondre anti-rebond et absence.
+* **`[launch] action`** : `launch` (défaut, lance le jeu) ou `none` (bip de
+  confirmation seulement, rien n'est lancé).
+
+### Note
+
+* Le frontend Recalbox n'accepte **qu'une seule commande réseau, `START`**
+  (vérifié dans `CommandThread.cpp`) : il n'existe pas de commande officielle
+  pour « ouvrir la fiche d'un jeu » sans le lancer. L'option `action` couvre
+  donc les deux comportements réellement possibles.
+
 ## [2.3.1]
 
 ### Corrigé

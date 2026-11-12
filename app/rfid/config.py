@@ -35,6 +35,10 @@ reset_pin = 25
 poll_interval_ms = 150
 # Duree pendant laquelle le meme badge est ignore (secondes)
 same_tag_cooldown_s = 2.5
+# Mode "cartouche" : un badge laisse sur le lecteur ne declenche l'action qu'une
+# seule fois. Il faut l'eloigner ce temps-la (millisecondes) pour pouvoir le
+# rescanner et refaire l'action.
+rearm_absent_ms = 1200
 
 [button]
 # Bouton poussoir d'association : branche entre la broche et GND.
@@ -44,7 +48,7 @@ pin = 17
 # Duree d'un appui long (secondes) : effacement d'un badge
 long_press_s = 2.0
 # Delai (secondes) accorde pour scanner le badge apres un appui
-arm_timeout_s = 30
+arm_timeout_s = 10
 # Anti-rebond (millisecondes)
 debounce_ms = 40
 
@@ -56,6 +60,12 @@ udp_port = 1337
 ignore_when_game_running = 1
 # Lancer le jeu juste apres une association reussie (confirmation visuelle)
 launch_after_bind = 1
+# Action quand un badge deja enregistre est scanne :
+#   launch = lance le jeu (comportement historique)
+#   none   = ne lance rien : bip de confirmation et journal seulement
+# (Le frontend Recalbox n'accepte que la commande START : il n'existe pas de
+#  commande officielle pour "ouvrir la fiche du jeu" sans le lancer.)
+action = launch
 
 [feedback]
 # Bips sonores de confirmation (paplay ou aplay, fourni par Recalbox)

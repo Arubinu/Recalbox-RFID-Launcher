@@ -123,6 +123,14 @@ class Feedback:
         """Badge reconnu / lancement."""
         self.play([(880.0, 0.06), (1318.0, 0.09)])
 
+    def recognized(self) -> None:
+        """Badge reconnu sans action (action = none, mode "cartouche")."""
+        self.play([(1046.0, 0.07)])
+
+    def removed(self) -> None:
+        """Badge efface."""
+        self.play([(784.0, 0.06), (587.0, 0.09)])
+
     def armed(self) -> None:
         """Mode association arme (appui court sur le bouton)."""
         self.play([(1318.0, 0.07)])

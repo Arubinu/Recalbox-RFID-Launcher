@@ -55,6 +55,15 @@ class FakeFeedback:
     def error(self):
         self._add("error")
 
+    def recognized(self):
+        self._add("recognized")
+
+    def removed(self):
+        self._add("removed")
+
+    def timeout(self):
+        self._add("timeout")
+
     def timeout(self):
         self._add("timeout")
 

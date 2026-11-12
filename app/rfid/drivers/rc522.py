@@ -296,6 +296,19 @@ class Rc522:
         self.halt()
         return uid
 
+    def tag_present(self) -> bool:
+        """Vrai si un badge est physiquement pose sur le lecteur.
+
+        Contourne l'anti-rebond : sert au mode "cartouche" a savoir quand le
+        badge a vraiment ete retire, pour pouvoir refaire l'action ensuite.
+        """
+        if not self._started:
+            return False
+        try:
+            return bool(self.rc522.read_uid())
+        except (Rc522Error, OSError):
+            return False
+
     def close(self) -> None:
         try:
             self.antenna_off()

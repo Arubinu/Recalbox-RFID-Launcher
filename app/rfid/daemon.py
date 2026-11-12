@@ -155,6 +155,9 @@ class Service:
         self.launcher = None
         self._web_command_signature = None
         self._press_started_at = None
+        self._active_uid = None
+        self._absent_since = None
+        self.rearm_absent_ms = 1200
         self.last_error_at = 0.0
         self.last_uid = ""
         self.last_uid_at = 0.0
@@ -241,6 +244,7 @@ class Service:
             return 2
 
         interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
+        self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
         next_slot = 0.0
         next_status = 0.0
         next_reader = 0.0
@@ -264,9 +268,9 @@ class Service:
                     except Exception as exc:  # noqa: BLE001
                         self.log.warning("Lecture RFID en echec : %s" % exc)
                     if uid:
-                        self.last_uid = uid
-                        self.last_uid_at = time.time()
-                        self.controller.on_badge(uid)
+                        self._badge_seen(uid)
+                    elif self._active_uid is not None:
+                        self._release_latch()
 
                 if self.button is not None:
                     self._track_press()
@@ -292,6 +296,34 @@ class Service:
         finally:
             self._shutdown(lock)
         return 0
+
+    # ------------------------------------------------------------------ badge
+    def _badge_seen(self, uid: str) -> None:
+        """Un badge est lu. Un badge laisse en place ne refait pas l'action."""
+        if uid == self._active_uid:
+            return                      # mode "cartouche" : action deja faite
+        self._active_uid = uid
+        self._absent_since = None
+        self.last_uid = uid
+        self.last_uid_at = time.time()
+        self.controller.on_badge(uid)
+
+    def _release_latch(self) -> None:
+        """Libere le verrou quand le badge a vraiment quitte le lecteur."""
+        present = False
+        try:
+            present = bool(self.reader.tag_present())
+        except Exception:  # noqa: BLE001 - lecteur retire a chaud
+            present = False
+        if present:
+            self._absent_since = None
+            return
+        now = time.monotonic()
+        if self._absent_since is None:
+            self._absent_since = now
+        elif (now - self._absent_since) * 1000.0 >= self.rearm_absent_ms:
+            self._active_uid = None
+            self._absent_since = None
 
     # ------------------------------------------------------------------ bouton
     def _track_press(self) -> None:
