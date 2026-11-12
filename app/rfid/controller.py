@@ -193,12 +193,14 @@ class Controller:
             self._log("error", "Enregistrement du badge impossible : %s" % exc)
             return "failed"
 
-        expected = "/recalbox/share/roms/%s/" % target.system
-        if target.path and not target.path.startswith(expected):
+        attendus = (
+            "/recalbox/share/roms/%s/" % target.system,
+            "/recalbox/share_init/roms/%s/" % target.system,
+        )
+        if target.path and not target.path.startswith(attendus):
             self._log(
                 "warning",
-                "Chemin inhabituel pour ce jeu (%s) : verifiez le lancement. "
-                "Selectionnez le jeu dans son systeme d'origine si besoin." % target.path,
+                "Chemin inhabituel pour ce jeu (%s) : verifiez le lancement." % target.path,
             )
 
         self.feedback.ok()
@@ -209,7 +211,14 @@ class Controller:
         )
         if self.launch_after_bind:
             self._launch(
-                {"system": target.system, "game": target.game, "name": target.name}, uid, touch=False
+                {
+                    "system": target.system,
+                    "game": target.game,
+                    "path": target.path,
+                    "name": target.name,
+                },
+                uid,
+                touch=False,
             )
         return "bound"
 
@@ -231,7 +240,11 @@ class Controller:
 
     def _launch(self, entry, uid: str, touch: bool = True) -> str:
         system = entry.get("system", "")
-        game = entry.get("game", "")
+        # Le frontend identifie un jeu par son CHEMIN COMPLET, tel qu'il l'ecrit
+        # lui-meme dans /tmp/es_state.inf (ex. /recalbox/share_init/roms/...).
+        # Le nom de fichier seul est refuse depuis Recalbox 10 ("Couldn't find
+        # game ..."). On garde le nom relatif en secours (anciennes entrees).
+        game = entry.get("path") or entry.get("game", "")
         if self.launcher.start_game(system, game):
             if touch:
                 try:
@@ -239,7 +252,11 @@ class Controller:
                 except StorageError as exc:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
             self.feedback.ok()
-            self._log("info", "Lancement de %s (%s)" % (entry.get("name") or game, system))
+            self._log(
+                "info",
+                "Lancement de %s (%s / %s)"
+                % (entry.get("name") or game, system, entry.get("game") or game),
+            )
             return "launched"
         self.feedback.error()
         self._log("error", "Le frontend n'a pas pu etre contacte pour lancer %s" % game)

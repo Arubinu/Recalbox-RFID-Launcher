@@ -140,6 +140,20 @@ class CurrentTargetTest(unittest.TestCase):
         self.assertTrue(resume["GamePath"].endswith("…"))
         self.assertEqual(state_snapshot(None), {})
 
+    def test_chemin_reconstruit(self):
+        """Ajout manuel : le chemin complet est reconstruit pour le frontend."""
+        from rfid.esbridge import resolve_rom_path
+
+        self.assertEqual(
+            resolve_rom_path("snes", "Super Mario World.smc"),
+            "/recalbox/share/roms/snes/Super Mario World.smc",
+        )
+        self.assertEqual(
+            resolve_rom_path("snes", "/recalbox/share_init/roms/snes/x.smc"),
+            "/recalbox/share_init/roms/snes/x.smc",
+        )
+        self.assertEqual(resolve_rom_path("", "x.smc"), "")
+
     def test_jeu_en_cours(self):
         self.assertTrue(game_is_running(self.state(State="playing")))
         self.assertFalse(game_is_running(self.state()))

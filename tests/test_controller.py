@@ -72,7 +72,9 @@ class ControllerTest(unittest.TestCase):
         self.assertEqual(entry["system"], "snes")
         self.assertEqual(entry["game"], "Super Mario World.smc")
         self.assertEqual(entry["name"], "Super Mario World")
-        self.assertEqual(self.launcher.calls, [("snes", "Super Mario World.smc")])
+        self.assertEqual(
+            self.launcher.calls, [("snes", "/recalbox/share/roms/snes/Super Mario World.smc")]
+        )
         self.assertFalse(self.controller.armed)
 
         # Deuxieme scan : lancement direct
@@ -119,6 +121,12 @@ class ControllerTest(unittest.TestCase):
         )
 
     # --------------------------------------------------------------- lancement
+    def test_entree_sans_chemin_utilise_le_nom(self):
+        """Une association faite avant 2.6.5 n'a pas de chemin : on retombe sur le nom."""
+        self.store.put("A1B2C3D4", "snes", "Super Mario World.smc", "Super Mario World")
+        self.controller.on_badge("A1B2C3D4")
+        self.assertEqual(self.launcher.calls, [("snes", "Super Mario World.smc")])
+
     def test_badge_inconnu(self):
         self.assertEqual(self.controller.on_badge("FFFFFFFF"), "unknown")
         self.assertEqual(self.feedback.events, ["error"])

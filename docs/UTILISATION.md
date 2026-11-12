@@ -282,6 +282,6 @@ Exemples de lignes :
 ```
 2026-01-01 12:00:00 [INFO   ] Lecteur RC522 pret (version 0x92)
 2026-01-01 12:00:42 [INFO   ] Badge detecte : A1:B2:C3:D4
-2026-01-01 12:00:42 [INFO   ] Commande envoyee : START|snes|Super Mario World.smc
+2026-01-01 12:00:42 [INFO   ] Commande envoyee : START|snes|/recalbox/share/roms/snes/Super Mario World.smc
 2026-01-01 12:00:42 [INFO   ] Lancement de Super Mario World (snes)
 ```

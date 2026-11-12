@@ -306,7 +306,7 @@ python tests/run_tests.py
   `lgpio`, puis sur `/sys/class/gpio`. Pull-up interne, anti-rebond logiciel.
 * **Jeu sélectionné** : lecture de `/tmp/es_state.inf`, fichier que le frontend
   réécrit à chaque événement (`SystemId`, `GamePath`, `IsFolder`, `State`).
-* **Lancement** : datagramme UDP `START|<systeme>|<jeu>` sur `127.0.0.1:1337`,
+* **Lancement** : datagramme UDP `START|<systeme>|<chemin complet du jeu>` sur `127.0.0.1:1337` (le frontend identifie un jeu par le chemin qu'il publie lui-même ; depuis Recalbox 10 le nom de fichier seul est refusé),
   l'interface de commande officielle du frontend Recalbox 9. Le jeu est lancé
   exactement comme depuis le menu (splash, sauvegardes, retroachievements).
 * **Agent WebSocket** : serveur RFC 6455 écrit avec la bibliothèque standard

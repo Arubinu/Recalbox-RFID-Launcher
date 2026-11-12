@@ -4,6 +4,27 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.5]
+
+### Corrigé (le jeu ne se lançait pas : « Couldn't find game »)
+
+* **Le lancement envoie maintenant le chemin complet du jeu**, et non plus son
+  nom de fichier. Vérifié sur la machine : le frontend Recalbox 10 répond
+  `[Command] Couldn't find game Flower (Europe).uae for system amiga600` au nom
+  seul, et `[Command] Starting game /recalbox/share_init/roms/amiga600/Flower
+  (Europe).uae for system amiga600` au chemin complet — celui-là même que le
+  frontend publie dans `/tmp/es_state.inf`. La trame devient
+  `START|<systeme>|<chemin complet>`.
+  * les badges déjà associés fonctionnent : leur `path` a été enregistré au
+    moment de l'association ;
+  * une entrée ancienne sans chemin retombe sur le nom de fichier ;
+  * l'ajout manuel et l'import CSV reconstruisent le chemin
+    (`/recalbox/share/roms/...` puis `/recalbox/share_init/roms/...`).
+* **Les jeux de la base en lecture seule ne déclenchent plus d'avertissement** :
+  un chemin sous `/recalbox/share_init/roms/` est parfaitement normal (les jeux
+  fournis avec Recalbox y sont), seul un chemin vraiment inattendu est signalé.
+* Documentation alignée (README, UTILISATION, DEPANNAGE) sur le format de trame.
+
 ## [2.6.4]
 
 ### Corrigé (le jeu affiché n'était pas reconnu au moment d'associer)

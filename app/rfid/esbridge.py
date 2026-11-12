@@ -119,6 +119,29 @@ def describe_state(state) -> str:
     return ", ".join("%s=%r" % (cle, state.get(cle)) for cle in presentes)
 
 
+#: Dossiers ou Recalbox range les jeux (partie inscriptible, puis base en lecture seule).
+ROMS_DIRS = ("/recalbox/share/roms", "/recalbox/share_init/roms")
+
+
+def resolve_rom_path(system: str, game: str) -> str:
+    """Chemin complet d'un jeu, pour les entrees qui n'en ont pas.
+
+    Le frontend identifie un jeu par son chemin complet : on le reconstruit ici
+    (sans verification possible sur un PC, on renvoie alors le premier candidat).
+    """
+    if not system or not game:
+        return ""
+    if game.startswith("/"):
+        return game
+    # Chemins POSIX : le service tourne sous Linux, meme quand les tests
+    # s'executent sous Windows.
+    candidats = ["%s/%s/%s" % (base, system, game) for base in ROMS_DIRS]
+    for candidat in candidats:
+        if os.path.isfile(candidat):
+            return candidat
+    return candidats[0]
+
+
 def current_target(state, allow_running: bool = False) -> "Target | None":
     """Retourne le jeu selectionne, ou None si aucun jeu n'est selectionne.
 
@@ -166,7 +189,12 @@ class EsLauncher:
 
     @staticmethod
     def build_payload(system: str, game: str) -> bytes:
-        """Construit la trame ``START|systeme|jeu`` (octets du systeme de fichiers)."""
+        """Construit la trame ``START|systeme|reference`` (octets du systeme de fichiers).
+
+        ``reference`` est le chemin **complet** du jeu tel que le frontend le
+        connait (il le publie dans son fichier d'etat). Depuis Recalbox 10, le
+        nom de fichier seul ne suffit plus.
+        """
         system = str(system)
         game = str(game)
         if not system or not game:

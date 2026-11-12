@@ -214,7 +214,7 @@ d'afficher un message dans l'interface :
   abonne, pour ses propres besoins — aucun texte n'est affiché à l'écran ;
 * l'API web du frontend (`/api/...`) est en lecture (systèmes, jeux, BIOS,
   médias, configuration) : aucune route pour afficher un message ;
-* le seul point d'entrée externe est la commande UDP `START|systeme|jeu`
+* le seul point d'entrée externe est la commande UDP `START|systeme|chemin complet`
   utilisée par ce projet, qui ne transporte pas de texte.
 
 Les seuls affichages possibles viennent donc de Recalbox lui-même : l'écran de

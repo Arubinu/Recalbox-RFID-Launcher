@@ -48,7 +48,7 @@ from .consts import (
     TOKEN_FILENAME,
 )
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
-from .esbridge import current_target, read_state, supports_start_command
+from .esbridge import current_target, read_state, resolve_rom_path, supports_start_command
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -1012,12 +1012,17 @@ class Agent:
         game = str(message.get("game") or "").strip()
         if not system or not game:
             raise ValueError("systeme et jeu obligatoires")
+        chemin = str(message.get("path") or "").strip()
+        if not chemin:
+            # Sans chemin, le frontend ne saurait pas lancer le jeu : on le
+            # reconstruit a partir du systeme et du nom de fichier.
+            chemin = resolve_rom_path(system, game)
         entry = self._tags().put(
             str(message.get("uid") or ""),
             system,
             game,
             str(message.get("name") or ""),
-            str(message.get("path") or ""),
+            chemin,
         )
         if self.log:
             self.log.info("Badge ajoute via l'agent (%s / %s)" % (system, game))
