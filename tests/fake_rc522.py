@@ -224,7 +224,11 @@ class FakeRc522Spi:
             self._respond(part + bytes([bcc]))
             return
         if frame[:2] == bytes([0x93, 0x70]) or frame[:2] == bytes([0x95, 0x70]):
-            # SELECT : 2 octets + UID (4) + BCC (1) + CRC_A (2) = 9 octets.
+            # SELECT : 2 octets + UID (4) + BCC (1) + CRC_A (2) = 9 octets,
+            # ou 7 octets quand le CRC est ajoute par le composant (TxCRCEn).
+            tx_crc = bool(self.registers.get(0x12, 0) & 0x80)
+            if tx_crc:
+                frame = frame + self.crc_a(frame)
             self.select_frames.append(frame)
             if len(frame) != 9 or frame[7:9] != self.crc_a(frame[:7]):
                 self.irq = IRQ_TIMER  # trame incomplete ou CRC faux : pas de reponse

@@ -293,11 +293,13 @@ class Rc522:
         """
         frame = bytes([command, PICC_NVB_SELECT]) + bytes(uid_with_bcc)
         if crc_materiel:
-            self._set_bits(REG_TX_MODE, 0x10)      # TxCRCEn : le composant ajoute le CRC
+            # TxCRCEn = bit 7 de TxModeReg : le composant ajoute lui-meme le CRC
+            # (l'octet de poids faible ne doit alors pas etre transmis).
+            self._set_bits(REG_TX_MODE, 0x80)
             try:
                 result = self._transceive(frame, trace=trace, etape=etape + "-crc-hw")
             finally:
-                self._clear_bits(REG_TX_MODE, 0x10)
+                self._clear_bits(REG_TX_MODE, 0x80)
         else:
             crc = crc_a_software(frame)
             if trace is not None:

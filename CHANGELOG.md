@@ -4,6 +4,18 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.2]
+
+### Corrigé
+
+* **La troisième stratégie de sélection était mal câblée** : `TxCRCEn` est le
+  bit **7** (0x80) de `TxModeReg`, pas le bit 4. La trame était donc envoyée
+  sans CRC (7 octets), ce qui ne pouvait pas aboutir. Corrigé, et le simulateur
+  ajoute désormais lui-même le CRC quand ce bit est armé, pour que le test
+  couvre réellement cette variante.
+* Sans effet sur les deux premières stratégies (BCC reçu, BCC recalculé), qui
+  restent celles que la carte a le plus de chances d'accepter.
+
 ## [2.6.1]
 
 ### Corrigé (badges qui répondent mais dont la sélection reste muette)
