@@ -34,6 +34,30 @@ class FakeLauncher:
         return self.ok
 
 
+class RecordingLog:
+    """Journal en memoire : (niveau, message) pour les assertions."""
+
+    def __init__(self):
+        self.messages = []
+
+    def _add(self, level):
+        def recorder(message):
+            self.messages.append((level, str(message)))
+        return recorder
+
+    def debug(self, message):
+        self._add("debug")(message)
+
+    def info(self, message):
+        self._add("info")(message)
+
+    def warning(self, message):
+        self._add("warning")(message)
+
+    def error(self, message):
+        self._add("error")(message)
+
+
 class FakeFeedback:
     """Enregistre les signaux envoyes a l'utilisateur."""
 

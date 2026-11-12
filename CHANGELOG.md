@@ -4,6 +4,25 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.4]
+
+### Corrigé (le jeu affiché n'était pas reconnu au moment d'associer)
+
+* **Association possible quand le frontend affiche une fiche de jeu.** Le
+  frontend laisse parfois `State=playing` alors qu'aucune partie n'est en
+  cours ; le filtre « jeu en cours » s'appliquait aussi à l'association, d'où le
+  message « Aucun jeu sélectionné » alors que le jeu était bien à l'écran. Le
+  filtre ne s'applique plus qu'au **lancement par badge** (pas d'interruption de
+  partie), plus à l'association.
+* **Clés du frontend tolérées** : `SystemId` / `System` / `SystemName` et
+  `GamePath` / `Path` / `File` / `RomPath`, et les dossiers sont aussi reconnus
+  par `Type=folder` (toutes les versions de Recalbox n'écrivent pas `IsFolder`).
+* **Le journal dit pourquoi** : « Aucun jeu sélectionné dans Recalbox
+  (State='playing', SystemId='snes', GamePath='…') » — plus besoin de deviner.
+* `status.json` contient désormais un instantané de `/tmp/es_state.inf`
+  (valeurs tronquées) : l'état réel du frontend est lisible depuis le partage,
+  sans rien lancer.
+
 ## [2.6.3]
 
 ### Ajouté (badges qui ne répondent jamais à la sélection)

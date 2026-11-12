@@ -94,6 +94,30 @@ class ControllerTest(unittest.TestCase):
         self.assertEqual(self.controller.on_badge("A1B2C3D4"), "failed")
         self.assertEqual(self.store.count(), 0)
 
+    def test_association_sur_la_fiche_d_un_jeu(self):
+        """Le frontend laisse State=playing sur une fiche : l'association marche."""
+        self.state = dict(SELECTED_STATE, State="playing")
+        self.assertEqual(self.controller.on_button("short"), "armed_associate")
+        self.assertEqual(self.controller.on_badge("A1B2C3D4"), "bound")
+
+    def test_journal_explique_l_absence_de_jeu(self):
+        """Le journal dit pourquoi aucun jeu n'a ete trouve (etat du frontend)."""
+        journal = support.RecordingLog()
+        controleur = Controller(
+            self.store,
+            self.launcher,
+            self.feedback,
+            self.config,
+            journal,
+            state_provider=lambda: {},
+            clock=self.clock,
+        )
+        self.assertEqual(controleur.on_button("short"), "no_target")
+        self.assertTrue(
+            any("es_state.inf" in message for _niveau, message in journal.messages),
+            journal.messages,
+        )
+
     # --------------------------------------------------------------- lancement
     def test_badge_inconnu(self):
         self.assertEqual(self.controller.on_badge("FFFFFFFF"), "unknown")

@@ -19,7 +19,7 @@ from .consts import (
     home_dir,
 )
 from .controller import Controller
-from .esbridge import EsLauncher, supports_start_command
+from .esbridge import EsLauncher, read_state, state_snapshot, supports_start_command
 from .feedback import Feedback
 from .drivers.rc522 import PICC_WUPA, Rc522Error
 from .hardware import build_button, build_gpio, build_reader
@@ -586,6 +586,7 @@ class Service:
             "button": bool(self.button and getattr(self.button, "available", False)),
             "backend_gpio": getattr(self.gpio, "name", ""),
             "tags": self.store.count() if self.store else 0,
+            "es_state": state_snapshot(read_state()),
             "last_uid": self.last_uid,
             "last_uid_at": (
                 time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.last_uid_at))

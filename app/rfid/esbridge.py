@@ -90,20 +90,66 @@ def relative_game_key(system: str, absolute_path: str) -> str:
     return os.path.basename(normalized)
 
 
-def current_target(state) -> "Target | None":
-    """Retourne le jeu selectionne, ou None si aucun jeu n'est selectionne."""
+#: Cles que le frontend Recalbox peut employer selon la version.
+CLES_SYSTEME = ("SystemId", "System", "SystemName")
+CLES_CHEMIN = ("GamePath", "Path", "File", "RomPath")
+
+
+def state_snapshot(state, limite: int = 120) -> dict:
+    """Resume lisible de ``es_state.inf`` (pour status.json et les journaux)."""
+    if not state:
+        return {}
+    resume = {}
+    for cle, valeur in state.items():
+        texte = str(valeur or "")
+        if len(texte) > limite:
+            texte = texte[: limite - 1] + "…"
+        resume[cle] = texte
+    return resume
+
+
+def describe_state(state) -> str:
+    """Explique pourquoi aucun jeu n'a ete trouve (message de journal)."""
+    if not state:
+        return "/tmp/es_state.inf absent ou vide"
+    cles = ("Action", "State", "Type", "IsFolder", "SystemId", "System", "Game", "GamePath")
+    presentes = [cle for cle in cles if cle in state]
+    if not presentes:
+        return "etat illisible (aucune cle connue) : %s" % sorted(state.keys())[:8]
+    return ", ".join("%s=%r" % (cle, state.get(cle)) for cle in presentes)
+
+
+def current_target(state, allow_running: bool = False) -> "Target | None":
+    """Retourne le jeu selectionne, ou None si aucun jeu n'est selectionne.
+
+    ``allow_running`` sert a l'association : le frontend peut laisser
+    ``State=playing`` (ou afficher une fiche de jeu) alors qu'aucune partie n'est
+    en cours ; on accepte alors le jeu affiche. Pour le lancement par badge, on
+    garde le filtre (pas d'interruption de partie).
+    """
     if not state:
         return None
-    system = (state.get("SystemId") or "").strip()
-    absolute = (state.get("GamePath") or "").strip()
+    system = ""
+    for cle in CLES_SYSTEME:
+        system = (state.get(cle) or "").strip()
+        if system:
+            break
+    absolute = ""
+    for cle in CLES_CHEMIN:
+        absolute = (state.get(cle) or "").strip()
+        if absolute:
+            break
     if not system or not absolute:
         return None
     if state.get("IsFolder") == "1":
         return None
-    if game_is_running(state):
+    if str(state.get("Type") or "").strip().lower() in ("folder", "system", "empty", "none"):
         return None
-    if state.get("State") == "demo":
-        return None
+    if not allow_running:
+        if game_is_running(state):
+            return None
+        if state.get("State") == "demo":
+            return None
     game = relative_game_key(system, absolute)
     if not game:
         return None

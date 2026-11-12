@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import time
 
-from .esbridge import EsLauncher, current_target, game_is_running, read_state
+from .esbridge import (
+    EsLauncher,
+    current_target,
+    describe_state,
+    game_is_running,
+    read_state,
+)
 from .storage import StorageError, pretty_uid
 
 MODE_IDLE = ""
@@ -106,13 +112,16 @@ class Controller:
             return "armed_delete"
 
         state = self.state_provider()
-        target = current_target(state)
+        # allow_running : le frontend laisse parfois State=playing alors qu'on est
+        # simplement sur la fiche d'un jeu (aucune partie en cours). Pour une
+        # association, c'est bien le jeu affiche que l'on veut.
+        target = current_target(state, allow_running=True)
         if target is None:
             self.feedback.error()
             self._log(
                 "warning",
-                "Aucun jeu selectionne dans Recalbox : choisissez un jeu dans la liste, "
-                "puis appuyez sur le bouton.",
+                "Aucun jeu selectionne dans Recalbox (%s) : choisissez un jeu dans la "
+                "liste, puis appuyez sur le bouton." % describe_state(state),
             )
             return "no_target"
 

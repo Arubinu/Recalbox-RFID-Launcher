@@ -12,6 +12,8 @@ import support  # noqa: F401
 from rfid.esbridge import (
     EsLauncher,
     current_target,
+    describe_state,
+    state_snapshot,
     game_is_running,
     read_state,
     relative_game_key,
@@ -101,6 +103,42 @@ class CurrentTargetTest(unittest.TestCase):
     def test_champs_vides(self):
         self.assertIsNone(current_target(self.state(SystemId="", GamePath="")))
         self.assertIsNone(current_target(None))
+
+    def test_association_accepte_le_jeu_affiche(self):
+        """Sur la fiche d'un jeu, le frontend laisse State=playing : on accepte."""
+        cible = current_target(self.state(State="playing"), allow_running=True)
+        self.assertIsNotNone(cible)
+        self.assertEqual(cible.game, "Super Mario World.smc")
+        # pour le lancement par badge, le filtre reste actif
+        self.assertIsNone(current_target(self.state(State="playing")))
+
+    def test_cles_de_remplacement(self):
+        """Les versions du frontend n'emploient pas toutes les memes cles."""
+        state = {
+            "System": "snes",
+            "Path": "/recalbox/share/roms/snes/Super Mario World.smc",
+            "Game": "Super Mario World",
+        }
+        cible = current_target(state)
+        self.assertIsNotNone(cible)
+        self.assertEqual(cible.system, "snes")
+        self.assertEqual(cible.game, "Super Mario World.smc")
+
+    def test_type_folder_ignore(self):
+        self.assertIsNone(current_target(self.state(Type="folder")))
+        self.assertIsNone(current_target(self.state(Type="empty")))
+
+    def test_diagnostic_de_l_etat(self):
+        self.assertIn("absent", describe_state(None))
+        texte = describe_state(self.state(State="playing"))
+        self.assertIn("State='playing'", texte)
+        self.assertIn("GamePath=", texte)
+
+    def test_instantane_tronque(self):
+        resume = state_snapshot({"GamePath": "x" * 400}, limite=20)
+        self.assertEqual(len(resume["GamePath"]), 20)
+        self.assertTrue(resume["GamePath"].endswith("…"))
+        self.assertEqual(state_snapshot(None), {})
 
     def test_jeu_en_cours(self):
         self.assertTrue(game_is_running(self.state(State="playing")))
