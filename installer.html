@@ -240,7 +240,17 @@
 
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .actions.stack { margin-top: 16px; }
-  .actions.connect-actions { justify-content: flex-end; margin-top: 14px; }
+  .actions.connect-actions { margin-top: 16px; }
+  /* Action unique du formulaire : toute la largeur, pas de vide a gauche. */
+  .actions.connect-actions > button {
+    flex: 1 1 100%; height: 46px; font-size: 14.5px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .055));
+    border-color: rgba(255, 255, 255, .17);
+  }
+  .actions.connect-actions > button:hover {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .08));
+    border-color: rgba(255, 255, 255, .26);
+  }
 
   /* champ avec action integree (import du jeton) */
   .input-wrap { position: relative; display: block; }

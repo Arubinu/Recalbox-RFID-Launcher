@@ -4,6 +4,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.0.2]
+
+### Modifié
+
+* Le bouton « Se connecter » occupe désormais **toute la largeur** de la carte :
+  le vide à sa gauche disparaît, et l'écran suit le motif classique d'un
+  formulaire à action unique. Léger relief (dégradé très discret) pour le
+  distinguer des champs, sans revenir aux couleurs vives. Le rendu rejoint celui
+  du mobile, où les boutons étaient déjà pleine largeur.
+
 ## [2.0.1]
 
 ### Modifié
