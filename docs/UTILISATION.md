@@ -74,8 +74,12 @@ Points utiles :
 * **Export CSV** : télécharge la liste des badges (sauvegarde).
 * **Import CSV** : restaure une sauvegarde ou prépare une série de badges dans un
   tableur.
-* La page se rafraîchit toute seule (état du service, mode armé, dernier badge)
-  et se reconnecte après le rechargement de l'agent (fin d'installation).
+* La page se rafraîchit toute seule (état du service, mode armé, dernier badge).
+* **Coupure de connexion** (redémarrage de la Recalbox, réseau, agent relancé) :
+  le tableau de bord reste affiché mais grisé, un bandeau indique « Connexion
+  perdue depuis N s » et la page **se reconnecte automatiquement** dès que
+  l'agent revient ; le retour est annoncé (« Connexion rétablie »). Le bouton
+  « Réessayer maintenant » force une tentative immédiate.
 
 **Sécurité** : l'agent n'accepte que les commandes authentifiées par le jeton.
 Le jeton se trouve sur le partage (déjà protégé par le réseau local) :

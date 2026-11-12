@@ -4,6 +4,29 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.1.0]
+
+### Ajouté
+
+* **Pertes et retours de connexion gérés**, en particulier lors d'un redémarrage
+  de la Recalbox :
+  * la page **reste sur le tableau de bord** (plus de retour brutal au
+    formulaire) ; les actions sont grisées, un **bandeau d'état** apparaît :
+    « Connexion perdue depuis N s · tentative n. La Recalbox a peut-être
+    redémarré. » ;
+  * la pastille d'en-tête passe à **« hors ligne »**, puis à **« connecté »** au
+    retour ;
+  * **reconnexion automatique** avec jeton mémorisé, temporisation croissante
+    (1 s → 6 s), sans limite de durée : dès que l'agent revient, les commandes
+    sont réactivées et l'état est rafraîchi ;
+  * le retour est **annoncé** : bandeau vert « Connexion rétablie (coupure de
+    N s) », effacé après 5 s ;
+  * bouton **« Réessayer maintenant »** pour ne pas attendre la temporisation ;
+  * la reconnexion est aussi tentée dès que l'onglet redevient visible.
+* Cas particuliers traités : déconnexion **volontaire** (bouton) et fermeture
+  d'onglet ne déclenchent aucune reconnexion ; un **jeton refusé** arrête les
+  tentatives avec un message dédié (il faut ré-appairer).
+
 ## [2.0.2]
 
 ### Modifié

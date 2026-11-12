@@ -105,6 +105,28 @@
 
   /* ------------------------------------------------------------- messages */
   #banner { margin: 12px 0 0; }
+  .offline {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 10px 0 0; padding: 11px 14px;
+    border-radius: var(--r-md);
+    border: 1px solid rgba(234, 166, 60, .34);
+    background: rgba(234, 166, 60, .1);
+    font-size: 13.5px;
+  }
+  .offline .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
+    background: var(--warn); box-shadow: 0 0 0 3px rgba(234, 166, 60, .18);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .offline .grow { flex: 1 1 auto; }
+  .offline.ok { border-color: rgba(34, 197, 139, .32); background: rgba(34, 197, 139, .1); }
+  .offline.ok .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(34, 197, 139, .18); animation: none; }
+  .offline.ok #btn-retry { display: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* Hors ligne : le tableau de bord reste lisible mais inactif. */
+  body.is-offline #app { opacity: .45; pointer-events: none; filter: saturate(.6); }
+
   .banner {
     position: relative;
     padding: 12px 16px 12px 44px;
@@ -494,7 +516,15 @@
     <button class="ghost tiny" id="btn-help" type="button" aria-label="Aide">?</button>
   </header>
 
-  <div class="banner-slot"><div id="banner" class="banner info" hidden></div></div>
+  <div class="top-msgs">
+    <div id="banner" class="banner info" hidden></div>
+    <div id="offline" class="offline" hidden role="status" aria-live="polite">
+      <span class="dot"></span>
+      <span id="offline-text">Connexion perdue.</span>
+      <span class="grow"></span>
+      <button class="tiny secondary" id="btn-retry" type="button">Réessayer maintenant</button>
+    </div>
+  </div>
 
   <main>
 
@@ -1568,16 +1598,8 @@ agent.onEvent = (message) => {
 };
 
 agent.onClosed = () => {
-  setLink(false, "connexion perdue");
-  showBanner("err",
-    "La connexion avec la Recalbox est perdue (agent redémarré ou Recalbox éteinte). " +
-    "Cliquez sur « Se connecter ».");
-  $("#app").classList.add("hidden");
-  $("#connect-card").classList.remove("hidden");
-  $("#btn-disconnect").classList.add("hidden");
-  $("#connect-hint").textContent = "Connexion perdue. Vérifiez la Recalbox puis reconnectez-vous.";
-  setView("connect");
-  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  if (stopping) return;          /* fermeture volontaire : rien a signaler */
+  goOffline();
 };
 
 /* ---------------------------------------------------------------- connexion */
@@ -2290,7 +2312,10 @@ $("#btn-help").addEventListener("click", () => {
 });
 $("#btn-help-close").addEventListener("click", () => $("#help-dialog").close());
 $("#btn-disconnect").addEventListener("click", () => {
+  stopping = true;
   agent.close();
+  stopping = false;
+  clearOffline();
   $("#app").classList.add("hidden");
   $("#connect-card").classList.remove("hidden");
   $("#btn-disconnect").classList.add("hidden");
@@ -2300,7 +2325,120 @@ $("#btn-disconnect").addEventListener("click", () => {
 });
 setTab("badges");
 
-window.addEventListener("beforeunload", () => agent.close());
+/* ------------------------------------------- perte et retour de connexion */
+/* Une coupure vient souvent d'un redemarrage de la Recalbox : on garde le
+   tableau de bord a l'ecran (inactif), on affiche un bandeau d'etat et on
+   retente tout seul, de plus en plus espacé, jusqu'au retour de l'agent. */
+let stopping = false;          /* fermeture volontaire (deconnexion, onglet) */
+let reconnectTimer = null;
+let reconnectAttempt = 0;
+let offlineSince = 0;
+let offlineTick = null;
+
+function offlineSeconds() {
+  return Math.max(0, Math.round((Date.now() - offlineSince) / 1000));
+}
+
+function updateOfflineText(prefix) {
+  const text = $("#offline-text");
+  if (!text || !offlineSince) return;
+  const essai = reconnectAttempt > 0 ? " · tentative " + reconnectAttempt : "";
+  text.textContent = (prefix || "Connexion perdue") + " depuis " + offlineSeconds() + " s" + essai +
+    ". La Recalbox a peut-être redémarré.";
+}
+
+function showOfflineStrip(kind, message) {
+  const strip = $("#offline");
+  if (!strip) return;
+  strip.hidden = false;
+  strip.classList.toggle("ok", kind === "ok");
+  $("#offline-text").textContent = message;
+}
+
+function clearOffline() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (offlineTick) { clearInterval(offlineTick); offlineTick = null; }
+  offlineSince = 0;
+  reconnectAttempt = 0;
+  document.body.classList.remove("is-offline");
+  const strip = $("#offline");
+  if (strip) { strip.hidden = true; strip.classList.remove("ok"); }
+}
+
+function goOffline() {
+  if (offlineSince) return;                 /* deja signale */
+  offlineSince = Date.now();
+  reconnectAttempt = 0;
+  if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  document.body.classList.add("is-offline");
+  setLink(false, "hors ligne");
+  showOfflineStrip("warn", "Connexion perdue.");
+  updateOfflineText();
+  if (offlineTick) clearInterval(offlineTick);
+  offlineTick = setInterval(() => updateOfflineText(), 1000);
+  scheduleReconnect(600);
+}
+
+function scheduleReconnect(delay) {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(attemptReconnect, delay);
+}
+
+async function attemptReconnect() {
+  const settings = currentSettings();
+  if (!settings.token) {                    /* plus de jeton : retour au formulaire */
+    clearOffline();
+    setView("connect");
+    showBanner("err", "Connexion perdue et aucun jeton mémorisé : reconnectez-vous.");
+    return;
+  }
+  reconnectAttempt++;
+  updateOfflineText("Nouvelle tentative");
+  try {
+    await agent.connect("ws://" + settings.host + ":" + settings.port, settings.token, 5000);
+    await goOnline();
+  } catch (error) {
+    const raison = (error && error.message) || "";
+    if (/jeton|refus|invalide/i.test(raison)) {
+      /* Inutile de spammer : il faut re-appairer ou relire le jeton. */
+      showOfflineStrip("warn",
+        "La Recalbox refuse le jeton : ouvrez « Se connecter » et refaites l'appairage.");
+      setLink(false, "jeton refusé");
+      return;
+    }
+    const delay = Math.min(6000, 1000 + reconnectAttempt * 800);
+    updateOfflineText();
+    scheduleReconnect(delay);
+  }
+}
+
+async function goOnline() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (offlineTick) { clearInterval(offlineTick); offlineTick = null; }
+  const coupure = offlineSeconds();
+  offlineSince = 0;
+  reconnectAttempt = 0;
+  document.body.classList.remove("is-offline");
+  setLink(true, "connecté");
+  showOfflineStrip("ok", "Connexion rétablie" + (coupure ? " (coupure de " + coupure + " s)" : "") + ".");
+  lastStatusJson = "";
+  try {
+    await refresh();
+    scheduleRefresh();
+  } catch (error) { /* le prochain cycle reessaiera */ }
+  setTimeout(() => { if (!offlineSince) clearOffline(); }, 5000);
+}
+
+$("#btn-retry").addEventListener("click", () => {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  attemptReconnect();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && offlineSince) attemptReconnect();
+});
+
+window.addEventListener("beforeunload", () => { stopping = true; agent.close(); });
 </script>
 </body>
 </html>
