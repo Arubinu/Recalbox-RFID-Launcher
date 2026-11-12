@@ -603,7 +603,7 @@ net use \\RECALBOX\share /user:root recalboxroot
 
 ## 15. Le fichier unique est périmé
 
-`dist/recalbox-rfid-installer-<version>.html` est généré à partir des sources.
+`dist/recalbox-rfid-installer.html` est généré à partir des sources.
 Si une version différente de `VERSION` est affichée dans la page, ou si les
 fichiers copiés ne correspondent pas au code :
 

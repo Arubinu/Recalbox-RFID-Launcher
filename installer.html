@@ -604,6 +604,8 @@
     <span class="version" id="box-version" title="Version installée sur la Recalbox" hidden></span>
     <span class="chip off" id="link-pill"><span class="dot"></span><span id="link-text">déconnecté</span></span>
     <button class="ghost tiny hidden" id="btn-disconnect" type="button">Déconnecter</button>
+    <button class="ghost tiny" id="btn-lang" type="button"
+            aria-label="Changer de langue" title="Changer de langue">FR</button>
     <button class="ghost tiny" id="btn-theme" type="button"
             aria-label="Changer de thème clair ou sombre"
             title="Thème clair / sombre (appui long : suivre le système)">
@@ -1576,8 +1578,8 @@ function render(status) {
     const pagePlusAncienne = versionPlusGrande(box, PAGE_VERSION);
     showBanner("warn", pagePlusAncienne
       ? "Cette page est en " + PAGE_VERSION + " alors que la Recalbox est en " + box +
-        " : ouvrez le fichier le plus récent (dist\recalbox-rfid-installer-" + box +
-        ".html), sinon certains écrans ne correspondent pas."
+        " : ouvrez le fichier le plus récent (dist\\recalbox-rfid-installer.html), " +
+        "sinon certains écrans ne correspondent pas."
       : "La Recalbox est en " + box + " et cette page en " + PAGE_VERSION +
         " : mettez à jour la Recalbox (onglet Maintenance) pour retrouver les mêmes écrans.");
   } else if (!status.installed) {
@@ -2665,6 +2667,136 @@ function followSystemTheme() {
 })();
 
 initTheme();
+
+/* ------------------------------------------------------------------ langues --
+   Les textes de la page sont en francais (langue de reference). Chaque langue
+   est un fichier `i18n/<code>.json` compile dans la page : la cle est le texte
+   francais, la valeur sa traduction. Un texte sans traduction reste en
+   francais. Le bouton de l'en-tete fait defiler les langues disponibles. */
+const LANG_KEY = "rfid-lang";
+let LANGUE_ACTIVE = "fr";
+let LANGUES = { fr: {} };
+let LANGUE_SOURCE = "fr";
+let textesOriginaux = [];      // [{ noeud, texte }]
+let attributsOriginaux = [];   // [{ noeud, attribut, texte }]
+
+function normaliserTexte(texte) {
+  return String(texte || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function lireLangues() {
+  const noeud = document.getElementById("rfid-i18n");
+  if (!noeud) return;
+  try {
+    const data = JSON.parse(noeud.textContent);
+    if (data && data.langues && typeof data.langues === "object") {
+      LANGUES = data.langues;
+      LANGUE_SOURCE = data.source || "fr";
+    }
+  } catch (error) { /* page sans traductions : tout reste en francais */ }
+}
+
+function languesDisponibles() {
+  const codes = Object.keys(LANGUES).filter((code) => /^[a-z]{2}$/.test(code));
+  if (!codes.includes(LANGUE_SOURCE)) codes.push(LANGUE_SOURCE);
+  return codes.sort();
+}
+
+function traduire(texte) {
+  if (LANGUE_ACTIVE === LANGUE_SOURCE) return texte;
+  const dictionnaire = LANGUES[LANGUE_ACTIVE] || {};
+  return dictionnaire[normaliserTexte(texte)] || texte;
+}
+
+/* Traduction d'un message construit en JavaScript : `t("texte {n}", {n: 3})` */
+function t(texte, valeurs) {
+  let resultat = traduire(texte);
+  if (valeurs) {
+    Object.keys(valeurs).forEach((cle) => {
+      resultat = resultat.split("{" + cle + "}").join(String(valeurs[cle]));
+    });
+  }
+  return resultat;
+}
+
+function instantaneTextes() {
+  textesOriginaux = [];
+  attributsOriginaux = [];
+  const ignorer = new Set(["SCRIPT", "STYLE", "PRE", "CODE", "TEXTAREA", "INPUT"]);
+  const parcours = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let noeud = parcours.nextNode();
+  while (noeud) {
+    const parent = noeud.parentElement;
+    const texte = noeud.nodeValue;
+    if (parent && !ignorer.has(parent.tagName) && !parent.closest("[data-no-i18n]")
+        && normaliserTexte(texte).length >= 3) {
+      textesOriginaux.push({ noeud: noeud, texte: texte });
+    }
+    noeud = parcours.nextNode();
+  }
+  document.querySelectorAll("[title], [placeholder], [aria-label]").forEach((element) => {
+    ["title", "placeholder", "aria-label"].forEach((attribut) => {
+      if (element.hasAttribute(attribut)) {
+        attributsOriginaux.push({
+          noeud: element,
+          attribut: attribut,
+          texte: element.getAttribute(attribut),
+        });
+      }
+    });
+  });
+}
+
+function appliquerLangue(code, memoriser) {
+  LANGUE_ACTIVE = code;
+  document.documentElement.lang = code;
+  textesOriginaux.forEach((entree) => {
+    const traduit = traduire(entree.texte);
+    const avant = entree.texte.match(/^\s*/)[0];
+    const apres = entree.texte.match(/\s*$/)[0];
+    entree.noeud.nodeValue = avant + traduit.trim() + apres;
+  });
+  attributsOriginaux.forEach((entree) => {
+    entree.noeud.setAttribute(entree.attribut, traduire(entree.texte));
+  });
+  const bouton = $("#btn-lang");
+  if (bouton) bouton.textContent = code.toUpperCase();
+  if (memoriser) {
+    try { localStorage.setItem(LANG_KEY, code); } catch (error) { /* mode privé */ }
+  }
+  /* Les messages construits en JavaScript sont regeneres par refresh(). */
+  if (typeof refresh === "function" && typeof agent !== "undefined" && agent.isOpen) refresh();
+}
+
+function langueInitiale() {
+  let choix = null;
+  try { choix = localStorage.getItem(LANG_KEY); } catch (error) { choix = null; }
+  const disponibles = languesDisponibles();
+  if (choix && disponibles.includes(choix)) return choix;
+  const navigateur = (navigator.language || "fr").slice(0, 2).toLowerCase();
+  return disponibles.includes(navigateur) ? navigateur : LANGUE_SOURCE;
+}
+
+function langueSuivante() {
+  const disponibles = languesDisponibles();
+  const index = disponibles.indexOf(LANGUE_ACTIVE);
+  return disponibles[(index + 1) % disponibles.length];
+}
+
+(function initialiserLangues() {
+  lireLangues();
+  instantaneTextes();
+  const disponibles = languesDisponibles();
+  const bouton = $("#btn-lang");
+  if (bouton) {
+    if (disponibles.length < 2) {
+      bouton.hidden = true;
+    } else {
+      bouton.addEventListener("click", () => appliquerLangue(langueSuivante(), true));
+    }
+  }
+  appliquerLangue(langueInitiale(), false);
+})();
 
 /* ------------------------------------------------------------- navigation */
 function setView(name) {

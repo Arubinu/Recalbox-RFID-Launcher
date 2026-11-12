@@ -4,6 +4,34 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.0]
+
+### Ajouté
+
+* **Interface multilingue.** Un bouton dans l'en-tête affiche la langue courante
+  en deux lettres (`FR`, `EN`) et passe à la langue suivante d'un simple clic.
+  La langue suit d'abord celle du navigateur, puis le choix est mémorisé.
+  * chaque langue est un fichier `i18n/<code>.json` (clé = texte français,
+    valeur = traduction), compilé dans la page par `tools/build_installer.py`
+    comme le reste du contenu — la page reste un fichier unique, sans réseau ;
+  * un texte sans traduction reste en français : on peut donc ajouter une
+    langue progressivement ;
+  * la langue de référence est le français (`i18n/fr.json`, vide par
+    construction) ; l'anglais est livré complet (`i18n/en.json`, 148 entrées,
+    y compris le schéma de câblage) ;
+  * les messages construits par la page (bandeaux, attentes, verdicts du test
+    lecteur) passent par la même table ;
+  * ajouter une langue = déposer `i18n/de.json` puis relancer
+    `python tools/build_installer.py`.
+
+### Modifié
+
+* **Le fichier livré ne porte plus le numéro de version** :
+  `dist/recalbox-rfid-installer.html` (au lieu de
+  `dist/recalbox-rfid-installer-<version>.html`). La version reste affichée
+  dans l'en-tête de la page et dans `VERSION`.
+* Le bandeau d'écart de version renvoie au nouveau nom de fichier.
+
 ## [2.6.9]
 
 ### Corrigé

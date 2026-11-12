@@ -117,7 +117,7 @@ class CommittedInstallerTest(unittest.TestCase):
     def setUp(self):
         self.dist = os.path.join(PROJECT, "dist")
         self.version = build_installer.version()
-        self.path = os.path.join(self.dist, "recalbox-rfid-installer-%s.html" % self.version)
+        self.path = os.path.join(self.dist, "recalbox-rfid-installer.html")
 
     def test_fichier_present(self):
         self.assertTrue(
@@ -136,13 +136,32 @@ class CommittedInstallerTest(unittest.TestCase):
             "installateur périmé : relancez python tools/build_installer.py",
         )
 
+    def test_langues_embarquees(self):
+        """Chaque fichier i18n/*.json est compile dans la page (comme le reste)."""
+        import json
+        import tools.build_installer as bati
+
+        langues = bati.collect_languages()
+        self.assertIn("fr", langues, "la langue de reference doit exister")
+        self.assertIn("en", langues)
+        self.assertGreater(len(langues["en"]), 100)
+        texte = self.html if hasattr(self, "html") else bati.build_html()
+        self.assertIn('id="rfid-i18n"', texte)
+        debut = texte.index('id="rfid-i18n"')
+        charge = texte[debut:].split(">", 1)[1].split("</script>", 1)[0]
+        data = json.loads(charge)
+        self.assertEqual(data["source"], "fr")
+        self.assertIn("en", data["langues"])
+        # une cle connue doit etre traduite
+        self.assertIn("Se connecter", data["langues"]["en"])
+
     def test_pas_d_ancienne_version(self):
         if not os.path.isdir(self.dist):
             self.skipTest("dossier dist absent")
         others = [
             name
             for name in os.listdir(self.dist)
-            if name.startswith("recalbox-rfid-installer-") and name != os.path.basename(self.path)
+            if name.startswith("recalbox-rfid-installer") and name != os.path.basename(self.path)
         ]
         self.assertEqual(others, [], "anciennes versions présentes dans dist/")
 

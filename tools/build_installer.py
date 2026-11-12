@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Génère un installateur HTML autonome (fichiers embarqués).
 
-Le fichier produit (`dist/recalbox-rfid-installer-<version>.html`) contient tout
+Le fichier produit (`dist/recalbox-rfid-installer.html`) contient tout
 le nécessaire : la page de gestion **et** le contenu des fichiers à copier sur la
 Recalbox. Il ne dépend donc plus d'aucun autre fichier du projet.
 
@@ -49,6 +49,15 @@ DIRECTORIES = ("app", "userscript", "bootstrap", "docs")
 #: Page source (le fichier généré est cette page + le contenu embarqué).
 HTML_SOURCE = "installer.html"
 
+#: Dossier des traductions : un fichier JSON par langue (code a 2 lettres).
+I18N_DIR = "i18n"
+
+#: Langue de reference : les textes de la page sont ecrits en francais.
+LANGUE_SOURCE = "fr"
+
+#: Nom du fichier livre (sans numero de version).
+DIST_NAME = "recalbox-rfid-installer.html"
+
 #: Point d'insertion du contenu embarqué.
 MARKER = "<body>"
 
@@ -92,6 +101,26 @@ def build_payload(files: dict = None) -> dict:
     }
 
 
+def collect_languages() -> dict:
+    """Charge ``i18n/<code>.json`` : {code: {texte source: traduction}}."""
+    dossier = ROOT / I18N_DIR
+    langues = {}
+    if not dossier.is_dir():
+        return langues
+    for chemin in sorted(dossier.glob("*.json")):
+        code = chemin.stem.lower()
+        if len(code) != 2:
+            continue
+        try:
+            contenu = json.loads(chemin.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise SystemExit("%s illisible : %s" % (chemin, exc))
+        if not isinstance(contenu, dict):
+            raise SystemExit("%s doit contenir un objet JSON" % chemin)
+        langues[code] = contenu
+    return langues
+
+
 def build_html(payload: dict = None) -> str:
     payload = payload if payload is not None else build_payload()
     source_path = ROOT / HTML_SOURCE
@@ -103,7 +132,18 @@ def build_html(payload: dict = None) -> str:
     encoded = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
     # Le contenu est du base64 : il ne peut pas contenir "</script>".
     tag = '<script id="rfid-payload" type="application/json">%s</script>' % encoded
-    return source.replace(MARKER, MARKER + "\n" + tag, 1)
+    html = source.replace(MARKER, MARKER + "\n" + tag, 1)
+
+    langues = collect_languages()
+    if langues:
+        traductions = json.dumps(
+            {"source": LANGUE_SOURCE, "langues": langues},
+            ensure_ascii=True,
+            separators=(",", ":"),
+        )
+        bloc = '<script id="rfid-i18n" type="application/json">%s</script>' % traductions
+        html = html.replace(MARKER, MARKER + "\n" + bloc, 1)
+    return html
 
 
 def main(argv=None) -> int:
@@ -116,7 +156,7 @@ def main(argv=None) -> int:
     output = (
         Path(args.output)
         if args.output
-        else ROOT / "dist" / ("recalbox-rfid-installer-%s.html" % payload["version"])
+        else ROOT / "dist" / DIST_NAME
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, "w", encoding="utf-8", newline="\n") as handle:
@@ -131,6 +171,8 @@ def main(argv=None) -> int:
         % (payload_bytes / 1024.0, len(html.encode("utf-8")) / 1024.0)
     )
     print("  script   : %s" % payload["userscript"])
+    langues = collect_languages()
+    print("  langues  : %s" % (", ".join(sorted(langues)) or "aucune"))
     return 0
 
 

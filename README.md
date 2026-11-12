@@ -61,7 +61,7 @@ programme.
 
 ### Méthode A — l'installateur `.cmd` (aucune fenêtre, aucun choix de dossier)
 
-1. Ouvrez **`dist\recalbox-rfid-installer-<version>.html`** (fourni ; sinon
+1. Ouvrez **`dist\recalbox-rfid-installer.html`** (fourni ; sinon
    `python tools/build_installer.py` le régénère) et renseignez l'adresse de la
    Recalbox (`recalbox.local` ou son IP) dans la zone de connexion.
 2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
@@ -134,7 +134,7 @@ C'est le seul fichier à ouvrir sur votre PC : double-clic, il fonctionne en
 
 Deux formes, même page :
 
-* **`dist\recalbox-rfid-installer-<version>.html`** — le fichier **unique**
+* **`dist\recalbox-rfid-installer.html`** — le fichier **unique**
   (fichiers embarqués) : il sait aussi copier le programme sur le partage ;
 * **`installer.html`** (à la racine) — la version « dossier », qui suppose que
   vous avez copié `recalbox-rfid` à la main.
@@ -168,6 +168,7 @@ périmé).
 | Badges | associer un badge au jeu sélectionné, ajouter/supprimer, export et import CSV, scan simulé |
 | Service | démarrer / arrêter / redémarrer, consulter les journaux |
 | Apparence | thème clair / sombre (bouton soleil-lune : suit le système, un clic le fixe, appui long pour revenir) ; il s'applique aussi au schéma de câblage |
+| Langue | bouton `FR` / `EN` dans l'en-tête : un clic passe à la langue suivante (suit d'abord celle du navigateur, puis mémorise le choix) |
 
 * **Connexion** : `ws://<ip>:8765`, adresse et port seulement. Cliquez sur
   « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes pendant le
@@ -368,7 +369,7 @@ Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
 
 ```
 recalbox-rfid/
-├── dist/recalbox-rfid-installer-<version>.html   # installateur unique (à ouvrir)
+├── dist/recalbox-rfid-installer.html   # installateur unique (à ouvrir)
 ├── installer.html               # version « dossier » de l'interface
 ├── tools/build_installer.py     # régénère le fichier unique
 ├── app/

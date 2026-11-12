@@ -21,7 +21,7 @@ Après chaque modification d'un fichier du projet :
 python tools/build_installer.py
 ```
 
-Le fichier `dist/recalbox-rfid-installer-<version>.html` est reconstruit avec le
+Le fichier `dist/recalbox-rfid-installer.html` est reconstruit avec le
 contenu à jour. Un test échoue si le fichier livré n'est pas régénéré.
 
 ## Principe

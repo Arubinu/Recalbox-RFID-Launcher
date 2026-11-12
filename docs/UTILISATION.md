@@ -26,6 +26,11 @@ La page tient sur un écran, sans défilement, et commence par un **choix** :
 | **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
 | **Gestion** | trois onglets : **Badges**, **Matériel**, **Maintenance** |
 
+Un bouton **`FR` / `EN`** (à côté) change la langue de l'interface : un simple clic
+passe à la langue suivante. La page démarre dans la langue du navigateur quand
+elle est disponible, puis retient le choix. Chaque langue est un fichier
+`i18n/<code>.json` compilé dans la page ; un texte non traduit reste en français.
+
 Un bouton **soleil / lune** dans l'en-tête change de thème : la page suit d'abord
 celui du système, un clic fixe le choix (mémorisé par le navigateur) et un
 **appui long** revient au thème du système. La bascule est animée par un cercle
@@ -80,7 +85,7 @@ l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
 Points utiles :
 
 * **Fichier unique** : si vous avez ouvert
-  `dist\recalbox-rfid-installer-<version>.html`, une première section permet de
+  `dist\recalbox-rfid-installer.html`, une première section permet de
   **copier les fichiers** sur `\\RECALBOX\share` directement depuis la page
   (Edge/Chrome) : choisissez le partage, tout est écrit, puis redémarrez.
 * **Associer sans le bouton** : sélectionnez un jeu dans Recalbox, ouvrez la page

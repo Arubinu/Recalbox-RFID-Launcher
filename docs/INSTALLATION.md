@@ -22,7 +22,7 @@ Mot de passe par défaut du compte `root` : `recalboxroot`.
 Le sélecteur de dossier de Windows ne sait pas atteindre un partage UNC : on
 l'évite complètement. La page génère un **fichier unique** qui fait tout.
 
-1. **Ouvrez `dist\recalbox-rfid-installer-<version>.html`** (ou régénérez-le :
+1. **Ouvrez `dist\recalbox-rfid-installer.html`** (ou régénérez-le :
    `python tools/build_installer.py`) et indiquez l'adresse de la Recalbox.
 2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
 3. **Double-cliquez** sur le fichier téléchargé. Windows peut afficher
