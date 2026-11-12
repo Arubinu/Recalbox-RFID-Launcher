@@ -175,6 +175,10 @@ façon la plus simple de changer le jeu d'un badge, sans passer par l'effacement
 
 ## Le son
 
+Aucun son n'est émis au **lancement** d'un jeu : l'écran de chargement du jeu
+sert de confirmation. Les bips restent pour ce qui ne se voit pas (association,
+badge inconnu, délai dépassé).
+
 Les bips sont générés à la volée (fichiers WAV dans `/tmp`) et joués par
 `paplay` (PulseAudio) ou `aplay` (ALSA). Pour les couper :
 

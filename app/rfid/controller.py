@@ -238,7 +238,7 @@ class Controller:
                     self.store.touch(uid)
                 except StorageError as exc:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
-            self.feedback.ok()
+            # Pas de bip : le lancement se voit a l'ecran (splash du jeu).
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"

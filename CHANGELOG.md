@@ -4,6 +4,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.7.2]
+
+### Modifié
+
+* **Plus de bip au lancement d'un jeu.** Le jeu se lance à l'écran, c'est la
+  confirmation : le bip ne servait à rien et s'ajoutait au son du frontend. Les
+  bips restent pour ce qui ne se voit pas — association d'un badge, badge
+  inconnu, délai dépassé, effacement.
+
 ## [2.7.1]
 
 ### Ajouté

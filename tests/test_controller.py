@@ -81,12 +81,15 @@ class ControllerTest(unittest.TestCase):
         self.controller.on_button("short")
         self.controller.on_badge("A1B2C3D4")
         self.launcher.calls.clear()
+        avant = list(self.feedback.events)
         # Deuxieme scan, hors mode association : lancement direct
         self.assertEqual(self.controller.on_badge("A1:B2:C3:D4"), "launched")
         self.assertEqual(
             self.launcher.calls, [("snes", "/recalbox/share/roms/snes/Super Mario World.smc")]
         )
         self.assertEqual(self.store.get("A1B2C3D4")["hits"], 1)
+        # le lancement se voit a l'ecran : aucun bip supplementaire
+        self.assertEqual(self.feedback.events, avant)
 
     def test_ancien_reglage_ignore(self):
         """Un `launch_after_bind = 1` laisse par une ancienne version est ignore."""

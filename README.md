@@ -215,8 +215,9 @@ correspondance.
 | Son | Signification |
 | --- | --- |
 | 1 bip aigu | mode association armé (appui court) |
-| 2 bips aigus montants | badge reconnu / associé, jeu lancé |
+| 2 bips aigus montants | badge associé (la correspondance est enregistrée) |
 | 1 bip médium | badge reconnu sans action (`action = none`) |
+| aucun son | lancement d'un jeu : l'écran de chargement du jeu suffit |
 | 2 bips graves | suppression armée depuis l'interface |
 | 2 bips graves descendus | badge inconnu ou action refusée |
 | 3 bips descendants | délai dépassé (10 s pour poser le badge) |
