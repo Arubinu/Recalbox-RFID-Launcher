@@ -4,6 +4,19 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.6.9]
+
+### Corrigé
+
+* **Associer un badge ne lance plus le jeu.** L'association déclenchait aussitôt
+  le lancement (`[launch] launch_after_bind = 1`), ce qui surprend quand on
+  vient seulement d'attribuer un jeu : on se retrouve dans le jeu sans l'avoir
+  demandé. L'enregistrement ne fait plus que ça — deux bips et le badge est
+  associé ; le jeu démarre au **scan suivant**.
+* Le réglage `launch_after_bind` est supprimé : une valeur laissée à `1` par une
+  version précédente dans `config.ini` est simplement ignorée (rien à éditer).
+  Le fichier de configuration livré ne contient plus la ligne.
+
 ## [2.6.8]
 
 ### Modifié

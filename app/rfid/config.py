@@ -56,8 +56,6 @@ udp_host = 127.0.0.1
 udp_port = 1337
 # Ne pas lancer de jeu si un jeu tourne deja
 ignore_when_game_running = 1
-# Lancer le jeu juste apres une association reussie (confirmation visuelle)
-launch_after_bind = 1
 # Action quand un badge deja enregistre est scanne :
 #   launch = lance le jeu (comportement historique)
 #   none   = ne lance rien : bip de confirmation et journal seulement

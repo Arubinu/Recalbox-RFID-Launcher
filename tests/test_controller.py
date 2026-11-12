@@ -65,25 +65,33 @@ class ControllerTest(unittest.TestCase):
         self.assertEqual(self.controller.mode, "delete")
 
     # ------------------------------------------------------------- association
-    def test_association_puis_lancement(self):
+    def test_association_ne_lance_pas_le_jeu(self):
+        """Associer n'enregistre que la correspondance : aucun lancement."""
         self.controller.on_button("short")
         self.assertEqual(self.controller.on_badge("A1B2C3D4"), "bound")
         entry = self.store.get("A1B2C3D4")
         self.assertEqual(entry["system"], "snes")
         self.assertEqual(entry["game"], "Super Mario World.smc")
         self.assertEqual(entry["name"], "Super Mario World")
+        self.assertEqual(self.launcher.calls, [], "l'association ne doit rien lancer")
+        self.assertFalse(self.controller.armed)
+        self.assertIn("ok", self.feedback.events)      # bips de confirmation
+
+    def test_le_scan_suivant_lance_le_jeu(self):
+        self.controller.on_button("short")
+        self.controller.on_badge("A1B2C3D4")
+        self.launcher.calls.clear()
+        # Deuxieme scan, hors mode association : lancement direct
+        self.assertEqual(self.controller.on_badge("A1:B2:C3:D4"), "launched")
         self.assertEqual(
             self.launcher.calls, [("snes", "/recalbox/share/roms/snes/Super Mario World.smc")]
         )
-        self.assertFalse(self.controller.armed)
-
-        # Deuxieme scan : lancement direct
-        self.assertEqual(self.controller.on_badge("A1:B2:C3:D4"), "launched")
         self.assertEqual(self.store.get("A1B2C3D4")["hits"], 1)
 
-    def test_association_sans_lancement_si_desactive(self):
+    def test_ancien_reglage_ignore(self):
+        """Un `launch_after_bind = 1` laisse par une ancienne version est ignore."""
         with open(self.config.path, "w", encoding="utf-8") as handle:
-            handle.write("[launch]\nlaunch_after_bind = 0\n")
+            handle.write("[launch]\nlaunch_after_bind = 1\n")
         self.config.reload()
         controller = self.make_controller()
         controller.on_button("short")

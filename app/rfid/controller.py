@@ -48,12 +48,10 @@ class Controller:
         self.state_provider = state_provider or (lambda: read_state())
         self.clock = clock or time.monotonic
 
-        self.launch_after_bind = True
         self.ignore_when_running = True
         self.arm_timeout_s = 10.0
         self.action = ACTION_LAUNCH
         if cfg is not None:
-            self.launch_after_bind = cfg.get_bool("launch", "launch_after_bind", True)
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
             self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
@@ -209,17 +207,6 @@ class Controller:
             "Badge %s associe a %s (%s / %s)"
             % (pretty_uid(uid), target.name or target.game, target.system, target.game),
         )
-        if self.launch_after_bind:
-            self._launch(
-                {
-                    "system": target.system,
-                    "game": target.game,
-                    "path": target.path,
-                    "name": target.name,
-                },
-                uid,
-                touch=False,
-            )
         return "bound"
 
     def _delete(self, uid: str) -> str:

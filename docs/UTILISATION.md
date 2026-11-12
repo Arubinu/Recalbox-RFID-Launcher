@@ -259,7 +259,6 @@ partage réseau, avec le Bloc-notes par exemple). Après modification :
 | `[launch] udp_host` / `udp_port` | `127.0.0.1` / `1337` | interface du frontend |
 | `[launch] action` | `launch` | `launch` = lance le jeu ; `none` = bip seulement (mode cartouche) |
 | `[launch] ignore_when_game_running` | `1` | ignore les scans pendant un jeu |
-| `[launch] launch_after_bind` | `1` | lance le jeu après une association |
 | `[feedback] sound` | `1` | bips |
 | `[feedback] sound_player` | `auto` | `paplay`, `aplay` ou `none` |
 | `[agent] enabled` | `1` | agent WebSocket (installateur / gestion) |

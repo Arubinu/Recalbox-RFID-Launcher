@@ -191,8 +191,8 @@ périmé).
    la liste, pas lancé).
 2. **Appui court** sur le bouton → un bip aigu confirme le mode association
    (10 secondes pour scanner).
-3. **Scannez le badge** → deux bips : le badge est enregistré et le jeu se lance
-   immédiatement pour confirmer.
+3. **Scannez le badge** → deux bips : le badge est enregistré. Le jeu **ne se
+   lance pas** à ce moment-là : il démarrera au prochain scan du badge.
 
 Autoriser un navigateur : **maintenez le bouton 3 secondes** — la validation part
 **dès la 3ᵉ seconde**, sans avoir à relâcher (un bip confirme).
