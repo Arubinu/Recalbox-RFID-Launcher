@@ -616,6 +616,11 @@
         collez-le dans le champ « Jeton de sécurité ».
       </p>
       <p class="small muted">
+        Un jeton ressemble à <code>70C2633536122BAA</code> : <b>16 caractères</b>,
+        chiffres et lettres A à F, sans espace ni retour à la ligne. Si ce n'est pas
+        ça, ce n'est pas le bon fichier.
+      </p>
+      <p class="small muted">
         <b>À savoir</b> : <code>\\RECALBOX</code> tout seul ne s'ouvre pas sous Windows
         (« Windows ne peut pas accéder à \\RECALBOX ») — c'est normal, il faut toujours
         le <code>\share</code>. Si le nom pose problème, utilisez l'adresse IP.
@@ -1006,8 +1011,12 @@ function buildInstallerCmd(host, zipBytes) {
     "start \"\" \"file:///!URLPATH!installer.html#host=%PAGEHOST%&port=8765&token=!TOKEN!\"",
     "goto fin",
     ":redemarrer",
-    "echo    Redemarrez la Recalbox : l'installation se fait toute seule.",
-    "echo    Relancez ensuite ce fichier pour ouvrir l'interface de gestion.",
+    "echo    ETAPE OBLIGATOIRE : redemarrez la Recalbox maintenant.",
+    "echo    C'est au demarrage qu'elle installe le programme, demarre l'agent et",
+    "echo    cree le jeton. Tant que ce n'est pas fait, la page ne peut pas se connecter.",
+    "echo.",
+    "echo    Apres le redemarrage (environ 1 minute), relancez ce fichier :",
+    "echo    il lira le jeton et ouvrira la page deja connectee.",
     "goto fin",
     "",
     ":echec_acces",
@@ -1642,27 +1651,62 @@ async function tryReconnect(silent) {
     } catch (error) {
       setLink(false, "déconnecté");
       $("#connect-hint").textContent =
-        "Jeton introuvable (" + error.message + ") : utilisez « Charger token.txt… ».";
+        "Jeton introuvable (" + error.message + ") : utilisez « J'ai le fichier token.txt ».";
       if (!silent) showBanner("err", "Jeton introuvable : " + error.message);
       return;
     }
   }
-  const url = "ws://" + settings.host + ":" + settings.port;
-  $("#connect-hint").textContent = "Connexion à " + url + "…";
-  try {
-    await agent.connect(url, settings.token);
-    store.write(settings);
-    connectedOnce = true;
-    $("#connect-hint").textContent = "";
-    setConnected({});
-    lastStatusJson = "";
-    await refresh();
-    scheduleRefresh();
-  } catch (error) {
-    setLink(false, "déconnecté");
-    $("#connect-hint").textContent = error.message;
-    if (!silent) showBanner("err", error.message);
+
+  /* Un jeton Recalbox = 16 caracteres hexadecimaux (ex. 70C2633536122BAA). */
+  if (!/^[0-9A-F]{16}$/i.test(settings.token)) {
+    $("#token-hint").textContent =
+      "Un jeton Recalbox fait 16 caractères (chiffres et lettres A-F) ; celui-ci en fait " +
+      settings.token.length + ". Le presse-papiers contient peut-être autre chose.";
+    showBanner("warn",
+      "Le jeton ne ressemble pas à un jeton Recalbox : il doit faire 16 caractères " +
+      "(chiffres et lettres A-F). Ouvrez \\\\RECALBOX\\share\\system\\rfid\\token.txt, " +
+      "copiez tout son contenu et collez-le à la place. La connexion est tentée quand même.");
   }
+
+  const url = "ws://" + settings.host + ":" + settings.port;
+  const attempts = 3;
+  let message = "";
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    $("#connect-hint").textContent = attempt === 1
+      ? "Connexion à " + url + "…"
+      : "Nouvelle tentative " + attempt + "/" + attempts + " (" + url + ")…";
+    try {
+      await agent.connect(url, settings.token);
+      store.write(settings);
+      connectedOnce = true;
+      $("#connect-hint").textContent = "";
+      $("#token-hint").textContent = "";
+      setConnected({});
+      lastStatusJson = "";
+      await refresh();
+      scheduleRefresh();
+      return;
+    } catch (error) {
+      message = error.message || String(error);
+      /* Jeton refuse : inutile de reessayer, la reponse est immediate. */
+      if (!/connexion impossible/i.test(message)) break;
+      if (attempt < attempts) await new Promise((done) => setTimeout(done, 1500));
+    }
+  }
+
+  setLink(false, "déconnecté");
+  const refused = /jeton|fermée|fermee|refus/i.test(message);
+  $("#connect-hint").textContent = refused
+    ? "La Recalbox répond mais refuse le jeton."
+    : "Aucune réponse de la Recalbox (" + settings.host + ").";
+  showBanner("err", refused
+    ? "La Recalbox répond sur " + url + " mais refuse le jeton. Relisez " +
+      "\\\\RECALBOX\\share\\system\\rfid\\token.txt (16 caractères, chiffres et lettres A-F) " +
+      "et collez-le en entier."
+    : "Impossible de joindre la Recalbox sur " + url + " après " + attempts + " tentatives. " +
+      "Trois causes possibles : 1) elle n'a pas redémarré depuis l'installation (obligatoire " +
+      "pour que l'agent démarre) ; 2) l'adresse est fausse (essayez son adresse IP) ; " +
+      "3) l'agent n'est pas installé. Cliquez sur « Faire un diagnostic » pour savoir laquelle.");
 }
 
 $("#btn-connect").addEventListener("click", () => tryReconnect(false));

@@ -274,8 +274,9 @@ L'agent est lancé par le script permanent
 
 | Symptôme | Cause probable |
 | --- | --- |
-| « connexion impossible » | agent arrêté, mauvaise IP, port différent de 8765 |
-| « jeton refusé » | jeton mal recopié (espaces, minuscules) ou `token.txt` supprimé puis recréé |
+| « Impossible de joindre la Recalbox après 3 tentatives » | l'agent ne tourne pas : Recalbox **pas redémarrée** depuis l'installation, mauvaise adresse, ou userscript de l'agent absent |
+| « La Recalbox répond mais refuse le jeton » | jeton mal recopié (16 caractères A-F attendus) ou `token.txt` recréé depuis |
+| « Un jeton Recalbox fait 16 caractères… » | le presse-papiers contenait autre chose (texte copié ailleurs) : relisez `token.txt` |
 | « délai dépassé » | adresse injoignable : testez `ping recalbox.local`, préférez l'IP |
 | rien ne se passe | la page doit être ouverte **depuis le disque** (`file://`) : ouverte depuis un site `https://`, le navigateur bloque `ws://` (mixed content) |
 
@@ -283,12 +284,15 @@ L'agent est lancé par le script permanent
 
 1. **La page est-elle bien `installer.html` du projet ?** (pas une ancienne
    copie ni l'ancienne interface web).
-2. **L'adresse** : `recalbox.local` ou l'IP affichée dans
-   `RÉSEAU` > `INFORMATIONS` ; le port `8765`.
-3. **Le jeton** : `\\RECALBOX\share\system\rfid\token.txt`. Utilisez le bouton
-   « Charger token.txt… » plutôt qu'un copier-coller.
-4. **Le jeton n'existe pas ?** Il est créé au premier démarrage de l'agent.
-   Redémarrez Recalbox puis rechargez la page.
+2. **La Recalbox a-t-elle redémarré depuis l'installation ?** C'est au démarrage
+   que le programme est installé, que l'agent démarre et que `token.txt` est
+   créé. Sans ce redémarrage, la page ne peut rien joindre.
+3. **L'adresse** : `recalbox.local` ou l'IP affichée dans
+   `RÉSEAU` > `INFORMATIONS` ; le port `8765`. En cas de doute :
+   « Faire un diagnostic » (bouton dans « Où trouver le jeton ? ») teste le port.
+4. **Le jeton** : `\\RECALBOX\share\system\rfid\token.txt`, 16 caractères
+   (chiffres et lettres A-F). Utilisez le bouton « J'ai le fichier token.txt »
+   plutôt qu'un copier-coller.
 5. **Un bloqueur / proxy d'entreprise** peut interdire les WebSocket : essayez
    un autre navigateur (Edge, Chrome, Firefox) ou un autre poste.
 

@@ -4,6 +4,37 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [1.7.3]
+
+### Ajouté
+
+* **Le jeton est vérifié avant la connexion** : un jeton Recalbox fait
+  exactement 16 caractères hexadécimaux (`70C2633536122BAA`). S'il n'a pas cette
+  forme, la page le dit et indique combien de caractères ont été reçus — un
+  presse-papiers contenant autre chose (texte copié ailleurs) est ainsi repéré
+  immédiatement, la connexion étant tout de même tentée.
+* **Trois tentatives automatiques** espacées de 1,5 s quand l'agent ne répond
+  pas : le temps que le service finisse de démarrer après un redémarrage.
+* Message d'échec actionnable, qui distingue les deux cas :
+  * agent muet → « Impossible de joindre la Recalbox après 3 tentatives » avec
+    les trois causes (pas redémarrée depuis l'installation, mauvaise adresse,
+    agent non installé) et le renvoi vers « Faire un diagnostic » ;
+  * jeton refusé → « La Recalbox répond mais refuse le jeton » avec la marche à
+    suivre.
+
+### Modifié
+
+* Le message de fin du `.cmd` (quand le jeton n'existe pas encore) dit
+  explicitement que **le redémarrage est obligatoire** et pourquoi, puis invite à
+  relancer le fichier après une minute.
+* L'aide « Où trouver le jeton ? » montre la forme attendue du jeton.
+
+### Corrigé
+
+* Les scripts de test n'utilisent plus `clip` : ils n'écrasent plus le
+  presse-papiers du poste (c'est ce qui y avait laissé un faux jeton de test à la
+  place du vrai).
+
 ## [1.7.2]
 
 ### Corrigé
