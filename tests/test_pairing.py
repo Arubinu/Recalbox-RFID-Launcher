@@ -47,7 +47,7 @@ class PairingTest(unittest.TestCase):
         pairing.create_request(self.home)
         self.now += pairing.PAIRING_WINDOW_S + 1
         self.assertIsNone(pairing.pending(self.home))
-        # Une nouvelle demande est alors possible.
+        # A new request is then possible.
         self.assertTrue(pairing.create_request(self.home)["id"])
 
     def test_accord_valable_une_seule_fois(self):
@@ -57,10 +57,10 @@ class PairingTest(unittest.TestCase):
         self.assertFalse(pairing.take_grant(self.home, request["id"]), "accord rejoue")
 
     def test_accord_refuse_pour_une_autre_demande(self):
-        """La course redoutee : l'appui destine a A ne doit pas valider B."""
+        """The dreaded race: the press meant for A must not validate B."""
         premiere = pairing.create_request(self.home)
         self.assertTrue(pairing.grant(self.home, premiere, press_started=self.now + 1))
-        # La demande A expire, quelqu'un en cree une autre juste apres.
+        # Request A expires, someone creates another one right after.
         self.now += pairing.PAIRING_WINDOW_S + 0.5
         seconde = pairing.create_request(self.home)
         self.assertNotEqual(premiere["id"], seconde["id"])
@@ -76,7 +76,7 @@ class PairingTest(unittest.TestCase):
         self.assertFalse(pairing.take_grant(self.home, request["id"]))
 
     def test_appui_commence_avant_la_demande_refuse(self):
-        """Un doigt deja pose ne doit pas valider une demande arrivee apres."""
+        """A finger already down must not validate a request that arrived later."""
         pressed_at = self.now - 2.0
         request = pairing.create_request(self.home)
         self.assertFalse(pairing.grant(self.home, request, press_started=pressed_at))
@@ -97,7 +97,7 @@ class PairingTest(unittest.TestCase):
 
 
 class PrivateStateDirTest(unittest.TestCase):
-    """Les etats d'appairage ne doivent jamais vivre sur le partage Samba."""
+    """Pairing states must never live on the Samba share."""
 
     def setUp(self):
         self.home = tempfile.mkdtemp(prefix="rfid-state-")
@@ -117,8 +117,8 @@ class PrivateStateDirTest(unittest.TestCase):
         self.assertEqual(os.path.dirname(pairing.grant_path(self.home)), prive)
 
     def test_accord_forge_ignore(self):
-        # Un poste du reseau peut ecrire dans le partage : un faux accord depose
-        # dans home ne doit donner aucun acces.
+        # A computer on the network can write to the share: a fake grant
+        # dropped in home must give no access.
         prive = os.path.join(self.home, "prive")
         os.environ[pairing.STATE_DIR_ENV] = prive
         request = pairing.create_request(self.home)
@@ -136,14 +136,14 @@ class PrivateStateDirTest(unittest.TestCase):
         self.assertTrue(pairing.take_grant(self.home, request["id"]))
 
     def test_dossier_par_defaut_hors_partage(self):
-        # La redirection vers /tmp est verifiee sur la machine elle-meme ; ici on
-        # s'assure au moins que la valeur par defaut n'est pas le partage.
+        # The redirection to /tmp is checked on the machine itself; here we at
+        # least make sure the default value is not the share.
         self.assertFalse(pairing.DEFAULT_STATE_DIR.startswith("/recalbox/share"))
         self.assertNotIn("/recalbox/share", pairing.DEFAULT_STATE_DIR)
 
 
 class ServiceButtonTest(unittest.TestCase):
-    """Le service transforme un appui long en accord d'appairage."""
+    """The service turns a long press into a pairing grant."""
 
     def setUp(self):
         from rfid import daemon
@@ -184,7 +184,7 @@ class ServiceButtonTest(unittest.TestCase):
         self.service.feedback.ok.assert_called_once()
 
     def test_appui_court_pendant_une_demande_associe_quand_meme(self):
-        """Un appui court pendant une demande arme l'association (comportement connu)."""
+        """A short press during a request arms the association (known behaviour)."""
         pairing.create_request(self.home)
         self.service.controller.armed = False
         self.service._handle_gesture("short")

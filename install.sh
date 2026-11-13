@@ -1,14 +1,14 @@
 #!/bin/sh
 # =============================================================================
-#  Recalbox RFID Launcher - installateur et mise a jour
+#  Recalbox RFID Launcher - installer and updater
 #
-#  A executer sur Recalbox, en root (connexion SSH), depuis le dossier copie
-#  sur le partage reseau :
+#  To run on Recalbox, as root (SSH connection), from the folder copied
+#  to the network share:
 #
 #      sh /recalbox/share/recalbox-rfid/install.sh
 #
-#  Le script est idempotent : le relancer installe la nouvelle version tout en
-#  conservant la configuration (config.ini) et les badges (tags.json).
+#  The script is idempotent: running it again installs the new version while
+#  keeping the configuration (config.ini) and the badges (tags.json).
 # =============================================================================
 set -eu
 
@@ -18,14 +18,15 @@ DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
-MANUAL_SCRIPT_NAME="Installer-lecteur-RFID.sh"
+MENU_SCRIPT_NAMES="Install-RFID-reader.sh Uninstall-RFID-reader.sh"
+LEGACY_MENU_SCRIPTS="Installer-lecteur-RFID.sh"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 BOOT_CONFIG_MAIN="/boot/config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
-# La version de reference est le fichier VERSION du paquet.
+# The reference version is the package VERSION file.
 if [ -f "$SCRIPT_DIR/VERSION" ]; then
     VERSION=$(tr -d ' \t\r\n' < "$SCRIPT_DIR/VERSION")
 elif [ -f "$HOME_DIR/VERSION" ]; then
@@ -94,7 +95,7 @@ EOF
 }
 
 # --------------------------------------------------------------------------- #
-# Analyse des arguments
+# Argument parsing
 # --------------------------------------------------------------------------- #
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -118,7 +119,7 @@ done
 HOME_DIR=$(printf '%s' "$HOME_DIR" | sed 's:/*$::')
 
 # --------------------------------------------------------------------------- #
-# Interpreteur Python 3 (python3, ou python si la version est 3)
+# Python 3 interpreter (python3, or python if its version is 3)
 # --------------------------------------------------------------------------- #
 PYTHON=""
 for candidate in python3 python; do
@@ -132,7 +133,7 @@ done
 [ -n "$PYTHON" ] || die "Python 3 est introuvable. Recalbox 9 ou plus est necessaire."
 
 # --------------------------------------------------------------------------- #
-# Installation depuis un ZIP distant
+# Installation from a remote ZIP
 # --------------------------------------------------------------------------- #
 if [ -n "$REMOTE_URL" ]; then
     step "Telechargement de la mise a jour"
@@ -199,7 +200,7 @@ if [ "$IS_ROOT" != "1" ]; then
     warn "ne pourront pas etre installes (relancez avec 'su -' ou en root SSH)."
 fi
 
-# Etat du service avant mise a jour (pour le redemarrer a la fin)
+# Service state before the update (to restart it at the end)
 if [ -f "$HOME_DIR/rfid.pid" ]; then
     OLD_PID=$(cat "$HOME_DIR/rfid.pid" 2>/dev/null || echo "")
     if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
@@ -236,9 +237,15 @@ else
         rm -rf "$HOME_DIR/docs"
         cp -R "$SCRIPT_DIR/docs" "$HOME_DIR/docs"
     fi
-    for extra in install.sh uninstall.sh VERSION README.md CHANGELOG.md installer.html; do
+    for extra in install.sh uninstall.sh VERSION CHANGELOG.md installer.html; do
         if [ -f "$SCRIPT_DIR/$extra" ]; then
             cp -f "$SCRIPT_DIR/$extra" "$HOME_DIR/$extra"
+        fi
+    done
+    # One README per language (README.md is English, README.<code>.md the others).
+    for readme in "$SCRIPT_DIR"/README*.md; do
+        if [ -f "$readme" ]; then
+            cp -f "$readme" "$HOME_DIR/"
         fi
     done
     ok "Programme installe dans $HOME_DIR/app"
@@ -246,16 +253,16 @@ fi
 
 printf '%s\n' "$VERSION" > "$HOME_DIR/VERSION"
 
-# Raccourci en ligne de commande
+# Command line shortcut
 cat > "$HOME_DIR/rfidctl" <<EOF
 #!/bin/sh
-# Raccourci vers $APP_NAME
+# Shortcut to $APP_NAME
 exec $PYTHON "$HOME_DIR/app/main.py" --home "$HOME_DIR" "\$@"
 EOF
 chmod +x "$HOME_DIR/rfidctl"
 ok "Commande installee : $HOME_DIR/rfidctl"
 
-# Configuration et base de badges (jamais ecrasees)
+# Configuration and badge database (never overwritten)
 if [ -f "$HOME_DIR/config.ini" ]; then
     ok "Configuration conservee : $HOME_DIR/config.ini"
 else
@@ -283,7 +290,7 @@ if [ "$IS_ROOT" = "1" ] && [ -f "$TEMPLATE" ]; then
     chmod +x "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     ok "Script de demarrage : $USERSCRIPTS_DIR/$USERSCRIPT_NAME"
 
-    # Agent WebSocket : installation, mise a jour et gestion depuis installer.html.
+    # WebSocket agent: installation, update and management from installer.html.
     AGENT_TEMPLATE="$HOME_DIR/bootstrap/$AGENT_USERSCRIPT_NAME"
     [ -f "$AGENT_TEMPLATE" ] || AGENT_TEMPLATE="$SCRIPT_DIR/bootstrap/$AGENT_USERSCRIPT_NAME"
     if [ -f "$AGENT_TEMPLATE" ]; then
@@ -292,15 +299,21 @@ if [ "$IS_ROOT" = "1" ] && [ -f "$TEMPLATE" ]; then
         ok "Agent WebSocket : $USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
     fi
 
-    # Recalbox 10 : script lancable depuis le menu (reparation sans SSH).
-    MANUAL_TEMPLATE="$HOME_DIR/bootstrap/manual/$MANUAL_SCRIPT_NAME"
-    [ -f "$MANUAL_TEMPLATE" ] || MANUAL_TEMPLATE="$SCRIPT_DIR/bootstrap/manual/$MANUAL_SCRIPT_NAME"
-    if [ -f "$MANUAL_TEMPLATE" ]; then
-        mkdir -p "$USERSCRIPTS_DIR/manual"
-        cp -f "$MANUAL_TEMPLATE" "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
-        chmod +x "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
-        ok "Script du menu Recalbox : $USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
-    fi
+    # Recalbox 10: install / uninstall scripts runnable from the menu
+    # (repair or removal without SSH). Older names are removed.
+    for name in $LEGACY_MENU_SCRIPTS; do
+        rm -f "$USERSCRIPTS_DIR/manual/$name" 2>/dev/null || true
+    done
+    for name in $MENU_SCRIPT_NAMES; do
+        MENU_TEMPLATE="$HOME_DIR/bootstrap/manual/$name"
+        [ -f "$MENU_TEMPLATE" ] || MENU_TEMPLATE="$SCRIPT_DIR/bootstrap/manual/$name"
+        if [ -f "$MENU_TEMPLATE" ]; then
+            mkdir -p "$USERSCRIPTS_DIR/manual"
+            cp -f "$MENU_TEMPLATE" "$USERSCRIPTS_DIR/manual/$name"
+            chmod +x "$USERSCRIPTS_DIR/manual/$name" 2>/dev/null || true
+            ok "Script du menu Recalbox : $USERSCRIPTS_DIR/manual/$name"
+        fi
+    done
 else
     warn "Script de demarrage non installe (droits root necessaires)."
     say "  Copiez manuellement le fichier $USERSCRIPT_NAME dans $USERSCRIPTS_DIR"
@@ -310,19 +323,22 @@ fi
 # Bus SPI
 # --------------------------------------------------------------------------- #
 step "Bus SPI (lecteur RC522)"
-if [ -e /dev/spidev0.0 ]; then
-    ok "SPI deja active (/dev/spidev0.0 present)"
-elif [ "$DO_SPI" = "0" ]; then
+# The line is written even when SPI is already live: an uninstall may have
+# removed it without a reboot since, and SPI would then be off at next boot.
+# A reboot is only needed when the bus is not live yet.
+SPI_LIVE=0
+[ -e /dev/spidev0.0 ] && SPI_LIVE=1
+if [ "$DO_SPI" = "0" ]; then
     warn "Activation du SPI ignoree (--no-spi)."
     say "  Ajoutez 'dtparam=spi=on' dans $BOOT_CONFIG puis redemarrez."
 else
     if [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG" ]; then
         if grep -q '^[[:space:]]*dtparam=spi=on' "$BOOT_CONFIG" 2>/dev/null; then
             ok "SPI deja configure dans $BOOT_CONFIG"
-            NEED_REBOOT=1
+            [ "$SPI_LIVE" = "1" ] || NEED_REBOOT=1
         else
-            # Sur Recalbox 9/10, /boot est monte en lecture seule : on le remonte
-            # en ecriture le temps de la modification, puis on le remet en lecture.
+            # On Recalbox 9/10, /boot is mounted read-only: it is remounted
+            # read-write for the change, then set back to read-only.
             BOOT_RW=0
             if touch "$BOOT_CONFIG.rfid-test" 2>/dev/null; then
                 rm -f "$BOOT_CONFIG.rfid-test" 2>/dev/null
@@ -334,12 +350,12 @@ else
                 say "  Sauvegarde : $BOOT_CONFIG.bak-rfid-launcher"
             fi
             if {
-                printf '\n# Active le bus SPI pour le lecteur RFID RC522\n'
-                printf '# (ajoute par %s)\n' "$APP_NAME"
+                printf '\n# Enables the SPI bus for the RC522 RFID reader\n'
+                printf '# (added by %s)\n' "$APP_NAME"
                 printf 'dtparam=spi=on\n'
             } >> "$BOOT_CONFIG" 2>/dev/null; then
                 ok "SPI active dans $BOOT_CONFIG"
-                NEED_REBOOT=1
+                [ "$SPI_LIVE" = "1" ] || NEED_REBOOT=1
             else
                 warn "Impossible d'ecrire dans $BOOT_CONFIG (lecture seule)."
                 say "  Activez le SPI a la main, puis redemarrez :"
@@ -361,16 +377,14 @@ else
 fi
 
 # --------------------------------------------------------------------------- #
-# Recalbox 10 : garantir la ligne dans /boot/config.txt lui-meme
+# Recalbox 10: make sure the line is in /boot/config.txt itself
 # --------------------------------------------------------------------------- #
-# Sur Recalbox 10, le fichier utilisateur peut ne pas etre pris en compte (ou
-# etre ecrase) : la ligne doit figurer dans la section globale de config.txt.
+# On Recalbox 10, the user file may be ignored (or overwritten): the line
+# must be in the global section of config.txt.
 if [ "$DO_SPI" != "0" ] && [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG_MAIN" ]; then
-    if [ -e /dev/spidev0.0 ]; then
-        say "  (SPI deja actif : /dev/spidev0.0 present)"
-    elif grep -q '^[[:space:]]*dtparam=spi=on' "$BOOT_CONFIG_MAIN" 2>/dev/null; then
+    if grep -q '^[[:space:]]*dtparam=spi=on' "$BOOT_CONFIG_MAIN" 2>/dev/null; then
         ok "SPI deja present dans $BOOT_CONFIG_MAIN"
-        NEED_REBOOT=1
+        [ "$SPI_LIVE" = "1" ] || NEED_REBOOT=1
     else
         BOOT_RW=0
         if touch "$BOOT_CONFIG_MAIN.rfid-test" 2>/dev/null; then
@@ -381,7 +395,7 @@ if [ "$DO_SPI" != "0" ] && [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG_MAIN" ]; t
         if cp -f "$BOOT_CONFIG_MAIN" "$BOOT_CONFIG_MAIN.bak-rfid-launcher" 2>/dev/null; then
             say "  Sauvegarde : $BOOT_CONFIG_MAIN.bak-rfid-launcher"
         fi
-        # Insertion juste apres la premiere ligne dtparam (section globale).
+        # Inserted right after the first dtparam line (global section).
         if awk -v ligne='dtparam=spi=on' '
             { print }
             !fait && $0 ~ /^[[:space:]]*dtparam=/ { print ligne; fait = 1 }
@@ -389,7 +403,7 @@ if [ "$DO_SPI" != "0" ] && [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG_MAIN" ]; t
         ' "$BOOT_CONFIG_MAIN" > "$BOOT_CONFIG_MAIN.rfid-new" 2>/dev/null &&
             mv -f "$BOOT_CONFIG_MAIN.rfid-new" "$BOOT_CONFIG_MAIN" 2>/dev/null; then
             ok "SPI ajoute dans $BOOT_CONFIG_MAIN (section globale)"
-            NEED_REBOOT=1
+            [ "$SPI_LIVE" = "1" ] || NEED_REBOOT=1
         else
             rm -f "$BOOT_CONFIG_MAIN.rfid-new" 2>/dev/null
             warn "Impossible d'ecrire dans $BOOT_CONFIG_MAIN."
@@ -403,7 +417,7 @@ if [ "$DO_SPI" != "0" ] && [ "$IS_ROOT" = "1" ] && [ -f "$BOOT_CONFIG_MAIN" ]; t
 fi
 
 # --------------------------------------------------------------------------- #
-# Verification du frontend Recalbox
+# Recalbox frontend check
 # --------------------------------------------------------------------------- #
 step "Verification du frontend Recalbox"
 if "$PYTHON" "$HOME_DIR/app/main.py" --home "$HOME_DIR" frontend; then
@@ -416,7 +430,7 @@ else
 fi
 
 # --------------------------------------------------------------------------- #
-# Demarrage du service
+# Service startup
 # --------------------------------------------------------------------------- #
 step "Service"
 if [ "$NO_RESTART" = "1" ]; then
@@ -437,9 +451,9 @@ else
 fi
 
 # --------------------------------------------------------------------------- #
-# Resume
+# Summary
 # --------------------------------------------------------------------------- #
-# Adresse de l'agent (premiere adresse IP du Raspberry Pi).
+# Agent address (first IP address of the Raspberry Pi).
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 [ -n "$LOCAL_IP" ] || LOCAL_IP="recalbox.local"
 AGENT_URL="ws://$LOCAL_IP:8765"

@@ -1,9 +1,9 @@
-"""Configuration du service (fichier INI).
+"""Service configuration (INI file).
 
-Le fichier par defaut est ecrit par l'installeur dans
-``/recalbox/share/system/rfid/config.ini``. Il est volontairement commente en
-francais : c'est le seul fichier que l'utilisateur doit modifier pour changer
-une broche ou desactiver le son.
+The default file is written by the installer to
+``/recalbox/share/system/rfid/config.ini``. It is the only file the user has
+to edit to change a pin or turn the sound off (most settings are also
+available in the page's Settings tab).
 """
 
 from __future__ import annotations
@@ -15,94 +15,94 @@ import re
 DEFAULT_CONFIG_TEXT = """\
 # ==============================================================================
 #  Recalbox RFID Launcher  --  configuration
-#  Fichier : /recalbox/share/system/rfid/config.ini
+#  File: /recalbox/share/system/rfid/config.ini
 #
-#  Apres une modification :  sh /recalbox/share/system/rfid/rfidctl restart
+#  After a change:  sh /recalbox/share/system/rfid/rfidctl restart
 # ==============================================================================
 
 [general]
-# Niveau du journal : DEBUG, INFO, WARNING ou ERROR
+# Log level: DEBUG, INFO, WARNING or ERROR
 log_level = INFO
-# Taille maximale du journal avant rotation (octets)
+# Maximum log size before rotation (bytes)
 log_max_bytes = 1048576
 
 [rfid]
-# Port SPI du lecteur RC522 (lecteur branche sur CE0 = broche physique 24)
+# SPI port of the RC522 reader (reader wired to CE0 = physical pin 24)
 spi_device = /dev/spidev0.0
 spi_speed_hz = 1000000
-# Broche GPIO du RST du RC522 (BCM). Mettre -1 si la broche n'est pas branchee.
+# GPIO pin of the RC522 RST (BCM). Set -1 if the pin is not wired.
 reset_pin = 25
-# Intervalle entre deux interrogations du lecteur (millisecondes)
+# Interval between two reader polls (milliseconds)
 poll_interval_ms = 150
-# Duree pendant laquelle le meme badge est ignore (secondes)
+# Time during which the same badge is ignored (seconds)
 same_tag_cooldown_s = 2.5
-# Mode "cartouche" : un badge laisse sur le lecteur ne declenche l'action qu'une
-# seule fois. Il faut l'eloigner ce temps-la (millisecondes) pour pouvoir le
-# rescanner et refaire l'action.
+# "Cartridge" mode: a badge left on the reader triggers the action only once.
+# It must be away for this long (milliseconds) to be scanned again and repeat
+# the action.
 rearm_absent_ms = 1200
 
 [button]
-# Bouton poussoir d'association : branche entre la broche et GND.
-# Le pull-up interne du Raspberry Pi est active : aucune resistance necessaire.
+# Pairing push button: wired between the pin and GND.
+# The Raspberry Pi internal pull-up is enabled: no resistor needed.
 enabled = 1
 pin = 17
-# Delai (secondes) accorde pour scanner le badge apres un appui
+# Time (seconds) given to scan the badge after a press
 arm_timeout_s = 10
-# Maintien (secondes) qui autorise un navigateur a piloter la Recalbox.
-# L'autorisation part des ce delai, sans attendre le relachement.
+# Hold time (seconds) that authorizes a browser to drive the Recalbox.
+# The authorization is sent as soon as it is reached, without waiting for release.
 hold_press_s = 3
-# Anti-rebond (millisecondes)
+# Debounce (milliseconds)
 debounce_ms = 40
 
 [launch]
-# Le frontend Recalbox ecoute la commande "START|systeme|jeu" sur ce port UDP
+# The Recalbox frontend listens for the "START|system|game" command on this UDP port
 udp_host = 127.0.0.1
 udp_port = 1337
-# Ne pas lancer de jeu si un jeu tourne deja
+# Do not start a game if a game is already running
 ignore_when_game_running = 1
-# Quitter le jeu quand le badge est retire du lecteur (0 = non)
+# Quit the game when the badge is removed from the reader (0 = no)
 stop_on_remove = 0
-# Action quand un badge deja enregistre est scanne :
-#   launch = lance le jeu (comportement historique)
-#   none   = ne lance rien : bip de confirmation et journal seulement
-# (Le frontend Recalbox n'accepte que la commande START : il n'existe pas de
-#  commande officielle pour "ouvrir la fiche du jeu" sans le lancer.)
+# Action when an already registered badge is scanned:
+#   launch = starts the game (historical behaviour)
+#   none   = starts nothing: confirmation beep and log only
+# (The Recalbox frontend only accepts the START command: there is no official
+#  command to "open the game page" without starting it.)
 action = launch
 
 [feedback]
-# Bips sonores de confirmation (paplay ou aplay, fourni par Recalbox)
+# Confirmation beeps (paplay or aplay, shipped with Recalbox)
 sound = 1
-# auto, paplay, aplay ou none
+# auto, paplay, aplay or none
 sound_player = auto
 
 [agent]
-# Agent WebSocket utilise par installer.html (ws://recalbox.local:8765)
+# WebSocket agent used by installer.html (ws://recalbox.local:8765)
 enabled = 1
 port = 8765
 
 [update]
-# URL du fichier ZIP de mise a jour (voir docs/MISE-A-JOUR.md). Facultatif.
+# URL of the update ZIP file (see docs/UPDATING.md). Optional.
 url =
-# Verifier les mises a jour au demarrage du service (0/1)
+# Check for updates when the service starts (0/1)
 check_on_start = 0
 """
 
 
 class ConfigError(Exception):
-    """Erreur de lecture du fichier de configuration."""
+    """Error while reading the configuration file."""
 
 
 class Config:
-    """Acces en lecture (et reecriture du modele) a la configuration."""
+    """Read access to the configuration (and writing of the template)."""
 
     def __init__(self, path: str):
         self.path = os.path.abspath(path)
         self._data = {}
         self.reload()
 
-    # ------------------------------------------------------------------ lecture
+    # ------------------------------------------------------------------ reading
     def reload(self) -> None:
-        """Recharge le fichier ; les valeurs absentes prennent le defaut."""
+        """Reloads the file; missing values take their default."""
         parser = configparser.ConfigParser(interpolation=None)
         parser.read_string(DEFAULT_CONFIG_TEXT)
 
@@ -157,9 +157,9 @@ class Config:
     def default_text(self) -> str:
         return DEFAULT_CONFIG_TEXT
 
-    # ---------------------------------------------------------------- ecriture
+    # ---------------------------------------------------------------- writing
     def create_default(self, overwrite: bool = False) -> bool:
-        """Ecrit le modele de configuration. True si le fichier a ete ecrit."""
+        """Writes the configuration template. True if the file was written."""
         if self.exists() and not overwrite:
             return False
         directory = os.path.dirname(self.path)
@@ -171,11 +171,11 @@ class Config:
         return True
 
     def write_values(self, values: dict) -> list:
-        """Met a jour des cles dans le fichier en conservant la mise en forme.
+        """Updates keys in the file while keeping its layout.
 
-        ``values`` associe "section.cle" a la nouvelle valeur. Retourne la liste
-        des cles reellement modifiees. Les cles absentes sont ajoutees a la fin
-        de leur section (la section est creee si besoin).
+        ``values`` maps "section.key" to the new value. Returns the list of the keys
+        really changed. Missing keys are added at the end of their section (the
+        section is created when needed).
         """
         chemin = self.path
         try:

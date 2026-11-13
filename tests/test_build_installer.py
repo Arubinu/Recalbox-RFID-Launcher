@@ -1,4 +1,4 @@
-"""Tests du générateur d'installateur HTML autonome."""
+"""Tests of the self-contained HTML installer builder."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-import support  # noqa: F401  (ajoute app/ au sys.path)
+import support  # noqa: F401  (adds app/ to sys.path)
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PROJECT, "tools"))
@@ -112,7 +112,7 @@ class FileTest(unittest.TestCase):
 
 
 class CommittedInstallerTest(unittest.TestCase):
-    """Le fichier livré dans dist/ doit correspondre aux sources actuelles."""
+    """The file delivered in dist/ must match the current sources."""
 
     def setUp(self):
         self.dist = os.path.join(PROJECT, "dist")
@@ -137,7 +137,7 @@ class CommittedInstallerTest(unittest.TestCase):
         )
 
     def test_langues_embarquees(self):
-        """Chaque fichier i18n/*.json est compile dans la page (comme le reste)."""
+        """Each i18n/*.json file is compiled into the page (like the rest)."""
         import json
         import tools.build_installer as bati
 
@@ -152,7 +152,7 @@ class CommittedInstallerTest(unittest.TestCase):
         data = json.loads(charge)
         self.assertEqual(data["source"], "fr")
         self.assertIn("en", data["langues"])
-        # une cle connue doit etre traduite
+        # a known key must be translated
         self.assertIn("Se connecter", data["langues"]["en"])
 
     def test_pas_d_ancienne_version(self):
@@ -167,11 +167,11 @@ class CommittedInstallerTest(unittest.TestCase):
 
 
 class InterrupteurTest(unittest.TestCase):
-    """Le rond des interrupteurs doit etre centre dans sa piste.
+    """The switch knob must be centered in its track.
 
-    Regression : `top: 2px` sur un rond de 22 px (bordure comprise) dans une
-    piste interieure de 24 px le collait en bas. On verifie donc la construction
-    qui garantit le centrage, pas une valeur en pixels.
+    Regression: `top: 2px` on a 22 px knob (border included) in a 24 px inner
+    track stuck it to the bottom. The construction that guarantees the
+    centering is checked, not a pixel value.
     """
 
     def test_rond_centre_verticalement(self):

@@ -1,4 +1,4 @@
-"""Tests des utilitaires du service (fichiers d'etat, verrou)."""
+"""Service utility tests (state files, lock)."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ class DaemonHelpersTest(unittest.TestCase):
 
 
 class ReleaseGestureTest(unittest.TestCase):
-    """Les gestes sont traites au relachement, jamais au contact."""
+    """Gestures are handled on release, never on contact."""
 
     def setUp(self):
         from unittest import mock as _mock
@@ -90,7 +90,7 @@ class ReleaseGestureTest(unittest.TestCase):
         self.assertEqual(self.armements, ["short"])
 
     def test_geste_long_ignore(self):
-        """Le geste "long" n'existe plus : il ne doit rien armer du tout."""
+        """The "long" gesture no longer exists: it must arm nothing at all."""
         self.service._handle_gesture("long")
         self.assertEqual(self.armements, [])
 
@@ -100,7 +100,7 @@ class ReleaseGestureTest(unittest.TestCase):
 
 
 class ReaderTestTest(unittest.TestCase):
-    """Test du lecteur : distingue "aucune carte", "carte vue" et "carte illisible"."""
+    """Reader test: tells "no card", "card seen" and "unreadable card" apart."""
 
     def setUp(self):
         from unittest import mock as _mock
@@ -179,9 +179,9 @@ class ReaderTestTest(unittest.TestCase):
 
 
 class BadgeLatchTest(unittest.TestCase):
-    """Mode "cartouche" : un badge laisse sur le lecteur n'agit qu'une fois."""
+    """"Cartridge" mode: a badge left on the reader acts only once."""
 
-    #: Service construit sans materiel : on ne teste que la logique de presence.
+    #: Service built without hardware: only the presence logic is tested.
     def setUp(self):
         from unittest import mock as _mock
 
@@ -222,7 +222,7 @@ class BadgeLatchTest(unittest.TestCase):
         self.service.reader.tag_present.return_value = verdict
 
     def laisse_tourner(self, secondes, pas=0.15):
-        """Fait tourner la boucle du service (presence + arret differe)."""
+        """Runs the service loop (presence + delayed stop)."""
         reste = secondes
         while reste > 0:
             self.now += pas
@@ -239,8 +239,8 @@ class BadgeLatchTest(unittest.TestCase):
         self.assertEqual(self.actions, ["A1B2C3D4"])
 
     def test_lecture_ratee_n_est_pas_un_retrait(self):
-        # L'anti-rebond du lecteur renvoie None pendant 2,5 s : ce silence ne
-        # doit jamais passer pour un badge retire (sinon le jeu se relancait).
+        # The reader debounce returns None for 2.5 s: this silence must never
+        # look like a removed badge (otherwise the game started again).
         self.service._badge_seen("A1B2C3D4")
         self.presence(True)
         self.laisse_tourner(6.0)
@@ -255,7 +255,7 @@ class BadgeLatchTest(unittest.TestCase):
     def test_badge_retire_puis_repose_refait_l_action(self):
         self.service._badge_seen("A1B2C3D4")
         self.presence(False)
-        self.laisse_tourner(6.0)   # 3 s de grace + 2 s d'absence confirmee
+        self.laisse_tourner(6.0)   # 3 s grace + 2 s of confirmed absence
         self.assertIsNone(self.service._active_uid)
         self.presence(True)
         self.service._badge_seen("A1B2C3D4")
@@ -272,12 +272,12 @@ class BadgeLatchTest(unittest.TestCase):
     def test_absence_exigee_au_moins_deux_secondes(self):
         self.service._badge_seen("A1B2C3D4")
         self.presence(False)
-        self.laisse_tourner(1.5)   # > rearm_absent_ms (1,2 s) mais < 2 s
+        self.laisse_tourner(1.5)   # > rearm_absent_ms (1.2 s) but < 2 s
         self.assertEqual(self.service._active_uid, "A1B2C3D4")
 
     def test_grace_apres_lancement(self):
-        # Un badge qui disparait juste apres le lancement ne doit pas defaire
-        # l'action (demarrage de l'emulateur, badge mal pose une seconde...).
+        # A badge that disappears right after the launch must not undo the
+        # action (emulator starting, badge badly placed for a second...).
         self.service._badge_seen("A1B2C3D4")
         self.presence(False)
         self.laisse_tourner(2.5)
@@ -298,7 +298,7 @@ class BadgeLatchTest(unittest.TestCase):
 
 
 class AdoptAfterTestTest(BadgeLatchTest):
-    """Apres un test ou une mesure, le badge pose ne doit pas agir."""
+    """After a test or a measurement, the badge on the reader must not act."""
 
     def test_badge_pose_apres_une_mesure_n_agit_pas(self):
         self.service._calibration = None
@@ -336,7 +336,7 @@ class AdoptAfterTestTest(BadgeLatchTest):
         self.assertEqual(self.actions, ["A1B2C3D4"])
 
     def test_l_adoption_expire(self):
-        # Un badge pose bien apres la mesure doit agir normalement.
+        # A badge placed well after the measurement must act normally.
         self.service._arm_adoption(secondes=1.0)
         self.avancer(5.0)
         self.service._badge_seen("A1B2C3D4")
@@ -350,7 +350,7 @@ class AdoptAfterTestTest(BadgeLatchTest):
 
 
 class StopOnRemoveTest(BadgeLatchTest):
-    """Option « quitter le jeu quand le badge est retire »."""
+    """"Quit the game when the badge is removed" option."""
 
     def setUp(self):
         super().setUp()
@@ -360,7 +360,7 @@ class StopOnRemoveTest(BadgeLatchTest):
 
     def retirer_le_badge(self):
         self.presence(False)
-        # 3 s de grace apres le lancement + 2 s d'absence confirmee.
+        # 3 s grace after the launch + 2 s of confirmed absence.
         self.laisse_tourner(6.0)
 
     def test_le_jeu_est_arrete_quand_le_badge_est_retire(self):
@@ -390,7 +390,7 @@ class StopOnRemoveTest(BadgeLatchTest):
         self.service._badge_seen("A1B2C3D4")
         self.retirer_le_badge()
         self.service.controller.stop_game.assert_not_called()
-        # L'emulateur finit par demarrer : le service l'arrete alors.
+        # The emulator finally starts: the service then stops it.
         self.service.controller.game_running.return_value = True
         self.laisse_tourner(0.5)
         self.service.controller.stop_game.assert_called_once_with()
@@ -412,7 +412,7 @@ class StopOnRemoveTest(BadgeLatchTest):
     def test_erreur_d_arret_non_bloquante(self):
         self.service.controller.stop_game.side_effect = RuntimeError("boom")
         self.service._badge_seen("A1B2C3D4")
-        self.retirer_le_badge()  # ne doit pas lever
+        self.retirer_le_badge()  # must not raise
         self.assertIsNone(self.service._active_uid)
 
     def test_retrait_puis_repose_relance_le_jeu(self):

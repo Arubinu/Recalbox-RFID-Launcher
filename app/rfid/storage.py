@@ -1,15 +1,15 @@
-"""Base de donnees des badges : un simple fichier JSON.
+"""Badge database: a plain JSON file.
 
-Pourquoi du JSON plutot que SQLite ?
+Why JSON rather than SQLite?
 
-* le module ``sqlite3`` n'est pas garanti dans l'image Recalbox (Buildroot ne
-  compile que les modules Python explicitement demandes) ;
-* un fichier JSON est lisible et modifiable a la main, se copie comme un fichier
-  ordinaire (sauvegarde) et s'edite dans un tableur via l'export CSV ;
-* les ecritures sont atomiques (fichier temporaire + ``os.replace``) : une
-  coupure de courant ne peut pas laisser un fichier a moitie ecrit.
+* the ``sqlite3`` module is not guaranteed in the Recalbox image (Buildroot
+  only builds the Python modules explicitly requested);
+* a JSON file can be read and edited by hand, is copied like any file
+  (backup) and can be edited in a spreadsheet through the CSV export;
+* writes are atomic (temporary file + ``os.replace``): a power cut cannot
+  leave a half-written file.
 
-Structure du fichier ::
+File structure ::
 
     {
       "schema": 1,
@@ -43,14 +43,14 @@ CSV_FIELDS = ("uid", "system", "game", "name")
 
 
 class StorageError(Exception):
-    """Erreur de lecture/ecriture de la base."""
+    """Database read/write error."""
 
 
 def normalize_uid(raw) -> str:
-    """Normalise un UID de badge : ``a1:b2:c3:d4`` -> ``A1B2C3D4``.
+    """Normalizes a badge UID: ``a1:b2:c3:d4`` -> ``A1B2C3D4``.
 
-    Accepte les separateurs usuels (espaces, deux-points, tirets) et les
-    minuscules, pour tolerer les UID copies depuis un terminal ou un fichier CSV.
+    Accepts the usual separators (spaces, colons, dashes) and lowercase, to
+    tolerate UIDs copied from a terminal or a CSV file.
     """
     if raw is None:
         raise StorageError("UID vide")
@@ -68,7 +68,7 @@ def normalize_uid(raw) -> str:
 
 
 def pretty_uid(uid: str) -> str:
-    """Retourne l'UID sous la forme ``A1:B2:C3:D4`` (affichage seulement)."""
+    """Returns the UID as ``A1:B2:C3:D4`` (display only)."""
     return ":".join(uid[i:i + 2] for i in range(0, len(uid), 2))
 
 
@@ -77,7 +77,7 @@ def _now() -> str:
 
 
 class TagStore:
-    """Correspondances badge <-> jeu, persistees dans un fichier JSON."""
+    """Badge <-> game mappings, persisted in a JSON file."""
 
     def __init__(self, path: str, log=None):
         self.path = os.path.abspath(path)
@@ -103,7 +103,7 @@ class TagStore:
 
     # ------------------------------------------------------------------ lecture
     def load(self) -> None:
-        """Charge le fichier (ou cree une base vide si absent)."""
+        """Loads the file (or creates an empty database if missing)."""
         self._data = self._empty()
         self._mtime = self._stat_mtime()
         self._loaded = True
@@ -114,8 +114,8 @@ class TagStore:
             with open(self.path, "r", encoding="utf-8") as handle:
                 raw = json.load(handle)
         except (OSError, ValueError) as exc:
-            # On ne detruit jamais une base illisible : elle est conservee pour
-            # analyse et on repart sur une copie vide.
+            # An unreadable database is never destroyed: it is kept for analysis
+            # and the service starts again from an empty copy.
             backup = self.path + ".corrupt-%s" % time.strftime("%Y%m%d-%H%M%S")
             try:
                 shutil.copy2(self.path, backup)
@@ -167,7 +167,7 @@ class TagStore:
             self.load()
 
     def reload_if_changed(self) -> bool:
-        """Recharge si le fichier a ete modifie a la main. True si recharge."""
+        """Reloads if the file was edited by hand. True if reloaded."""
         self.ensure_loaded()
         mtime = self._stat_mtime()
         if mtime and abs(mtime - self._mtime) > 1e-6:
@@ -246,7 +246,7 @@ class TagStore:
         return False
 
     def touch(self, uid: str) -> None:
-        """Incremente le compteur d'utilisations (sans bloquer en cas d'echec)."""
+        """Increments the use counter (without blocking on failure)."""
         entry = self.get(uid)
         if not entry:
             return
@@ -254,13 +254,13 @@ class TagStore:
         entry["last_used"] = _now()
         try:
             self.save(backup=False)
-        except StorageError as exc:  # disque plein : on ne casse pas le service
+        except StorageError as exc:  # disk full: do not break the service
             if self.log:
                 self.log.warning("Statistiques non enregistrees : %s" % exc)
 
     # -------------------------------------------------------------- import/export
     def export_csv(self, destination: str) -> int:
-        """Exporte les associations au format CSV (separe par des points-virgules)."""
+        """Exports the mappings as CSV (semicolon separated)."""
         self.ensure_loaded()
         directory = os.path.dirname(os.path.abspath(destination))
         if directory:
@@ -273,7 +273,7 @@ class TagStore:
         return self.count()
 
     def import_csv(self, source: str, overwrite: bool = True) -> dict:
-        """Importe un CSV ; retourne {"ajoutes", "mis_a_jour", "ignores"}."""
+        """Imports a CSV; returns {"ajoutes", "mis_a_jour", "ignores"}."""
         self.ensure_loaded()
         stats = {"ajoutes": 0, "mis_a_jour": 0, "ignores": 0}
         with open(source, "r", encoding="utf-8-sig", newline="") as handle:

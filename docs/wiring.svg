@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="cablage-titre" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
-<title id="cablage-titre">Branchement du lecteur RC522 et du bouton poussoir sur le Raspberry Pi</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" role="img" aria-labelledby="wiring-title" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+<title id="wiring-title">Branchement du lecteur RC522 et du bouton poussoir sur le Raspberry Pi</title>
 <style>:root{--c-bg:#f8f9fa;--c-card:#ffffff;--c-ink:#212529;--c-sub:#495057;--c-faint:#868e96;--c-line:#dee2e6;--c-row:#f1f3f5;--c-alert-bg:#fff5f5;--c-alert-line:#ffc9c9;--c-alert-ink:#c92a2a;--c-good:#2f9e44;}@media (prefers-color-scheme: dark){:root{--c-bg:#0f131b;--c-card:#161b25;--c-ink:#eaeef7;--c-sub:#a8b3c7;--c-faint:#7f8a9e;--c-line:rgba(255, 255, 255, .14);--c-row:rgba(255, 255, 255, .05);--c-alert-bg:rgba(224, 49, 49, .12);--c-alert-line:rgba(224, 49, 49, .38);--c-alert-ink:#ff9b98;--c-good:#37b26c;}}</style>
 <rect x="0" y="0" width="940" height="588" rx="14" fill="var(--c-bg)"/>
 <text x="30" y="42" font-size="21" font-weight="700" fill="var(--c-ink)">Branchement du lecteur RC522 et du bouton</text>

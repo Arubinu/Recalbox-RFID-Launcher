@@ -1,4 +1,4 @@
-"""Outils communs aux tests (aucun materiel, aucune dependance)."""
+"""Shared test helpers (no hardware, no dependency)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ if APP_DIR not in sys.path:
 
 
 class FakeClock:
-    """Horloge controlee par le test."""
+    """Clock controlled by the test."""
 
     def __init__(self, start: float = 1000.0):
         self.now = float(start)
@@ -49,7 +49,7 @@ class FakeLauncher:
 
 
 class RecordingLog:
-    """Journal en memoire : (niveau, message) pour les assertions."""
+    """In-memory log: (level, message) for the assertions."""
 
     def __init__(self):
         self.messages = []
@@ -73,7 +73,7 @@ class RecordingLog:
 
 
 class FakeFeedback:
-    """Enregistre les signaux envoyes a l'utilisateur."""
+    """Records the signals sent to the user."""
 
     def __init__(self):
         self.events = []

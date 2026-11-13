@@ -1,4 +1,4 @@
-"""Tests de la base de badges (stockage JSON)."""
+"""Badge database tests (JSON storage)."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class TagStoreTest(unittest.TestCase):
         self.store.put("A1B2C3D4", "snes", "jeu.smc")
         self.store.put("A1B2C3D4", "snes", "autre.smc")
         self.assertTrue(os.path.isfile(self.path + ".bak"))
-        # Aucun fichier temporaire ne doit rester
+        # No temporary file must be left
         leftovers = [name for name in os.listdir(self.directory) if name.startswith(".tags-")]
         self.assertEqual(leftovers, [])
 

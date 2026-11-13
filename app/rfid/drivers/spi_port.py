@@ -1,15 +1,15 @@
-"""Acces au bus SPI du Raspberry Pi, sans aucune dependance.
+"""Access to the Raspberry Pi SPI bus, without any dependency.
 
-Deux implementations :
+Two implementations:
 
-* ``SpiDevPort``  : utilise le module Python ``spidev`` s'il existe (il n'est pas
-  fourni par defaut sur Recalbox) ;
-* ``IoctlSpiPort``: parle directement a l'API ``spidev`` du noyau (ioctl) avec
-  ``ctypes``, qui fait partie de la bibliotheque standard. C'est le mode utilise
-  sur Recalbox.
+* ``SpiDevPort``  : uses the ``spidev`` Python module if it exists (it is not
+  shipped by default on Recalbox);
+* ``IoctlSpiPort``: talks directly to the kernel ``spidev`` API (ioctl) with
+  ``ctypes``, which is part of the standard library. This is the mode used on
+  Recalbox.
 
-Les deux exposent ``transfer(octets) -> octets`` en full-duplex, ce qui suffit au
-lecteur MFRC522 (une transaction = 1 octet d'adresse + N octets de donnees).
+Both expose ``transfer(bytes) -> bytes`` in full duplex, which is enough for
+the MFRC522 reader (one transaction = 1 address byte + N data bytes).
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ import ctypes
 import os
 import struct
 
-try:  # fcntl n'existe pas sous Windows (developpement / simulation sur PC)
+try:  # fcntl does not exist on Windows (development / simulation on a PC)
     import fcntl
-except ImportError:  # pragma: no cover - depend de la plateforme
+except ImportError:  # pragma: no cover - platform dependent
     fcntl = None
 
 
@@ -29,7 +29,7 @@ class SpiError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Encodage des ioctl du noyau (asm-generic/ioctl.h)
+# Kernel ioctl encoding (asm-generic/ioctl.h)
 # ---------------------------------------------------------------------------
 _IOC_NRBITS = 8
 _IOC_TYPEBITS = 8
@@ -57,7 +57,7 @@ SPI_IOC_WR_MODE = _ioc(_IOC_WRITE, SPI_IOC_MAGIC, 1, 1)
 SPI_IOC_WR_BITS_PER_WORD = _ioc(_IOC_WRITE, SPI_IOC_MAGIC, 3, 1)
 SPI_IOC_WR_MAX_SPEED_HZ = _ioc(_IOC_WRITE, SPI_IOC_MAGIC, 4, 4)
 
-#: Taille de ``struct spi_ioc_transfer`` (identique en 32 et 64 bits).
+#: Size of ``struct spi_ioc_transfer`` (same on 32 and 64 bits).
 _STRUCT_SIZE = 32
 
 
@@ -70,7 +70,7 @@ def spi_ioc_message(count: int) -> int:
 
 
 class SpiIocTransfer(ctypes.Structure):
-    """Copie de ``struct spi_ioc_transfer`` du noyau."""
+    """Copy of the kernel ``struct spi_ioc_transfer``."""
 
     _fields_ = [
         ("tx_buf", ctypes.c_uint64),
@@ -181,7 +181,7 @@ class IoctlSpiPort:
 
 
 class SpiDevPort:
-    """Peripherique SPI pilote par le module ``spidev`` (si disponible)."""
+    """SPI device driven by the ``spidev`` module (if available)."""
 
     backend = "spidev"
 
@@ -229,7 +229,7 @@ class SpiDevPort:
 
 
 def open_spi(path: str, speed_hz: int = 1000000) -> object:
-    """Ouvre le peripherique SPI en preferant le module ``spidev`` s'il existe."""
+    """Opens the SPI device, preferring the ``spidev`` module when it exists."""
     if not os.path.exists(path):
         raise SpiError(
             "Peripherique SPI introuvable : %s\n"
@@ -245,7 +245,7 @@ def open_spi(path: str, speed_hz: int = 1000000) -> object:
 
 
 class SpiStub:
-    """Implementation de secours pour les tests (reponses scriptees)."""
+    """Fallback implementation for the tests (scripted answers)."""
 
     backend = "stub"
 

@@ -1,4 +1,4 @@
-"""Tests du script permanent : installation automatique + agent."""
+"""Permanent script tests: automatic installation + agent."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import unittest
 from importlib.machinery import SourceFileLoader
 from unittest import mock
 
-import support  # noqa: F401  (ajoute app/ au sys.path)
+import support  # noqa: F401  (adds app/ to sys.path)
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOOTSTRAP = os.path.join(PROJECT, "bootstrap", "recalbox-rfid-agent(permanent).py3")
@@ -22,7 +22,7 @@ def load_bootstrap():
     spec = importlib.util.spec_from_loader("rfid_agent_bootstrap", loader)
     module = importlib.util.module_from_spec(spec)
     previous = sys.dont_write_bytecode
-    sys.dont_write_bytecode = True  # ne pas créer de __pycache__ dans bootstrap/
+    sys.dont_write_bytecode = True  # do not create a __pycache__ in bootstrap/
     try:
         loader.exec_module(module)
     finally:

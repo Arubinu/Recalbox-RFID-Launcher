@@ -1,14 +1,14 @@
 ﻿# =============================================================================
-#  Recalbox RFID Launcher - assistant d'installation Windows
+#  Recalbox RFID Launcher - Windows installation wizard
 #
-#  Double-cliquez sur INSTALLER.cmd (dans le meme dossier) plutot que de lancer
-#  ce script directement.
+#  Double-click INSTALLER.cmd (in the same folder) rather than running
+#  this script directly.
 #
-#  Ce script :
-#    1. demande l'adresse de la Recalbox ;
-#    2. copie le programme sur le partage \\RECALBOX\share ;
-#    3. installe l'agent WebSocket (gestion depuis installer.html) ;
-#    4. propose d'installer tout de suite par SSH, sinon ouvre installer.html.
+#  This script:
+#    1. asks for the Recalbox address;
+#    2. copies the program to the \\RECALBOX\share share;
+#    3. installs the WebSocket agent (management from installer.html);
+#    4. offers to install right away over SSH, otherwise opens installer.html.
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -24,7 +24,7 @@ function Write-Warn($message) { Write-Host "  ATTENTION  $message" -ForegroundCo
 function Write-Err($message) { Write-Host "  ERREUR  $message" -ForegroundColor Red }
 
 function Normalize-LineEndings($Path) {
-    # Recalbox execute les scripts avec /bin/sh : un fichier en CRLF casse tout.
+    # Recalbox runs scripts with /bin/sh: a CRLF file breaks everything.
     $text = [System.IO.File]::ReadAllText($Path)
     if ($text.Contains("`r`n")) {
         $normalized = $text -replace "`r`n", "`n"
@@ -66,7 +66,7 @@ if (-not (Test-Path $share)) {
 Write-Ok "Partage accessible"
 
 # --------------------------------------------------------------------------- #
-# Copie du programme
+# Program copy
 # --------------------------------------------------------------------------- #
 $destination = Join-Path $share "recalbox-rfid"
 Write-Info "Copie du programme vers $destination ..."
@@ -86,7 +86,7 @@ foreach ($script in $scripts) { Normalize-LineEndings $script.FullName }
 Write-Ok "Scripts compatibles Recalbox"
 
 # --------------------------------------------------------------------------- #
-# Agent WebSocket (installation et gestion depuis installer.html)
+# WebSocket agent (installation and management from installer.html)
 # --------------------------------------------------------------------------- #
 $bootstrapName = "recalbox-rfid-agent(permanent).py3"
 $bootstrap = Join-Path $destination "bootstrap\$bootstrapName"
@@ -102,7 +102,7 @@ if (Test-Path $bootstrap) {
 }
 
 # --------------------------------------------------------------------------- #
-# Installation immediate par SSH (facultatif)
+# Immediate installation over SSH (optional)
 # --------------------------------------------------------------------------- #
 Write-Host ""
 $answer = Read-Host "Installer tout de suite par SSH ? (O/n)"
@@ -175,7 +175,7 @@ if ($exitCode -ne 0) {
     Write-Host "     jeton : \\$target\share\system\rfid\token.txt)."
     Write-Host "  3. Ou : ssh root@$target `"/recalbox/share/system/rfid/rfidctl test`""
     Write-Host ""
-    Write-Host " Documentation : docs/INSTALLATION.md et docs/UTILISATION.md"
+    Write-Host " Documentation : docs/INSTALLATION.md et docs/USAGE.md"
 }
 
 Write-Host ""

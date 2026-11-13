@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Génère un installateur HTML autonome (fichiers embarqués).
+"""Builds a self-contained HTML installer (embedded files).
 
-Le fichier produit (`dist/recalbox-rfid-installer.html`) contient tout
-le nécessaire : la page de gestion **et** le contenu des fichiers à copier sur la
-Recalbox. Il ne dépend donc plus d'aucun autre fichier du projet.
+The output file (`dist/recalbox-rfid-installer.html`) holds everything: the
+management page **and** the content of the files to copy to the Recalbox. It
+no longer depends on any other file of the project.
 
-Fonctionnement dans le navigateur (Edge ou Chrome) :
+How it works in the browser (Edge or Chrome):
 
-1. la page propose de choisir ``\\\\RECALBOX\\share`` (API File System Access) ;
-2. elle crée ``recalbox-rfid\\`` et le script de démarrage dans ``userscripts\\`` ;
-3. elle depose aussi ``userscripts/manual/Installer-lecteur-RFID.sh`` :
-   sur Recalbox 10, on le lance depuis le menu (START > Reglages avances >
-   Scripts utilisateur), sans redemarrer ; sur Recalbox 9, on redemarre ;
-4. la meme page attend l'agent WebSocket puis demande l'appui de 3 s.
+1. the page asks the user to pick ``\\\\RECALBOX\\share`` (File System Access API);
+2. it creates ``recalbox-rfid/`` and the startup script in ``userscripts/``;
+3. it also drops the menu scripts in ``userscripts/manual/``: on Recalbox 10,
+   "Install-RFID-reader" is run from the menu (START > Advanced settings >
+   User scripts), without a reboot; on Recalbox 9, the box is rebooted;
+4. the same page waits for the WebSocket agent, then asks for the 3 s press.
 
-Relancez ce script après chaque modification d'un fichier du projet :
+Run this script again after any change to a project file:
 
     python tools/build_installer.py
 """
@@ -25,46 +25,50 @@ import argparse
 import base64
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-#: Nom du dossier créé sur le partage.
+#: Folder created on the share.
 PROJECT_NAME = "recalbox-rfid"
 
-#: Script permanent à copier dans ``userscripts/``.
+#: Permanent script copied into ``userscripts/``.
 USERSCRIPT = "bootstrap/recalbox-rfid-agent(permanent).py3"
 
-#: Script a lancer depuis le menu de Recalbox 10 (``userscripts/manual/``) :
-#: il demarre l'installation sans redemarrage.
-MANUALSCRIPT = "bootstrap/manual/Installer-lecteur-RFID.sh"
+#: Scripts run from the Recalbox 10 menu (``userscripts/manual/``): install
+#: without a reboot, and uninstall (badges and settings are kept).
+MENUSCRIPTS = (
+    "bootstrap/manual/Install-RFID-reader.sh",
+    "bootstrap/manual/Uninstall-RFID-reader.sh",
+)
 
-#: Fichiers de la racine utiles sur la Recalbox.
+#: Root files needed on the Recalbox (README.md and README.<code>.md are added
+#: by collect_files).
 ROOT_FILES = (
     "install.sh",
     "uninstall.sh",
     "VERSION",
-    "README.md",
     "CHANGELOG.md",
-    "installer.html",  # page « dossier » copiée sur la Recalbox et dans l'installateur .cmd
+    "installer.html",  # "folder" page copied to the Recalbox and into the .cmd installer
 )
 
-#: Dossiers embarqués (les tests ne servent pas sur la Recalbox).
+#: Embedded folders (tests are useless on the Recalbox).
 DIRECTORIES = ("app", "userscript", "bootstrap", "docs")
 
-#: Page source (le fichier généré est cette page + le contenu embarqué).
+#: Source page (the generated file is this page + the embedded content).
 HTML_SOURCE = "installer.html"
 
-#: Dossier des traductions : un fichier JSON par langue (code a 2 lettres).
+#: Translations folder: one JSON file per language (2-letter code).
 I18N_DIR = "i18n"
 
-#: Langue de reference : les textes de la page sont ecrits en francais.
+#: Reference language: the page texts are written in French.
 LANGUE_SOURCE = "fr"
 
-#: Nom du fichier livre (sans numero de version).
+#: Name of the delivered file (no version number).
 DIST_NAME = "recalbox-rfid-installer.html"
 
-#: Point d'insertion du contenu embarqué.
+#: Insertion point of the embedded content.
 MARKER = "<body>"
 
 EXCLUDED_SUFFIXES = (".pyc", ".pyo")
@@ -75,12 +79,14 @@ def version() -> str:
 
 
 def collect_files() -> dict:
-    """Retourne {chemin relatif posix: contenu binaire} trié."""
+    """Returns {relative posix path: binary content}, sorted."""
     files = {}
     for name in ROOT_FILES:
         path = ROOT / name
         if path.is_file():
             files[name] = path.read_bytes()
+    for path in sorted(ROOT.glob("README*.md")):
+        files[path.name] = path.read_bytes()
     for directory in DIRECTORIES:
         base = ROOT / directory
         if not base.is_dir():
@@ -101,7 +107,7 @@ def build_payload(files: dict = None) -> dict:
         "project": PROJECT_NAME,
         "version": version(),
         "userscript": USERSCRIPT,
-        "manualscript": MANUALSCRIPT,
+        "menuscripts": list(MENUSCRIPTS),
         "files": {
             path: base64.b64encode(content).decode("ascii") for path, content in files.items()
         },
@@ -109,23 +115,23 @@ def build_payload(files: dict = None) -> dict:
 
 
 def collect_languages() -> dict:
-    """Charge ``i18n/<code>.json`` : {code: {texte source: traduction}}."""
-    dossier = ROOT / I18N_DIR
-    langues = {}
-    if not dossier.is_dir():
-        return langues
-    for chemin in sorted(dossier.glob("*.json")):
-        code = chemin.stem.lower()
+    """Loads ``i18n/<code>.json``: {code: {source text: translation}}."""
+    folder = ROOT / I18N_DIR
+    languages = {}
+    if not folder.is_dir():
+        return languages
+    for path in sorted(folder.glob("*.json")):
+        code = path.stem.lower()
         if len(code) != 2:
             continue
         try:
-            contenu = json.loads(chemin.read_text(encoding="utf-8"))
+            content = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            raise SystemExit("%s illisible : %s" % (chemin, exc))
-        if not isinstance(contenu, dict):
-            raise SystemExit("%s doit contenir un objet JSON" % chemin)
-        langues[code] = contenu
-    return langues
+            raise SystemExit("%s illisible : %s" % (path, exc))
+        if not isinstance(content, dict):
+            raise SystemExit("%s doit contenir un objet JSON" % path)
+        languages[code] = content
+    return languages
 
 
 def build_html(payload: dict = None) -> str:
@@ -137,26 +143,46 @@ def build_html(payload: dict = None) -> str:
     if MARKER not in source:
         raise SystemExit("balise %s introuvable dans %s" % (MARKER, HTML_SOURCE))
     encoded = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
-    # Le contenu est du base64 : il ne peut pas contenir "</script>".
+    # The content is base64: it cannot contain "</script>".
     tag = '<script id="rfid-payload" type="application/json">%s</script>' % encoded
     html = source.replace(MARKER, MARKER + "\n" + tag, 1)
 
-    langues = collect_languages()
-    if langues:
-        traductions = json.dumps(
-            {"source": LANGUE_SOURCE, "langues": langues},
+    languages = collect_languages()
+    if languages:
+        translations = json.dumps(
+            {"source": LANGUE_SOURCE, "langues": languages},
             ensure_ascii=True,
             separators=(",", ":"),
         )
-        bloc = '<script id="rfid-i18n" type="application/json">%s</script>' % traductions
-        html = html.replace(MARKER, MARKER + "\n" + bloc, 1)
+        block = '<script id="rfid-i18n" type="application/json">%s</script>' % translations
+        html = html.replace(MARKER, MARKER + "\n" + block, 1)
     return html
+
+
+def build_zip(path: Path, files: dict = None) -> int:
+    """Writes the update archive (``recalbox-rfid/...``) used by the agent's
+    "install from a URL" and attached to each GitHub release."""
+    files = files if files is not None else collect_files()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as bundle:
+        for relative, content in files.items():
+            # Fixed date: the archive only changes when the files change.
+            info = zipfile.ZipInfo(PROJECT_NAME + "/" + relative, date_time=(2020, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            bundle.writestr(info, content)
+    return len(files)
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", "-o", help="fichier de sortie")
+    parser.add_argument("--zip", help="ecrit aussi l'archive de mise a jour (ZIP)")
     args = parser.parse_args(argv)
+
+    if args.zip:
+        count = build_zip(Path(args.zip))
+        print("Archive generee : %s (%d fichiers)" % (args.zip, count))
 
     payload = build_payload()
     html = build_html(payload)
@@ -178,8 +204,8 @@ def main(argv=None) -> int:
         % (payload_bytes / 1024.0, len(html.encode("utf-8")) / 1024.0)
     )
     print("  script   : %s" % payload["userscript"])
-    langues = collect_languages()
-    print("  langues  : %s" % (", ".join(sorted(langues)) or "aucune"))
+    languages = collect_languages()
+    print("  langues  : %s" % (", ".join(sorted(languages)) or "aucune"))
     return 0
 
 

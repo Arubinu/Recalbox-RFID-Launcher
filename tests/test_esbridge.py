@@ -1,4 +1,4 @@
-"""Tests de l'interface avec le frontend Recalbox (etat + commande UDP)."""
+"""Tests of the interface with the Recalbox frontend (state + UDP command)."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class RelativeKeyTest(unittest.TestCase):
         )
 
     def test_dossier_systeme_different(self):
-        # Systeme "arcade" range dans le dossier "mame"
+        # "arcade" system stored in the "mame" folder
         self.assertEqual(
             relative_game_key("arcade", "/recalbox/share/roms/mame/pacman.zip"),
             "pacman.zip",
@@ -108,15 +108,15 @@ class CurrentTargetTest(unittest.TestCase):
         self.assertIsNone(current_target(None))
 
     def test_association_accepte_le_jeu_affiche(self):
-        """Sur la fiche d'un jeu, le frontend laisse State=playing : on accepte."""
+        """On a game page, the frontend leaves State=playing: it is accepted."""
         cible = current_target(self.state(State="playing"), allow_running=True)
         self.assertIsNotNone(cible)
         self.assertEqual(cible.game, "Super Mario World.smc")
-        # pour le lancement par badge, le filtre reste actif
+        # for badge launches, the filter stays active
         self.assertIsNone(current_target(self.state(State="playing")))
 
     def test_cles_de_remplacement(self):
-        """Les versions du frontend n'emploient pas toutes les memes cles."""
+        """Frontend versions do not all use the same keys."""
         state = {
             "System": "snes",
             "Path": "/recalbox/share/roms/snes/Super Mario World.smc",
@@ -144,7 +144,7 @@ class CurrentTargetTest(unittest.TestCase):
         self.assertEqual(state_snapshot(None), {})
 
     def test_chemin_reconstruit(self):
-        """Ajout manuel : le chemin complet est reconstruit pour le frontend."""
+        """Manual addition: the full path is rebuilt for the frontend."""
         from rfid.esbridge import resolve_rom_path
 
         self.assertEqual(
@@ -164,7 +164,7 @@ class CurrentTargetTest(unittest.TestCase):
 
 
 class EmulatorProcessTest(unittest.TestCase):
-    """Detection des emulateurs a arreter (faux /proc)."""
+    """Detection of the emulators to stop (fake /proc)."""
 
     def setUp(self):
         self.proc = tempfile.mkdtemp(prefix="rfid-proc-")
@@ -185,8 +185,8 @@ class EmulatorProcessTest(unittest.TestCase):
         self.assertEqual(emulator_pids(proc_dir=self.proc), [])
 
     def test_ignore_un_processus_sans_rapport(self):
-        # « service » contient « vice » : le filtrage doit se faire sur le nom
-        # du programme, jamais sur la ligne entiere.
+        # "service" contains "vice": filtering must use the program name,
+        # never the whole line.
         self.ajouter(900, "/usr/bin/python3 /usr/bin/service-helper --all")
         self.ajouter(901, "/usr/sbin/rpc.statd")
         self.assertEqual(emulator_pids(proc_dir=self.proc), [])
@@ -222,7 +222,7 @@ class EmulatorProcessTest(unittest.TestCase):
 
 
 class StopGameTest(unittest.TestCase):
-    """Arret du jeu : SIGTERM, puis SIGKILL si l'emulateur resiste."""
+    """Stopping the game: SIGTERM, then SIGKILL if the emulator resists."""
 
     def setUp(self):
         self.launcher = EsLauncher("127.0.0.1", 1337)

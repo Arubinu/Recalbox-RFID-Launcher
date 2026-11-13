@@ -1,4 +1,4 @@
-"""Tests du bouton poussoir (backend GPIO simule, horloge simulee)."""
+"""Push button tests (simulated GPIO backend, simulated clock)."""
 
 from __future__ import annotations
 
@@ -41,10 +41,10 @@ class ButtonTest(unittest.TestCase):
         self.clock.advance(0.02)
         button.poll()  # etat stable
 
-        self.gpio.levels[17] = 0  # appui
+        self.gpio.levels[17] = 0  # press
         self.assertIsNone(button.poll())
         self.clock.advance(0.02)
-        self.assertIsNone(button.poll())   # appui confirme : pas encore de geste
+        self.assertIsNone(button.poll())   # press confirmed: no gesture yet
 
         self.gpio.levels[17] = 1  # relachement
         self.assertIsNone(button.poll())
@@ -52,7 +52,7 @@ class ButtonTest(unittest.TestCase):
         self.assertEqual(button.poll(), "short")
 
     def test_appui_maintenu_valide_sans_relacher(self):
-        """Des que l'appui atteint 3 s, la validation part, doigt encore pose."""
+        """As soon as the press reaches 3 s, the validation is sent, finger still down."""
         button = self.make_button()
         self.clock.advance(0.02)
         button.poll()
@@ -61,15 +61,15 @@ class ButtonTest(unittest.TestCase):
         button.poll()
         self.clock.advance(0.02)
         self.assertIsNone(button.poll())
-        self.clock.advance(0.20)      # encore sous hold_press_s (0.30)
+        self.clock.advance(0.20)      # still below hold_press_s (0.30)
         self.assertIsNone(button.poll())
-        self.clock.advance(0.12)      # depasse hold_press_s, toujours appuye
+        self.clock.advance(0.12)      # past hold_press_s, still pressed
         self.assertEqual(button.poll(), "hold")
-        # l'appui continue : plus rien ne doit partir
+        # the press goes on: nothing else must be sent
         self.clock.advance(0.50)
         self.assertIsNone(button.poll())
 
-        self.gpio.levels[17] = 1      # relachement : pas de second geste
+        self.gpio.levels[17] = 1      # release: no second gesture
         button.poll()
         self.clock.advance(0.02)
         self.assertIsNone(button.poll())
@@ -90,7 +90,7 @@ class ButtonTest(unittest.TestCase):
         self.assertEqual(button.poll(), "short")
 
     def test_appui_de_deux_secondes_ne_supprime_plus(self):
-        """Il n'y a plus de geste long : un appui de 2 s reste un simple appui."""
+        """There is no long gesture any more: a 2 s press stays a simple press."""
         button = self.make_button()
         self.clock.advance(0.02)
         button.poll()
@@ -99,7 +99,7 @@ class ButtonTest(unittest.TestCase):
         button.poll()
         self.clock.advance(0.02)
         button.poll()
-        self.clock.advance(0.25)  # plus court que hold_press_s (0.30)
+        self.clock.advance(0.25)  # shorter than hold_press_s (0.30)
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)
@@ -112,14 +112,14 @@ class ButtonTest(unittest.TestCase):
 
         self.gpio.levels[17] = 0
         button.poll()
-        self.clock.advance(0.002)  # rebond : etat pas encore stable
+        self.clock.advance(0.002)  # bounce: state not stable yet
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.002)
         self.gpio.levels[17] = 0
         button.poll()
         self.clock.advance(0.02)
-        self.assertIsNone(button.poll())  # appui confirme : le geste viendra au relachement
+        self.assertIsNone(button.poll())  # press confirmed: the gesture comes on release
         self.gpio.levels[17] = 1
         button.poll()
         self.clock.advance(0.02)

@@ -1,7 +1,7 @@
-"""Coherence des numeros de version dans tout le projet.
+"""Consistency of version numbers across the project.
 
-Ce test evite l'oubli classique : publier une version 1.1.0 en laissant
-``__version__`` ou ``install.sh`` en 1.0.0.
+This test prevents the classic slip: releasing a 1.1.0 while leaving
+``__version__`` or ``install.sh`` at 1.0.0.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import os
 import re
 import unittest
 
-import support  # noqa: F401  (ajoute app/ au sys.path)
+import support  # noqa: F401  (adds app/ to sys.path)
 
 import rfid
 
@@ -38,7 +38,7 @@ class VersionConsistencyTest(unittest.TestCase):
 
     def test_readme_ne_annonce_pas_une_autre_version(self):
         readme = read("README.md")
-        # Les adresses IP (127.0.0.1) ne doivent pas etre prises pour des versions.
+        # IP addresses (127.0.0.1) must not be taken for versions.
         for version in re.findall(r"(?<![\d.])(\d+\.\d+\.\d+)(?![\d.])", readme):
             self.assertEqual(version, self.version, "version %s dans README.md" % version)
 

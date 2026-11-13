@@ -1,4 +1,4 @@
-"""Tests de la configuration."""
+"""Configuration tests."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class ConfigTest(unittest.TestCase):
         config = Config(self.path)
         self.assertTrue(config.create_default())
         self.assertTrue(os.path.isfile(self.path))
-        self.assertFalse(config.create_default())  # ne doit pas ecraser
+        self.assertFalse(config.create_default())  # must not overwrite
 
     def test_surcharge(self):
         with open(self.path, "w", encoding="utf-8") as handle:
@@ -40,7 +40,7 @@ class ConfigTest(unittest.TestCase):
         config = Config(self.path)
         self.assertEqual(config.get_int("rfid", "reset_pin", 0), -1)
         self.assertEqual(config.get_int("rfid", "spi_speed_hz", 0), 500000)
-        # Les cles absentes gardent leur defaut
+        # Missing keys keep their default
         self.assertEqual(config.get("button", "pin"), "17")
 
     def test_valeurs_invalides(self):
@@ -63,7 +63,7 @@ class ConfigTest(unittest.TestCase):
 
 
 class WriteValuesTest(unittest.TestCase):
-    """Reecriture de cles sans perdre les commentaires du fichier."""
+    """Rewriting keys without losing the file comments."""
 
     def setUp(self):
         self.directory = tempfile.mkdtemp(prefix="rfid-config-w-")

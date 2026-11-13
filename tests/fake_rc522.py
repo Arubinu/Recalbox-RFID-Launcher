@@ -1,7 +1,7 @@
-"""Simulateur de MFRC522 au niveau SPI, pour tester le pilote sans materiel.
+"""SPI-level MFRC522 simulator, to test the driver without hardware.
 
-Il reproduit juste ce qui est necessaire a la sequence d'identification :
-registres de commande, FIFO, drapeaux d'interruption et reponses ISO 14443-3A.
+It reproduces just what the identification sequence needs: command
+registers, FIFO, interrupt flags and ISO 14443-3A answers.
 """
 
 from __future__ import annotations
@@ -34,14 +34,14 @@ class FakeRc522Spi:
                  wupa_only: bool = False, broken_crc: bool = False):
         self.uid = bytes(uid) if uid else None
         self.version = version
-        #: Certains badges clones renvoient un BCC faux : le pilote doit lire
-        #: quand meme l'UID (il recalcule le BCC pour la selection).
+        #: Some clone badges return a wrong BCC: the driver must still read the
+        #: UID (it recomputes the BCC for the selection).
         self.bad_bcc = bad_bcc
-        #: Badge qui ne repond qu'a WUPA (etat de veille).
+        #: Badge that only answers WUPA (halt state).
         self.wupa_only = wupa_only
-        #: Coprocesseur CRC defectueux (renvoie n'importe quoi).
+        #: Faulty CRC coprocessor (returns garbage).
         self.broken_crc = broken_crc
-        #: Badge clone qui n'accepte que le BCC renvoye par lui (BCC errone).
+        #: Clone badge that only accepts the BCC it returned (wrong BCC).
         self.only_received_bcc = False
         self.registers = {}
         self.fifo = bytearray()
@@ -155,11 +155,11 @@ class FakeRc522Spi:
 
     @staticmethod
     def crc_a(data) -> bytes:
-        """CRC_A ISO/CEI 14443-3, calcule independamment du pilote.
+        """CRC_A ISO/IEC 14443-3, computed independently from the driver.
 
-        Les deux implementations se controlent mutuellement : le pilote ne
-        depend pas du coprocesseur, le simulateur ne depend pas du pilote.
-        Reference : HALT (50 00) -> 57 CD.
+        Both implementations check each other: the driver does not depend on the
+        coprocessor, the simulator does not depend on the driver.
+        Reference: HALT (50 00) -> 57 CD.
         """
         crc = 0x6363
         for byte in bytes(data):
@@ -169,7 +169,7 @@ class FakeRc522Spi:
         return bytes([crc & 0xFF, (crc >> 8) & 0xFF])
 
     def _calculate_crc(self) -> None:
-        """CRC_A reel des octets presents dans la FIFO (comme le composant)."""
+        """Real CRC_A of the bytes in the FIFO (like the chip)."""
         if self.broken_crc:
             self.crc = b"\x00\x00"
         else:
@@ -224,18 +224,17 @@ class FakeRc522Spi:
             self._respond(part + bytes([bcc]))
             return
         if frame[:2] == bytes([0x93, 0x70]) or frame[:2] == bytes([0x95, 0x70]):
-            # SELECT : 2 octets + UID (4) + BCC (1) + CRC_A (2) = 9 octets,
-            # ou 7 octets quand le CRC est ajoute par le composant (TxCRCEn).
+            # SELECT: 2 bytes + UID (4) + BCC (1) + CRC_A (2) = 9 bytes,
+            # or 7 bytes when the CRC is appended by the chip (TxCRCEn).
             tx_crc = bool(self.registers.get(0x12, 0) & 0x80)
             if tx_crc:
                 frame = frame + self.crc_a(frame)
             self.select_frames.append(frame)
             if len(frame) != 9 or frame[7:9] != self.crc_a(frame[:7]):
-                self.irq = IRQ_TIMER  # trame incomplete ou CRC faux : pas de reponse
+                self.irq = IRQ_TIMER  # incomplete frame or wrong CRC: no answer
                 return
-            # Une carte verifie le BCC de la trame de selection : celui qu'elle
-            # recalcule (cas normal), ou celui qu'elle a envoye (clone whose BCC
-            # est errone).
+            # A card checks the BCC of the select frame: the one it recomputes
+            # (normal case), or the one it sent (clone whose BCC is wrong).
             attendu = frame[2] ^ frame[3] ^ frame[4] ^ frame[5]
             if self.only_received_bcc and self.bad_bcc:
                 attendu = 0
@@ -248,4 +247,4 @@ class FakeRc522Spi:
                 sak = 0x00
             self._respond(bytes([sak, 0x00, 0x00]))
             return
-        self.irq = IRQ_TIMER  # HALT ou commande inconnue : pas de reponse
+        self.irq = IRQ_TIMER  # HALT or unknown command: no answer

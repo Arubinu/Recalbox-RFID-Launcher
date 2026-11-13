@@ -33,11 +33,11 @@ Scannez un badge RFID → le jeu Recalbox associé se lance.
 
 ## 2. Câblage (5 minutes)
 
-![Branchement du lecteur RC522 et du bouton](docs/cablage.svg)
+![Branchement du lecteur RC522 et du bouton](docs/wiring.svg)
 
-*Figure générée par `python tools/build_cablage.py` — le même schéma est dans
+*Figure générée par `python tools/build_wiring.py` — le même schéma est dans
 l'onglet **Matériel** de `installer.html`. Détails et variantes :
-[`docs/CABLAGE.md`](docs/CABLAGE.md).*
+[`docs/WIRING.md`](docs/WIRING.md).*
 
 | RC522 | Broche RC522 | Raspberry Pi (GPIO BCM) | Broche physique |
 | --- | --- | --- | --- |
@@ -69,7 +69,7 @@ Ouvrez **`dist\recalbox-rfid-installer.html`** dans Edge ou Chrome et choisissez
    dans la fenêtre : la page écrit elle-même `recalbox-rfid\`, le script de
    démarrage dans `userscripts\` et le script du menu dans `userscripts\manual\`.
 3. **Lancer** — **Recalbox 10** : avec la manette, `START` → réglages avancés →
-   scripts utilisateur → **Installer-lecteur-RFID** : l'installation démarre
+   scripts utilisateur → **Install-RFID-reader** : l'installation démarre
    **sans redémarrage** (Recalbox ne redémarre qu'une fois, toute seule, pour
    activer le lecteur). **Recalbox 9** : redémarrez la Recalbox.
    La page attend la Recalbox et passe seule à la suite.
@@ -91,7 +91,7 @@ Ouvrez **`dist\recalbox-rfid-installer.html`** dans Edge ou Chrome et choisissez
 
 > Le `.cmd` tente `root` / `recalboxroot`, `root` sans mot de passe, puis l'accès
 > invité. Mot de passe root personnalisé ? Ouvrez le fichier avec le Bloc-notes
-> et modifiez `set PASS=...`. Dépannage : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), §14.
+> et modifiez `set PASS=...`. Dépannage : [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md), §14.
 
 ### Méthode C — copier le dossier à la main
 
@@ -100,7 +100,7 @@ Ouvrez **`dist\recalbox-rfid-installer.html`** dans Edge ou Chrome et choisissez
 2. Copiez `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
    `\\RECALBOX\share\userscripts\` (et, pour Recalbox 10, le dossier
    `recalbox-rfid\bootstrap\manual` dans `userscripts\`).
-3. **Redémarrez Recalbox** (ou, sur Recalbox 10, lancez *Installer-lecteur-RFID*
+3. **Redémarrez Recalbox** (ou, sur Recalbox 10, lancez *Install-RFID-reader*
    depuis le menu des scripts utilisateur).
 4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet), cliquez
    sur « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes
@@ -244,14 +244,14 @@ correspondance.
 Les bips sont générés à la volée (`/tmp/rfid-launcher/beep-*.wav`) et joués par
 `paplay` (PulseAudio) ou `aplay` (ALSA). Le service note au démarrage
 `Retour sonore actif (paplay)` : si cette ligne est absente, aucun son ne sera
-émis (voir `docs/DEPANNAGE.md`, section 7).
+émis (voir `docs/TROUBLESHOOTING.md`, section 7).
 
 > **Pourquoi pas une notification à l'écran ?** Le frontend Recalbox 9 n'expose
 > aucune API permettant à un script d'afficher un message : il *publie* ses
 > événements en MQTT mais n'écoute rien (voir `NotificationManager` et
 > `RequestHandler` du projet Recalbox). Le retour visuel est donc assuré par le
 > lancement du jeu lui-même, et le retour immédiat par le son. Détails et pistes :
-> [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
+> [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 
 ### Gérer les badges sans le bouton
 
@@ -293,7 +293,7 @@ La mise à jour remplace le programme, conserve `config.ini` + `tags.json`,
 redémarre le service et affiche la nouvelle version. La page se reconnecte
 toute seule : l'autorisation n'est à redonner qu'après un redémarrage complet
 de la Recalbox. Détails :
-[`docs/MISE-A-JOUR.md`](docs/MISE-A-JOUR.md).
+[`docs/UPDATING.md`](docs/UPDATING.md).
 
 ## 7. Tester sur un PC (sans Raspberry Pi)
 
@@ -372,18 +372,18 @@ python tests/run_tests.py
 | `installer.html` ne se connecte pas | agent démarré (`ps aux \| grep agent`), port 8765 libre, service du lecteur démarré, journal `logs/agent.log` |
 | « La Recalbox demande une nouvelle autorisation » | la Recalbox a redémarré, ou le service a été relancé : cliquez sur « Se connecter » et gardez le bouton appuyé 3 s |
 | L'appui de 3 s ne donne rien | service du lecteur arrêté (Maintenance → **Démarrer**), ou appui commencé avant la demande |
-| Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/DEPANNAGE.md` |
+| Copie depuis la page impossible | Edge ou Chrome requis ; choisir le partage (dossier `roms` présent) ; voir `docs/TROUBLESHOOTING.md` |
 | `\\RECALBOX\share` demande un mot de passe | Windows 11 bloque les invités : identifiant `root` / `recalboxroot` (ou autoriser les invités) |
 
-Guide complet : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
+Guide complet : [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md).
 
 ## 10. Documentation
 
-* [`docs/CABLAGE.md`](docs/CABLAGE.md) — câblage détaillé et choix des broches
+* [`docs/WIRING.md`](docs/WIRING.md) — câblage détaillé et choix des broches
 * [`docs/INSTALLATION.md`](docs/INSTALLATION.md) — installation pas à pas (installateur HTML, Windows, macOS, Linux)
-* [`docs/UTILISATION.md`](docs/UTILISATION.md) — installateur, association, commandes, configuration
-* [`docs/MISE-A-JOUR.md`](docs/MISE-A-JOUR.md) — mises à jour et retour arrière
-* [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md) — diagnostic et solutions
+* [`docs/USAGE.md`](docs/USAGE.md) — installateur, association, commandes, configuration
+* [`docs/UPDATING.md`](docs/UPDATING.md) — mises à jour et retour arrière
+* [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — diagnostic et solutions
 * [`CHANGELOG.md`](CHANGELOG.md) — historique des versions
 
 ## 11. Structure du projet

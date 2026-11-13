@@ -1,24 +1,24 @@
-"""Agent WebSocket : installation, mise à jour et gestion depuis `installer.html`.
+"""WebSocket agent: installation, update and management from `installer.html`.
 
-Pourquoi un WebSocket plutôt qu'une page servie par la Recalbox ? Parce que
-l'interface est un simple fichier HTML ouvert sur le PC (`file://`) : elle ne
-partage pas l'origine de la Recalbox, donc `fetch()` y serait bloqué par le
-navigateur, alors qu'un `WebSocket` est autorisé (vérifié : l'origine `null`
-d'un fichier local est acceptée).
+Why a WebSocket rather than a page served by the Recalbox? Because the
+interface is a plain HTML file opened on the PC (`file://`): it does not
+share the Recalbox origin, so `fetch()` would be blocked by the browser,
+whereas a `WebSocket` is allowed (checked: the `null` origin of a local file
+is accepted).
 
-Tout est dans la bibliothèque standard : poignée de main HTTP, trames RFC 6455
-et boucle de service. Seule une session autorisee par un appui physique peut agir.
+Everything comes from the standard library: HTTP handshake, RFC 6455 frames
+and the service loop. Only a session authorized by a physical press can act.
 
-Commandes (JSON, une réponse par `id`) :
+Commands (JSON, one answer per `id`):
 
-* ``pair.request`` / ``pair.check`` / ``pair.cancel`` (appairage confirme au bouton) ;
-* ``auth`` (secret de session), ``status``, ``version``, ``log`` ;
-* ``install`` (dossier du partage ou URL), ``upload.begin/chunk/end`` (ZIP) ;
-* ``tags.list/add/remove/export/import`` ;
-* ``associate``, ``scan`` (mode association / badge simulé) ;
+* ``pair.request`` / ``pair.check`` / ``pair.cancel`` (pairing confirmed with the button);
+* ``auth`` (session secret), ``status``, ``version``, ``log``;
+* ``install`` (share folder or URL), ``upload.begin/chunk/end`` (ZIP);
+* ``tags.list/add/remove/export/import``;
+* ``associate``, ``scan`` (association mode / simulated badge);
 * ``service`` (start/stop/restart), ``reboot``.
 
-Événements serveur → client : ``{"event": "log"}``, ``{"event": "install"}``,
+Server -> client events: ``{"event": "log"}``, ``{"event": "install"}``,
 ``{"event": "restart_agent"}``.
 """
 
@@ -58,7 +58,7 @@ from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-#: Signal de relecture de la configuration (absent sous Windows).
+#: Configuration reload signal (missing on Windows).
 SIG_HUP = getattr(signal, "SIGHUP", 1)
 MAX_MESSAGE = 4 * 1024 * 1024
 MAX_UPLOAD = 64 * 1024 * 1024
@@ -67,7 +67,7 @@ AUTH_TIMEOUT = 20.0
 DEFAULT_PORT = 8765
 PAIRING_FILENAME = "pairing.json"
 PAIRED_FILENAME = "paired.ok"
-#: Secret de session garde dans le dossier prive (tmpfs, jamais le partage SMB).
+#: Session secret kept in the private folder (tmpfs, never the SMB share).
 SESSION_FILENAME = "session-secret"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
@@ -75,10 +75,10 @@ AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).p
 
 
 # ---------------------------------------------------------------------------
-# Appairage : recuperer le jeton sans partage reseau ni copier-coller
+# Pairing: get the token without a network share or copy-paste
 # ---------------------------------------------------------------------------
 def is_private_address(address) -> bool:
-    """Vrai si la connexion vient du reseau local (appairage autorise)."""
+    """True if the connection comes from the local network (pairing allowed)."""
     if isinstance(address, (tuple, list)):
         address = address[0] if address else ""
     host = str(address or "").split("%")[0].strip()
@@ -93,17 +93,17 @@ def is_private_address(address) -> bool:
             return 16 <= int(host.split(".")[1]) <= 31
         except (IndexError, ValueError):
             return False
-    # IPv6 lien-local et uniques locales (fd00::/8, fc00::/7)
+    # IPv6 link-local and unique local (fd00::/8, fc00::/7)
     return host.startswith(("fe80:", "fd", "fc"))
 
 
 def pairing_path(home: str) -> str:
-    # Meme dossier prive que les etats d'appairage : surtout pas le partage SMB.
+    # Same private folder as the pairing states: never the SMB share.
     return os.path.join(pairing.state_dir(home), PAIRING_FILENAME)
 
 
 def open_pairing_window(home: str, minutes: int = PAIRING_MINUTES) -> float:
-    """Ouvre une fenetre d'appairage (usage unique) et renvoie son echeance."""
+    """Opens a (single use) pairing window and returns its deadline."""
     os.makedirs(home, exist_ok=True)
     until = time.time() + max(1, int(minutes)) * 60
     try:
@@ -123,7 +123,7 @@ def close_pairing_window(home: str) -> None:
 
 def pairing_is_open(home: str) -> bool:
     try:
-        # utf-8-sig : tolere le BOM qu'un editeur Windows peut ajouter.
+        # utf-8-sig: tolerates the BOM a Windows editor may add.
         with open(pairing_path(home), "r", encoding="utf-8-sig") as handle:
             data = json.load(handle)
         return float(data.get("until") or 0) > time.time()
@@ -132,10 +132,10 @@ def pairing_is_open(home: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Version du programme et dossier source
+# Program version and source folder
 # ---------------------------------------------------------------------------
 def read_version(folder: str) -> str:
-    """Version indiquee par le fichier VERSION d'un dossier (ou chaine vide)."""
+    """Version given by the VERSION file of a folder (or an empty string)."""
     try:
         with open(os.path.join(folder, "VERSION"), "r", encoding="utf-8-sig") as handle:
             return handle.read().strip()
@@ -144,7 +144,7 @@ def read_version(folder: str) -> str:
 
 
 def version_key(text: str):
-    """Cle de comparaison de versions : (1, 8, 2) pour "1.8.2", () si vide."""
+    """Version comparison key: (1, 8, 2) for "1.8.2", () when empty."""
     raw = str(text or "").strip()
     if not raw:
         return ()
@@ -156,7 +156,7 @@ def version_key(text: str):
 
 
 def find_source(share: str = "/recalbox/share", home: str = None):
-    """Cherche le dossier du projet (app/main.py + install.sh) sur le partage."""
+    """Looks for the project folder (app/main.py + install.sh) on the share."""
     import glob
 
     home = os.path.abspath(home) if home else None
@@ -183,7 +183,7 @@ class ProtocolError(Exception):
 
 
 class _Client:
-    """Une connexion cliente : tampon de lecture, envoi sérialisé, état."""
+    """One client connection: read buffer, serialized sending, state."""
 
     def __init__(self, sock, address):
         self.sock = sock
@@ -255,15 +255,14 @@ def _read_frame(client: _Client):
 
 
 def _read_message(client: _Client, on_control=None):
-    """Lit un message complet et renvoie ``(opcode, payload)``.
+    """Reads a whole message and returns ``(opcode, payload)``.
 
-    Les navigateurs (Chromium notamment) decoupent les gros messages en
-    plusieurs trames : une premiere trame texte sans le bit FIN, puis des
-    trames de continuation (opcode 0). Les lire une par une donnait un JSON
-    tronque, et l'envoi d'un ZIP depuis la page restait sans reponse. Les
-    trames de controle (ping, pong) peuvent s'intercaler entre les fragments
-    (RFC 6455, 5.4) : elles sont confiees a ``on_control``. Une trame de
-    fermeture est renvoyee telle quelle.
+    Browsers (Chromium in particular) split large messages into several
+    frames: a first text frame without the FIN bit, then continuation frames
+    (opcode 0). Reading them one by one gave a truncated JSON, and sending a
+    ZIP from the page never got an answer. Control frames (ping, pong) may be
+    interleaved between fragments (RFC 6455, 5.4): they are handed to
+    ``on_control``. A close frame is returned as is.
     """
     message_opcode = None
     parts = []
@@ -309,7 +308,7 @@ def _send_frame(sock, opcode: int, payload: bytes) -> None:
 # Agent
 # ---------------------------------------------------------------------------
 class Agent:
-    """Serveur WebSocket et logique de gestion."""
+    """WebSocket server and management logic."""
 
     def __init__(self, cfg, log, home: str, source: str = None, db: str = None, port: int = None):
         self.cfg = cfg
@@ -318,15 +317,15 @@ class Agent:
         self.source = os.path.abspath(source) if source else None
         self.db_path = db or os.path.join(self.home, DB_FILENAME)
         self.port = int(port) if port is not None else cfg.get_int("agent", "port", DEFAULT_PORT)
-        # Aucun secret sur le partage SMB : l'autorisation vient d'un appui
-        # physique sur le bouton, et le secret de session vit dans un dossier
-        # prive (0600, tmpfs). Il survit donc a un redemarrage du service ou de
-        # l'agent (mise a jour), mais pas a un redemarrage de la Recalbox.
+        # No secret on the SMB share: authorization comes from a physical press
+        # on the button, and the session secret lives in a private folder (0600,
+        # tmpfs). It therefore survives a restart of the service or of the agent
+        # (update), but not a reboot of the Recalbox.
         self.token = self._session_secret()
         self.token_path = ""
         self._forget_legacy_tokens()
-        # Nouveau secret a chaque demarrage : la fenetre d'appairage est ouverte
-        # jusqu'a ce qu'un poste soit autorise (appui de 3 s sur le bouton).
+        # New secret at each start: the pairing window stays open until a
+        # computer is authorized (3 s press on the button).
         open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
@@ -337,7 +336,7 @@ class Agent:
         self._lock = None
 
     def _session_secret(self) -> str:
-        """Secret de session : relu du dossier prive, ou cree."""
+        """Session secret: read back from the private folder, or created."""
         path = os.path.join(pairing.state_dir(self.home), SESSION_FILENAME)
         saved = ""
         try:
@@ -352,11 +351,11 @@ class Agent:
             with os.fdopen(descriptor, "w", encoding="ascii") as handle:
                 handle.write(token)
         except OSError:
-            pass                     # disque plein : le secret reste en memoire
+            pass                     # disk full: the secret stays in memory
         return token
 
     def _forget_legacy_tokens(self) -> None:
-        """Efface les jetons des versions precedentes (ils etaient sur le partage)."""
+        """Deletes the tokens of previous versions (they lived on the share)."""
         candidates = (
             os.path.join(self.home, TOKEN_FILENAME),
             os.path.join("/overlay/rfid", TOKEN_FILENAME),
@@ -419,18 +418,17 @@ class Agent:
 
     # ------------------------------------------------------------------ outils
     def installer(self):
-        """Script d'installation a lancer.
+        """Install script to run.
 
-        Priorite au dossier du projet sur le partage (c'est lui qui porte la
-        nouvelle version), mais jamais au detriment d'une version plus recente
-        deja installee : sinon « Installer / mettre a jour » ne ferait rien ou
-        retrograderait le programme.
+        The project folder on the share comes first (it carries the new version),
+        but never at the expense of a newer version already installed: otherwise
+        "Install / update" would do nothing or downgrade the program.
         """
         source = self.source
         if not source:
             try:
                 source = find_source(home=self.home)
-            except Exception:  # noqa: BLE001 - partage absent ou illisible
+            except Exception:  # noqa: BLE001 - share missing or unreadable
                 source = None
         installed = os.path.join(self.home, "install.sh")
         if source:
@@ -474,8 +472,8 @@ class Agent:
                 installed_version = handle.read().strip()
         except OSError:
             pass
-        # allow_running : le frontend garde State=playing sur la fiche d'un jeu
-        # (et juste apres avoir quitte une partie) ; l'affichage doit le montrer.
+        # allow_running: the frontend keeps State=playing on a game's page
+        # (and right after leaving a game); the display must show it.
         target = current_target(read_state(), allow_running=True)
         frontend = supports_start_command() if os.path.exists("/usr/bin/emulationstation") else None
         return {
@@ -551,11 +549,11 @@ class Agent:
                 self._after_install(client)
 
     def _restart_service(self) -> None:
-        """Relance le service pour qu'il charge le code fraichement installe.
+        """Restarts the service so that it loads the freshly installed code.
 
-        ``install.sh`` est appele avec ``--no-restart`` : sans cette relance, le
-        service continuait de tourner avec l'ancien code (et ne connaissait donc
-        pas les nouvelles commandes) jusqu'au redemarrage suivant.
+        ``install.sh`` is called with ``--no-restart``: without this restart, the
+        service kept running the old code (and so did not know the new commands)
+        until the next reboot.
         """
         programme = self.main_py()
         if not os.path.isfile(programme):
@@ -576,15 +574,15 @@ class Agent:
             self.log.info("Service relance apres installation (%s)" % action)
 
     def _after_install(self, client: _Client) -> None:
-        # Le service doit repartir avec le nouveau code (agent, lui, se re-execute).
+        # The service must restart with the new code (the agent re-executes itself).
         self._restart_service()
         client.send({"event": "restart_agent", "in": 2})
         threading.Timer(2.0, self._reexec).start()
 
     def _reexec(self) -> None:
-        """Recharge l'agent avec le code fraîchement installé."""
+        """Reloads the agent with the freshly installed code."""
         if "agent" not in sys.argv[1:3]:
-            # Sécurité : ne jamais remplacer un autre programme (tests, CLI...).
+            # Safety: never replace another program (tests, CLI...).
             if self.log:
                 self.log.info("Rechargement de l'agent ignore (processus non-agent)")
             return
@@ -615,7 +613,7 @@ class Agent:
 
     # --------------------------------------------------------------- commandes
     def process(self, client: _Client, message: dict) -> bool:
-        """Traite un message ; retourne False pour fermer la connexion."""
+        """Handles a message; returns False to close the connection."""
         if not isinstance(message, dict):
             client.send({"ok": False, "error": "objet JSON attendu"})
             return True
@@ -672,7 +670,7 @@ class Agent:
             client.send({"id": request_id, "ok": False, "error": str(exc)})
         except StorageError as exc:
             client.send({"id": request_id, "ok": False, "error": "badge invalide : %s" % exc})
-        except Exception as exc:  # noqa: BLE001 - l'agent ne doit jamais tomber
+        except Exception as exc:  # noqa: BLE001 - the agent must never crash
             if self.log:
                 self.log.error("Agent : erreur sur %s : %s" % (command, exc))
             client.send({"id": request_id, "ok": False, "error": "erreur interne : %s" % exc})
@@ -680,11 +678,11 @@ class Agent:
 
     # ------------------------------------------------------------- appairage
     def _handle_pairing(self, client, request_id, command, message) -> bool:
-        """Appairage confirme au bouton : demande, attente, secret de session.
+        """Pairing confirmed with the button: request, wait, session secret.
 
-        Aucune authentification (c'est le but), mais trois garde-fous : reseau
-        local uniquement, une seule demande a la fois, et validation par un
-        appui long sur le bouton physique de la Recalbox.
+        No authentication (that is the point), but three safeguards: local network
+        only, a single request at a time, and validation by a long press on the
+        Recalbox physical button.
         """
         source = getattr(client, "address", "")
         if not is_private_address(source):
@@ -753,7 +751,7 @@ class Agent:
             return True
         except pairing.PairingError as exc:
             client.send({"id": request_id, "ok": False, "error": str(exc)})
-        except Exception as exc:  # noqa: BLE001 - l'agent ne doit jamais tomber
+        except Exception as exc:  # noqa: BLE001 - the agent must never crash
             if self.log:
                 self.log.error("Appairage : erreur sur %s : %s" % (command, exc))
             client.send({"id": request_id, "ok": False, "error": "appairage impossible : %s" % exc})
@@ -761,11 +759,11 @@ class Agent:
 
     # ------------------------------------------------------------- diagnostic
     def _cmd_diag(self, client, message):
-        """Diagnostic systeme en lecture seule (utile quand il n'y a pas de SSH).
+        """Read-only system diagnostic (useful when there is no SSH).
 
-        Sert notamment a comprendre pourquoi le bus SPI n'est pas actif :
-        contenu de ``/boot``, presence de ``/dev/spidev*`` et mecanisme de
-        synchronisation des overlays de Recalbox.
+        Mainly helps understand why the SPI bus is not active: content of
+        ``/boot``, presence of ``/dev/spidev*`` and the Recalbox overlay sync
+        mechanism.
         """
         commands = [
             ("version", "cat /recalbox/recalbox.version 2>&1"),
@@ -808,7 +806,7 @@ class Agent:
                     text=True,
                 )
                 output[name] = ((result.stdout or "").strip() or "(vide)")[:2000]
-            except Exception as exc:  # noqa: BLE001 - un diagnostic ne doit jamais tomber
+            except Exception as exc:  # noqa: BLE001 - a diagnostic must never crash
                 output[name] = "erreur : %s" % exc
         return {"spi": os.path.exists("/dev/spidev0.0"), "commands": output}
 
@@ -839,28 +837,28 @@ class Agent:
         return {"text": "".join(lines)}
 
     def source_version(self, installer: str) -> str:
-        """Version du dossier dont vient l'installateur."""
+        """Version of the folder the installer comes from."""
         if not installer:
             return ""
         return read_version(os.path.dirname(os.path.abspath(installer)))
 
     def up_to_date(self, installer: str):
-        """Rien a installer si le disque ET le service sont deja a la bonne version.
+        """Nothing to install if the disk AND the service are already up to date.
 
-        Retourne un dict ``{"skipped": True, ...}`` dans ce cas, sinon None.
-        Un service qui tourne encore une ancienne version empeche le saut : il
-        faut reappliquer l'installation pour qu'il reparte a jour.
+        Returns a ``{"skipped": True, ...}`` dict in that case, otherwise None.
+        A service still running an older version prevents the skip: the install
+        must be applied again so that it restarts up to date.
         """
         source = self.source_version(installer)
         installed = read_version(self.home)
         if not source or not installed:
             return None
         if version_key(installed) != version_key(source):
-            return None                  # vraie montee ou descente de version
+            return None                  # real version upgrade or downgrade
         status = read_status(self.home) or {}
         service = str(status.get("version") or "")
         if not service or version_key(service) != version_key(installed):
-            return None                  # le service n'a pas encore ce code
+            return None                  # the service does not have this code yet
         return {
             "skipped": True,
             "installed_version": installed,
@@ -960,7 +958,7 @@ class Agent:
             raise RuntimeError("le programme n'est pas installe")
         command = [sys.executable, self.main_py(), action, "--home", self.home]
         if action in ("stop", "restart"):
-            # Le demon est un processus separe : l'agent reste disponible.
+            # The daemon is a separate process: the agent stays available.
             def later():
                 subprocess.Popen(
                     command,
@@ -986,7 +984,7 @@ class Agent:
         return {"armed": mode}
 
     def _cmd_config_get(self, client, message):
-        """Options modifiables depuis la page (avec leur valeur actuelle)."""
+        """Settings editable from the page (with their current value)."""
         cfg = Config(self.config_path())
         options = []
         for option in OPTIONS:
@@ -1000,7 +998,7 @@ class Agent:
         return {"path": cfg.path, "options": options}
 
     def _cmd_config_set(self, client, message):
-        """Enregistre les options puis fait relire la configuration au service."""
+        """Saves the settings, then makes the service read its configuration again."""
         valeurs = message.get("values")
         if not isinstance(valeurs, dict) or not valeurs:
             raise ValueError("aucune valeur a enregistrer")
@@ -1022,7 +1020,7 @@ class Agent:
         return {"saved": sorted(modifiees), "reloaded": applique}
 
     def _reload_service(self) -> bool:
-        """Demande au service de relire sa configuration (SIGHUP)."""
+        """Asks the service to read its configuration again (SIGHUP)."""
         pid = read_pid(self.home)
         if not process_alive(pid):
             return False
@@ -1046,7 +1044,7 @@ class Agent:
         return data if isinstance(data, dict) else None
 
     def _require_service(self) -> None:
-        """Refuse les mesures quand le service n'est pas a jour et demarre."""
+        """Refuses measurements when the service is not up to date and running."""
         if not process_alive(read_pid(self.home)):
             raise RuntimeError("le service RFID n'est pas demarre : demarrez-le dans "
                                "l'onglet Maintenance, puis relancez la mesure")
@@ -1059,7 +1057,7 @@ class Agent:
             )
 
     def _cmd_calibrate_start(self, client, message):
-        """Lance la sequence de reglage du lecteur (reponse immediate)."""
+        """Starts the reader tuning sequence (immediate answer)."""
         self._require_service()
         etat = self._read_calibration()
         if etat and not etat.get("finished") and etat.get("phase") in CALIBRATION_STEPS:
@@ -1071,8 +1069,8 @@ class Agent:
         self._write_command("calibrate_start")
         if self.log:
             self.log.info("Mesure du lecteur demandee par la page")
-        # Le service publie son premier etat en quelques centaines de ms : on le
-        # renvoie pour que la page affiche tout de suite la bonne etape.
+        # The service publishes its first state within a few hundred ms: it is
+        # sent back so that the page shows the right step at once.
         echeance = time.time() + 2.0
         while time.time() < echeance:
             etat = self._read_calibration()
@@ -1082,7 +1080,7 @@ class Agent:
         return {"started": True, "state": None}
 
     def _cmd_calibrate_status(self, client, message):
-        """Etat de la mesure : instruction a afficher, mesures, valeurs appliquees."""
+        """Measurement state: instruction to display, measures, applied values."""
         etat = self._read_calibration()
         if etat is None:
             return {"phase": "idle", "finished": True, "instruct": "",
@@ -1095,7 +1093,7 @@ class Agent:
         return {"cancelled": True}
 
     def _cmd_calibrate_reset(self, client, message):
-        """Remet les reglages du lecteur a leur valeur d'origine."""
+        """Resets the reader settings to their original values."""
         self._require_service()
         try:
             os.remove(self._calibration_path())
@@ -1111,10 +1109,10 @@ class Agent:
         raise RuntimeError("le service n'a pas confirme la reinitialisation")
 
     def _cmd_reader_test(self, client, message):
-        """Teste le lecteur lui-meme : la carte est-elle vue, et lue ?
+        """Tests the reader itself: is the card seen, and read?
 
-        Le bus SPI appartient au service : l'agent lui depose la demande et lit
-        le resultat ecrit en retour (``reader-test.json``).
+        The SPI bus belongs to the service: the agent drops the request for it and
+        reads the result written back (``reader-test.json``).
         """
         try:
             seconds = float(message.get("seconds") or 5)
@@ -1124,8 +1122,8 @@ class Agent:
         if not process_alive(read_pid(self.home)):
             raise RuntimeError("le service RFID n'est pas demarre : demarrez-le dans "
                                "l'onglet Maintenance, puis relancez le test")
-        # Un service plus ancien ne connait pas encore cette commande : le dire
-        # clairement plutot que d'attendre puis annoncer un blocage.
+        # An older service does not know this command yet: say so clearly
+        # rather than waiting and then reporting a hang.
         service_version = str((read_status(self.home) or {}).get("version") or "")
         if version_key(service_version) and version_key(service_version) < version_key(__version__):
             raise RuntimeError(
@@ -1189,8 +1187,8 @@ class Agent:
             raise ValueError("systeme et jeu obligatoires")
         chemin = str(message.get("path") or "").strip()
         if not chemin:
-            # Sans chemin, le frontend ne saurait pas lancer le jeu : on le
-            # reconstruit a partir du systeme et du nom de fichier.
+            # Without a path the frontend could not start the game: it is rebuilt
+            # from the system and the file name.
             chemin = resolve_rom_path(system, game)
         entry = self._tags().put(
             str(message.get("uid") or ""),
@@ -1240,38 +1238,49 @@ class Agent:
                 pass
 
 
-#: Options proposees dans l'onglet dedie de la page (section, cle, type...).
+#: Settings shown in the page's Settings tab (section, key, type...). The
+#: labels are French on purpose: they are the translation keys of the page
+#: (i18n/<code>.json). "advanced" settings are folded away by the page.
 OPTIONS = (
     {"section": "launch", "key": "action", "type": "choice",
      "choices": ["launch", "none"], "default": "launch",
-     "label": "Action au scan d'un badge associé",
-     "help": "launch = lance le jeu ; none = bip seulement (mode cartouche)"},
+     "label": "Quand on pose un badge associé",
+     "help": "Lancer le jeu, ou seulement biper (pratique pour vérifier ses badges sans lancer de partie)."},
     {"section": "launch", "key": "ignore_when_game_running", "type": "bool", "default": True,
-     "label": "Ne rien lancer pendant une partie",
-     "help": "évite d'interrompre un jeu déjà en cours"},
+     "label": "Ne pas interrompre une partie en cours",
+     "help": "Un badge posé pendant une partie ne lance pas d'autre jeu."},
     {"section": "launch", "key": "stop_on_remove", "type": "bool", "default": False,
-     "label": "Quitter le jeu quand le badge est retiré",
-     "help": "le jeu lancé par le badge s'arrête dès que le badge quitte le lecteur"},
+     "label": "Quitter le jeu quand on retire le badge",
+     "help": "Comme une cartouche : retirer le badge ramène au menu de la Recalbox."},
     {"section": "button", "key": "arm_timeout_s", "type": "number", "min": 3, "max": 60,
-     "default": 10, "label": "Délai pour poser le badge",
-     "help": "secondes accordées après l'appui court"},
+     "default": 10, "label": "Temps pour poser le badge (secondes)",
+     "help": "Après « Associer un badge à ce jeu » ou un appui court sur le bouton du boîtier."},
     {"section": "button", "key": "hold_press_s", "type": "number", "min": 1, "max": 10,
-     "default": 3, "label": "Appui qui autorise un navigateur",
-     "help": "secondes de maintien (la validation part dès ce délai)"},
-    {"section": "rfid", "key": "poll_interval_ms", "type": "number", "min": 50, "max": 1000,
-     "default": 150, "label": "Intervalle de lecture du lecteur (ms)"},
-    {"section": "rfid", "key": "same_tag_cooldown_s", "type": "number", "min": 0.5, "max": 30,
-     "default": 2.5, "label": "Anti-rebond du même badge (s)"},
-    {"section": "rfid", "key": "rearm_absent_ms", "type": "number", "min": 300, "max": 10000,
-     "default": 1200, "label": "Absence avant de pouvoir rescanner (ms)"},
-    {"section": "rfid", "key": "spi_speed_hz", "type": "number", "min": 100000, "max": 10000000,
-     "default": 1000000, "label": "Vitesse du bus SPI (Hz)",
-     "help": "reglage materiel : applique au redemarrage du service"},
+     "default": 3, "label": "Appui pour autoriser un ordinateur (secondes)",
+     "help": "Durée pendant laquelle garder le bouton du boîtier enfoncé."},
     {"section": "feedback", "key": "sound", "type": "bool", "default": True,
-     "label": "Bips sonores"},
+     "label": "Bips sonores",
+     "help": "Confirment l'association d'un badge et signalent les erreurs."},
+    {"section": "rfid", "key": "poll_interval_ms", "type": "number", "min": 50, "max": 1000,
+     "default": 150, "advanced": True,
+     "label": "Fréquence de lecture (millisecondes)",
+     "help": "Temps entre deux lectures : plus court, le lecteur réagit plus vite mais la Recalbox travaille un peu plus."},
+    {"section": "rfid", "key": "same_tag_cooldown_s", "type": "number", "min": 0.5, "max": 30,
+     "default": 2.5, "advanced": True,
+     "label": "Délai avant de relancer le même badge (secondes)",
+     "help": "Évite qu'un badge posé deux fois de suite lance deux fois le jeu."},
+    {"section": "rfid", "key": "rearm_absent_ms", "type": "number", "min": 300, "max": 10000,
+     "default": 1200, "advanced": True,
+     "label": "Badge considéré comme retiré après (millisecondes)",
+     "help": "Durée sans badge sur le lecteur avant de le considérer comme retiré."},
+    {"section": "rfid", "key": "spi_speed_hz", "type": "number", "min": 100000, "max": 10000000,
+     "default": 1000000, "advanced": True,
+     "label": "Vitesse de liaison avec le lecteur (Hz)",
+     "help": "Le réglage automatique (onglet Matériel) choisit la meilleure valeur. Pris en compte au redémarrage du service."},
     {"section": "general", "key": "log_level", "type": "choice",
-     "choices": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO",
-     "label": "Niveau de journal"},
+     "choices": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO", "advanced": True,
+     "label": "Détail du journal",
+     "help": "« normal » suffit ; « tout noter » aide à comprendre un problème."},
 )
 
 
@@ -1289,7 +1298,7 @@ def option_value(cfg, option) -> str:
 
 
 def validate_option(option, valeur) -> str:
-    """Verifie une valeur avant de l'ecrire ; retourne la forme a enregistrer."""
+    """Checks a value before writing it; returns the form to store."""
     brut = str(valeur).strip()
     if option["type"] == "bool":
         if brut.lower() in ("1", "true", "oui", "on", "yes"):
@@ -1343,8 +1352,8 @@ class _Handler(socketserver.BaseRequestHandler):
                 key = line.split(":", 1)[1].strip()
             elif line.lower().startswith("origin:"):
                 origin = line.split(":", 1)[1].strip()
-        # Refus des origines web : seule une page locale (file://, origine "null")
-        # ou un client sans en-tete Origin peut se connecter.
+        # Web origins are refused: only a local page (file://, origin "null") or
+        # a client without an Origin header can connect.
         if origin and origin.lower() != "null":
             try:
                 sock.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")

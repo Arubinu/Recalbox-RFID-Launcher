@@ -1,1 +1,1 @@
-"""Pilotes materiels du projet (SPI, RC522, GPIO, bouton)."""
+"""Hardware drivers of the project (SPI, RC522, GPIO, button)."""

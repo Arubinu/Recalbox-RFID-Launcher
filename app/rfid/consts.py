@@ -1,52 +1,52 @@
-"""Constantes partagees du projet."""
+"""Shared constants of the project."""
 
 from __future__ import annotations
 
 import os
 
-#: Dossier d'installation par defaut sur Recalbox (persistant, visible depuis
-#: le partage reseau Windows : \\\\RECALBOX\\share\\system\\rfid).
+#: Default install folder on Recalbox (persistent, visible from the Windows
+#: network share: \\\\RECALBOX\\share\\system\\rfid).
 DEFAULT_HOME = "/recalbox/share/system/rfid"
 
-#: Fichier d'etat ecrit par le frontend Recalbox a chaque evenement.
+#: State file written by the Recalbox frontend on every event.
 ES_STATE_FILE = "/tmp/es_state.inf"
 
-#: Commande UDP officielle du frontend Recalbox (Recalbox 9 et suivants).
+#: Official UDP command of the Recalbox frontend (Recalbox 9 and later).
 ES_UDP_HOST = "127.0.0.1"
 ES_UDP_PORT = 1337
 
-#: Verrou empechant deux instances du service (tmpfs, remis a zero au reboot).
+#: Lock preventing two service instances (tmpfs, reset at reboot).
 LOCK_FILE = "/var/run/rfid-launcher.lock"
 
-#: Nom du fichier de configuration.
+#: Configuration file name.
 CONFIG_FILENAME = "config.ini"
 
-#: Etat du reglage automatique du lecteur (ecrit par le service, lu par l'agent).
+#: Automatic reader tuning state (written by the service, read by the agent).
 CALIBRATION_FILENAME = "calibration.json"
 
-#: Valeurs d'avant le reglage automatique (pour revenir en arriere).
+#: Values from before the automatic tuning (to go back).
 CALIBRATION_BACKUP_FILENAME = "calibration-backup.json"
 
-#: Nom du fichier de base de donnees.
+#: Database file name.
 DB_FILENAME = "tags.json"
 
-#: Dossier des journaux.
+#: Log folder.
 LOG_DIRNAME = "logs"
 
-#: Jeton d'acces de l'agent WebSocket (dans le dossier d'installation).
+#: Legacy WebSocket agent access token (in the install folder; removed at startup).
 TOKEN_FILENAME = "token.txt"
 
-#: File de commandes entre l'agent WebSocket et le service RFID.
+#: Command queue between the WebSocket agent and the RFID service.
 AGENT_COMMAND_FILENAME = "agent-command.json"
-#: Resultat du test du lecteur (ecrit par le service, lu par l'agent).
+#: Reader test result (written by the service, read by the agent).
 READER_TEST_FILENAME = "reader-test.json"
 
-#: Port par defaut de l'agent WebSocket.
+#: Default port of the WebSocket agent.
 AGENT_PORT = 8765
 
 
 def home_dir() -> str:
-    """Retourne le dossier de travail (surchargeable avec RFID_HOME)."""
+    """Returns the working folder (can be overridden with RFID_HOME)."""
     return os.environ.get("RFID_HOME", DEFAULT_HOME)
 
 

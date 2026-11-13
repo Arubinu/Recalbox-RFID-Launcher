@@ -1,4 +1,4 @@
-"""Tests de l'agent WebSocket (serveur réel, client WebSocket minimal)."""
+"""WebSocket agent tests (real server, minimal WebSocket client)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import unittest
 import zipfile
 from unittest import mock
 
-import support  # noqa: F401  (ajoute app/ au sys.path)
+import support  # noqa: F401  (adds app/ to sys.path)
 
 from rfid import wsagent
 from rfid.config import Config
@@ -200,7 +200,7 @@ class AgentTestCase(unittest.TestCase):
         return client
 
     def button_pair(self, client):
-        """Joue l'appui de 3 s : demande puis accord, comme le service."""
+        """Plays the 3 s press: request then grant, like the service."""
         request = client.call("pair.request")["request"]
         pending = wsagent.pairing.pending(self.home)
         wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0)
@@ -214,7 +214,7 @@ class AgentTestCase(unittest.TestCase):
 
 
 class SessionSecretTest(AgentTestCase):
-    """Aucun secret sur le partage : il vit dans un dossier prive (0600)."""
+    """No secret on the share: it lives in a private folder (0600)."""
 
     def session_path(self):
         return os.path.join(wsagent.pairing.state_dir(self.home), wsagent.SESSION_FILENAME)
@@ -225,7 +225,7 @@ class SessionSecretTest(AgentTestCase):
         self.assertEqual(self.agent.token_path, "")
         self.assertFalse(os.path.isfile(os.path.join(self.home, "token.txt")))
         self.assertFalse(os.path.isfile(os.path.join(self.home, "paired.ok")))
-        # ...et le secret de session est range dans le dossier prive dedie
+        # ...and the session secret is stored in the dedicated private folder
         self.assertEqual(
             os.path.dirname(self.session_path()), wsagent.pairing.state_dir(self.home)
         )
@@ -240,8 +240,7 @@ class SessionSecretTest(AgentTestCase):
             self.assertEqual(os.stat(chemin).st_mode & 0o777, 0o600)
 
     def test_secret_conserve_apres_redemarrage_du_service(self):
-        # Une mise a jour ou un redemarrage du service ne doit pas redemander
-        # l'appui sur le bouton.
+        # An update or a service restart must not ask for the button press again.
         self.start_agent()
         premier = self.agent.token
         self.agent.stop()
@@ -251,7 +250,7 @@ class SessionSecretTest(AgentTestCase):
         self.assertEqual(self.agent.token, premier)
 
     def test_secret_renouvele_apres_perte(self):
-        # Redemarrage complet (tmpfs vide) : nouveau secret, donc nouvel appui.
+        # Full reboot (empty tmpfs): new secret, so a new press.
         self.start_agent()
         premier = self.agent.token
         self.agent.stop()
@@ -271,7 +270,7 @@ class SessionSecretTest(AgentTestCase):
 
 
 class PairingTest(AgentTestCase):
-    """Appairage : aucun jeton transmissible sans appui physique sur le bouton."""
+    """Pairing: no token can be handed over without a physical press on the button."""
 
     def test_commande_pair_supprimee(self):
         self.start_agent()
@@ -280,8 +279,8 @@ class PairingTest(AgentTestCase):
         self.assertIn("bouton", str(context.exception).lower())
 
     def test_fichier_pair_request_ignore(self):
-        # Une demande deposee sur le partage ne doit RIEN donner : c'est le trou
-        # par lequel un poste du reseau pouvait recuperer le jeton sans appui.
+        # A request dropped on the share must give NOTHING: that is the hole a
+        # computer on the network could use to get the token without a press.
         with open(os.path.join(self.home, "pair-request"), "w", encoding="utf-8") as handle:
             handle.write("\n")
         self.start_agent()
@@ -310,10 +309,10 @@ class PairingTest(AgentTestCase):
 
 
 class ButtonPairingTest(AgentTestCase):
-    """Appairage confirme au bouton : demande, accord, jeton."""
+    """Pairing confirmed with the button: request, grant, token."""
 
     def fake_service(self):
-        """Simule un service en cours (le PID courant est bien vivant)."""
+        """Simulates a running service (the current PID is indeed alive)."""
         with open(os.path.join(self.home, "rfid.pid"), "w", encoding="ascii") as handle:
             handle.write(str(os.getpid()))
 
@@ -333,20 +332,20 @@ class ButtonPairingTest(AgentTestCase):
         self.assertEqual(len(request_id), 8)
         self.assertGreater(data["seconds"], 0)
 
-        # Rien tant que le bouton n'a pas ete tenu.
+        # Nothing until the button has been held.
         premier = client.call("pair.check", request=request_id)
         self.assertFalse(premier["accepted"])
         self.assertTrue(premier["pending"])
 
-        # Le service enregistre l'appui long sur la demande en cours.
+        # The service records the long press on the pending request.
         pending = wsagent.pairing.pending(self.home)
-        # L'appui commence apres la demande (marge anti-rejeu de 250 ms).
+        # The press starts after the request (250 ms anti-replay margin).
         self.assertTrue(wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0))
 
         accepte = client.call("pair.check", request=request_id)
         self.assertTrue(accepte["accepted"])
         self.assertEqual(accepte["token"], self.agent.token)
-        # L'accord est consomme : un second appel ne redonne pas le jeton.
+        # The grant is consumed: a second call does not give the token again.
         self.assertFalse(client.call("pair.check", request=request_id)["accepted"])
 
     def test_une_seule_demande_a_la_fois(self):
@@ -365,16 +364,16 @@ class ButtonPairingTest(AgentTestCase):
         client = self.client()
         premiere = client.call("pair.request")["request"]
         pending = wsagent.pairing.pending(self.home)
-        # L'appui commence apres la demande (marge anti-rejeu de 250 ms).
+        # The press starts after the request (250 ms anti-replay margin).
         self.assertTrue(wsagent.pairing.grant(self.home, pending, pending["created"] + 1.0))
-        # Un autre client demande un jeton pour un identifiant qu'il invente.
+        # Another client asks for a token for an id it makes up.
         data = client.call("pair.check", request="AUTRE123")
         self.assertFalse(data["accepted"])
         self.assertNotIn("token", data)
 
 
 class InstallerChoiceTest(AgentTestCase):
-    """Le bon install.sh est choisi : partage si plus recent, jamais de retour arriere."""
+    """The right install.sh is picked: the share if newer, never a downgrade."""
 
     def prepare(self, installed, shared):
         source = os.path.join(self.tmp, "share-src")
@@ -491,8 +490,8 @@ class TagsTest(AgentTestCase):
 class InstallTest(AgentTestCase):
     def setUp(self):
         super().setUp()
-        # Le fil d'installation continue apres la reponse : on neutralise le
-        # redemarrage de l'agent pour toute la duree des tests.
+        # The install thread goes on after the answer: the agent restart is
+        # disabled for the whole duration of the tests.
         self._after_patch = mock.patch.object(
             wsagent.Agent, "_after_install", lambda self, client: None
         )
@@ -580,7 +579,7 @@ class InstallTest(AgentTestCase):
 
 
 class InstallSkipTest(AgentTestCase):
-    """Une installation sans changement de version ne doit rien relancer."""
+    """An installation without a version change must restart nothing."""
 
     def setUp(self):
         super().setUp()
@@ -594,7 +593,7 @@ class InstallSkipTest(AgentTestCase):
         super().tearDown()
 
     def prepare(self, installed, shared, service, running_service=True):
-        """Prepare le dossier source, le programme installe et l'etat du service."""
+        """Prepares the source folder, the installed program and the service state."""
         source = os.path.join(self.tmp, "share-src")
         os.makedirs(os.path.join(source, "app"), exist_ok=True)
         for base, version in ((source, shared), (self.home, installed)):
@@ -682,7 +681,7 @@ class InstallSkipTest(AgentTestCase):
 
 
 class RestartAfterInstallTest(AgentTestCase):
-    """Apres une installation, le service doit recharger le nouveau code."""
+    """After an installation, the service must reload the new code."""
 
     def setUp(self):
         super().setUp()
@@ -712,7 +711,7 @@ class RestartAfterInstallTest(AgentTestCase):
 
 
 class ReaderTestCommandTest(AgentTestCase):
-    """Le test du lecteur passe par le service (seul proprietaire du bus SPI)."""
+    """The reader test goes through the service (sole owner of the SPI bus)."""
 
     def test_refuse_sans_service(self):
         client = self.authenticated_client()
@@ -724,7 +723,7 @@ class ReaderTestCommandTest(AgentTestCase):
         client = self.authenticated_client()
         with self.assertRaises(WsError):
             client.call("reader.test", seconds="beaucoup")
-        # duree absurde mais service arrete : le refus vient du service
+        # absurd duration but service stopped: the refusal comes from the service
         with self.assertRaises(WsError):
             client.call("reader.test", seconds=500)
 
@@ -755,7 +754,7 @@ class ServiceTest(AgentTestCase):
 
 
 class ConfigCommandTest(AgentTestCase):
-    """Options exposees dans l'onglet dedie de la page."""
+    """Settings exposed in the page's Settings tab."""
 
     def setUp(self):
         super().setUp()
@@ -782,7 +781,7 @@ class ConfigCommandTest(AgentTestCase):
         client = self.authenticated_client()
         data = client.call("config.set", values={"launch.stop_on_remove": "1"})
         self.assertEqual(data["saved"], ["launch.stop_on_remove"])
-        self.assertFalse(data["reloaded"])  # service arrete : rien a recharger
+        self.assertFalse(data["reloaded"])  # service stopped: nothing to reload
         self.assertTrue(Config(self.config_path).get_bool("launch", "stop_on_remove", False))
         apres = client.call("config.get")
         valeurs = {o["full"]: o["value"] for o in apres["options"]}
@@ -857,7 +856,7 @@ class ConfigCommandTest(AgentTestCase):
 
 
 class CalibrationCommandTest(AgentTestCase):
-    """Mesure automatique du lecteur : lancement, suivi, annulation, remise a zero."""
+    """Automatic reader measurement: start, follow-up, cancel, reset."""
 
     def setUp(self):
         super().setUp()
@@ -935,7 +934,7 @@ class CalibrationCommandTest(AgentTestCase):
     def test_reinitialisation(self):
         self.service_actif()
         client = self.authenticated_client()
-        # Le service ecrit l'etat « reset » pendant que l'agent attend.
+        # The service writes the "reset" state while the agent waits.
         def repondre(*args, **kwargs):
             self.ecrire_etat(phase="reset", applied={"rfid.poll_interval_ms": ["80", "150"]})
             return None
@@ -952,7 +951,7 @@ class CalibrationCommandTest(AgentTestCase):
 
 
 def _frame(opcode, payload, fin=True):
-    """Trame client masquee, comme l'envoie un navigateur."""
+    """Masked client frame, as a browser sends it."""
     mask = b"\x0a\x0b\x0c\x0d"
     head = bytearray([(0x80 if fin else 0) | opcode])
     length = len(payload)
@@ -968,7 +967,7 @@ def _frame(opcode, payload, fin=True):
 
 
 class FragmentationTest(unittest.TestCase):
-    """Chromium decoupe les gros messages : l'agent doit les reassembler."""
+    """Chromium splits large messages: the agent must reassemble them."""
 
     def setUp(self):
         self.left, self.right = socket.socketpair()

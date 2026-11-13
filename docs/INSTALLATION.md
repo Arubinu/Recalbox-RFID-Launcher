@@ -11,7 +11,7 @@ lancer un script. Comptez 5 minutes.
 * Le **partage réseau** activé : `RÉSEAU` > `PARTAGE SMB` > `ON` (activé par
   défaut) : c'est par lui que le programme arrive sur la Recalbox.
 * Le montage du Raspberry Pi et le câblage du lecteur : voir
-  [`CABLAGE.md`](CABLAGE.md).
+  [`WIRING.md`](WIRING.md).
 
 Mot de passe par défaut du compte `root` : `recalboxroot`.
 

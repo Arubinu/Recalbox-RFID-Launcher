@@ -8,7 +8,7 @@ et affichée par `rfidctl version`.
 
 ### Ajouté — installation complète depuis la page, sans redémarrage (Recalbox 10)
 
-* La page dépose aussi `userscripts/manual/Installer-lecteur-RFID.sh`. Recalbox 10
+* La page dépose aussi `userscripts/manual/Install-RFID-reader.sh`. Recalbox 10
   liste ce dossier dans **START → réglages avancés → scripts utilisateur** et le
   relit à chaque ouverture du menu : on lance l'installation avec la manette,
   sans redémarrer. Le script démarre, détaché, le script permanent habituel
@@ -457,7 +457,7 @@ declarer « badge retire » juste apres un lancement (donc sans rien arreter).
 
 * **Le schéma de câblage suit le thème** : ses couleurs sont des variables CSS
   (`--c-…`), donc il est sombre sur page sombre et clair sur page claire. Le
-  fichier `docs/cablage.svg` embarque sa propre feuille de style et suit
+  fichier `docs/wiring.svg` embarque sa propre feuille de style et suit
   `prefers-color-scheme`, y compris dans le README.
 * La section **« Comment brancher le lecteur et le bouton »** est de nouveau
   **repliée au départ** et occupe **toute la largeur** de l'onglet Matériel.
@@ -535,12 +535,12 @@ declarer « badge retire » juste apres un lancement (donc sans rien arreter).
 ### Ajouté
 
 * **Schéma de câblage, en image.** Une figure générée par
-  `python tools/build_cablage.py` montre les neuf broches du connecteur à
+  `python tools/build_wiring.py` montre les neuf broches du connecteur à
   utiliser, les huit broches du module RC522 en face, et le bouton poussoir.
   Elle est visible :
   * dans l'onglet **Matériel** de `installer.html` (replié sous
     « Le branchement, en image »), sans aucune ressource externe ;
-  * dans le `README.md` et `docs/CABLAGE.md` (`docs/cablage.svg`).
+  * dans le `README.md` et `docs/WIRING.md` (`docs/wiring.svg`).
 
 ### Corrigé
 
@@ -1199,7 +1199,7 @@ Mesures sur un PC réel, port joignable mais partage absent (pire cas) :
   définie et le mot de passe Samba devient **vide** (Windows le refuse).
   Procédure : `grep default_password recalbox.conf`, puis `smbpasswd -a root`
   (et `pdbedit -L` pour vérifier). Table des codes `net use` ajoutée dans
-  `docs/DEPANNAGE.md`.
+  `docs/TROUBLESHOOTING.md`.
 
 ## [1.5.0]
 
@@ -1225,7 +1225,7 @@ Mesures sur un PC réel, port joignable mais partage absent (pire cas) :
 ### Corrigé / documenté
 
 * **`\\RECALBOX\share` demande un identifiant** : explication ajoutée dans la
-  page de copie, le README, `docs/INSTALLATION.md` et `docs/DEPANNAGE.md`.
+  page de copie, le README, `docs/INSTALLATION.md` et `docs/TROUBLESHOOTING.md`.
   Windows 11 (24H2+) refuse par défaut les sessions invitées : utiliser le compte
   Recalbox **`root` / `recalboxroot`**, ou autoriser les ouvertures de session
   invité non sécurisées
@@ -1374,4 +1374,4 @@ Première version publiable.
 * Recalbox **9** minimum pour le lancement des jeux (le fil « UDPCommand » du
   frontend n'existe pas avant).
 * Pas de notification à l'écran : Recalbox n'expose aucune API de message pour
-  les scripts (voir `docs/DEPANNAGE.md`, section 8).
+  les scripts (voir `docs/TROUBLESHOOTING.md`, section 8).

@@ -1,11 +1,11 @@
 """Recalbox RFID Launcher.
 
-Scannez un badge RFID (lecteur MFRC522 / RC522 sur le bus SPI du Raspberry Pi)
-et le jeu Recalbox associe se lance. Un bouton poussoir permet d'associer un
-badge au jeu actuellement selectionne dans l'interface Recalbox.
+Scan an RFID badge (MFRC522 / RC522 reader on the Raspberry Pi SPI bus) and
+the matching Recalbox game starts. A push button pairs a badge with the game
+currently selected in the Recalbox interface.
 
-Le projet n'utilise que la bibliotheque standard Python 3 : aucune installation
-de paquet n'est necessaire sur Recalbox.
+The project only uses the Python 3 standard library: no package needs to be
+installed on Recalbox.
 """
 
 __version__ = "2.9.0"

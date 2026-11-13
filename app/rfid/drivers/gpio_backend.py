@@ -1,15 +1,15 @@
-"""Acces aux broches GPIO : bouton poussoir et reset du lecteur RC522.
+"""GPIO pin access: push button and RC522 reader reset.
 
-Trois implementations sont essayees dans cet ordre :
+Three implementations are tried in this order:
 
-1. ``RPi.GPIO`` (fourni par Recalbox, module ``rpi-lgpio``) : lecture et pull-up
-   interne en une ligne, c'est le mode normal sur Raspberry Pi 3 ;
-2. ``lgpio`` (bibliotheque bas niveau egalement presente) ;
-3. ``/sys/class/gpio`` (dernier recours, sans possibilite de configurer le
-   pull-up interne : il faut alors une resistance externe).
+1. ``RPi.GPIO`` (shipped with Recalbox, ``rpi-lgpio`` module): reading and
+   internal pull-up in one line, the normal mode on a Raspberry Pi 3;
+2. ``lgpio`` (low-level library, also present);
+3. ``/sys/class/gpio`` (last resort, the internal pull-up cannot be set: an
+   external resistor is then needed).
 
-Le bouton est cable entre la broche et GND : avec le pull-up interne, la broche
-lit 1 au repos et 0 quand on appuie, sans aucune resistance a souder.
+The button is wired between the pin and GND: with the internal pull-up, the
+pin reads 1 at rest and 0 when pressed, without any resistor to solder.
 """
 
 from __future__ import annotations
@@ -20,14 +20,14 @@ import time
 
 
 class GpioError(Exception):
-    """Erreur d'acces aux broches GPIO."""
+    """GPIO pin access error."""
 
 
 # ---------------------------------------------------------------------------
-# Repertoire de travail sur (lgpio cree ses tubes de notification dans le
-# repertoire courant). Sur Recalbox, le service demarre avec PWD=/ qui est en
-# lecture seule : sans ce repli, l'import de lgpio/RPi.GPIO echoue et on tombe
-# sur le backend sysfs, refuse par les noyaux recents (erreur 22 a l'export).
+# Safe working directory (lgpio creates its notification pipes in the
+# current directory). On Recalbox, the service starts with PWD=/ which is
+# read-only: without this fallback, importing lgpio/RPi.GPIO fails and the
+# sysfs backend is used, which recent kernels refuse (error 22 on export).
 # ---------------------------------------------------------------------------
 def _writable_dir() -> str:
     candidates = [os.environ.get("RFID_GPIO_DIR"), "/tmp", os.environ.get("TMPDIR"), "/run"]
@@ -47,7 +47,7 @@ def _writable_dir() -> str:
 
 @contextlib.contextmanager
 def _workdir(folder: str):
-    """Change temporairement de repertoire (et de HOME au besoin)."""
+    """Temporarily changes the directory (and HOME when needed)."""
     previous_dir = os.getcwd()
     previous_home = os.environ.get("HOME", "")
     try:
@@ -71,8 +71,8 @@ class RpiGpioBackend:
 
     def __init__(self):
         try:
-            # L'import lui-meme ouvre les tubes de notification de lgpio : il doit
-            # se faire depuis un repertoire inscriptible.
+            # The import itself opens the lgpio notification pipes: it must
+            # happen from a writable directory.
             with _workdir(_writable_dir()):
                 import RPi.GPIO as GPIO  # type: ignore
         except ImportError as exc:
@@ -150,7 +150,7 @@ class LgpioBackend:
 
 
 # ---------------------------------------------------------------------------
-# sysfs (dernier recours)
+# sysfs (last resort)
 # ---------------------------------------------------------------------------
 class SysfsBackend:
     name = "/sys/class/gpio"
@@ -229,7 +229,7 @@ class SysfsBackend:
 
 
 class NullBackend:
-    """Aucune broche disponible (bouton desactive)."""
+    """No pin available (button disabled)."""
 
     name = "aucune"
 
@@ -253,7 +253,7 @@ BACKENDS = ("rpi", "lgpio", "sysfs")
 
 
 def open_gpio(prefer: str = "auto", log=None):
-    """Ouvre le premier backend GPIO disponible."""
+    """Opens the first available GPIO backend."""
     order = list(BACKENDS)
     prefer = (prefer or "auto").lower()
     if prefer in order:

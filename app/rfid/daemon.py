@@ -1,4 +1,4 @@
-"""Service principal : boucle de lecture du lecteur et du bouton."""
+"""Main service: reading loop for the reader and the button."""
 
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ from . import pairing
 from .logutil import Logger
 from .storage import TagStore
 
-try:  # fcntl n'existe pas sous Windows (mode simulation sur PC)
+try:  # fcntl does not exist on Windows (simulation mode on a PC)
     import fcntl
-except ImportError:  # pragma: no cover - depend de la plateforme
+except ImportError:  # pragma: no cover - platform dependent
     fcntl = None
 
 
@@ -54,7 +54,7 @@ def recalbox_version() -> str:
 
 
 def write_json_atomic(path: str, payload: dict) -> None:
-    """Ecrit un petit fichier JSON de facon atomique."""
+    """Writes a small JSON file atomically."""
     directory = os.path.dirname(path) or "."
     try:
         os.makedirs(directory, exist_ok=True)
@@ -75,7 +75,7 @@ def read_status(home: str = None):
 
 
 def process_alive(pid: int) -> bool:
-    """True si le PID existe et correspond bien a notre service."""
+    """True if the PID exists and really is our service."""
     if pid <= 0:
         return False
     try:
@@ -85,7 +85,7 @@ def process_alive(pid: int) -> bool:
     except OSError:
         pass
 
-    if os.name == "nt":  # developpement sur PC (pas de /proc)
+    if os.name == "nt":  # development on a PC (no /proc)
         try:
             import ctypes
 
@@ -97,7 +97,7 @@ def process_alive(pid: int) -> bool:
         except Exception:  # noqa: BLE001
             return False
 
-    # Systemes POSIX sans /proc : existence du processus uniquement.
+    # POSIX systems without /proc: process existence only.
     try:
         os.kill(pid, 0)
     except OSError:
@@ -114,7 +114,7 @@ def read_pid(home: str = None) -> int:
 
 
 def acquire_lock(path: str = LOCK_FILE):
-    """Verrou exclusif : empeche deux instances (ES relance les scripts permanents)."""
+    """Exclusive lock: prevents two instances (ES restarts permanent scripts)."""
     if fcntl is None:
         return -1
     for candidate in (path, os.path.join(tempfile.gettempdir(), "rfid-launcher.lock")):
@@ -149,7 +149,7 @@ def release_lock(descriptor: int) -> None:
 
 
 class Service:
-    """Assemble materiel, stockage et logique metier."""
+    """Puts together hardware, storage and business logic."""
 
     def __init__(self, cfg: Config, log: Logger, home: str = None, db: str = None):
         self.cfg = cfg
@@ -183,15 +183,15 @@ class Service:
         self._reader_test = None
         self._calibration = None
         self._calibration_signature = None
-        #: Passe a True apres un test/mesure : le badge deja pose est adopte
-        #: (verrouille) au lieu d'etre pris pour un nouveau badge.
-        #: L'adoption expire : un badge pose plus tard doit agir normalement.
+        #: Set to True after a test/measurement: the badge already on the reader
+        #: is adopted (locked) instead of being taken for a new badge.
+        #: The adoption expires: a badge placed later must act normally.
         self._adopt_next_read = False
         self._adopt_until = 0.0
         self._status_signature = None
         self._status_written = 0.0
 
-    # ------------------------------------------------------------------ mise en place
+    # ------------------------------------------------------------------ setup
     def setup(self) -> bool:
         self.log.info(
             "Recalbox RFID Launcher %s (Python %s) -- Recalbox %s"
@@ -236,7 +236,7 @@ class Service:
             self.reader = build_reader(self.cfg, self.log, self.gpio)
             self.reader.start()
             return True
-        except Exception as exc:  # noqa: BLE001 - on retente plus tard
+        except Exception as exc:  # noqa: BLE001 - retried later
             now = time.monotonic()
             if now - self.last_error_at > 30:
                 self.last_error_at = now
@@ -264,7 +264,7 @@ class Service:
         self._install_signals()
         try:
             self.setup()
-        except Exception as exc:  # noqa: BLE001 - configuration illisible, disque plein...
+        except Exception as exc:  # noqa: BLE001 - unreadable configuration, disk full...
             self.log.error("Initialisation impossible : %s" % exc)
             self._shutdown(lock)
             return 2
@@ -278,8 +278,8 @@ class Service:
             while self.running:
                 now = time.monotonic()
 
-                # Le lecteur peut arriver plus tard (SPI active apres coup) : on
-                # reessaie regulierement sans bloquer le bouton ni l'agent.
+                # The reader may show up later (SPI enabled afterwards): retry
+                # regularly without blocking the button or the agent.
                 if self.reader is None and now >= next_reader:
                     next_reader = now + 2.0
                     self._open_reader()
@@ -288,7 +288,7 @@ class Service:
 
                 if (self.reader is not None and self._reader_test is None
                         and self._calibration is None and now >= next_slot):
-                    # Relu a chaque tour : le reglage s'applique sans redemarrage.
+                    # Read again at each turn: the setting applies without a restart.
                     interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
                     next_slot = now + interval
                     uid = None
@@ -305,9 +305,8 @@ class Service:
                     if gesture:
                         self._handle_gesture(gesture)
 
-                # Le badge est-il toujours pose ? La lecture peut echouer ou etre
-                # filtree (anti-rebond) : seule une absence REPONDUE par le
-                # lecteur compte.
+                # Is the badge still there? The read may fail or be filtered
+                # (debounce): only an absence ANSWERED by the reader counts.
                 if self._calibration is None:
                     self._check_presence()
                     self._service_stop()
@@ -320,7 +319,7 @@ class Service:
 
                 try:
                     self.store.reload_if_changed()
-                except Exception as exc:  # noqa: BLE001 - base modifiee a la main
+                except Exception as exc:  # noqa: BLE001 - database edited by hand
                     self.log.warning("Relecture de la base impossible : %s" % exc)
 
                 if now >= next_status:
@@ -334,17 +333,17 @@ class Service:
 
     # ------------------------------------------------------------------ badge
     def _badge_seen(self, uid: str) -> None:
-        """Un badge est lu. Un badge laisse en place ne refait pas l'action."""
+        """A badge is read. A badge left in place does not repeat the action."""
         self.last_uid = uid
         self.last_uid_at = time.time()
         maintenant = time.monotonic()
         self._last_read_at = maintenant
         if getattr(self, "_adopt_next_read", False) and maintenant <= getattr(
                 self, "_adopt_until", 0.0):
-            # Un test ou une mesure vient d'interroger le lecteur lui-meme : le
-            # badge pose a la fin n'a jamais ete vu par la boucle. Sans cela il
-            # passait pour un nouveau badge et lancait le jeu juste apres la
-            # mesure.
+            # A test or a measurement has just queried the reader itself: the
+            # badge left at the end was never seen by the loop. Without this it
+            # looked like a new badge and started the game right after the
+            # measurement.
             self._adopt_next_read = False
             self._active_uid = uid
             self._active_seen_at = maintenant
@@ -355,10 +354,10 @@ class Service:
                     "Badge %s deja pose : il n'agit pas (retirez-le pour le rescanner)" % uid
                 )
             return
-        # Trop tard : le badge peut avoir ete change entre-temps, il agit.
+        # Too late: the badge may have been swapped meanwhile, it acts.
         self._adopt_next_read = False
         if uid == self._active_uid:
-            # Le badge est toujours la : on rafraichit sa presence, sans agir.
+            # The badge is still there: its presence is refreshed, without acting.
             self._active_seen_at = maintenant
             self._absent_since = None
             self._absent_hits = 0
@@ -371,31 +370,30 @@ class Service:
         self.controller.on_badge(uid)
         self._action_at = time.monotonic()
         if getattr(self.controller, "last_action", "") == "launched":
-            # Retenu pour l'option « quitter le jeu quand le badge est retire ».
+            # Kept for the "quit the game when the badge is removed" option.
             self._launched_uid = uid
 
-    #: Duree (secondes) sans badge vu avant de conclure au retrait.
+    #: Time (seconds) without seeing the badge before concluding it was removed.
     ABSENCE_MIN_S = 2.0
-    #: Delai de grace apres une action : un lancement ne doit jamais etre defait.
+    #: Grace delay after an action: a launch must never be undone.
     GRACE_ACTION_S = 3.0
-    #: Duree maximale (secondes) d'attente du demarrage de l'emulateur.
+    #: Maximum time (seconds) to wait for the emulator to start.
     STOP_WAIT_S = 6.0
 
     def _check_presence(self) -> None:
-        """Le badge verrouille est-il toujours pose sur le lecteur ?
+        """Is the locked badge still on the reader?
 
-        C'est le lecteur qui repond (REQA ou WUPA), jamais le silence d'une
-        lecture ratee : une lecture peut echouer ou etre filtree par
-        l'anti-rebond sans que le badge ait bouge.
+        The reader answers (REQA or WUPA), never the silence of a failed read: a
+        read may fail or be filtered by the debounce without the badge moving.
         """
         if self._active_uid is None or self.reader is None:
             return
-        # Pendant un test du lecteur, c'est le test qui interroge le module.
+        # During a reader test, the test is the one querying the module.
         if (getattr(self, "_reader_test", None) is not None
                 or getattr(self, "_calibration", None) is not None):
             return
         maintenant = time.monotonic()
-        # Une lecture positive recente suffit : pas besoin d'interroger a nouveau.
+        # A recent positive read is enough: no need to query again.
         if maintenant - self._last_read_at < 0.6:
             self._absent_since = None
             self._absent_hits = 0
@@ -404,10 +402,10 @@ class Service:
             return
         try:
             verdict = self.reader.tag_present()
-        except Exception:  # noqa: BLE001 - lecteur retire a chaud
+        except Exception:  # noqa: BLE001 - reader unplugged while running
             verdict = None
         if verdict is None:
-            # Lecteur muet : on ne peut rien conclure sur la presence du badge.
+            # Silent reader: nothing can be concluded about the badge presence.
             return
         if verdict:
             self._absent_since = None
@@ -426,7 +424,7 @@ class Service:
         return max(self.ABSENCE_MIN_S, float(self.rearm_absent_ms) / 1000.0)
 
     def _release_latch(self) -> None:
-        """Badge retire : on libere le verrou et, si demande, on quitte le jeu."""
+        """Badge removed: the lock is released and, if requested, the game is quit."""
         badge = self._active_uid
         lance = self._launched_uid
         self._active_uid = None
@@ -435,20 +433,20 @@ class Service:
         self._launched_uid = None
         if not (self._stop_on_remove and lance and badge):
             return
-        # L'emulateur peut encore demarrer : on laisse le service le constater
-        # dans la boucle au lieu de bloquer la lecture des badges.
+        # The emulator may still be starting: let the service notice it in
+        # the loop instead of blocking the badge reading.
         self._stop_pending = (badge, time.monotonic() + self.STOP_WAIT_S)
         if self.log:
             self.log.info("Badge %s retire : arret du jeu demande" % badge)
 
     def _service_stop(self) -> None:
-        """Arrete le jeu quand il tourne vraiment (jamais EmulationStation)."""
+        """Stops the game when one is really running (never EmulationStation)."""
         if self._stop_pending is None or self.controller is None:
             return
         badge, echeance = self._stop_pending
         try:
             en_cours = bool(self.controller.game_running())
-        except Exception:  # noqa: BLE001 - jamais bloquant
+        except Exception:  # noqa: BLE001 - never blocking
             en_cours = False
         if not en_cours:
             if time.monotonic() < echeance:
@@ -460,7 +458,7 @@ class Service:
         self._stop_pending = None
         try:
             arrete = bool(self.controller.stop_game())
-        except Exception as exc:  # noqa: BLE001 - jamais bloquant
+        except Exception as exc:  # noqa: BLE001 - never blocking
             arrete = False
             if self.log:
                 self.log.warning("Arret du jeu impossible : %s" % exc)
@@ -469,12 +467,12 @@ class Service:
                 "Badge %s retire : %s" % (badge, "jeu arrete" if arrete else "arret impossible")
             )
 
-    # ------------------------------------------------------------------ bouton
+    # ------------------------------------------------------------------ button
     def _track_press(self) -> None:
         """Memorise l'instant (horloge murale) ou l'appui a commence."""
         try:
             pressed = self.button.is_pressed()
-        except Exception:  # noqa: BLE001 - bouton retire a chaud
+        except Exception:  # noqa: BLE001 - button unplugged while running
             return
         if pressed and self._press_started_at is None:
             self._press_started_at = time.time()
@@ -482,16 +480,16 @@ class Service:
             self._press_started_at = None
 
     def _arm_adoption(self, secondes: float = 10.0) -> None:
-        """Le prochain badge lu est verrouille sans agir (apres une mesure).
+        """The next badge read is locked without acting (after a measurement).
 
-        L'adoption expire au bout de quelques secondes : un badge pose bien
-        apres la mesure doit se comporter normalement.
+        The adoption expires after a few seconds: a badge placed well after the
+        measurement must behave normally.
         """
         self._adopt_next_read = True
         self._adopt_until = time.monotonic() + secondes
 
     def _forget_latch(self) -> None:
-        """Oublie le badge pose : un mode arme autorise a le representer."""
+        """Forgets the badge on the reader: an armed mode allows presenting it again."""
         self._active_uid = None
         self._absent_since = None
         self._absent_hits = 0
@@ -500,11 +498,11 @@ class Service:
         self._adopt_until = 0.0
 
     def _handle_gesture(self, gesture: str) -> None:
-        """Gere un geste recu au relachement (court ou tres long)."""
+        """Handles a gesture received on release (short or very long)."""
         request = None
         try:
             request = pairing.pending(self.home)
-        except Exception as exc:  # noqa: BLE001 - fichier d'etat illisible
+        except Exception as exc:  # noqa: BLE001 - unreadable state file
             if self.log:
                 self.log.warning("Demande d'appairage illisible : %s" % exc)
 
@@ -526,15 +524,15 @@ class Service:
                 return
 
         if gesture != "short":
-            # "hold" sans demande en cours ne fait rien ; le geste "long"
-            # n'existe plus (l'effacement se fait depuis l'interface web).
+            # "hold" without a pending request does nothing; the "long" gesture
+            # no longer exists (erasing is done from the web interface).
             return
         self._forget_latch()
         self.controller.on_button("short")
 
     # ----------------------------------------------------------- commandes agent
     def _consume_agent_command(self) -> None:
-        """Execute une commande deposee par l'agent WebSocket (fichier JSON)."""
+        """Runs a command dropped by the WebSocket agent (JSON file)."""
         path = os.path.join(self.home, AGENT_COMMAND_FILENAME)
         try:
             info = os.stat(path)
@@ -580,9 +578,9 @@ class Service:
         else:
             self.log.warning("Commande agent inconnue : %s" % command)
 
-    # ------------------------------------------------- reglage automatique
+    # ------------------------------------------------- automatic tuning
     def _start_calibration(self) -> None:
-        """Demarre la sequence de mesure du lecteur (jamais bloquante)."""
+        """Starts the reader measurement sequence (never blocking)."""
         self._calibration = {
             "phase": "speed",
             "instruct": "",
@@ -610,7 +608,7 @@ class Service:
         self._publish_calibration()
 
     def _calibration_step(self) -> None:
-        """Avance d'un cran dans la sequence (appelee a chaque tour de boucle)."""
+        """Moves the sequence one step forward (called at each loop turn)."""
         etat = self._calibration
         if etat is None:
             return
@@ -636,7 +634,7 @@ class Service:
             return
         self._publish_calibration()
 
-    # -- phase 1 : quelle vitesse de bus tient vraiment ? ------------------
+    # -- phase 1: which bus speed really holds? ----------------------------
     def _probe_speed(self, vitesse: int) -> bool:
         puce = None
         try:
@@ -649,7 +647,7 @@ class Service:
                 if puce.read_version() != reference:
                     return False
             return True
-        except Exception:  # noqa: BLE001 - une vitesse qui echoue est eliminee
+        except Exception:  # noqa: BLE001 - a failing speed is ruled out
             return False
         finally:
             try:
@@ -671,8 +669,8 @@ class Service:
             self._finish_calibration("spi_failed")
             return
         mesures["best_speed"] = meilleure
-        # Le sondage a touche aux registres du module : on reinitialise le
-        # lecteur du service avant de continuer.
+        # The probe touched the module registers: the service reader is
+        # reset before going on.
         try:
             self.reader.start()
         except Exception as exc:  # noqa: BLE001
@@ -684,7 +682,7 @@ class Service:
         etat["instruct"] = "pose_badge"
         etat["deadline"] = time.monotonic() + 60.0
 
-    # -- phase 2 : duree reelle d'une lecture (badge pose) -----------------
+    # -- phase 2: real duration of a read (badge on the reader) ------------
     def _badge_is_there(self) -> bool:
         try:
             return self.reader.tag_present() is True
@@ -718,7 +716,7 @@ class Service:
         etat["instruct"] = "hold_badge"
         etat["deadline"] = time.monotonic() + 20.0
 
-    # -- phase 3 : REQA et WUPA repondent-ils ? ----------------------------
+    # -- phase 3: do REQA and WUPA answer? ----------------------------
     def _calibration_presence(self, etat) -> None:
         if not self._badge_is_there():
             if time.monotonic() > etat["deadline"]:
@@ -755,7 +753,7 @@ class Service:
         etat["absences"] = 0
         etat["repose_since"] = None
 
-    # -- phase 4 : latence de retrait (badge a retirer) --------------------
+    # -- phase 4: removal latency (badge to remove) ------------------------
     def _calibration_remove(self, etat) -> None:
         maintenant = time.monotonic()
         try:
@@ -783,7 +781,7 @@ class Service:
         etat["deadline"] = time.monotonic() + 60.0
         etat["repose_since"] = None
 
-    # -- phase 5 : le badge est-il vu tout de suite ? ----------------------
+    # -- phase 5: is the badge seen right away? ----------------------
     def _calibration_reinsert(self, etat) -> None:
         maintenant = time.monotonic()
         try:
@@ -814,7 +812,7 @@ class Service:
 
     # -- fin, application, publication ------------------------------------
     def _finish_calibration(self, erreur: str = "") -> None:
-        """Termine la sequence : applique les reglages mesures, ou rien."""
+        """Ends the sequence: applies the measured settings, or nothing."""
         etat = self._calibration
         if etat is None:
             return
@@ -855,7 +853,7 @@ class Service:
         self._publish_calibration(etat)
 
     def _apply_calibration_settings(self, reglages: dict) -> dict:
-        """Enregistre les valeurs mesurees et rouvre le lecteur a la bonne vitesse."""
+        """Saves the measured values and reopens the reader at the right speed."""
         avant = {}
         for cle in reglages:
             section, nom = cle.split(".", 1)
@@ -866,13 +864,13 @@ class Service:
                 {"values": avant, "at": self._now_text()},
             )
             self.cfg.write_values(reglages)
-        except Exception as exc:  # noqa: BLE001 - on ne casse rien
+        except Exception as exc:  # noqa: BLE001 - nothing must break
             if self.log:
                 self.log.error("Reglages non enregistres : %s" % exc)
             return {}
         self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
         if not self._reopen_reader_at_speed():
-            # La vitesse mesuree se comporte mal : on revient a la valeur sure.
+            # The measured speed misbehaves: back to the safe value.
             if self.log:
                 self.log.warning(
                     "Vitesse %s inutilisable : retour a %s"
@@ -885,7 +883,7 @@ class Service:
         return {cle: [avant[cle], reglages[cle]] for cle in reglages}
 
     def _reopen_reader_at_speed(self) -> bool:
-        """Rouvre le lecteur avec la configuration courante et verifie qu'il repond."""
+        """Reopens the reader with the current configuration and checks it answers."""
         if self.reader is not None:
             try:
                 self.reader.close()
@@ -901,7 +899,7 @@ class Service:
         return bool(version) and version != 0xFF
 
     def _reset_calibration_settings(self) -> None:
-        """Remet les trois reglages du lecteur a leur valeur d'origine."""
+        """Resets the three reader settings to their original values."""
         avant = {}
         for cle in calibration.DEFAULTS:
             section, nom = cle.split(".", 1)
@@ -943,7 +941,7 @@ class Service:
         )
 
     def _publish_calibration(self, etat: dict = None) -> None:
-        """Ecrit l'etat de la mesure (lu par la page via l'agent)."""
+        """Writes the measurement state (read by the page through the agent)."""
         etat = self._calibration if etat is None else etat
         if etat is None:
             return
@@ -977,12 +975,12 @@ class Service:
             if self.log:
                 self.log.warning("Ecriture impossible (%s) : %s" % (chemin, exc))
 
-    # ------------------------------------------------------------ test lecteur
+    # ------------------------------------------------------------ reader test
     def _now_text(self) -> str:
         return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
 
     def _start_reader_test(self, seconds: float) -> None:
-        """Demarre un test RF : une passe par tour de boucle, sans bloquer."""
+        """Starts an RF test: one pass per loop turn, without blocking."""
         seconds = max(2.0, min(15.0, float(seconds or 5)))
         try:
             os.remove(os.path.join(self.home, READER_TEST_FILENAME))
@@ -1028,14 +1026,14 @@ class Service:
                 test["errors"].append(str(exc))
             return
         if trace.get("steps"):
-            test["trace"] = trace          # derniere tentative parlante
+            test["trace"] = trace          # last meaningful attempt
         if raw:
             uid = raw.hex().upper()
             test["answers"] += 1
             if uid not in test["uids"]:
                 test["uids"].append(uid)
             return
-        # Pas d'UID complet : est-ce que la carte repond au moins (ATQA) ?
+        # No complete UID: does the card answer at least (ATQA)?
         try:
             atqa = chip.request()
             if atqa:
@@ -1118,7 +1116,7 @@ class Service:
 
     # ------------------------------------------------------------------ statut
     def _write_status(self, force: bool = False) -> None:
-        """Ecrit status.json (uniquement si utile : menage la carte SD)."""
+        """Writes status.json (only when useful: spares the SD card)."""
         controller_status = self.controller.status() if self.controller else {}
         signature = (
             self.last_uid,
@@ -1172,7 +1170,7 @@ class Service:
                     self.launcher.host = self.cfg.get("launch", "udp_host", "127.0.0.1")
                     self.launcher.port = self.cfg.get_int("launch", "udp_port", 1337)
                 self._stop_on_remove = self.cfg.get_bool("launch", "stop_on_remove", False)
-                # Reglages de lecture : relus a chaque tour de boucle.
+                # Reading settings: read again at each loop turn.
                 self.rearm_absent_ms = float(self.cfg.get_int("rfid", "rearm_absent_ms", 1200))
                 if self.reader is not None and hasattr(self.reader, "cooldown_s"):
                     self.reader.cooldown_s = max(
@@ -1201,5 +1199,5 @@ class Service:
 
 
 def run(config: Config, log: Logger, home: str = None, db: str = None) -> int:
-    """Point d'entree du service (appele par le CLI et le userscript)."""
+    """Service entry point (called by the CLI and the userscript)."""
     return Service(config, log, home=home, db=db).run()

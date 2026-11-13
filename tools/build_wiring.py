@@ -1,13 +1,13 @@
-"""Genere le schema de cablage (SVG) : page installer.html + docs/cablage.svg.
+"""Generates the wiring diagram (SVG): installer.html page + docs/wiring.svg.
 
-Le meme dessin sert aux deux endroits :
-* dans la page, en SVG inline : les couleurs viennent des variables CSS de la
-  page, donc il suit le theme clair ou sombre choisi ;
-* en fichier ``docs/cablage.svg`` : il embarque sa propre feuille de style et
-  suit ``prefers-color-scheme`` (fonctionne dans un ``<img>`` du README).
+The same drawing is used in both places:
+* in the page, as inline SVG: the colours come from the page CSS variables,
+  so it follows the chosen light or dark theme;
+* as a ``docs/wiring.svg`` file: it carries its own style sheet and follows
+  ``prefers-color-scheme`` (works in an ``<img>`` of the README).
 
-Relancer ce script met les deux a jour ; il reinjecte aussi le schema entre les
-marqueurs de ``installer.html``.
+Running this script again updates both; it also injects the diagram again
+between the markers of ``installer.html``.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-#: Couleurs des fils : elles ne dependent pas du theme (un fil = une couleur).
+#: Wire colours: they do not depend on the theme (one wire = one colour).
 FILS = {
     "3V3": "#e03131",
     "GND": "#6c757d",
@@ -29,7 +29,7 @@ FILS = {
     "BTN": "#d6336c",
 }
 
-#: Palette du schema, par variable : surchargee par la page et par le fichier.
+#: Diagram palette, per variable: overridden by the page and by the file.
 PALETTE_CLAIR = {
     "c-bg": "#f8f9fa",
     "c-card": "#ffffff",
@@ -58,7 +58,7 @@ PALETTE_SOMBRE = {
     "c-good": "#37b26c",
 }
 
-# (cle, broche physique, nom du GPIO, nom sur le module RC522)
+# (key, physical pin, GPIO name, name on the RC522 module)
 BROCHES_PI = [
     ("3V3", 1, "3V3", "3.3V"),
     ("GND", 6, "GND", "GND"),
@@ -94,12 +94,12 @@ def esc(text: str) -> str:
 
 
 def c(nom: str) -> str:
-    """Reference a une variable de couleur du schema."""
+    """Reference to a colour variable of the diagram."""
     return "var(--%s)" % nom
 
 
 def dessin() -> list:
-    """Corps du schema, en variables CSS (donc thematisable)."""
+    """Diagram body, with CSS variables (so it can be themed)."""
     largeur, hauteur = 940, 588
     out = []
     add = out.append
@@ -117,7 +117,7 @@ def dessin() -> list:
     add('<text x="42" y="96" font-size="13" font-weight="600" fill="%s">'
         '⚠ 3,3 V uniquement : le 5 V détruit le module et la carte.</text>' % c("c-alert-ink"))
 
-    # --------------------------------------------------------- panneau du Pi
+    # --------------------------------------------------------- Pi panel
     x_pi, y_pi, w_pi, h_pi = 30, 120, 400, 356
     add('<rect x="%d" y="%d" width="%d" height="%d" rx="12" fill="%s" stroke="%s"/>'
         % (x_pi, y_pi, w_pi, h_pi, c("c-card"), c("c-line")))
@@ -147,7 +147,7 @@ def dessin() -> list:
             'text-anchor="end">%s</text>' % (x_pi + 368, y, couleur, esc(etiquette)))
         y += 32
 
-    # ----------------------------------------------------- panneau du module
+    # ----------------------------------------------------- module panel
     x_rc, y_rc, w_rc, h_rc = 462, 120, 448, 212
     add('<rect x="%d" y="%d" width="%d" height="%d" rx="12" fill="%s" stroke="%s"/>'
         % (x_rc, y_rc, w_rc, h_rc, c("c-card"), c("c-line")))
@@ -173,7 +173,7 @@ def dessin() -> list:
                 '→ non connectée</text>' % (x_rc + 110, y, c("c-faint")))
         y += 18
 
-    # -------------------------------------------------------- panneau bouton
+    # -------------------------------------------------------- button panel
     x_bt, y_bt, w_bt, h_bt = 462, 348, 448, 168
     add('<rect x="%d" y="%d" width="%d" height="%d" rx="12" fill="%s" stroke="%s"/>'
         % (x_bt, y_bt, w_bt, h_bt, c("c-card"), c("c-line")))
@@ -209,7 +209,7 @@ def dessin() -> list:
 
 
 def feuille_de_style() -> str:
-    """Style embarque du fichier autonome (suit prefers-color-scheme)."""
+    """Embedded style of the standalone file (follows prefers-color-scheme)."""
     clair = "".join("--%s:%s;" % (nom, valeur) for nom, valeur in PALETTE_CLAIR.items())
     sombre = "".join("--%s:%s;" % (nom, valeur) for nom, valeur in PALETTE_SOMBRE.items())
     return ('<style>'
@@ -220,9 +220,9 @@ def feuille_de_style() -> str:
 
 def build(standalone: bool = False) -> str:
     out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 588" width="100%" '
-           'role="img" aria-labelledby="cablage-titre" '
+           'role="img" aria-labelledby="wiring-title" '
            'font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">']
-    out.append('<title id="cablage-titre">Branchement du lecteur RC522 et du bouton '
+    out.append('<title id="wiring-title">Branchement du lecteur RC522 et du bouton '
                'poussoir sur le Raspberry Pi</title>')
     if standalone:
         out.append(feuille_de_style())
@@ -231,12 +231,12 @@ def build(standalone: bool = False) -> str:
     return "\n".join(out)
 
 
-DEBUT = "<!-- cablage:debut (genere par tools/build_cablage.py) -->"
-FIN = "<!-- cablage:fin -->"
+DEBUT = "<!-- wiring:start (generated by tools/build_wiring.py) -->"
+FIN = "<!-- wiring:end -->"
 
 
 def injecter(svg: str) -> str:
-    """Insere le schema dans installer.html entre les deux marqueurs."""
+    """Injects the diagram into installer.html between the two markers."""
     page = os.path.join(ROOT, "installer.html")
     with io.open(page, "r", encoding="utf-8") as handle:
         texte = handle.read()
@@ -250,12 +250,12 @@ def injecter(svg: str) -> str:
 
 
 def main() -> int:
-    cible = os.path.join(ROOT, "docs", "cablage.svg")
+    cible = os.path.join(ROOT, "docs", "wiring.svg")
     autonome = build(standalone=True)
     with io.open(cible, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(autonome + "\n")
     page = os.path.join(ROOT, "installer.html")
-    contenu = injecter(build(standalone=False))   # lit la page avant de l'ecrire
+    contenu = injecter(build(standalone=False))   # reads the page before writing it
     with io.open(page, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(contenu)
     print("%s : %d octets (themes clair et sombre)" % (cible, len(autonome)))

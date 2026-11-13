@@ -1,4 +1,4 @@
-"""Tests de la logique metier (association, lancement, suppression)."""
+"""Business logic tests (association, launch, deletion)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class ControllerTest(unittest.TestCase):
             clock=self.clock,
         )
 
-    # ------------------------------------------------------------------ bouton
+    # ------------------------------------------------------------------ button
     def test_appui_sans_jeu_selectionne(self):
         self.state = {}
         self.assertEqual(self.controller.on_button("short"), "no_target")
@@ -66,7 +66,7 @@ class ControllerTest(unittest.TestCase):
 
     # ------------------------------------------------------------- association
     def test_association_ne_lance_pas_le_jeu(self):
-        """Associer n'enregistre que la correspondance : aucun lancement."""
+        """Pairing only saves the mapping: no launch."""
         self.controller.on_button("short")
         self.assertEqual(self.controller.on_badge("A1B2C3D4"), "bound")
         entry = self.store.get("A1B2C3D4")
@@ -75,24 +75,24 @@ class ControllerTest(unittest.TestCase):
         self.assertEqual(entry["name"], "Super Mario World")
         self.assertEqual(self.launcher.calls, [], "l'association ne doit rien lancer")
         self.assertFalse(self.controller.armed)
-        self.assertIn("ok", self.feedback.events)      # bips de confirmation
+        self.assertIn("ok", self.feedback.events)      # confirmation beeps
 
     def test_le_scan_suivant_lance_le_jeu(self):
         self.controller.on_button("short")
         self.controller.on_badge("A1B2C3D4")
         self.launcher.calls.clear()
         avant = list(self.feedback.events)
-        # Deuxieme scan, hors mode association : lancement direct
+        # Second scan, outside association mode: direct launch
         self.assertEqual(self.controller.on_badge("A1:B2:C3:D4"), "launched")
         self.assertEqual(
             self.launcher.calls, [("snes", "/recalbox/share/roms/snes/Super Mario World.smc")]
         )
         self.assertEqual(self.store.get("A1B2C3D4")["hits"], 1)
-        # le lancement se voit a l'ecran : aucun bip supplementaire
+        # the launch is visible on screen: no extra beep
         self.assertEqual(self.feedback.events, avant)
 
     def test_ancien_reglage_ignore(self):
-        """Un `launch_after_bind = 1` laisse par une ancienne version est ignore."""
+        """A `launch_after_bind = 1` left by an older version is ignored."""
         with open(self.config.path, "w", encoding="utf-8") as handle:
             handle.write("[launch]\nlaunch_after_bind = 1\n")
         self.config.reload()
@@ -108,13 +108,13 @@ class ControllerTest(unittest.TestCase):
         self.assertEqual(self.store.count(), 0)
 
     def test_association_sur_la_fiche_d_un_jeu(self):
-        """Le frontend laisse State=playing sur une fiche : l'association marche."""
+        """The frontend leaves State=playing on a game page: pairing works."""
         self.state = dict(SELECTED_STATE, State="playing")
         self.assertEqual(self.controller.on_button("short"), "armed_associate")
         self.assertEqual(self.controller.on_badge("A1B2C3D4"), "bound")
 
     def test_journal_explique_l_absence_de_jeu(self):
-        """Le journal dit pourquoi aucun jeu n'a ete trouve (etat du frontend)."""
+        """The log says why no game was found (frontend state)."""
         journal = support.RecordingLog()
         controleur = Controller(
             self.store,
@@ -133,7 +133,7 @@ class ControllerTest(unittest.TestCase):
 
     # --------------------------------------------------------------- lancement
     def test_entree_sans_chemin_utilise_le_nom(self):
-        """Une association faite avant 2.6.5 n'a pas de chemin : on retombe sur le nom."""
+        """A pairing made before 2.6.5 has no path: fall back to the name."""
         self.store.put("A1B2C3D4", "snes", "Super Mario World.smc", "Super Mario World")
         self.controller.on_badge("A1B2C3D4")
         self.assertEqual(self.launcher.calls, [("snes", "Super Mario World.smc")])
@@ -193,7 +193,7 @@ class ControllerTest(unittest.TestCase):
 
 
 class ActionTest(ControllerTest):
-    """Action au scan : lancer le jeu, ou seulement confirmer."""
+    """Action on scan: start the game, or only confirm."""
 
     def set_action(self, value):
         with open(self.config.path, "w", encoding="utf-8") as handle:

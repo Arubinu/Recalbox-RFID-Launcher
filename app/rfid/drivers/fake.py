@@ -1,4 +1,4 @@
-"""Lecteur et bouton simules : tests unitaires et mode ``simulate``."""
+"""Simulated reader and button: unit tests and ``simulate`` mode."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections import deque
 
 
 class FakeReader:
-    """Lecteur scriptable : les UID sont pousses par ``feed()``."""
+    """Scriptable reader: UIDs are pushed with ``feed()``."""
 
     backend = "simulateur"
 
@@ -32,7 +32,7 @@ class FakeReader:
         return self.queue.popleft()
 
     def tag_present(self) -> bool:
-        """Simulateur : un badge est present si la file n'est pas vide."""
+        """Simulator: a badge is present while the queue is not empty."""
         return bool(self.queue)
 
     def close(self) -> None:
@@ -40,7 +40,7 @@ class FakeReader:
 
 
 class FakeButton:
-    """Bouton scriptable : ``press()`` pousse un geste ("short" ou "hold")."""
+    """Scriptable button: ``press()`` pushes a gesture ("short" or "hold")."""
 
     name = "simulateur"
 

@@ -1,4 +1,4 @@
-"""Tests du reglage automatique du lecteur (calculs, sans materiel)."""
+"""Automatic reader tuning tests (computations, no hardware)."""
 
 from __future__ import annotations
 

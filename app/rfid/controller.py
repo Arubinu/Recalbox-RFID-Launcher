@@ -1,8 +1,8 @@
-"""Logique metier : un badge lance un jeu, le bouton associe ou efface.
+"""Business logic: a badge starts a game, the button pairs or erases.
 
-Cette classe ne touche ni au materiel ni au systeme de fichiers : elle recoit un
-magasin de badges, un lanceur, un retour utilisateur et une source d'etat. C'est
-ce qui la rend testable sur un PC, sans Raspberry Pi.
+This class touches neither the hardware nor the file system: it receives a
+badge store, a launcher, a user feedback and a state source. That is what
+makes it testable on a PC, without a Raspberry Pi.
 """
 
 from __future__ import annotations
@@ -22,9 +22,9 @@ MODE_IDLE = ""
 MODE_ASSOCIATE = "associate"
 MODE_DELETE = "delete"
 
-# Action a effectuer quand un badge deja enregistre est scanne.
-ACTION_LAUNCH = "launch"   # lance le jeu (comportement historique)
-ACTION_NONE = "none"       # bip de confirmation et journal, sans rien lancer
+# Action to perform when an already registered badge is scanned.
+ACTION_LAUNCH = "launch"   # starts the game (historical behaviour)
+ACTION_NONE = "none"       # confirmation beep and log, without starting anything
 
 
 class Controller:
@@ -91,16 +91,16 @@ class Controller:
 
     # -------------------------------------------------------------------- tick
     def tick(self) -> str:
-        """A appeler regulierement : gere l'expiration du mode arme."""
+        """To call regularly: handles the expiry of the armed mode."""
         if self.armed and self.clock() >= self._deadline:
             self.disarm("delai depasse")
             self.feedback.timeout()
             return "expired"
         return ""
 
-    # ------------------------------------------------------------------ bouton
+    # ------------------------------------------------------------------ button
     def on_button(self, gesture: str) -> str:
-        """Appui court : associer le badge au jeu selectionne ; appui long : effacer."""
+        """Short press: pair the badge with the selected game; long press: erase."""
         if gesture == "long":
             self._arm(MODE_DELETE)
             self.feedback.armed_delete()
@@ -111,9 +111,9 @@ class Controller:
             return "armed_delete"
 
         state = self.state_provider()
-        # allow_running : le frontend laisse parfois State=playing alors qu'on est
-        # simplement sur la fiche d'un jeu (aucune partie en cours). Pour une
-        # association, c'est bien le jeu affiche que l'on veut.
+        # allow_running: the frontend sometimes leaves State=playing while the
+        # user is simply on a game's page (no game running). For an association,
+        # the displayed game is indeed the one wanted.
         target = current_target(state, allow_running=True)
         if target is None:
             self.feedback.error()
@@ -135,7 +135,7 @@ class Controller:
 
     # ------------------------------------------------------------------- badge
     def on_badge(self, uid: str) -> str:
-        """Traite la lecture d'un badge (UID hexa sans separateur)."""
+        """Handles a badge read (hex UID without separator)."""
         uid = str(uid).upper()
 
         if self.mode == MODE_ASSOCIATE and self.target is not None:
@@ -161,7 +161,7 @@ class Controller:
                 self._log("info", "Jeu deja en cours : badge %s ignore" % pretty_uid(uid))
                 return "ignored"
 
-        # action = none : le badge est reconnu mais rien n'est lance
+        # action = none: the badge is recognized but nothing is started
         if self.action == ACTION_NONE:
             self.feedback.recognized()
             self._log(
@@ -176,8 +176,8 @@ class Controller:
     # ------------------------------------------------------------------ interne
     def _bind(self, uid: str, target) -> str:
         self.disarm("association")
-        # On valide la trame tout de suite : un nom de jeu contenant '|' ne peut
-        # pas etre transmis au frontend.
+        # The frame is validated right away: a game name holding '|' cannot be
+        # sent to the frontend.
         try:
             EsLauncher.build_payload(target.system, target.game)
         except ValueError as exc:
@@ -211,14 +211,14 @@ class Controller:
         return "bound"
 
     def game_running(self) -> bool:
-        """Vrai si un emulateur tourne vraiment (pas seulement demarre)."""
+        """True if an emulator is really running (not just started)."""
         try:
             return bool(self.launcher.game_running())
-        except Exception:  # noqa: BLE001 - /proc illisible : on ne conclut rien
+        except Exception:  # noqa: BLE001 - unreadable /proc: nothing is concluded
             return False
 
     def stop_game(self) -> bool:
-        """Quitte le jeu en cours (badge retire, option active)."""
+        """Quits the running game (badge removed, option enabled)."""
         if not self.launcher.stop_game():
             self._log("info", "Aucun jeu en cours a arreter")
             self.last_action = ""
@@ -245,10 +245,10 @@ class Controller:
 
     def _launch(self, entry, uid: str, touch: bool = True) -> str:
         system = entry.get("system", "")
-        # Le frontend identifie un jeu par son CHEMIN COMPLET, tel qu'il l'ecrit
-        # lui-meme dans /tmp/es_state.inf (ex. /recalbox/share_init/roms/...).
-        # Le nom de fichier seul est refuse depuis Recalbox 10 ("Couldn't find
-        # game ..."). On garde le nom relatif en secours (anciennes entrees).
+        # The frontend identifies a game by its FULL PATH, as it writes it itself
+        # in /tmp/es_state.inf (e.g. /recalbox/share_init/roms/...). The file name
+        # alone is refused since Recalbox 10 ("Couldn't find game ..."). The
+        # relative name is kept as a fallback (older entries).
         game = entry.get("path") or entry.get("game", "")
         if self.launcher.start_game(system, game):
             if touch:
@@ -256,7 +256,7 @@ class Controller:
                     self.store.touch(uid)
                 except StorageError as exc:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
-            # Pas de bip : le lancement se voit a l'ecran (splash du jeu).
+            # No beep: the launch is visible on screen (game splash).
             self.last_action = "launched"
             self._log(
                 "info",

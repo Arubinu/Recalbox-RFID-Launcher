@@ -1,6 +1,6 @@
 # Câblage
 
-![Branchement du lecteur RC522 et du bouton](cablage.svg)
+![Branchement du lecteur RC522 et du bouton](wiring.svg)
 
 
 ## Le lecteur RC522 (nf-SL001)
@@ -86,7 +86,7 @@ Résultat attendu :
 * `0x91`, `0x92`, `0x88`, `0x12`… : le lecteur répond, le SPI est bon.
 * `0x00` ou `0xFF` : le SPI est actif mais le lecteur ne répond pas → câblage,
   alimentation, ou soudure du module.
-* `/dev/spidev0.0` absent : le SPI n'est pas activé (voir `docs/DEPANNAGE.md`).
+* `/dev/spidev0.0` absent : le SPI n'est pas activé (voir `docs/TROUBLESHOOTING.md`).
 
 Un badge 13,56 MHz (MIFARE Classic / Ultralight) est reconnu en 4 ou 7 octets.
 Un badge de 125 kHz (contrôle d'accès ancien) ne fonctionnera **pas**.

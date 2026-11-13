@@ -1,10 +1,11 @@
 #!/bin/sh
 # =============================================================================
-#  Recalbox RFID Launcher - desinstallation
+#  Recalbox RFID Launcher - uninstaller
 #
 #      sh /recalbox/share/system/rfid/uninstall.sh
-#      sh uninstall.sh --keep-data      (conserve config.ini et tags.json)
-#      sh uninstall.sh --remove-spi     (retire aussi dtparam=spi=on)
+#      sh uninstall.sh --keep-data      (keeps config.ini and tags.json)
+#      sh uninstall.sh --remove-spi     (also removes dtparam=spi=on)
+#      sh uninstall.sh --from-menu      (used by the Recalbox menu script)
 # =============================================================================
 set -eu
 
@@ -13,14 +14,17 @@ DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
-MANUAL_SCRIPT_NAME="Installer-lecteur-RFID.sh"
+MENU_INSTALL_NAME="Install-RFID-reader.sh"
+MENU_UNINSTALL_NAME="Uninstall-RFID-reader.sh"
 LEGACY_USERSCRIPTS="recalbox-rfid-autoinstall(permanent).py3 recalbox-rfid-web(permanent).py3"
+LEGACY_MENU_SCRIPTS="Installer-lecteur-RFID.sh"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 BOOT_CONFIG_MAIN="/boot/config.txt"
 
 HOME_DIR="${RFID_HOME:-$DEFAULT_HOME}"
 KEEP_DATA=0
 REMOVE_SPI=0
+FROM_MENU=0
 
 say() { printf '%s\n' "$*"; }
 warn() { printf 'ATTENTION  %s\n' "$*"; }
@@ -33,6 +37,7 @@ Options :
   --home <dossier>   dossier d'installation (defaut : $DEFAULT_HOME)
   --keep-data        conserve config.ini et tags.json
   --remove-spi       retire la ligne 'dtparam=spi=on' ajoutee a l'installation
+  --from-menu        garde « $MENU_INSTALL_NAME » dans le menu de Recalbox
   -h, --help         affiche cette aide
 EOF
 }
@@ -42,6 +47,7 @@ while [ $# -gt 0 ]; do
         --home)       [ $# -ge 2 ] || { echo "--home : valeur manquante" >&2; exit 2; }; HOME_DIR="$2"; shift 2 ;;
         --keep-data)  KEEP_DATA=1; shift ;;
         --remove-spi) REMOVE_SPI=1; shift ;;
+        --from-menu)  FROM_MENU=1; shift ;;
         -h|--help)    usage; exit 0 ;;
         *)            echo "option inconnue : $1" >&2; usage; exit 2 ;;
     esac
@@ -51,9 +57,9 @@ HOME_DIR=$(printf '%s' "$HOME_DIR" | sed 's:/*$::')
 say "Desinstallation de $APP_NAME"
 say "Dossier : $HOME_DIR"
 
-# 1. Arreter le service
-# Le partage Recalbox (exFAT) ne garde aucun droit d'execution : on teste
-# l'existence du fichier, pas -x, et on l'appelle toujours avec sh.
+# 1. Stop the service.
+# The Recalbox share (exFAT) keeps no execute bit: test that the file exists,
+# not -x, and always run it through sh.
 if [ -f "$HOME_DIR/rfidctl" ]; then
     sh "$HOME_DIR/rfidctl" stop || true
 elif [ -f "$HOME_DIR/rfid.pid" ]; then
@@ -64,13 +70,14 @@ elif [ -f "$HOME_DIR/rfid.pid" ]; then
     fi
 fi
 say "  service arrete"
-# L'agent de connexion (installer.html) tourne a part : on l'arrete aussi.
+# The connection agent (used by installer.html) runs on its own: stop it too.
 if command -v pkill >/dev/null 2>&1; then
     pkill -f "$HOME_DIR/app/main.py agent" 2>/dev/null || true
+    pkill -f "recalbox-rfid/app/main.py agent" 2>/dev/null || true
     say "  agent de connexion arrete"
 fi
 
-# 2. Retirer le script de demarrage Recalbox
+# 2. Remove the Recalbox startup scripts.
 if [ -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME" ]; then
     rm -f "$USERSCRIPTS_DIR/$USERSCRIPT_NAME"
     say "  script de demarrage supprime"
@@ -79,11 +86,16 @@ if [ -f "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME" ]; then
     rm -f "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
     say "  agent WebSocket supprime"
 fi
-if [ -f "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME" ]; then
-    rm -f "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
-    rmdir "$USERSCRIPTS_DIR/manual" 2>/dev/null || true
-    say "  script du menu Recalbox supprime"
-fi
+# Menu scripts (Recalbox 10). From the menu, "Install" stays so that a
+# reinstall is one click away; the "manual" folder belongs to Recalbox.
+MENU_REMOVE="$MENU_UNINSTALL_NAME $LEGACY_MENU_SCRIPTS"
+[ "$FROM_MENU" = "1" ] || MENU_REMOVE="$MENU_REMOVE $MENU_INSTALL_NAME"
+for name in $MENU_REMOVE; do
+    if [ -f "$USERSCRIPTS_DIR/manual/$name" ]; then
+        rm -f "$USERSCRIPTS_DIR/manual/$name"
+        say "  script du menu Recalbox supprime : $name"
+    fi
+done
 for legacy in $LEGACY_USERSCRIPTS; do
     if [ -f "$USERSCRIPTS_DIR/$legacy" ]; then
         rm -f "$USERSCRIPTS_DIR/$legacy"
@@ -91,14 +103,16 @@ for legacy in $LEGACY_USERSCRIPTS; do
     fi
 done
 
-# 3. SPI (optionnel)
-# Retire de $1 les lignes ajoutees par l'installation. On ne restaure jamais
-# l'ancienne sauvegarde complete : elle effacerait les reglages faits depuis.
+# 3. SPI (optional).
+# Removes from $1 the lines added at install time. The old full backup is
+# never restored: it would wipe the settings changed since then.
 strip_spi() {
     target="$1"
     tmp="/tmp/rfid-boot-config.$$"
     if grep -v -e '^# Active le bus SPI pour le lecteur RFID RC522' \
                -e '^# (ajoute par Recalbox RFID Launcher)' \
+               -e '^# Enables the SPI bus for the RC522 RFID reader' \
+               -e '^# (added by Recalbox RFID Launcher)' \
                -e '^dtparam=spi=on' \
                "$target" > "$tmp" && cat "$tmp" > "$target" 2>/dev/null; then
         rm -f "$target.bak-rfid-launcher" 2>/dev/null || true
@@ -110,17 +124,17 @@ strip_spi() {
 }
 
 if [ "$REMOVE_SPI" = "1" ]; then
-    # /boot est monte en lecture seule sur Recalbox : on le rouvre le temps
-    # de la modification (sans cela, cp/mv echouaient et set -e arretait tout,
-    # programme et donnees restant en place).
+    # /boot is mounted read-only on Recalbox: remount it for the change only
+    # (without this, cp/mv failed and set -e stopped everything, leaving the
+    # program and the data in place).
     REMOUNTED=0
     if [ ! -w "$BOOT_CONFIG" ] && mount -o remount,rw /boot 2>/dev/null; then
         REMOUNTED=1
     fi
     [ -f "$BOOT_CONFIG" ] && strip_spi "$BOOT_CONFIG"
-    # config.txt : la ligne est ajoutee sans commentaire. On ne la retire que
-    # si la sauvegarde d'avant installation ne la contenait pas (SPI deja
-    # utilise par autre chose : on n'y touche pas).
+    # config.txt: the line is added without a comment. It is only removed when
+    # the pre-install backup did not have it (SPI already used by something
+    # else: leave it alone).
     MAIN_BACKUP="$BOOT_CONFIG_MAIN.bak-rfid-launcher"
     if [ -f "$BOOT_CONFIG_MAIN" ] && [ -f "$MAIN_BACKUP" ] \
        && ! grep -q '^[[:space:]]*dtparam=spi=on' "$MAIN_BACKUP"; then
@@ -134,12 +148,12 @@ if [ "$REMOVE_SPI" = "1" ]; then
     fi
 fi
 
-# 4. Fichiers
+# 4. Files.
 if [ "$KEEP_DATA" = "1" ]; then
     rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/bootstrap" "$HOME_DIR/docs"
     rm -f "$HOME_DIR/rfidctl" "$HOME_DIR/install.sh" "$HOME_DIR/uninstall.sh" \
-          "$HOME_DIR/VERSION" "$HOME_DIR/README.md" "$HOME_DIR/CHANGELOG.md" \
-          "$HOME_DIR/rfid.pid" "$HOME_DIR/status.json"
+          "$HOME_DIR/VERSION" "$HOME_DIR"/README*.md "$HOME_DIR/CHANGELOG.md" \
+          "$HOME_DIR/installer.html" "$HOME_DIR/rfid.pid" "$HOME_DIR/status.json"
     say "  programme supprime, donnees conservees :"
     say "    $HOME_DIR/config.ini"
     say "    $HOME_DIR/tags.json"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lance toute la suite de tests : ``python3 tests/run_tests.py``."""
+"""Runs the whole test suite: ``python3 tests/run_tests.py``."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ for path in (HERE, os.path.join(PROJECT, "app")):
 
 
 def main() -> int:
-    # RFID_DUMP_STACKS=15 permet d'obtenir une trace de tous les threads si la
-    # suite se bloque (diagnostic uniquement).
+    # RFID_DUMP_STACKS=15 dumps a trace of every thread if the suite hangs
+    # (diagnostics only).
     dump_after = os.environ.get("RFID_DUMP_STACKS")
     if dump_after:
         import faulthandler

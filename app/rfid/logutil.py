@@ -1,8 +1,8 @@
-"""Journalisation simple : console + fichier avec rotation.
+"""Simple logging: console + file with rotation.
 
-Aucune dependance : le module ``logging`` de la bibliotheque standard ferait
-l'affaire, mais une implementation minimale est plus previsible sur un systeme
-embarque (et evite les handlers multiples quand le service redemarre).
+No dependency: the standard ``logging`` module would do, but a minimal
+implementation is more predictable on an embedded system (and avoids
+duplicate handlers when the service restarts).
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40}
 
 
 class Logger:
-    """Journal thread-safe (verrou implicite : ecriture d'une ligne = un write)."""
+    """Thread-safe log (implicit lock: writing a line = one write)."""
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class Logger:
             with open(self.path, "a", encoding=self._encoding) as handle:
                 handle.write(line)
         except OSError:
-            # Disque plein, permissions... le service continue de tourner.
+            # Disk full, permissions... the service keeps running.
             pass
 
     def debug(self, message: str) -> None:
@@ -88,5 +88,5 @@ class Logger:
     def error(self, message: str) -> None:
         self.log("ERROR", message)
 
-    # Compatibilite avec l'API ``logging``
+    # Compatibility with the ``logging`` API
     warn = warning

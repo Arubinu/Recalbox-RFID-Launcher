@@ -1,0 +1,67 @@
+# Tests, builds the single-file installer, publishes it on GitHub Pages and,
+# for a "v*" tag, attaches it (with the update ZIP) to a GitHub release.
+#
+# One-time setup on GitHub: Settings > Pages > Build and deployment >
+# Source: "GitHub Actions". See docs/PUBLISHING.md.
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # release assets
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests (no hardware needed)
+        run: python tests/run_tests.py
+
+      - name: Build the installer and the update archive
+        run: |
+          python tools/build_installer.py --output _site/recalbox-rfid-installer.html --zip _site/recalbox-rfid.zip
+          # The online page is the installer itself: it detects https:// and
+          # offers to download itself (the Recalbox is only reachable from file://).
+          cp _site/recalbox-rfid-installer.html _site/index.html
+
+      - name: Upload the Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: GitHub release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            _site/recalbox-rfid-installer.html
+            _site/recalbox-rfid.zip
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

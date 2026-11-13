@@ -1,50 +1,49 @@
-"""Reglage automatique du lecteur.
+"""Automatic reader tuning.
 
-Le service mesure le materiel (vitesse SPI supportee, duree d'une lecture,
-comportement du badge, latence de retrait) puis en deduit trois reglages :
+The service measures the hardware (supported SPI speed, duration of a read,
+badge behaviour, removal latency) then derives three settings from it:
 
-* ``rfid.spi_speed_hz`` — la vitesse de bus la plus rapide qui fonctionne
-  reellement sur ce Raspberry Pi et ce module ;
-* ``rfid.poll_interval_ms`` — la cadence de lecture, calee sur la duree reelle
-  d'une lecture (inutile d'interroger plus vite que le lecteur ne repond) ;
-* ``rfid.rearm_absent_ms`` — le delai d'absence, cale sur la latence mesuree
-  quand on retire le badge.
+* ``rfid.spi_speed_hz`` - the fastest bus speed that really works on this
+  Raspberry Pi and this module;
+* ``rfid.poll_interval_ms`` - the read rate, based on the real duration of a
+  read (no point asking faster than the reader answers);
+* ``rfid.rearm_absent_ms`` - the absence delay, based on the latency measured
+  when the badge is removed.
 
-Ce module ne contient que des calculs : aucune lecture du materiel, aucun acces
-disque. Il est donc testable sur un PC, et le service garde la main sur le
-lecteur.
+This module only holds computations: no hardware read, no disk access. It can
+therefore be tested on a PC, and the service keeps control of the reader.
 """
 
 from __future__ import annotations
 
-#: Vitesses essayees, de la plus rapide a la plus lente. Le RC522 accepte
-#: jusqu'a 10 MHz, mais au-dela de 4 MHz beaucoup de modules clones deviennent
-#: instables : on garde la premiere qui repond parfaitement.
+#: Speeds tried, from fastest to slowest. The RC522 accepts up to 10 MHz,
+#: but above 4 MHz many clone modules become unstable: the first one that
+#: answers perfectly is kept.
 SPEEDS = (8000000, 4000000, 2000000, 1000000, 500000)
 
-#: Vitesse de repli si la mesure se trompe (la valeur livree d'origine).
+#: Fallback speed if the measurement is wrong (the original shipped value).
 SPEED_FALLBACK = 1000000
 
-#: Etapes de la sequence, dans l'ordre. Sert au compteur de la page.
+#: Steps of the sequence, in order. Used by the page counter.
 STEPS = ("speed", "read", "presence", "remove", "reinsert")
 
-#: Valeurs d'origine, utilisees par le bouton « Reinitialiser ».
+#: Original values, used by the "Reset" button.
 DEFAULTS = {
     "rfid.spi_speed_hz": str(SPEED_FALLBACK),
     "rfid.poll_interval_ms": "150",
     "rfid.rearm_absent_ms": "1200",
 }
 
-#: Bornes des reglages calcules.
+#: Bounds of the computed settings.
 POLL_MIN_MS = 60
 POLL_MAX_MS = 500
 ABSENCE_MIN_MS = 1000
 ABSENCE_MAX_MS = 4000
 
-#: Marge ajoutee a la duree d'une lecture pour fixer la cadence.
+#: Margin added to the duration of a read to set the rate.
 POLL_MARGIN_MS = 30
 
-#: Facteur de securite applique a la latence de retrait mesuree.
+#: Safety factor applied to the measured removal latency.
 ABSENCE_FACTOR = 1.5
 
 
@@ -53,7 +52,7 @@ def clamp(valeur: float, mini: float, maxi: float) -> float:
 
 
 def poll_interval_ms(read_ms) -> int:
-    """Cadence de lecture deduite de la duree mesuree d'une lecture."""
+    """Read rate derived from the measured duration of a read."""
     try:
         duree = float(read_ms or 0)
     except (TypeError, ValueError):
@@ -62,7 +61,7 @@ def poll_interval_ms(read_ms) -> int:
 
 
 def absence_ms(measured_ms) -> int:
-    """Delai d'absence deduit de la latence de retrait mesuree."""
+    """Absence delay derived from the measured removal latency."""
     try:
         latence = float(measured_ms or 0)
     except (TypeError, ValueError):
@@ -71,7 +70,7 @@ def absence_ms(measured_ms) -> int:
 
 
 def settings_from(measures: dict) -> dict:
-    """Traduit les mesures en valeurs de configuration (section.cle -> texte)."""
+    """Turns the measures into configuration values (section.key -> text)."""
     measures = measures or {}
     vitesse = measures.get("best_speed") or SPEED_FALLBACK
     try:
@@ -88,7 +87,7 @@ def settings_from(measures: dict) -> dict:
 
 
 def speed_label(hz) -> str:
-    """« 4 MHz », « 500 kHz » : lisible sur la page comme dans le journal."""
+    """"4 MHz", "500 kHz": readable on the page as in the log."""
     try:
         valeur = float(hz)
     except (TypeError, ValueError):
@@ -112,7 +111,7 @@ def presence_verdict(measures: dict) -> str:
     return "muet"
 
 
-#: Codes d'erreur -> phrase pour le journal (la page traduit les memes codes).
+#: Error codes -> sentence for the log (the page translates the same codes).
 ERROR_TEXT = {
     "no_reader": "le lecteur RC522 ne repond pas (cablage, 3,3 V ou bus SPI)",
     "spi_failed": "aucune vitesse de bus n'a donne de lecture fiable",

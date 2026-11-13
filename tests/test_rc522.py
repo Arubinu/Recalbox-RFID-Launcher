@@ -1,11 +1,11 @@
-"""Tests du pilote MFRC522 (grâce à un faux bus SPI)."""
+"""MFRC522 driver tests (thanks to a fake SPI bus)."""
 
 from __future__ import annotations
 
 import ctypes
 import unittest
 
-import support  # noqa: F401  (ajoute app/ au sys.path)
+import support  # noqa: F401  (adds app/ to sys.path)
 from fake_rc522 import FakeRc522Spi
 
 from rfid.drivers.rc522 import Rc522, Rc522Error, Rc522Reader, crc_a_software
@@ -18,7 +18,7 @@ from rfid.drivers.spi_port import (
 
 
 class TagPresentTest(unittest.TestCase):
-    """Presence d'un badge : REQA, sinon WUPA, sinon muet (None)."""
+    """Badge presence: REQA, else WUPA, else silent (None)."""
 
     def lecteur(self, spi):
         reader = Rc522Reader(spi, cooldown_s=0.0)
@@ -32,8 +32,8 @@ class TagPresentTest(unittest.TestCase):
         self.assertIs(self.lecteur(FakeRc522Spi(None)).tag_present(), False)
 
     def test_badge_qui_ne_repond_qu_a_wupa(self):
-        # Regression : un badge selectionne ne repond plus a REQA. Sans WUPA, un
-        # badge parfaitement pose passait pour retire (jeu relance tout seul).
+        # Regression: a selected badge no longer answers REQA. Without WUPA, a
+        # badge lying on the reader looked removed (game started again by itself).
         self.assertIs(self.lecteur(FakeRc522Spi(b"\x11\x22\x33\x44", wupa_only=True)).tag_present(), True)
 
     def test_badge_clone_bcc_faux(self):
@@ -53,8 +53,8 @@ class TagPresentTest(unittest.TestCase):
         self.assertIsNone(reader.tag_present())
 
     def test_presence_apres_une_lecture(self):
-        # Apres read_uid, la carte a ete selectionnee : la presence doit rester
-        # vraie (c'est le scenario exact du jeu relance tout seul).
+        # After read_uid, the card has been selected: the presence must stay
+        # true (exactly the scenario of the game starting again by itself).
         spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
         reader = self.lecteur(spi)
         self.assertEqual(reader.read_uid(), "36000000")
@@ -63,7 +63,7 @@ class TagPresentTest(unittest.TestCase):
 
 class IoctlEncodingTest(unittest.TestCase):
     def test_struct_size(self):
-        # struct spi_ioc_transfer fait 32 octets, en 32 comme en 64 bits.
+        # struct spi_ioc_transfer is 32 bytes, on 32 as on 64 bits.
         self.assertEqual(ctypes.sizeof(SpiIocTransfer), 32)
 
     def test_message_number(self):
@@ -95,35 +95,35 @@ class Rc522UidTest(unittest.TestCase):
         self.assertIsNone(reader.read_uid())
 
     def test_bcc_faux_n_empeche_pas_la_lecture(self):
-        """Un BCC errone (badge clone) ne doit plus faire echouer la lecture."""
+        """A wrong BCC (clone badge) must no longer make the read fail."""
         reader = Rc522(FakeRc522Spi(b"\xDE\xAD\xBE\xEF", bad_bcc=True))
         reader.begin()
         self.assertEqual(reader.read_uid(), b"\xDE\xAD\xBE\xEF")
 
     def test_badge_endormi_reveille_par_wupa(self):
-        """Un badge qui ne repond qu'a WUPA est quand meme lu."""
+        """A badge that only answers WUPA is still read."""
         reader = Rc522(FakeRc522Spi(b"\x11\x22\x33\x44", wupa_only=True))
         reader.begin()
         self.assertEqual(reader.read_uid(), b"\x11\x22\x33\x44")
 
     def test_crc_a_vecteur_halt(self):
-        """Le CRC_A du HALT est 57 CD : reference de la fiche ISO 14443-3."""
+        """The CRC_A of HALT is 57 CD: reference from the ISO 14443-3 sheet."""
         self.assertEqual(crc_a_software(b"\x50\x00"), b"\x57\xCD")
 
     def test_selection_meme_si_le_coprocesseur_est_faux(self):
-        """Le CRC de la selection ne doit pas dependre du coprocesseur du lecteur."""
+        """The selection CRC must not depend on the reader coprocessor."""
         reader = Rc522(FakeRc522Spi(b"\x77\x00\x00\x00", broken_crc=True))
         reader.begin()
         self.assertEqual(reader.read_uid(), b"\x77\x00\x00\x00")
 
     def test_trace_montre_une_selection_sans_reponse(self):
-        """Une carte muette a la selection : la trace montre l'envoi complet."""
+        """A card silent on selection: the trace shows the full frame sent."""
         spi = FakeRc522Spi(b"\x77\x00\x00\x00")
         original = spi._respond
 
         def silencieux(payload):
-            if len(payload) == 3 and payload[0] == 0x08:   # reponse de selection
-                spi.irq = 0x01                              # TIMER : pas de reponse
+            if len(payload) == 3 and payload[0] == 0x08:   # select answer
+                spi.irq = 0x01                              # TIMER: no answer
                 spi.fifo.clear()
                 return
             original(payload)
@@ -138,7 +138,7 @@ class Rc522UidTest(unittest.TestCase):
         self.assertEqual(trace["crc_sw"], trace["crc_hw"])
 
     def test_clone_qui_exige_son_bcc_errone(self):
-        """Un clone qui compare le BCC recu est lu par la strategie BCC recu."""
+        """A clone that compares the received BCC is read by the received-BCC strategy."""
         spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
         spi.only_received_bcc = True
         reader = Rc522(spi)
@@ -149,7 +149,7 @@ class Rc522UidTest(unittest.TestCase):
         self.assertEqual(trace.get("bcc_recu"), "00")
 
     def test_badge_normal_utilise_le_bcc_recalcule(self):
-        """Un badge qui recalcule le BCC passe par la strategie recalculee."""
+        """A badge that recomputes the BCC goes through the recomputed strategy."""
         reader = Rc522(FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True))
         reader.begin()
         trace = {}
@@ -157,7 +157,7 @@ class Rc522UidTest(unittest.TestCase):
         self.assertEqual(trace.get("strategie"), "bcc-recalcule")
 
     def test_uid_stable_si_la_selection_echoue(self):
-        """Un clone muet a la selection est lu apres trois trames identiques."""
+        """A clone silent on selection is read after three identical frames."""
         spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
         original = spi._respond
 
@@ -178,7 +178,7 @@ class Rc522UidTest(unittest.TestCase):
         self.assertEqual(trace.get("strategie"), "anticollision-stable")
 
     def test_une_trame_differente_ne_compte_pas(self):
-        """Des lectures perturbees ne doivent jamais devenir un badge."""
+        """Disturbed reads must never become a badge."""
         spi = FakeRc522Spi(b"\x36\x00\x00\x00", bad_bcc=True)
         original = spi._respond
 
@@ -193,13 +193,13 @@ class Rc522UidTest(unittest.TestCase):
         reader = Rc522(spi)
         reader.begin()
         self.assertIsNone(reader.read_uid())
-        spi.uid = b"\x37\x00\x00\x00"      # autre badge : la serie s'interrompt
+        spi.uid = b"\x37\x00\x00\x00"      # another badge: the series is broken
         self.assertIsNone(reader.read_uid())
         self.assertIsNone(reader.read_uid())
         self.assertEqual(reader.read_uid(), b"\x37\x00\x00\x00")
 
     def test_trace_des_trames(self):
-        """La trace decrit la trame envoyee et la reponse, pour le diagnostic."""
+        """The trace describes the sent frame and the answer, for diagnostics."""
         reader = Rc522(FakeRc522Spi(b"\x01\x02\x03\x04"))
         reader.begin()
         trace = {}
@@ -214,7 +214,7 @@ class Rc522UidTest(unittest.TestCase):
         reader = Rc522Reader(spi, cooldown_s=30.0)
         self.assertEqual(reader.start(), 0x92)
         self.assertEqual(reader.read_uid(), "DEADBEEF")
-        # Meme badge relu immediatement : ignore (anti-rebond)
+        # Same badge read again immediately: ignored (debounce)
         self.assertIsNone(reader.read_uid())
 
     def test_lecteur_sans_anti_rebond(self):

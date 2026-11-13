@@ -1,4 +1,4 @@
-"""Tests de la sequence de reglage automatique (service, lecteur simule)."""
+"""Automatic tuning sequence tests (service, simulated reader)."""
 
 from __future__ import annotations
 
@@ -116,7 +116,7 @@ class CalibrationSequenceTest(unittest.TestCase):
         chip = FakeChip()
         chip.speed = spi.speed
         if self.every_speed_fails or spi.speed >= 8000000:
-            # Bus trop rapide : le registre ne se lit pas (0x00/0xFF).
+            # Bus too fast: the register cannot be read (0x00/0xFF).
             chip.version = 0x00
         return chip
 
@@ -138,9 +138,9 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.assertIsNotNone(self.service._calibration)
 
     def deroule_complet(self):
-        """Joue la sequence entiere avec un badge coopératif."""
+        """Plays the whole sequence with a cooperative badge."""
         self.lance()
-        self.step()                      # vitesse -> attente du badge
+        self.step()                      # speed -> waiting for the badge
         self.chip.present = True
         self.step()                      # lectures
         self.step()                      # presence
@@ -209,7 +209,7 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.assertEqual(speeds, [[8000000, 0], [4000000, 1]])
 
     def test_aucune_vitesse_ne_marche(self):
-        self.every_speed_fails = True   # meme la vitesse la plus lente echoue
+        self.every_speed_fails = True   # even the slowest speed fails
         self.lance()
         self.step()
         etat = self.etat()
@@ -221,7 +221,7 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.deroule_complet()
         self.assertTrue(self.service._adopt_next_read)
         self.assertGreater(self.service._adopt_until, self.now)
-        # La boucle voit le badge repose : il ne doit rien lancer.
+        # The loop sees the badge placed again: it must not start anything.
         self.service._active_uid = None
         self.service._badge_seen("36000000")
         self.service.controller.on_badge.assert_not_called()
@@ -246,7 +246,7 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.lance()
         self.step()
         self.chip.present = False
-        self.step(pas=61.0)           # depasse le delai de 60 s
+        self.step(pas=61.0)           # past the 60 s delay
         etat = self.etat()
         self.assertEqual(etat["phase"], "error")
         self.assertEqual(etat["error"], "timeout_pose")
@@ -283,7 +283,7 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.chip.present = True
         self.step()
         self.step()                   # presence
-        self.chip.present = True      # le badge reste pose
+        self.chip.present = True      # the badge stays on the reader
         self.step(pas=61.0)
         self.assertEqual(self.etat()["error"], "timeout_remove")
 
@@ -295,14 +295,14 @@ class CalibrationSequenceTest(unittest.TestCase):
         self.step()
         self.chip.present = False
         self.step(fois=5)
-        self.step(pas=61.0)           # jamais repose
+        self.step(pas=61.0)           # never placed again
         self.assertEqual(self.etat()["error"], "timeout_replace")
 
     # --------------------------------------------------------- repli / reset
     def test_repli_si_la_vitesse_mesuree_ne_tient_pas(self):
         self.lance()
         self.step()
-        # Le lecteur rouvre mal a la vitesse choisie : retour a 1 MHz.
+        # The reader reopens badly at the chosen speed: back to 1 MHz.
         self.chip.version = 0x00
         self.service._calibration = None
         applique = self.service._apply_calibration_settings(

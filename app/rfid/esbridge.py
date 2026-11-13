@@ -1,19 +1,19 @@
-"""Dialogue avec le frontend Recalbox (EmulationStation).
+"""Dialogue with the Recalbox frontend (EmulationStation).
 
-Deux mecanismes officiels sont utilises, sans modifier l'OS :
+Two official mechanisms are used, without changing the OS:
 
-1. **Lecture** de ``/tmp/es_state.inf`` : le frontend y ecrit a chaque evenement
-   le systeme et le jeu actuellement selectionnes. C'est ce qui permet au bouton
-   poussoir de savoir a quel jeu associer le badge.
+1. **Reading** ``/tmp/es_state.inf``: the frontend writes there, on every
+   event, the currently selected system and game. This is what lets the push
+   button know which game to pair the badge with.
 
-2. **Lancement** d'un jeu : depuis Recalbox 9, le frontend ecoute le port UDP
-   1337 et attend une trame texte ::
+2. **Starting** a game: since Recalbox 9, the frontend listens on UDP port
+   1337 and expects a text frame ::
 
-       START|<identifiant systeme>|<chemin du jeu relatif au dossier du systeme>
+       START|<system id>|<game path relative to the system folder>
 
-   paquet = un seul datagramme UDP, sans saut de ligne final. Le frontend
-   resout ensuite le jeu exactement comme s'il avait ete lance depuis le menu
-   (splash screen, sauvegardes, retroachievements, etc.).
+   packet = a single UDP datagram, without a trailing newline. The frontend
+   then resolves the game exactly as if it had been started from the menu
+   (splash screen, saves, retroachievements, etc.).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from .consts import ES_STATE_FILE, ES_UDP_HOST, ES_UDP_PORT
 
 @dataclass
 class Target:
-    """Jeu selectionne dans l'interface Recalbox."""
+    """Game selected in the Recalbox interface."""
 
     system: str
     game: str
@@ -41,7 +41,7 @@ class Target:
 
 
 def read_state(path: str = ES_STATE_FILE):
-    """Lit ``es_state.inf`` et retourne un dictionnaire (None si absent)."""
+    """Reads ``es_state.inf`` and returns a dictionary (None if missing)."""
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as handle:
             lines = handle.readlines()
@@ -59,15 +59,15 @@ def read_state(path: str = ES_STATE_FILE):
 
 
 def game_is_running(state) -> bool:
-    """True si un jeu est en cours (d'apres le fichier d'etat)."""
+    """True if a game is running (according to the state file)."""
     return bool(state) and state.get("State") == "playing"
 
 
 def relative_game_key(system: str, absolute_path: str) -> str:
-    """Convertit un chemin absolu de ROM en cle attendue par la commande UDP.
+    """Converts an absolute ROM path into the key expected by the UDP command.
 
-    Le frontend cherche le jeu par son chemin relatif au dossier du systeme,
-    extension comprise, sans tenir compte de la casse. Par exemple
+    The frontend looks the game up by its path relative to the system folder,
+    extension included, ignoring case. For example
     ``/recalbox/share/roms/snes/Super Mario World.smc`` -> ``Super Mario World.smc``.
     """
     if not absolute_path:
@@ -92,13 +92,13 @@ def relative_game_key(system: str, absolute_path: str) -> str:
     return os.path.basename(normalized)
 
 
-#: Cles que le frontend Recalbox peut employer selon la version.
+#: Keys the Recalbox frontend may use depending on the version.
 CLES_SYSTEME = ("SystemId", "System", "SystemName")
 CLES_CHEMIN = ("GamePath", "Path", "File", "RomPath")
 
 
 def state_snapshot(state, limite: int = 120) -> dict:
-    """Resume lisible de ``es_state.inf`` (pour status.json et les journaux)."""
+    """Readable summary of ``es_state.inf`` (for status.json and the logs)."""
     if not state:
         return {}
     resume = {}
@@ -111,7 +111,7 @@ def state_snapshot(state, limite: int = 120) -> dict:
 
 
 def describe_state(state) -> str:
-    """Explique pourquoi aucun jeu n'a ete trouve (message de journal)."""
+    """Explains why no game was found (log message)."""
     if not state:
         return "/tmp/es_state.inf absent ou vide"
     cles = ("Action", "State", "Type", "IsFolder", "SystemId", "System", "Game", "GamePath")
@@ -121,22 +121,22 @@ def describe_state(state) -> str:
     return ", ".join("%s=%r" % (cle, state.get(cle)) for cle in presentes)
 
 
-#: Dossiers ou Recalbox range les jeux (partie inscriptible, puis base en lecture seule).
+#: Folders where Recalbox stores games (writable part, then the read-only base).
 ROMS_DIRS = ("/recalbox/share/roms", "/recalbox/share_init/roms")
 
 
 def resolve_rom_path(system: str, game: str) -> str:
-    """Chemin complet d'un jeu, pour les entrees qui n'en ont pas.
+    """Full path of a game, for entries that do not have one.
 
-    Le frontend identifie un jeu par son chemin complet : on le reconstruit ici
-    (sans verification possible sur un PC, on renvoie alors le premier candidat).
+    The frontend identifies a game by its full path: it is rebuilt here
+    (no check is possible on a PC, the first candidate is returned then).
     """
     if not system or not game:
         return ""
     if game.startswith("/"):
         return game
-    # Chemins POSIX : le service tourne sous Linux, meme quand les tests
-    # s'executent sous Windows.
+    # POSIX paths: the service runs on Linux, even when the tests run on
+    # Windows.
     candidats = ["%s/%s/%s" % (base, system, game) for base in ROMS_DIRS]
     for candidat in candidats:
         if os.path.isfile(candidat):
@@ -145,12 +145,12 @@ def resolve_rom_path(system: str, game: str) -> str:
 
 
 def current_target(state, allow_running: bool = False) -> "Target | None":
-    """Retourne le jeu selectionne, ou None si aucun jeu n'est selectionne.
+    """Returns the selected game, or None if no game is selected.
 
-    ``allow_running`` sert a l'association : le frontend peut laisser
-    ``State=playing`` (ou afficher une fiche de jeu) alors qu'aucune partie n'est
-    en cours ; on accepte alors le jeu affiche. Pour le lancement par badge, on
-    garde le filtre (pas d'interruption de partie).
+    ``allow_running`` is used for the association: the frontend may leave
+    ``State=playing`` (or show a game page) while no game is running; the
+    displayed game is then accepted. For badge launches, the filter is kept
+    (no interruption of a game).
     """
     if not state:
         return None
@@ -181,7 +181,7 @@ def current_target(state, allow_running: bool = False) -> "Target | None":
     return Target(system=system, game=game, name=(state.get("Game") or "").strip(), path=absolute)
 
 
-#: Processus d'emulateurs que l'on peut arreter (jamais EmulationStation).
+#: Emulator processes that may be stopped (never EmulationStation).
 EMULATEURS = (
     "retroarch",
     "emulatorlauncher",
@@ -202,14 +202,14 @@ EMULATEURS = (
 )
 
 
-#: Dossier des processus (remplacable dans les tests).
+#: Process folder (replaceable in the tests).
 PROC_DIR = "/proc"
 
-#: Signaux utilises pour arreter un emulateur (absents sous Windows).
+#: Signals used to stop an emulator (missing on Windows).
 SIG_TERM = getattr(signal, "SIGTERM", 15)
 SIG_KILL = getattr(signal, "SIGKILL", 9)
 
-#: Programme a ne jamais arreter : le frontend lui-meme.
+#: Program never to stop: the frontend itself.
 JAMAIS_ARRETER = ("emulationstation", "emulationstation.sh")
 
 
@@ -223,10 +223,10 @@ def _cmdline(pid: str, proc_dir: str = PROC_DIR) -> str:
 
 
 def _programmes(ligne: str) -> list:
-    """Noms de programme d'une ligne de commande (argv[0] et script eventuel).
+    """Program names of a command line (argv[0] and the script, if any).
 
-    On ne compare que des noms de fichiers : chercher « vice » n'importe ou dans
-    la ligne arreterait des processus systeme sans rapport (paquets, services).
+    Only file names are compared: looking for "vice" anywhere in the line
+    would stop unrelated system processes (packages, services).
     """
     morceaux = ligne.split()
     return [os.path.basename(morceau).lower() for morceau in morceaux[:3]]
@@ -247,7 +247,7 @@ def _est_emulateur(noms, ligne: str, rom_path: str) -> bool:
 
 
 def emulator_pids(rom_path: str = "", proc_dir: str = PROC_DIR):
-    """PID des processus d'emulation en cours (jamais ES, jamais nous)."""
+    """PIDs of the running emulation processes (never ES, never us)."""
     pids = []
     propre = os.getpid()
     try:
@@ -269,12 +269,12 @@ def emulator_pids(rom_path: str = "", proc_dir: str = PROC_DIR):
 
 
 def _kill(pid: int, sig: int) -> None:
-    """Point d'envoi de signal (remplace dans les tests)."""
+    """Signal sending point (replaced in the tests)."""
     os.kill(pid, sig)
 
 
 class EsLauncher:
-    """Envoi de la commande de lancement au frontend."""
+    """Sends the launch command to the frontend."""
 
     def __init__(self, host: str = ES_UDP_HOST, port: int = ES_UDP_PORT, log=None):
         self.host = host
@@ -283,11 +283,11 @@ class EsLauncher:
 
     @staticmethod
     def build_payload(system: str, game: str) -> bytes:
-        """Construit la trame ``START|systeme|reference`` (octets du systeme de fichiers).
+        """Builds the ``START|system|reference`` frame (file system bytes).
 
-        ``reference`` est le chemin **complet** du jeu tel que le frontend le
-        connait (il le publie dans son fichier d'etat). Depuis Recalbox 10, le
-        nom de fichier seul ne suffit plus.
+        ``reference`` is the **full** path of the game as the frontend knows it
+        (it publishes it in its state file). Since Recalbox 10, the file name
+        alone is no longer enough.
         """
         system = str(system)
         game = str(game)
@@ -300,15 +300,15 @@ class EsLauncher:
         return b"START|" + os.fsencode(system) + b"|" + os.fsencode(game)
 
     def game_running(self, rom_path: str = "") -> bool:
-        """Vrai si un emulateur tourne (independant de l'etat du frontend)."""
+        """True if an emulator is running (whatever the frontend state)."""
         return bool(emulator_pids(rom_path))
 
     def stop_game(self, rom_path: str = "", timeout_s: float = 8.0, proc_dir: str = PROC_DIR) -> bool:
-        """Arrete le jeu en cours (SIGTERM, puis SIGKILL si necessaire).
+        """Stops the running game (SIGTERM, then SIGKILL if needed).
 
-        Le frontend ne propose aucune commande reseau pour quitter un jeu : on
-        termine le processus de l'emulateur, et EmulationStation revient au menu
-        comme apres une sortie normale.
+        The frontend offers no network command to quit a game: the emulator
+        process is terminated, and EmulationStation goes back to the menu as after
+        a normal exit.
         """
         cibles = emulator_pids(rom_path, proc_dir)
         if not cibles:
@@ -335,7 +335,7 @@ class EsLauncher:
         return True
 
     def start_game(self, system: str, game: str) -> bool:
-        """Envoie la commande ; True si le datagramme est parti."""
+        """Sends the command; True if the datagram left."""
         try:
             payload = self.build_payload(system, game)
         except ValueError as exc:
@@ -361,11 +361,11 @@ class EsLauncher:
 
 
 def supports_start_command(binary: str = "/usr/bin/emulationstation", chunk_size: int = 1 << 20) -> bool:
-    """Detecte le support de la commande UDP dans le binaire du frontend.
+    """Detects support for the UDP command in the frontend binary.
 
-    Recalbox 9 a introduit le fil "UDPCommand" ; le message d'erreur qu'il ecrit
-    dans le journal est present dans le binaire. Cette verification permet a
-    l'installeur de prevenir l'utilisateur sur une version trop ancienne.
+    Recalbox 9 introduced the "UDPCommand" thread; the error message it writes
+    to the log is present in the binary. This check lets the installer warn
+    the user about a version that is too old.
     """
     needle = b"Wrong network command"
     try:

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Recalbox RFID Launcher -- point d'entree en ligne de commande.
+"""Recalbox RFID Launcher -- command line entry point.
 
-Exemples :
+Examples:
 
-    python3 app/main.py test                 # diagnostic du cablage
-    python3 app/main.py list                 # liste des badges
+    python3 app/main.py test                 # wiring diagnostic
+    python3 app/main.py list                 # badge list
     python3 app/main.py add A1B2C3D4 --current
     python3 app/main.py remove A1B2C3D4
-    python3 app/main.py daemon               # service (lancé par Recalbox)
+    python3 app/main.py daemon               # service (started by Recalbox)
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import sys
 import tempfile
 import time
 
-if __package__ in (None, ""):  # execution directe : python3 app/main.py
+if __package__ in (None, ""):  # direct run: python3 app/main.py
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rfid import __version__  # noqa: E402
@@ -494,7 +494,7 @@ def cmd_test(options) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Simulation (test sur PC, sans materiel)
+# Simulation (test on a PC, without hardware)
 # ---------------------------------------------------------------------------
 class PrintLauncher:
     """Remplace l'envoi UDP en mode simulation."""
@@ -516,7 +516,7 @@ class PrintLauncher:
 
 
 def cmd_frontend(options) -> int:  # noqa: ARG001
-    """Verifie le support de la commande de lancement UDP par le frontend."""
+    """Checks that the frontend supports the UDP launch command."""
     if not os.path.exists("/usr/bin/emulationstation"):
         print("Frontend Recalbox introuvable (mode developpement, hors Recalbox).")
         return 2
@@ -535,7 +535,7 @@ def cmd_frontend(options) -> int:  # noqa: ARG001
 
 
 def cmd_self_update(options) -> int:
-    """Met a jour l'installation (ZIP en ligne ou dossier deja copie)."""
+    """Updates the installation (online ZIP or folder already copied)."""
     installer = os.path.join(options.home, "install.sh")
     if not os.path.isfile(installer):
         print("Installeur introuvable : %s" % installer)
@@ -557,7 +557,7 @@ def cmd_self_update(options) -> int:
 
 
 def cmd_pair(options) -> int:
-    """Reouvre la fenetre d'appairage (le jeton se transmet une fois, en local)."""
+    """Opens the pairing window again (the token is handed over once, locally)."""
     from rfid.wsagent import PAIRING_MINUTES, open_pairing_window
 
     until = open_pairing_window(options.home, PAIRING_MINUTES)

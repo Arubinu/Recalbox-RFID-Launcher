@@ -1,12 +1,12 @@
-"""Retours utilisateur : bips sonores (aucune dependance externe).
+"""User feedback: beeps (no external dependency).
 
-L'interface Recalbox n'expose malheureusement aucune API permettant d'afficher
-une notification depuis un script (le frontend ne fait qu'ecrire ses evenements
-en MQTT, il n'ecoute rien). Le retour immediat fiable est donc :
+The Recalbox interface unfortunately exposes no API to show a notification
+from a script (the frontend only publishes its events over MQTT, it listens
+to nothing). The reliable immediate feedback is therefore:
 
-* le lancement du jeu lui-meme (le frontend affiche l'ecran de chargement du jeu) ;
-* un bip sonore court, genere a la volee (WAV) et joue par ``paplay`` (PulseAudio,
-  utilise par Recalbox) ou ``aplay`` (ALSA), tous deux fournis par l'image.
+* the game launch itself (the frontend shows the game loading screen);
+* a short beep, generated on the fly (WAV) and played by ``paplay``
+  (PulseAudio, used by Recalbox) or ``aplay`` (ALSA), both shipped in the image.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ SAMPLE_RATE = 22050
 
 
 class Feedback:
-    """Bips de confirmation, silencieux si aucun lecteur audio n'est disponible."""
+    """Confirmation beeps, silent when no audio player is available."""
 
     def __init__(self, enabled: bool = True, player: str = "auto", log=None):
         self.log = log
@@ -46,8 +46,8 @@ class Feedback:
             path = shutil.which(name)
             if not path:
                 continue
-            # Un essai reel : paplay echoue si le serveur PulseAudio n'est pas
-            # joignable, aplay si la carte son est occupee.
+            # A real attempt: paplay fails if the PulseAudio server cannot be
+            # reached, aplay if the sound card is busy.
             try:
                 sample = self._wav_file([(880.0, 0.01)])
                 result = subprocess.run(
@@ -70,7 +70,7 @@ class Feedback:
 
     @staticmethod
     def _tone_wave(frequency: float, duration: float, volume: float = 0.25) -> bytes:
-        """Genere un sinus 16 bits mono avec fondu d'entree/sortie."""
+        """Generates a 16-bit mono sine with fade in/out."""
         frames = max(1, int(SAMPLE_RATE * duration))
         fade = max(1, min(frames // 4, int(SAMPLE_RATE * 0.005)))
         data = bytearray()
@@ -85,7 +85,7 @@ class Feedback:
         return bytes(data)
 
     def _wav_file(self, tones) -> str:
-        """Ecrit (une fois) le WAV correspondant a une suite de (frequence, duree)."""
+        """Writes (once) the WAV matching a sequence of (frequency, duration)."""
         digest = hashlib.sha1(repr(tones).encode("utf-8")).hexdigest()[:12]
         path = os.path.join(self._cache_dir, "beep-%s.wav" % digest)
         if os.path.isfile(path):
@@ -102,7 +102,7 @@ class Feedback:
         return path
 
     def play(self, tones) -> None:
-        """Joue une suite de bips ; jamais bloquant pour l'appelant."""
+        """Plays a sequence of beeps; never blocks the caller."""
         if not self.enabled or not self._player or self._failed >= 3:
             return
         try:
@@ -124,7 +124,7 @@ class Feedback:
         self.play([(880.0, 0.06), (1318.0, 0.09)])
 
     def recognized(self) -> None:
-        """Badge reconnu sans action (action = none, mode "cartouche")."""
+        """Badge recognized without action (action = none, "cartridge" mode)."""
         self.play([(1046.0, 0.07)])
 
     def removed(self) -> None:
@@ -132,11 +132,11 @@ class Feedback:
         self.play([(784.0, 0.06), (587.0, 0.09)])
 
     def armed(self) -> None:
-        """Mode association arme (appui court sur le bouton)."""
+        """Association mode armed (short press on the button)."""
         self.play([(1318.0, 0.07)])
 
     def armed_delete(self) -> None:
-        """Mode suppression arme (appui long sur le bouton)."""
+        """Delete mode armed (from the web interface)."""
         self.play([(659.0, 0.07), (659.0, 0.07)])
 
     def error(self) -> None:
@@ -144,5 +144,5 @@ class Feedback:
         self.play([(233.0, 0.16), (196.0, 0.18)])
 
     def timeout(self) -> None:
-        """Le mode arme a expire."""
+        """The armed mode has expired."""
         self.play([(392.0, 0.10), (330.0, 0.10), (262.0, 0.12)])

@@ -1,11 +1,11 @@
-"""Pilote du lecteur RFID MFRC522 (module RC522, par exemple nf-SL001).
+"""Driver for the MFRC522 RFID reader (RC522 module, e.g. nf-SL001).
 
-Le composant est pilote en SPI : chaque transaction envoie un octet d'adresse
-(bit 7 = lecture) suivi d'un octet de donnees. Toute la sequence d'identification
-(REQA -> anticollision -> selection -> halt) suit la fiche technique NXP.
+The chip is driven over SPI: each transaction sends an address byte
+(bit 7 = read) followed by a data byte. The whole identification sequence
+(REQA -> anticollision -> select -> halt) follows the NXP datasheet.
 
-Le module ne necessite aucune dependance : il recoit simplement un objet SPI
-exposant ``transfer(octets) -> octets`` (voir ``spi_port.py``).
+The module has no dependency: it simply receives an SPI object exposing
+``transfer(bytes) -> bytes`` (see ``spi_port.py``).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ CMD_TRANSCEIVE = 0x0C
 CMD_SOFT_RESET = 0x0F
 
 # ---------------------------------------------------------------------------
-# Constantes de protocole ISO/CEI 14443-3 (type A)
+# ISO/IEC 14443-3 protocol constants (type A)
 # ---------------------------------------------------------------------------
 PICC_REQA = 0x26
 PICC_WUPA = 0x52
@@ -66,30 +66,30 @@ PICC_HALTA = 0x50
 PICC_NVB_ANTICOLL = 0x20
 PICC_NVB_SELECT = 0x70
 
-#: Bits de ComIrqReg
+#: ComIrqReg bits
 IRQ_TIMER = 0x01
 IRQ_ERR = 0x02
 IRQ_IDLE = 0x10
 IRQ_RX = 0x20
 IRQ_TX = 0x40
 
-#: Bits de ErrorReg
+#: ErrorReg bits
 ERR_PROTOCOL = 0x01
 ERR_PARITY = 0x02
 ERR_CRC = 0x04
 ERR_COLL = 0x08
 ERR_BUFFER_OVFL = 0x10
 
-#: Bit "cascade" du SAK : l'UID continue au niveau suivant.
+#: SAK "cascade" bit: the UID continues at the next level.
 SAK_CASCADE = 0x04
 
 
 def crc_a_software(data) -> bytes:
-    """CRC_A ISO/CEI 14443-3 (0x6363, polynome 0x8408, poids faible d'abord).
+    """CRC_A ISO/IEC 14443-3 (0x6363, polynomial 0x8408, least significant first).
 
-    Reference verifiable : le CRC du HALT (50 00) vaut 57 CD. On ne depend pas
-    du coprocesseur du MFRC522 pour cela : la selection est trop importante pour
-    reposer sur un calcul dont on ne maitrise pas l'etat.
+    Checkable reference: the CRC of HALT (50 00) is 57 CD. We do not rely on
+    the MFRC522 coprocessor for this: the selection is too important to depend
+    on a computation whose state we do not control.
     """
     crc = 0x6363
     for byte in bytes(data):
@@ -103,18 +103,18 @@ def crc_a_software(data) -> bytes:
 
 
 class Rc522Error(Exception):
-    """Erreur de communication avec le lecteur."""
+    """Communication error with the reader."""
 
 
 class Rc522:
-    """Pilote bas niveau du MFRC522."""
+    """Low-level MFRC522 driver."""
 
     def __init__(self, spi, log=None):
         self.spi = spi
         self.log = log
         self.version = None
-        #: Derniere trame d'anticollision vue, pour reconnaitre un badge stable
-        #: qui ne repond jamais a la selection (clones).
+        #: Last anticollision frame seen, to recognize a stable badge that
+        #: never answers the selection (clones).
         self._last_frame = None
         self._frame_count = 0
 
@@ -162,10 +162,10 @@ class Rc522:
         self._clear_bits(REG_TX_CONTROL, 0x03)
 
     def begin(self) -> int:
-        """Initialise le composant et retourne la version du registre VersionReg."""
+        """Initializes the chip and returns the VersionReg register value."""
         self.soft_reset()
         self._reset_baud_rates()
-        self._write(REG_T_MODE, 0x80)          # TAuto : le timer demarre seul
+        self._write(REG_T_MODE, 0x80)          # TAuto: the timer starts by itself
         self._write(REG_T_PRESCALER, 0xA9)     # f_timer = 40 kHz
         self._write(REG_T_RELOAD_H, 0x03)      # 0x03E8 = 1000 -> 25 ms
         self._write(REG_T_RELOAD_L, 0xE8)
@@ -176,34 +176,33 @@ class Rc522:
         return self.version
 
     def read_version(self) -> int:
-        """Relit VersionReg (0x37) : integrite du bus a une vitesse donnee.
+        """Reads VersionReg (0x37) again: bus integrity at a given speed.
 
-        Utilise par le reglage automatique pour comparer les vitesses SPI sans
-        dependre de la presence d'un badge.
+        Used by the automatic tuning to compare SPI speeds without needing a
+        badge on the reader.
         """
         return self._read(REG_VERSION)
 
     # --------------------------------------------------------- transactions
     def _transceive(self, data, tx_last_bits: int = 0, timeout_s: float = 0.05, trace=None,
                     etape: str = ""):
-        """Envoie ``data`` et retourne (octets_recus, bits_valides) ou None.
+        """Sends ``data`` and returns (received_bytes, valid_bits) or None.
 
-        ``trace`` (dict optionnel) recoit la trame envoyee, la reponse brute et
-        l'ErrorReg : c'est ce qui permet de diagnostiquer une carte qui repond
-        mais dont l'identification echoue.
+        ``trace`` (optional dict) receives the sent frame, the raw answer and
+        ErrorReg: this is what makes it possible to diagnose a card that answers
+        but whose identification fails.
 
-        On accepte la reponse des qu'elle contient des octets : les cartes
-        clones signalent parfois un drapeau d'erreur sans que la trame soit
-        inutilisable, et c'est la selection (verifiee ensuite) qui valide
-        reellement l'UID.
+        The answer is accepted as soon as it holds bytes: clone cards sometimes
+        raise an error flag while the frame is still usable, and the selection
+        (checked afterwards) is what really validates the UID.
         """
         step = None
         if trace is not None:
             step = {"tx": bytes(data).hex().upper(), "rx": "", "err": "", "etape": etape}
             trace.setdefault("steps", []).append(step)
         self._write(REG_COMMAND, CMD_IDLE)
-        self._write(REG_COM_IRQ, 0x7F)          # efface les drapeaux
-        self._write(REG_FIFO_LEVEL, 0x80)       # vide la FIFO
+        self._write(REG_COM_IRQ, 0x7F)          # clear the flags
+        self._write(REG_FIFO_LEVEL, 0x80)       # flush the FIFO
         self._write_many(REG_FIFO_DATA, data)
         self._write(REG_BIT_FRAMING, tx_last_bits & 0x07)
         self._write(REG_COMMAND, CMD_TRANSCEIVE)
@@ -240,14 +239,14 @@ class Rc522:
         return payload, valid_bits
 
     def crc_a(self, data) -> bytes:
-        """Calcule le CRC_A (ISO 14443-3) avec le coprocesseur du MFRC522.
+        """Computes CRC_A (ISO 14443-3) with the MFRC522 coprocessor.
 
-        Retourne les deux octets dans l'ordre de transmission (poids faible
-        d'abord), comme le fait la bibliotheque de reference.
+        Returns both bytes in transmission order (least significant first), like
+        the reference library does.
         """
         self._write(REG_COMMAND, CMD_IDLE)
         self._write(REG_DIV_IRQ, 0x04)          # efface CRCIRq
-        self._write(REG_FIFO_LEVEL, 0x80)       # vide la FIFO
+        self._write(REG_FIFO_LEVEL, 0x80)       # flush the FIFO
         self._write_many(REG_FIFO_DATA, data)
         self._write(REG_COMMAND, CMD_CALC_CRC)
 
@@ -263,14 +262,14 @@ class Rc522:
                 raise Rc522Error("calcul du CRC_A impossible")
 
     def _reset_baud_rates(self) -> None:
-        """Remet les registres de modulation a leurs valeurs par defaut."""
+        """Resets the modulation registers to their default values."""
         self._write(REG_TX_MODE, 0x00)
         self._write(REG_RX_MODE, 0x00)
         self._write(REG_MOD_WIDTH, 0x26)
 
     # ----------------------------------------------------------- commandes
     def request(self, mode: int = PICC_REQA):
-        """REQA/WUPA : retourne l'ATQA (2 octets) ou None si aucun badge."""
+        """REQA/WUPA: returns the ATQA (2 bytes) or None when there is no badge."""
         self._reset_baud_rates()
         result = self._transceive(bytes([mode]), tx_last_bits=7)
         if result is None:
@@ -279,12 +278,11 @@ class Rc522:
         return payload if len(payload) >= 2 else None
 
     def _anticollision(self, command: int, trace=None):
-        """Anticollision : retourne les 5 octets (UID partiel + BCC) ou None.
+        """Anticollision: returns the 5 bytes (partial UID + BCC) or None.
 
-        Le BCC renvoye n'est pas verifie ici : certains badges clones le
-        calculent faux, et la selection qui suit de toute facon est refaite avec
-        un BCC recalcule. La longueur et la selection restent les vrais
-        controles.
+        The returned BCC is not checked here: some clone badges compute it wrong,
+        and the following selection is redone with a recomputed BCC anyway. The
+        length and the selection remain the real checks.
         """
         result = self._transceive(bytes([command, PICC_NVB_ANTICOLL]), trace=trace)
         if result is None:
@@ -296,17 +294,17 @@ class Rc522:
 
     def _select(self, command: int, uid_with_bcc, trace=None, etape: str = "",
                 crc_materiel: bool = False) -> "int | None":
-        """Selection : retourne le SAK (1 octet) ou None.
+        """Selection: returns the SAK (1 byte) or None.
 
-        Deux variantes sont essayees par ``read_uid`` :
-        * CRC_A calcule en logiciel (reference ISO, independant du composant) ;
-        * CRC_A ajoute par le coprocesseur (TxCRCEn), pour les badges qui ne
-          repondent qu'a cette forme de trame.
+        Two variants are tried by ``read_uid``:
+        * CRC_A computed in software (ISO reference, independent of the chip);
+        * CRC_A appended by the coprocessor (TxCRCEn), for badges that only answer
+          that form of frame.
         """
         frame = bytes([command, PICC_NVB_SELECT]) + bytes(uid_with_bcc)
         if crc_materiel:
-            # TxCRCEn = bit 7 de TxModeReg : le composant ajoute lui-meme le CRC
-            # (l'octet de poids faible ne doit alors pas etre transmis).
+            # TxCRCEn = bit 7 of TxModeReg: the chip appends the CRC itself
+            # (the low byte must then not be sent).
             self._set_bits(REG_TX_MODE, 0x80)
             try:
                 result = self._transceive(frame, trace=trace, etape=etape + "-crc-hw")
@@ -327,11 +325,11 @@ class Rc522:
         return payload[0] if payload else None
 
     def reset_field(self, pause_s: float = 0.004) -> None:
-        """Coupe puis retablit le champ : tous les badges repartent en IDLE.
+        """Turns the field off then on again: every badge goes back to IDLE.
 
-        Plus fiable que HALT pour les badges clones : apres un HALT, certains ne
-        repondent plus a WUPA et restent muets tant qu'ils n'ont pas quitte le
-        champ (c'est exactement ce qui donnait l'impression d'un badge invisible).
+        More reliable than HALT for clone badges: after a HALT, some no longer
+        answer WUPA and stay silent until they have left the field (which is
+        exactly what made a badge look invisible).
         """
         try:
             self.antenna_off()
@@ -341,19 +339,18 @@ class Rc522:
             pass
 
     def halt(self) -> None:
-        # Le badge ne repond pas a HALT : le temps mort est normal.
+        # The badge does not answer HALT: the timeout is expected.
         frame = bytes([PICC_HALTA, 0x00])
         self._transceive(frame + crc_a_software(frame), timeout_s=0.03)
 
     def read_uid(self, trace=None):
-        """Lit l'UID du badge present (4 ou 7 octets), ou None.
+        """Reads the UID of the badge on the reader (4 or 7 bytes), or None.
 
-        Plusieurs strategies sont essayees, car les badges clones different sur
-        deux points : le BCC qu'ils attendent dans la trame de selection (celui
-        qu'ils renvoient, ou celui recalcule a partir de l'UID) et la facon dont
-        le CRC doit etre ajoute (par nous, ou par le composant). Une carte
-        genue accepte la premiere ; une carte clonee en accepte souvent une
-        autre. La trace dit laquelle a fonctionne.
+        Several strategies are tried, because clone badges differ on two points:
+        the BCC they expect in the select frame (the one they return, or the one
+        recomputed from the UID) and how the CRC must be appended (by us, or by
+        the chip). A genuine card accepts the first one; a clone often accepts
+        another. The trace tells which one worked.
         """
         strategies = (
             ("bcc-recu", False, False),
@@ -363,9 +360,9 @@ class Rc522:
         derniere = None
         for tentative, mode in enumerate((PICC_REQA, PICC_WUPA, PICC_REQA)):
             if tentative == 2 and derniere is None:
-                # Deux tours sans aucune reponse : le badge est peut-etre reste
-                # bloque (HALT d'une version precedente). Un cycle de champ le
-                # remet en IDLE sans qu'il faille le retirer.
+                # Two rounds without any answer: the badge may have stayed stuck
+                # (HALT from a previous version). A field cycle puts it back to IDLE
+                # without having to remove it.
                 self.reset_field()
             atqa = self.request(mode)
             if trace is not None:
@@ -403,7 +400,7 @@ class Rc522:
                     if next_sak is None:
                         break
                     if next_sak & SAK_CASCADE:
-                        # UID de 10 octets : non gere (extrement rare sur des badges).
+                        # 10-byte UID: not supported (extremely rare on badges).
                         if self.log:
                             self.log.warning("Badge a UID 10 octets ignore")
                         return None
@@ -413,10 +410,9 @@ class Rc522:
                 uid = bytes(first[0:4])
                 self.reset_field()
                 return uid
-        # Toutes les selections ont echoue : un badge qui repond de facon stable
-        # en anticollision reste utilisable (nous n'avons besoin que de son UID,
-        # jamais de sa memoire). Le compteur avance d'un cran par lecture, pas
-        # par tentative interne.
+        # Every selection failed: a badge that answers the anticollision in a
+        # stable way stays usable (we only need its UID, never its memory). The
+        # counter moves one step per read, not per internal attempt.
         if derniere is not None:
             stable = self._stable_uid(derniere)
             if stable is not None:
@@ -427,12 +423,11 @@ class Rc522:
         return None
 
     def _stable_uid(self, first):
-        """UID deduit de l'anticollision quand la selection reste muette.
+        """UID taken from the anticollision when the selection stays silent.
 
-        Certains badges clones ne repondent jamais a la selection. Leur trame
-        d'anticollision, elle, est parfaitement stable : on ne l'accepte qu'apres
-        trois trames identiques, pour ne jamais prendre une lecture perturbee
-        pour un badge.
+        Some clone badges never answer the selection. Their anticollision frame,
+        however, is perfectly stable: it is only accepted after three identical
+        frames, so that a disturbed read is never taken for a badge.
         """
         frame = bytes(first)
         if frame == self._last_frame:
@@ -442,31 +437,31 @@ class Rc522:
             self._frame_count = 1
         if self._frame_count < 3:
             return None
-        if frame[0] == 0x88:          # UID en cascade : non gere sans selection
+        if frame[0] == 0x88:          # cascaded UID: not supported without selection
             return None
         return frame[0:4]
 
     @staticmethod
     def _bcc(data) -> bytes:
-        """BCC : ou exclusif des octets transmis (ISO/CEI 14443-3)."""
+        """BCC: exclusive or of the sent bytes (ISO/IEC 14443-3)."""
         checksum = 0
         for byte in data:
             checksum ^= byte
         return bytes([checksum])
 
     def tag_present(self):
-        """Vrai si un badge est pose, False s'il n'y en a pas, None si muet.
+        """True if a badge is present, False if there is none, None if silent.
 
-        Trois constats ont impose cette forme :
+        Three findings led to this shape:
 
-        * **REQA ou WUPA.** Un badge qui vient d'etre selectionne (ou mis en
-          pause) ne repond plus a REQA : interroger REQA seul faisait passer un
-          badge parfaitement pose pour retire, ce qui relancait le jeu tout seul
-          et declenchait l'arret « badge retire » juste apres un lancement.
-        * **Un cycle de champ en dernier recours.** Certains clones restent
-          bloques dans un etat ou seule une coupure du champ les reveille.
-        * **None quand le lecteur ne repond pas du tout.** Un bus SPI muet ne
-          prouve pas qu'un badge a ete retire : on ne conclut rien.
+        * **REQA or WUPA.** A badge that has just been selected (or halted) no
+          longer answers REQA: asking REQA alone made a badge lying on the reader
+          look removed, which started the game again by itself and triggered the
+          "badge removed" stop right after a launch.
+        * **A field cycle as a last resort.** Some clones get stuck in a state
+          that only a field cut wakes them from.
+        * **None when the reader does not answer at all.** A silent SPI bus does
+          not prove that a badge was removed: nothing is concluded.
         """
         erreurs = 0
         try:
@@ -492,7 +487,7 @@ class Rc522:
     def close(self) -> None:
         try:
             self.antenna_off()
-        except Exception:  # noqa: BLE001 - la fermeture ne doit jamais echouer
+        except Exception:  # noqa: BLE001 - closing must never fail
             pass
         close = getattr(self.spi, "close", None)
         if callable(close):
@@ -500,7 +495,7 @@ class Rc522:
 
 
 class Rc522Reader:
-    """Lecteur pret a l'emploi : anti-rebond badge + reprise apres erreur."""
+    """Ready-to-use reader: badge debounce + recovery after an error."""
 
     def __init__(self, spi, log=None, cooldown_s: float = 2.5, on_reset=None):
         self.log = log
@@ -531,21 +526,21 @@ class Rc522Reader:
         if self.on_reset:
             try:
                 self.on_reset()
-            except Exception as exc:  # noqa: BLE001 - le reset est best effort
+            except Exception as exc:  # noqa: BLE001 - the reset is best effort
                 if self.log:
                     self.log.warning("Reset materiel du RC522 impossible : %s" % exc)
         try:
             self.start()
-        except Exception as exc:  # noqa: BLE001 - on retentera au prochain tour
+        except Exception as exc:  # noqa: BLE001 - retried at the next turn
             if self.log:
                 self.log.warning("Lecteur RC522 toujours indisponible : %s" % exc)
 
     def tag_present(self):
-        """Vrai si un badge est pose, False sinon, None si le lecteur est muet.
+        """True if a badge is present, False otherwise, None if the reader is silent.
 
-        Delegue au pilote, qui interroge REQA **et** WUPA : un badge deja
-        selectionne ne repond plus a REQA, et le confondre avec une absence
-        relancait le jeu tout seul.
+        Delegates to the driver, which asks REQA **and** WUPA: an already selected
+        badge no longer answers REQA, and mistaking it for an absence started the
+        game again by itself.
         """
         if not self._started:
             return None
@@ -557,11 +552,11 @@ class Rc522Reader:
             return None
 
     def read_uid(self):
-        """Retourne l'UID (chaine hexa majuscule) d'un nouveau badge, sinon None."""
+        """Returns the UID (uppercase hex string) of a new badge, otherwise None."""
         if not self._started:
             try:
                 self.start()
-            except Exception:  # noqa: BLE001 - reessai au prochain appel
+            except Exception:  # noqa: BLE001 - retried at the next call
                 return None
         try:
             raw = self.rc522.read_uid()

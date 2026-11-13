@@ -1,4 +1,4 @@
-"""Bouton poussoir avec pull-up interne et anti-rebond logiciel."""
+"""Push button with internal pull-up and software debounce."""
 
 from __future__ import annotations
 
@@ -8,22 +8,21 @@ from .gpio_backend import GpioError
 
 
 class Button:
-    """Bouton entre une broche GPIO et GND (appui = niveau bas).
+    """Button between a GPIO pin and GND (pressed = low level).
 
-    ``poll()`` doit etre appele regulierement (toutes les 10 a 50 ms) et retourne :
+    ``poll()`` must be called regularly (every 10 to 50 ms) and returns:
 
-    * ``"hold"`` **des que l'appui atteint ``hold_press_s``**, sans attendre le
-      relachement (confirmation d'appairage : on peut garder le doigt pose) ;
-    * ``"short"`` au relachement, si l'appui est plus court que
-      ``hold_press_s`` (et si ``"hold"`` n'a pas deja ete emis) ;
-    * ``None`` sinon.
+    * ``"hold"`` **as soon as the press reaches ``hold_press_s``**, without
+      waiting for the release (pairing confirmation: the finger may stay);
+    * ``"short"`` on release, if the press is shorter than ``hold_press_s``
+      (and if ``"hold"`` has not been sent already);
+    * ``None`` otherwise.
 
-    L'appui court n'est jamais emis au contact : un appui maintenu declencherait
-    alors les deux gestes.
+    The short press is never sent on contact: a held press would then trigger
+    both gestures.
 
-    Il n'y a plus de geste "long" : l'effacement d'un badge se fait depuis
-    l'interface web, et reassocier un badge existant ecrase l'ancienne
-    association.
+    There is no "long" gesture any more: a badge is erased from the web
+    interface, and pairing an existing badge again overwrites the old pairing.
     """
 
     def __init__(
@@ -68,7 +67,7 @@ class Button:
 
     # ------------------------------------------------------------------- public
     def is_pressed(self) -> bool:
-        """Etat courant du bouton (utile au diagnostic)."""
+        """Current button state (useful for diagnostics)."""
         if not self.available:
             return False
         try:
@@ -89,7 +88,7 @@ class Button:
 
         now = self.clock()
 
-        # 1. transition brute : on attend que l'etat soit stable (anti-rebond)
+        # 1. raw transition: wait for the state to be stable (debounce)
         if pressed != self._raw_state:
             self._raw_state = pressed
             self._changed_at = now
@@ -114,10 +113,10 @@ class Button:
                 self.log.info("Bouton relache apres %.2f s" % duree)
             if self._hold_fired:
                 self._hold_fired = False
-                return None               # validation deja faite pendant l'appui
+                return None               # validation already done during the press
             return "hold" if duree >= self.hold_press_s else "short"
 
-        # 2. etat stable : l'appui maintenu valide des que la duree est atteinte
+        # 2. stable state: the held press is validated as soon as the duration is reached
         if self._raw_state and not self._hold_fired and self._pressed_at is not None:
             if (now - self._pressed_at) >= self.hold_press_s:
                 self._hold_fired = True

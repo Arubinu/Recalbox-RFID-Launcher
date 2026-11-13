@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Script permanent Recalbox : installation automatique + agent de gestion.
+"""Recalbox permanent script: automatic installation + management agent.
 
-Mise en place (une seule fois) :
+Setup (once):
 
-1. copier les fichiers sur le partage (l'installateur `.cmd` le fait tout seul) ;
-2. redémarrer Recalbox.
+1. copy the files to the share (the page or the `.cmd` installer does it);
+2. reboot Recalbox, or on Recalbox 10 run "Install-RFID-reader" from the
+   user scripts menu (it starts this script without a reboot).
 
-Au démarrage, ce script :
+At startup, this script:
 
-* installe le lanceur s'il est absent (et active le bus SPI) ;
-* installe la version présente sur le partage si elle est plus récente ;
-* redémarre Recalbox une fois si le SPI vient d'être activé (jamais pendant un
-  jeu : le redémarrage est alors reporté) ;
-* démarre le service RFID ;
-* puis lance l'agent WebSocket qui permet à `installer.html` de gérer les badges.
+* installs the launcher if it is missing (and enables the SPI bus);
+* installs the version found on the share if it is newer;
+* reboots Recalbox once if SPI has just been enabled (never during a game:
+  the reboot is then postponed);
+* starts the RFID service;
+* then runs the WebSocket agent that lets `installer.html` manage the badges.
 
-Aucune interface n'est servie par la Recalbox : uniquement l'agent WebSocket
-protégé par le jeton (`/recalbox/share/system/rfid/token.txt`).
+No interface is served by the Recalbox: only the WebSocket agent, open to a
+computer once it has been authorized with a 3 s press on the box button.
 """
 
 import glob
@@ -26,27 +27,27 @@ import subprocess
 import sys
 import time
 
-#: Dossier d'installation (surchargeable par la variable RFID_HOME).
+#: Install folder (can be overridden with the RFID_HOME variable).
 RFID_HOME = os.environ.get("RFID_HOME", "/recalbox/share/system/rfid")
 
-#: Racine du partage où chercher le dossier du projet.
+#: Share root where the project folder is looked for.
 SHARE = "/recalbox/share"
 
-#: Fichier de configuration du boot (le SPI s'active ici).
+#: Boot configuration file (SPI is enabled here).
 BOOT_CONFIG = "/boot/recalbox-user-config.txt"
 
-#: Fichier d'état du frontend (pour ne pas redémarrer pendant un jeu).
+#: Frontend state file (so as not to reboot during a game).
 STATE_FILE = "/tmp/es_state.inf"
 
-#: Délai maximal d'une installation (secondes).
+#: Maximum duration of an installation (seconds).
 INSTALL_TIMEOUT = 900
 
-#: Délai avant redémarrage automatique (secondes).
+#: Delay before the automatic reboot (seconds).
 REBOOT_DELAY = 8
 
 
 # ---------------------------------------------------------------------------
-# Journalisation (le script est lancé par Recalbox, sans console)
+# Logging (the script is started by Recalbox, without a console)
 # ---------------------------------------------------------------------------
 def log(message):
     line = "%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), message)
@@ -64,7 +65,7 @@ def log(message):
 
 
 # ---------------------------------------------------------------------------
-# État de l'installation
+# Installation state
 # ---------------------------------------------------------------------------
 def main_py(home=None):
     return os.path.join(home or RFID_HOME, "app", "main.py")
@@ -75,7 +76,7 @@ def installed():
 
 
 def version_tuple(value):
-    """Convertit "1.2.0" en (1, 2, 0) ; les parties non numériques valent 0."""
+    """Converts "1.2.0" into (1, 2, 0); non-numeric parts count as 0."""
     parts = []
     for chunk in str(value).strip().split("."):
         digits = "".join(char for char in chunk if char.isdigit())
@@ -106,7 +107,7 @@ def newer_source_available(source):
 
 
 def find_source():
-    """Cherche le dossier du projet (app/main.py + install.sh) sur le partage."""
+    """Looks for the project folder (app/main.py + install.sh) on the share."""
     home = os.path.abspath(RFID_HOME)
     patterns = (
         os.path.join(SHARE, "*", "app", "main.py"),
@@ -124,7 +125,7 @@ def find_source():
 
 
 # ---------------------------------------------------------------------------
-# Matériel / système
+# Hardware / system
 # ---------------------------------------------------------------------------
 def spi_active():
     return os.path.exists("/dev/spidev0.0")
@@ -196,7 +197,7 @@ def start_service():
 
 
 def launch_agent(source):
-    """Lance l'agent de gestion (installation si possible, sinon le partage)."""
+    """Runs the management agent (from the install if possible, else from the share)."""
     if installed():
         os.execv(sys.executable, [sys.executable, main_py(), "agent", "--home", RFID_HOME])
         return
@@ -245,8 +246,8 @@ def main():
     log("installation automatique depuis %s" % source)
     if run_install(source) != 0:
         log("installation en echec : le service est demarre quand meme")
-        start_service()       # l'agent et le lecteur restent utilisables
-        launch_agent(source)  # agent depuis le partage pour diagnostiquer
+        start_service()       # the agent and the reader stay usable
+        launch_agent(source)  # agent from the share, for diagnosis
         return 1
 
     if needs_reboot():

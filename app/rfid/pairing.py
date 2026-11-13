@@ -1,19 +1,19 @@
-"""Appairage confirme physiquement.
+"""Pairing confirmed physically.
 
-Principe (propose par l'utilisateur, et c'est le bon modele de securite) :
+Principle (suggested by the user, and it is the right security model):
 
-1. la page web depose une **demande** d'appairage — une seule a la fois, valable
-   ``PAIRING_WINDOW_S`` secondes ;
-2. sur la Recalbox, le service attend un **appui long** sur le bouton physique
-   (``CONFIRM_HOLD_S`` secondes) : c'est la preuve de presence ;
-3. le service ecrit un **accord** qui porte l'identifiant exact de la demande ;
-4. la page echange cet accord contre le jeton, une seule fois.
+1. the web page drops a pairing **request** - a single one at a time, valid
+   for ``PAIRING_WINDOW_S`` seconds;
+2. on the Recalbox, the service waits for a **long press** on the physical
+   button (``CONFIRM_HOLD_S`` seconds): that is the proof of presence;
+3. the service writes a **grant** carrying the exact id of the request;
+4. the page exchanges this grant for the token, only once.
 
-Le point delicat est la course entre deux demandes : un accord donne pour la
-demande A ne peut jamais valider une demande B, car l'identifiant et l'echeance
-de la demande sont recopies dans l'accord. Un appui commence avant la creation de
-la demande (ou pendant qu'elle expirait) ne compte pas : il doit demarrer
-``MIN_GAP_S`` apres la creation de la demande qu'il valide.
+The tricky part is the race between two requests: a grant given for request
+A can never validate a request B, because the id and the deadline of the
+request are copied into the grant. A press started before the request was
+created (or while it was expiring) does not count: it must start
+``MIN_GAP_S`` after the creation of the request it validates.
 """
 
 from __future__ import annotations
@@ -23,11 +23,11 @@ import os
 import secrets
 import time
 
-# Duree de validite d'une demande d'appairage (secondes).
+# Validity of a pairing request (seconds).
 PAIRING_WINDOW_S = 30.0
-# Appui continu demande pour confirmer (secondes).
+# Continuous press required to confirm (seconds).
 CONFIRM_HOLD_S = 3.0
-# L'appui doit commencer apres la creation de la demande (marge anti-rejeu).
+# The press must start after the request was created (anti-replay margin).
 MIN_GAP_S = 0.25
 
 REQUEST_FILENAME = "pair-pending.json"
@@ -35,22 +35,22 @@ GRANT_FILENAME = "pair-grant.json"
 
 
 class PairingError(Exception):
-    """Demande refusee (deja en cours, ou delai expire)."""
+    """Request refused (already pending, or delay expired)."""
 
 
 # ---------------------------------------------------------------------------
 # Fichiers d'etat
 # ---------------------------------------------------------------------------
-# Les etats d'appairage ne doivent pas etre ecrits sur le partage Samba : il est
-# accessible en invite, donc n'importe quel poste du reseau pourrait y deposer un
-# accord et s'autoriser sans appui sur le bouton. On les place donc dans un
-# dossier prive (tmpfs), hors du partage. ``RFID_STATE_DIR`` force un chemin.
+# Pairing states must not be written to the Samba share: it is reachable
+# as a guest, so any computer on the network could drop a grant there and
+# authorize itself without pressing the button. They are therefore kept in
+# a private folder (tmpfs), outside the share. ``RFID_STATE_DIR`` forces a path.
 STATE_DIR_ENV = "RFID_STATE_DIR"
 DEFAULT_STATE_DIR = "/tmp/rfid-launcher-pairing"
 
 
 def state_dir(home: str) -> str:
-    """Dossier des etats d'appairage : prive, et jamais le partage Samba."""
+    """Folder of the pairing states: private, and never the Samba share."""
     forced = os.environ.get(STATE_DIR_ENV, "").strip()
     if forced:
         try:
@@ -58,14 +58,14 @@ def state_dir(home: str) -> str:
         except OSError:
             pass
         return forced
-    # Comparaison faite sur une forme normalisee : la meme fonction sert sous
-    # Windows (tests, mode simulation) et sur la Recalbox.
+    # Comparison made on a normalized form: the same function is used on
+    # Windows (tests, simulation mode) and on the Recalbox.
     normalise = os.path.abspath(str(home or "")).replace("\\", "/")
     if "/recalbox/share" in normalise:
         try:
             os.makedirs(DEFAULT_STATE_DIR, exist_ok=True)
             try:
-                # Dossier prive : le service et l'agent tournent en root.
+                # Private folder: the service and the agent run as root.
                 os.chmod(DEFAULT_STATE_DIR, 0o700)
             except OSError:
                 pass
@@ -97,7 +97,7 @@ def _read(path: str):
 
 
 def _write(path: str, data: dict) -> None:
-    """Ecriture atomique : fichier temporaire puis remplacement."""
+    """Atomic write: temporary file, then replacement."""
     temporary = path + ".tmp"
     try:
         with open(temporary, "w", encoding="utf-8") as handle:
@@ -125,7 +125,7 @@ def _remove(path: str) -> None:
 # Demande
 # ---------------------------------------------------------------------------
 def pending(home: str):
-    """Demande en cours, ou ``None`` (une demande expiree est effacee)."""
+    """Pending request, or ``None`` (an expired request is deleted)."""
     data = _read(request_path(home))
     if not data:
         return None
@@ -141,7 +141,7 @@ def pending(home: str):
 
 
 def create_request(home: str, source: str = "") -> dict:
-    """Cree la demande ; leve ``PairingError`` si une autre est en cours."""
+    """Creates the request; raises ``PairingError`` if another one is pending."""
     current = pending(home)
     if current:
         remaining = max(0.0, float(current.get("until", 0)) - time.time())
@@ -155,27 +155,27 @@ def create_request(home: str, source: str = "") -> dict:
         "until": now + PAIRING_WINDOW_S,
         "source": str(source or ""),
     }
-    # Un accord precedent ne doit jamais pouvoir servir pour cette demande.
+    # A previous grant must never be usable for this request.
     _remove(grant_path(home))
     _write(request_path(home), request)
     return request
 
 
 def cancel(home: str) -> None:
-    """Abandonne la demande et l'eventuel accord."""
+    """Drops the request and the grant, if any."""
     _remove(request_path(home))
     _remove(grant_path(home))
 
 
 # ---------------------------------------------------------------------------
-# Accord (cote service, apres appui long)
+# Grant (service side, after a long press)
 # ---------------------------------------------------------------------------
 def grant(home: str, request: dict, press_started: float) -> bool:
-    """Enregistre l'accord du bouton pour *cette* demande.
+    """Saves the button grant for *this* request.
 
-    Refuse un appui qui a commence avant la creation de la demande : sans cela,
-    quelqu'un qui garde le doigt sur le bouton pourrait valider une demande
-    arrivee entre-temps.
+    Refuses a press that started before the request was created: otherwise,
+    someone keeping a finger on the button could validate a request that
+    arrived meanwhile.
     """
     if not request:
         return False
@@ -195,11 +195,11 @@ def grant(home: str, request: dict, press_started: float) -> bool:
 
 
 def take_grant(home: str, request_id: str) -> bool:
-    """Verifie et consomme l'accord (une seule fois).
+    """Checks and consumes the grant (only once).
 
-    L'accord n'est valable que pour l'identifiant fourni et tant que la demande
-    correspondante n'a pas expire : une demande suivante ne peut donc pas etre
-    validee par l'appui destine a la precedente.
+    The grant is only valid for the given id and as long as the matching
+    request has not expired: a later request therefore cannot be validated by
+    the press meant for the previous one.
     """
     data = _read(grant_path(home))
     if not data:
