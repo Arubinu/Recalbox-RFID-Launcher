@@ -22,8 +22,19 @@ from .consts import (
     home_dir,
 )
 from .controller import Controller
-from .esbridge import EsLauncher, read_state, state_snapshot, supports_start_command
+from .esbridge import (
+    EsLauncher,
+    Target,
+    read_state,
+    relative_game_key,
+    state_snapshot,
+    supports_start_command,
+)
 from .feedback import Feedback
+from .led import StatusLight, build_light
+from .library import Library
+from .osd import ScreenMessages
+from .playtime import PlayTimer
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -190,6 +201,16 @@ class Service:
         self._adopt_until = 0.0
         self._status_signature = None
         self._status_written = 0.0
+        self.library = None
+        self.playtime = None
+        self.screen = None
+        self.light = None
+        self._expire_at = None
+        self._pairing_shown = None
+        self._next_light_check = 0.0
+        self._light_pairing = False
+        self._next_game_check = 0.0
+        self._game_gone = 0
 
     # ------------------------------------------------------------------ setup
     def setup(self) -> bool:
@@ -223,13 +244,44 @@ class Service:
             self.cfg.get_int("launch", "udp_port", 1337),
             self.log,
         )
+        self.library = Library(log=self.log)
+        self.playtime = PlayTimer(self.home, log=self.log)
+        self._build_extras()
         self._build_controller()
         return True
 
+    def _build_extras(self) -> None:
+        """Screen messages and status light (rebuilt when the settings change)."""
+        self.screen = ScreenMessages(
+            enabled=self.cfg.get_bool("screen", "messages", True),
+            port=self.cfg.get_int("screen", "retroarch_port", 55355),
+            log=self.log,
+        )
+        if self.light is not None:
+            try:
+                self.light.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self.light = build_light(self.cfg, self.gpio, self.log)
+
     def _build_controller(self) -> None:
         self.controller = Controller(
-            self.store, self.launcher, self.feedback, self.cfg, self.log
+            self.store, self.launcher, self.feedback, self.cfg, self.log,
+            library=self.library, playtime=self.playtime, screen=self.screen,
+            light=self.light, power=self._power_off,
         )
+
+    def _power_off(self) -> None:
+        """Turns the Recalbox off cleanly (the frontend saves its lists)."""
+        import subprocess
+
+        try:
+            subprocess.Popen(
+                ["sh", "-c", "sleep 1; sync; shutdown -h now || poweroff"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+            )
+        except OSError as exc:
+            self.log.error("Arret impossible : %s" % exc)
 
     def _open_reader(self) -> bool:
         try:
@@ -316,6 +368,8 @@ class Service:
 
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
+                self._playtime_step()
+                self._light_step()
 
                 try:
                     self.store.reload_if_changed()
@@ -367,11 +421,105 @@ class Service:
         self._absent_since = None
         self._absent_hits = 0
         self._launched_uid = None
-        self.controller.on_badge(uid)
+        stop_pending = getattr(self, "_stop_pending", None)
+        result = self.controller.on_badge(uid)
         self._action_at = time.monotonic()
         if getattr(self.controller, "last_action", "") == "launched":
             # Kept for the "quit the game when the badge is removed" option.
             self._launched_uid = uid
+        elif result == "extended" and stop_pending is not None:
+            # Cartridge swap: the game card was just pulled out and a bonus
+            # card put in its place before the game was quit. The game goes
+            # on, and the bonus card now holds it.
+            self._stop_pending = None
+            self._launched_uid = uid
+            if self.log:
+                self.log.info("Carte bonus inseree a la place du jeu : la partie continue")
+
+    # ------------------------------------------------------------- play time
+    #: Time given to read "play time is over" before the game is quit.
+    EXPIRE_NOTICE_S = 3.0
+
+    def _playtime_step(self) -> None:
+        """Warnings, end of a time-limited game, game quit from its own menu."""
+        timer = getattr(self, "playtime", None)
+        if timer is None or self.controller is None:
+            return
+        now = time.monotonic()
+        if self._expire_at is not None and now >= self._expire_at:
+            self._expire_at = None
+            self._launched_uid = None
+            try:
+                self.controller.stop_game("time")
+            except Exception as exc:  # noqa: BLE001 - never blocking
+                self.log.warning("Arret du jeu impossible : %s" % exc)
+            return
+        event = timer.tick()
+        if event in ("warn300", "warn60"):
+            if self.screen is not None:
+                self.screen.say(event)
+            self.feedback.armed()
+            self.log.info("Temps de jeu : avertissement (%s)" % event)
+        elif event == "expired":
+            if self.screen is not None:
+                self.screen.say("expired")
+            self.feedback.timeout()
+            if self.light is not None:
+                self.light.flash("timeup")
+            self.log.info("Temps de jeu termine : le jeu va etre quitte")
+            self._expire_at = now + self.EXPIRE_NOTICE_S
+            return
+        # Game quit from the emulator menu: the limited session is over.
+        if timer.session is not None and now >= self._next_game_check:
+            self._next_game_check = now + 2.0
+            if now - timer.session["started"] < 20.0:
+                return
+            if self.controller.game_running():
+                self._game_gone = 0
+                return
+            self._game_gone += 1
+            if self._game_gone >= 2:
+                self._game_gone = 0
+                timer.end("quit")
+                self.controller.launched_uid = None
+                self.log.info("Jeu limite quitte depuis son menu")
+
+    # ---------------------------------------------------------- status light
+    def _light_step(self) -> None:
+        """Pairing message on the game screen and colour of the light."""
+        now = time.monotonic()
+        if now >= self._next_light_check:
+            self._next_light_check = now + 0.5
+            try:
+                request = pairing.pending(self.home)
+            except Exception:  # noqa: BLE001 - unreadable state file
+                request = None
+            self._light_pairing = request is not None
+            if request is not None and request.get("id") != self._pairing_shown:
+                self._pairing_shown = request.get("id")
+                if self.screen is not None:
+                    self.screen.say("pairing")
+        light = self.light
+        if light is None or not light.enabled:
+            return
+        mode = self.controller.mode if self.controller is not None else ""
+        remaining = self.playtime.remaining_s() if self.playtime is not None else None
+        if self.reader is None:
+            state = "noreader"
+        elif self._light_pairing:
+            state = "pairing"
+        elif mode == "associate":
+            state = "associate"
+        elif mode == "delete":
+            state = "delete"
+        elif remaining is not None and remaining <= 60:
+            state = "warning"
+        elif self.controller is not None and self.controller.launched_uid:
+            state = "playing"
+        else:
+            state = "idle"
+        light.set_state(state)
+        light.update()
 
     #: Time (seconds) without seeing the badge before concluding it was removed.
     ABSENCE_MIN_S = 2.0
@@ -511,6 +659,10 @@ class Service:
                 started = self._press_started_at or time.time()
                 if pairing.grant(self.home, request, started):
                     self.feedback.ok()
+                    if getattr(self, "screen", None) is not None:
+                        self.screen.say("paired")
+                    if getattr(self, "light", None) is not None:
+                        self.light.flash("ok")
                     if self.log:
                         self.log.info(
                             "Appairage confirme au bouton (demande %s)" % request.get("id")
@@ -563,6 +715,21 @@ class Service:
         elif command == "arm_delete":
             self._forget_latch()
             self.controller.on_button("long")
+        elif command == "arm_target":
+            # Game chosen in the page (search), not on the TV.
+            target = payload.get("target") or {}
+            system = str(target.get("system") or "")
+            path = str(target.get("path") or "")
+            if system and path:
+                self._forget_latch()
+                self.controller.arm_target(Target(
+                    system=system, game=relative_game_key(system, path) or path,
+                    name=str(target.get("name") or ""), path=path))
+        elif command == "arm_entry":
+            entry = payload.get("entry")
+            if isinstance(entry, dict):
+                self._forget_latch()
+                self.controller.arm_entry(entry)
         elif command == "calibrate_start":
             self._start_calibration()
         elif command == "calibrate_cancel":
@@ -1102,6 +1269,11 @@ class Service:
                 self.reader.close()
             except Exception:  # noqa: BLE001
                 pass
+        if self.light is not None:
+            try:
+                self.light.close()
+            except Exception:  # noqa: BLE001
+                pass
         if self.button is not None:
             try:
                 self.button.close()
@@ -1126,6 +1298,7 @@ class Service:
             self.reader.version if self.reader else None,
             bool(self.button and getattr(self.button, "available", False)),
             self.store.count() if self.store else 0,
+            int((self.playtime.remaining_s() or 0) // 15) if self.playtime else 0,
         )
         now = time.time()
         if not force and signature == self._status_signature and (now - self._status_written) < 30:
@@ -1150,6 +1323,8 @@ class Service:
                 else ""
             ),
             "controller": controller_status,
+            "playtime": self.playtime.status() if self.playtime else {},
+            "light": getattr(getattr(self.light, "output", None), "name", "none"),
         }
         write_json_atomic(status_path(self.home), payload)
 
@@ -1183,8 +1358,20 @@ class Service:
                     self.button.debounce_s = max(
                         0.005, self.cfg.get_int("button", "debounce_ms", 40) / 1000.0
                     )
+                if self.feedback is not None:
+                    wanted = self.cfg.get_bool("feedback", "sound", True)
+                    if wanted and not getattr(self.feedback, "_player", None):
+                        self.feedback.enabled = True
+                        self.feedback._detect_player()
+                    else:
+                        self.feedback.enabled = wanted and bool(getattr(self.feedback, "_player", None))
                 if self.store and self.launcher and self.feedback:
+                    self._build_extras()
+                    # The running session and the armed mode survive the reload.
+                    previous = self.controller
                     self._build_controller()
+                    if previous is not None:
+                        self.controller.launched_uid = previous.launched_uid
                 self.log.info(
                     "Configuration rechargee (%d badge(s))" % (self.store.count() if self.store else 0)
                 )

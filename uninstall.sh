@@ -114,6 +114,8 @@ strip_spi() {
                -e '^# Enables the SPI bus for the RC522 RFID reader' \
                -e '^# (added by Recalbox RFID Launcher)' \
                -e '^dtparam=spi=on' \
+               -e '^# Second SPI bus for the status LEDs' \
+               -e '^dtoverlay=spi1-1cs' \
                "$target" > "$tmp" && cat "$tmp" > "$target" 2>/dev/null; then
         rm -f "$target.bak-rfid-launcher" 2>/dev/null || true
         say "  ligne 'dtparam=spi=on' retiree de $target"
@@ -150,7 +152,7 @@ fi
 
 # 4. Files.
 if [ "$KEEP_DATA" = "1" ]; then
-    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/bootstrap" "$HOME_DIR/docs"
+    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/bootstrap" "$HOME_DIR/docs" "$HOME_DIR/web"
     rm -f "$HOME_DIR/rfidctl" "$HOME_DIR/install.sh" "$HOME_DIR/uninstall.sh" \
           "$HOME_DIR/VERSION" "$HOME_DIR"/README*.md "$HOME_DIR/CHANGELOG.md" \
           "$HOME_DIR/installer.html" "$HOME_DIR/rfid.pid" "$HOME_DIR/status.json"

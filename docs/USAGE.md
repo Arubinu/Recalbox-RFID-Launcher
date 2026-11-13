@@ -1,362 +1,292 @@
-# Utilisation
+# Usage
 
-## Le principe
+## The principle
 
-* Chaque badge est associé à **un jeu** (système + chemin du jeu).
-* Scanner un badge lance le jeu correspondant.
-* Le **bouton** sert uniquement à créer ou supprimer une association.
+* Each badge is paired with **a game** (system + path of the game), or is a
+  **special card** (random game, bonus time, quit, turn off).
+* Placing a badge on the reader starts its game.
+* The **button** of the case pairs a badge with the game selected on the TV,
+  and authorizes a computer or a phone (3 s press).
 
-Les associations sont stockées dans
-`/recalbox/share/system/rfid/tags.json`, un fichier texte lisible et
-sauvegardable (voir plus bas).
+The pairings are stored in `/recalbox/share/system/rfid/tags.json`, a text file
+you can read and back up (see below).
 
-## L'installateur (`installer.html`)
+## The management page
 
-Double-cliquez sur **`installer.html`** (à la racine du projet, sur votre PC) :
-la page s'ouvre en local (`file://`) et se connecte à l'agent WebSocket de la
-Recalbox. Aucune interface n'est hébergée par la Recalbox, aucun serveur n'est
-nécessaire sur le PC.
+Two ways to open it:
 
-La page tient sur un écran, sans défilement, et commence par un **choix** :
+* **On a computer**: double-click `recalbox-rfid-installer.html` (Edge or
+  Chrome). The page opens from the disk (`file://`) and talks to the Recalbox.
+* **On a phone or a tablet**: open `http://recalbox.local:8765/` (or
+  `http://<IP of the Recalbox>:8765/`). The Recalbox serves the page itself:
+  nothing to install. On a computer that is already connected, the phone
+  button of the header shows a **QR code** to scan with the camera.
 
-| Écran | À quoi ça sert |
+Either way, the device is authorized once by **holding the case button for
+3 seconds** during the countdown.
+
+| Tab | What it does |
 | --- | --- |
-| **Accueil** | deux tuiles : *Installer sur la Recalbox* ou *Gérer mes badges* |
-| **Installer** | télécharger le fichier `.cmd` (3 étapes affichées), plus la copie depuis le navigateur en repli |
-| **Se connecter** | adresse, port : l'autorisation se donne en gardant le bouton du boîtier appuyé 3 secondes |
-| **Gestion** | quatre onglets : **Badges**, **Matériel**, **Options**, **Maintenance** |
+| **Badges** | game selected on the TV and "Pair a badge with this game"; **search a game** of the Recalbox and pair it without the TV; the badge list (rename, time limit, card, delete, CSV backup); **special cards** |
+| **Cards** | design and print the cards to put on the badges |
+| **Hardware** | state of the reader, the button and the game launch; **Test with a badge**; **automatic tuning** of the reader |
+| **Settings** | every setting, saved and applied at once |
+| **Updates** | one-click update, service, restart of the Recalbox, logs |
 
-Un bouton **`FR` / `EN` / `DE` / `ES` / `IT` / `PT`** (à côté) change la langue de l'interface : un simple clic
-passe à la langue suivante et **fixe** le choix. Tant qu'aucune langue n'a été
-choisie, la page suit celle du **système** (la première langue disponible dans les
-préférences du navigateur ; à défaut, l'anglais). Un **appui long** sur le bouton
-revient à la langue du système. Chaque langue est un fichier
-`i18n/<code>.json` compilé dans la page ; un texte non traduit reste en français.
+The **`EN` / `FR` / `DE` / `ES` / `IT` / `PT`** button switches the language:
+a click picks the next one and keeps it; a **long press** goes back to the
+system language. The **sun / moon** button switches the theme the same way.
 
-Un bouton **soleil / lune** dans l'en-tête change de thème : la page suit d'abord
-celui du système, un clic fixe le choix (mémorisé par le navigateur) et un
-**appui long** revient au thème du système. La bascule est animée par un cercle
-partant du bouton ; le schéma de câblage suit le thème choisi.
+### Authorization and security
 
-Dans **Gestion**, le bandeau du haut donne l'état (connecté, service actif) et le
-bouton **Déconnecter** revient à l'écran de connexion.
+The authorization is **confirmed physically**: the page drops one request (one
+at a time, 30 s), the Recalbox waits for a 3 s press on the button, then
+authorizes this device. A press started before the request is refused. During
+a RetroArch game, the request is also shown on the TV.
 
-Champs de connexion :
+* No secret on the network share: the session secret is drawn at random and
+  lives in a private folder of the Recalbox (`/tmp`). It survives a page
+  refresh, a service restart and an update, not a full restart of the
+  Recalbox: the page then asks for a new 3 s press.
+* The agent only accepts the page opened from the disk (`file://`) or the page
+  it serves itself, and only from the local network. A web site cannot drive
+  it, even with a name pointing to the Recalbox.
+* Never expose port 8765 on the Internet; for remote access, use a VPN
+  (WireGuard, Tailscale…).
+* To withdraw every authorization: restart the Recalbox. To disable the agent:
+  `enabled = 0` in `[agent]`.
 
-| Champ | Valeur |
+When the connection drops (restart, network), the page greys out, shows "Connection
+lost for N s" and reconnects on its own.
+
+## Pairing a badge
+
+**From the TV**, with the button of the case:
+
+1. On the Recalbox, move to the game in the list (selected, not started). Not
+   a folder.
+2. **Short press** on the button: one high beep, you have **10 seconds**.
+3. Place the badge: two rising beeps, it is paired.
+
+**From the page**: Badges › "Pair a badge with this game" does the same thing
+for the game selected on the TV.
+
+**Without the TV**: Badges › **Find a game**, type a few letters, choose the
+console if needed, then the badge button of the game, and place the badge. This
+is the handy way on a phone.
+
+Pairing a badge that is already known **replaces** its previous game.
+
+## Starting a game
+
+Place the badge. The frontend shows the loading screen of the game, then
+starts the emulator; this is the confirmation (no beep).
+
+* A badge placed during a game is ignored ("Do not interrupt a game in
+  progress"), except the quit, bonus and turn-off cards.
+* An unknown badge: two low beeps (and a message during a RetroArch game).
+* "When a paired badge is placed" › "beep only": the badge is recognized, nothing
+  starts (handy to check badges).
+
+## Cartridge mode
+
+A badge left on the reader acts **only once**. To start it again, remove it
+for about two seconds and put it back. Another badge acts at once.
+
+With **"Quit the game when the badge is removed"**, removing the badge quits
+the game and the Recalbox goes back to its menu, like pulling a cartridge out.
+This is the setting of the "slot in the case" idea.
+
+## Special cards
+
+Badges › **Special cards**: choose the card, set it up, then place the badge.
+
+| Card | What it does |
 | --- | --- |
-| Adresse | `recalbox.local` ou l'IP (menu `RÉSEAU` > `INFORMATIONS`) |
-| Port | `8765` (modifiable dans `[agent]` de `config.ini`) |
-| Autorisation | **rien à saisir** : cliquez sur « Se connecter », puis **gardez le bouton du boîtier appuyé 3 secondes** pendant le compte à rebours. Une seule demande à la fois, valable 30 s |
+| **Random game** | starts a game drawn at random: every console, one console, or only the favourites. Can carry a play time limit |
+| **Bonus time** | adds minutes to a time-limited game (see below), a limited number of times per period |
+| **Quit the game** | quits the running game, back to the menu |
+| **Turn off** | turns the Recalbox off cleanly |
 
-L'autorisation est **confirmée physiquement** : la page dépose une demande (une
-seule à la fois, 30 s), le service de la Recalbox attend 3 secondes d'appui sur
-le bouton, puis autorise ce poste. Un appui commencé avant la demande, ou destiné
-à une demande précédente, est refusé : on ne peut donc pas valider une demande
-qui n'était pas la vôtre. La demande est aussi refusée si le service du lecteur
-n'est pas démarré.
+The pencil of a badge changes its name, its time limit, or the parameters of a
+special card.
 
-Aucun jeton n'est transmis, aucun fichier n'est écrit : l'agent tire un secret de
-session (dans un dossier privé de la Recalbox, hors du partage réseau), et la
-page le garde dans le navigateur (localStorage). Une actualisation de la page,
-un redémarrage du service ou une **mise à jour** reconnectent donc sans rien
-faire : l'autorisation survit. Seul un **redémarrage complet de la Recalbox**
-remet le secret à zéro (il vit dans `/tmp`) : la page l'annonce (« la Recalbox
-demande une nouvelle autorisation ») et il suffit de garder le bouton appuyé 3
-secondes une
-fois de plus.
+## Play time
 
-L'installateur `.cmd` relancé après l'installation rouvre la page avec
-`#host=…&port=…` : l'adresse et le port sont déjà remplis, l'autorisation se
-donne toujours au bouton.
+* **Settings › Play time per game**: a limit for every game badge without its
+  own limit (0 = no limit).
+* **Per badge** (pencil): empty = the general setting, `0` = never limited,
+  otherwise a number of minutes.
+* The Recalbox warns **5 minutes** and **1 minute** before the end (message on
+  the game screen, beep, yellow light), shows "Play time is over", then quits
+  the game 3 seconds later. The page shows the time left.
 
-Si la page n'arrive pas à déposer sa demande, un seul repli existe : en SSH,
-`rfidctl pair`. Cette commande réouvre seulement la fenêtre de 30 s ; **elle
-n'affiche aucun jeton** et ne remplace pas l'appui sur le bouton.
+**Bonus card**: minutes added (1 to 240), number of uses (0 = no limit), and
+the period after which the counter starts again (1 hour, 3 h, 12 h, a day, a
+week).
 
-Le bouton **« Faire un diagnostic »** (écran *Se connecter* → *La connexion ne
-marche pas ?*) télécharge `diagnostic-recalbox.cmd` : double-clic, et il affiche
-l'état des ports, du partage, des fichiers et des journaux de la Recalbox.
+* During a limited game: the minutes are added at once.
+* Within 15 minutes after the end of a limited game (time up, badge removed,
+  game quit): the game starts again with the bonus time plus the time that
+  was left. In cartridge mode, simply put the bonus card in the slot instead
+  of the game card; if the swap is fast enough, the game does not even stop.
+* Once the uses are spent: two low beeps and "Bonus card already used".
 
-| Onglet | Actions |
+The uses are kept in `playtime.json` (they survive a restart). Without a
+battery, the Recalbox clock may restart in 1980 until the network gives the
+time: the quota then starts again from zero.
+
+## Printing the cards
+
+Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
+300 dpi.
+
+1. **Choose a game** (or "Create its card" from a badge or a search result):
+   the page fetches its scraped picture, the **logo** and the **drawing of its
+   console** from the Recalbox theme, and the main colour of the logo. **My
+   image** uses your own picture instead (any size: it is fitted to the card).
+2. **Choose a template**: Cartridge, Banner, Game box, Arcade, Minimal,
+   Collection (with the console drawing), Picture only. **Landscape** or
+   **Portrait**.
+3. **Adjust each element** (Picture, Title, Logo, Console, Colours): touch it on
+   the card and drag it; two fingers to enlarge and rotate it (wheel and
+   Shift + wheel with a mouse; arrows to nudge it). The controls under the card
+   do the same thing precisely: size, rotation (and quarter turns), font, text
+   colour, outline, logo colour, card colour, rounded corners. **Reset
+   position** puts an element back where the template had it.
+4. **Part sticking out of the slot**: a yellow band shows the edge that stays
+   visible when the card is in the slot (top, bottom, left or right): put the
+   title and the logo there. The band is never printed.
+5. **Save as a template**: keeps the direction, the place, size and rotation of
+   every element (and the colour, if you tick it). Templates are saved on the
+   Recalbox: they are found on every computer and phone. The × of a template
+   deletes it.
+6. **Add to the sheet**, then **Print**: ten cards per A4 page, with cut lines.
+   Print at **100 %** (actual size, no "fit to page"). **Download the image**
+   saves one card as a PNG (for a print shop, for example).
+
+## Status light and on-screen messages
+
+* **Status light** (optional): see [WIRING.md](WIRING.md) for the wiring and
+  the colours. Settings › Status light.
+* **On-screen messages**: during a RetroArch game (most consoles), the
+  Recalbox shows the time left, the bonus time, an unknown badge, an access
+  request… The Recalbox menu itself cannot show a message from another
+  program: in the menu, the beeps and the light do the job. Settings ›
+  On-screen messages during games.
+
+## Sounds
+
+| Sound | Meaning |
 | --- | --- |
-| Badges | associer le prochain badge au jeu sélectionné, effacer, tableau des badges, export et import CSV |
-| Matériel | état du bus SPI, du lecteur RC522, du bouton, du lancement des jeux + verdict et action à faire ; bouton **Tester avec un badge** (5 s) qui dit si une carte est vue, lue, ou pas détectée du tout ; bouton **Régler automatiquement** qui mesure le lecteur et applique les bons réglages |
-| Options | **tous les réglages** du lanceur, sans ouvrir de fichier : action au scan, lancement pendant une partie, arrêt du jeu au retrait du badge, délai de pose, appui d'autorisation, intervalle de lecture, anti-rebond, vitesse SPI, bips, niveau de journal. Chaque changement est enregistré sur la Recalbox et appliqué aussitôt |
-| Maintenance | installer / mettre à jour (dossier du partage, ZIP depuis le PC, URL), redémarrer Recalbox, démarrer/arrêter/redémarrer le service, journaux en direct |
+| 1 high beep | pairing mode armed (also the 5 and 1 minute warnings) |
+| 2 rising beeps | badge paired, special card done |
+| 1 medium beep | badge recognized without action (`action = none`) |
+| no sound | a game starts: its loading screen is enough |
+| 2 low beeps | erase mode armed |
+| 2 falling low beeps | unknown badge or refused action |
+| 3 falling beeps | time out (10 s to place the badge), end of play time |
 
-**Réglage automatique du lecteur** (onglet **Matériel**) — le service mesure
-le matériel, puis applique trois valeurs ; rien à comprendre, il suffit de
-suivre les quatre consignes (≈ 30 secondes) :
+The beeps are generated on the fly and played by `paplay` (PulseAudio) or
+`aplay` (ALSA). Settings › Beeps turns them off.
 
-1. posez un badge, sans bouger ;
-2. laissez-le en place (mesure de la présence) ;
-3. retirez-le (mesure de la latence de retrait) ;
-4. reposez-le (vérification).
-
-Ce qui est mesuré puis appliqué :
-
-| Réglage | Ce qui décide la valeur |
-| --- | --- |
-| Vitesse du bus SPI | la vitesse la plus rapide qui lit le lecteur 40 fois de suite sans erreur |
-| Intervalle de lecture | la durée réelle d'une lecture, plus 30 ms (bornée 60–500 ms) |
-| Délai d'absence | la latence mesurée au retrait, × 1,5 (bornée 1–4 s) |
-
-* Le rapport affiche aussi la durée d'une lecture, le dialogue de présence
-  (**REQA / WUPA**), la latence de repose et l'identifiant lu.
-* **Rien n'est écrit si une étape échoue** : le message dit pourquoi (aucun
-  badge, badge illisible, retrait manquant, lecteur muet) et les réglages
-  restent ceux d'avant.
-* **Réinitialiser** remet la vitesse du bus, l'intervalle de lecture et le délai
-  d'absence à leurs valeurs d'origine (1 MHz, 150 ms, 1,2 s) ; les valeurs
-  d'avant la mesure sont gardées dans `calibration-backup.json`.
-* Si la vitesse mesurée ne tient pas à la réouverture du lecteur, le service
-  revient tout seul à 1 MHz.
-
-**Onglet Options** — le tableau des réglages :
-
-| Réglage | Ce qu'il fait | Défaut |
-| --- | --- | --- |
-| Action au scan d'un badge associé | `launch` lance le jeu ; `none` se contente du bip (mode cartouche) | lance le jeu |
-| Ne rien lancer pendant une partie | un jeu en cours n'est jamais interrompu par un badge | activé |
-| Quitter le jeu quand le badge est retiré | le jeu lancé par le badge s'arrête et Recalbox revient au menu dès que le badge quitte le lecteur | désactivé |
-| Délai pour poser le badge | secondes accordées après l'appui court | 10 s |
-| Appui qui autorise un navigateur | durée de maintien du bouton (l'autorisation part à ce délai, sans attendre le relâchement) | 3 s |
-| Intervalle de lecture du lecteur | fréquence d'interrogation du RC522 | 150 ms |
-| Anti-rebond du même badge | temps pendant lequel le même badge est ignoré | 2,5 s |
-| Absence avant de pouvoir rescanner | absence nécessaire pour qu'un badge posé puisse agir de nouveau | 1 200 ms |
-| Vitesse du bus SPI | réglage matériel, appliqué au redémarrage du service | 1 MHz |
-| Bips sonores | confirmation sonore des gestes | activé |
-| Niveau de journal | verbosité du journal du service | INFO |
-
-* Rien n'est à ouvrir : l'enregistrement écrit dans le `config.ini` de la
-  Recalbox **en gardant ses commentaires**, puis le service **relit sa
-  configuration immédiatement** (pas de redémarrage, la lecture des badges
-  continue).
-* Une modification pas encore enregistrée est signalée (« modifications non
-  enregistrées ») et **survit à un changement d'onglet** ; **Annuler** revient aux
-  valeurs de la Recalbox.
-* Une valeur hors bornes est ramenée dans les limites, et le service refuse ce
-  qu'il ne comprend pas : dans ce cas rien n'est écrit.
-* Les broches, l'adresse du frontend et le port de l'agent restent dans
-  `config.ini` : ils servent une fois, à l'installation, et ne changent qu'au
-  redémarrage du service.
-
-Points utiles :
-
-* **Fichier unique** : si vous avez ouvert
-  `dist\recalbox-rfid-installer.html`, une première section permet de
-  **copier les fichiers** sur `\\RECALBOX\share` directement depuis la page
-  (Edge/Chrome) : choisissez le partage, tout est écrit, puis redémarrez.
-* **Associer sans le bouton** : sélectionnez un jeu dans Recalbox, ouvrez la page
-  (le jeu sélectionné s'affiche), cliquez sur « Associer le prochain badge
-  scanné », puis scannez le badge.
-* **Débogage › Simuler le scan** : rejoue un UID sans badge physique, pratique
-  pour tester une association.
-* **Export CSV** : télécharge la liste des badges (sauvegarde).
-* **Import CSV** : restaure une sauvegarde ou prépare une série de badges dans un
-  tableur.
-* La page se rafraîchit toute seule (état du service, mode armé, dernier badge).
-* **Coupure de connexion** (redémarrage de la Recalbox, réseau, agent relancé) :
-  le tableau de bord reste affiché mais grisé, un bandeau « hors ligne » indique
-  « Connexion perdue depuis N s » et la page **se reconnecte automatiquement**
-  dès que l'agent revient ; le retour est annoncé (« Connexion rétablie »). Le
-  bouton « Réessayer maintenant » force une tentative immédiate.
-* **Autorisation perdue** (Recalbox complètement redémarrée, programme mis à
-  jour) : le secret de session a changé, la page l'indique et il suffit de
-  garder le bouton du boîtier appuyé 3 secondes pour continuer.
-
-**Sécurité** : l'agent n'accepte que les commandes d'une session autorisée, et
-cette autorisation ne s'obtient qu'en gardant le bouton du boîtier appuyé
-3 secondes :
-
-* il n'y a **aucun secret sur le partage** : le secret de session est tiré au
-  hasard à chaque démarrage de l'agent et ne vit qu'en mémoire ;
-* l'agent n'écoute que le réseau local et refuse les pages web : `installer.html`
-  doit être ouverte depuis le disque (`file://`) ;
-* ne l'exposez jamais sur Internet : pour un accès distant, utilisez un VPN
-  (WireGuard, Tailscale…) ;
-* pour retirer l'autorisation d'un poste : redémarrez l'agent ou le service — un
-  nouveau secret est tiré, un appui de 3 s sur le bouton est redemandé ;
-* pour désactiver complètement l'agent : `enabled = 0` dans `[agent]`.
-
-## Associer un badge
-
-1. Dans Recalbox, placez le curseur sur le jeu voulu dans la liste (le jeu est
-   « sélectionné », il n'est pas lancé). Évitez un dossier.
-2. **Appui court** sur le bouton.
-   * 1 bip aigu : c'est armé, vous avez **30 secondes** pour scanner.
-   * 2 bips graves : aucun jeu sélectionné (ou un dossier) — recommencez.
-3. **Scannez le badge**.
-   * 2 bips aigus : association enregistrée, le jeu se lance pour confirmer.
-   * 2 bips graves : problème (badge illisible, base non accessible…).
-
-Un badge déjà associé est simplement réassocié : la nouvelle association
-remplace l'ancienne. La fenêtre d'attente est de **10 secondes**
-(`[button] arm_timeout_s`).
-
-## Lancer un jeu
-
-Scannez le badge. Le frontend affiche l'écran de chargement du jeu (nom,
-jaquette) puis lance l'émulateur.
-
-* Si un jeu est déjà en cours, le scan est ignoré (option
-  `ignore_when_game_running`). Quittez d'abord le jeu.
-* Un badge inconnu est signalé par deux bips graves et une ligne dans le
-  journal.
-* L'option `[launch] action = none` remplace le lancement par un simple bip de
-  confirmation : le badge est reconnu, rien n'est lancé.
-
-## Mode « cartouche » (badge laissé sur le lecteur)
-
-Laisser le badge en place ne déclenche l'action **qu'une seule fois** : elle
-n'est pas répétée tant que le badge reste posé. Pour la refaire (ou pour la
-refaire après avoir changer de jeu), il suffit de **retirer le badge environ une
-seconde puis de le reposer** (`[rfid] rearm_absent_ms`, `1200` ms par défaut).
-
-C'est ce qui permet d'utiliser un badge comme une cartouche : on le pose, on
-joue, on le laisse. Un autre badge posé à la place agit immédiatement.
-
-## Effacer un badge
-
-Uniquement depuis l'interface : onglet **Badges** → **« Effacer un badge »**,
-puis posez le badge sur le lecteur (10 secondes, 3 bips descendants si le délai
-expire).
-
-Le bouton physique a deux gestes seulement :
-
-| Geste | Effet |
-| --- | --- |
-| **Appui court** | arme l'association du jeu sélectionné (1 bip aigu) ; posez le badge dans les 10 s |
-| **Appui de 3 secondes** | autorise un navigateur : la validation part **dès la 3e seconde**, inutile de relâcher (un bip confirme) |
-
-Réassocier un badge déjà connu **écrase** l'ancienne correspondance : c'est la
-façon la plus simple de changer le jeu d'un badge, sans passer par l'effacement.
-
-## Le son
-
-Aucun son n'est émis au **lancement** d'un jeu : l'écran de chargement du jeu
-sert de confirmation. Les bips restent pour ce qui ne se voit pas (association,
-badge inconnu, délai dépassé).
-
-Les bips sont générés à la volée (fichiers WAV dans `/tmp`) et joués par
-`paplay` (PulseAudio) ou `aplay` (ALSA). Pour les couper :
-
-```ini
-[feedback]
-sound = 0
-```
-
-puis `rfidctl restart`.
-
-## Commandes
-
-Le raccourci est `/recalbox/share/system/rfid/rfidctl` :
+## Commands (SSH)
 
 ```sh
 RFID="sh /recalbox/share/system/rfid/rfidctl"
 
-$RFID test              # diagnostic materiel (SPI, badge, bouton, frontend)
-$RFID list              # associations enregistrees
+$RFID test              # hardware check (SPI, badge, button, frontend)
+$RFID list              # saved pairings
 $RFID add <UID> --current
-$RFID add <UID> <systeme> <jeu> [nom]
+$RFID add <UID> <system> <game> [name]
 $RFID remove <UID>
-$RFID export <fichier.csv>
-$RFID import <fichier.csv> [--keep]
-$RFID status            # etat du service (PID, badge, mode arme)
+$RFID export <file.csv>
+$RFID import <file.csv> [--keep]
+$RFID status            # service state (PID, badge, armed mode)
 $RFID start|stop|restart
-$RFID logs              # 40 dernieres lignes du journal
-$RFID frontend          # Recalbox sait-il lancer un jeu par script ?
-$RFID self-update [URL] # mise a jour
-$RFID simulate          # simulation (PC, sans materiel)
-$RFID config            # configuration effective
+$RFID logs              # last 40 lines of the log
+$RFID frontend          # can Recalbox start a game from a script?
+$RFID self-update [URL] # update
+$RFID simulate          # simulation (PC, no hardware)
+$RFID config            # effective configuration
 ```
 
-L'UID d'un badge est affiché par `rfidctl test` ou dans le journal après un
-scan, sous la forme `A1:B2:C3:D4` (les formats `A1B2C3D4`, `a1-b2-c3-d4`,
-`A1 B2 C3 D4` sont acceptés par les commandes).
+The identifier of a badge is shown by `rfidctl test`, in the page and in the
+log, as `A1:B2:C3:D4` (`A1B2C3D4`, `a1-b2-c3-d4` and `A1 B2 C3 D4` are accepted
+too).
 
-### Ajouter un badge au jeu sélectionné, sans bouton
+## The CSV file
 
-```sh
-$RFID add A1B2C3D4 --current
-```
-
-Le jeu en cours de sélection dans Recalbox est lu dans `/tmp/es_state.inf`.
-Pratique pour préparer une série de badges depuis un téléphone en SSH.
-
-### Le fichier CSV
+"Save the list" / "Restore a list" in the page, or `rfidctl export / import`:
 
 ```csv
-uid;system;game;name
-A1:B2:C3:D4;snes;Super Mario World.smc;Super Mario World
-01:02:03:04:05:06:07;nes;Zelda.nes;Zelda
+uid;system;game;name;kind;action;params;limit_min
+A1:B2:C3:D4;snes;Super Mario World.smc;Super Mario World;game;;;30
+01:02:03:04:05:06:07;nes;Zelda.nes;Zelda;game;;;
+0A:0B:0C:0D;;;Bonus +10 min;action;bonus;"{""minutes"": 10, ""period_h"": 24, ""uses"": 2}";
 ```
 
-* Séparateur `;` (comme Excel en français), le séparateur `,` est aussi accepté
-  à l'import.
-* `system` : identifiant court du système Recalbox (`snes`, `nes`, `megadrive`,
-  `arcade`, `gba`…). Il est visible dans le journal lors d'une association.
-* `game` : chemin du jeu **relatif au dossier du système**, extension comprise.
-  Exemples : `Super Mario World.smc`, `Classiques/jeu.smc`.
-* `name` : nom lisible (facultatif, utilisé par `list`).
+* Separator `;` (like Excel in French); `,` is accepted on import.
+* `system`: short identifier of the Recalbox system (`snes`, `nes`,
+  `megadrive`, `gba`…).
+* `game`: path of the game **relative to the system folder**, extension
+  included.
+* `kind`, `action`, `params`, `limit_min`: optional; a file with only the first
+  four columns (older versions) is still read.
 
 ## Configuration
 
-Fichier : `/recalbox/share/system/rfid/config.ini` (modifiable depuis le
-partage réseau, avec le Bloc-notes par exemple). Après modification :
+File: `/recalbox/share/system/rfid/config.ini`. Almost everything is in the
+Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 
-```sh
-sh /recalbox/share/system/rfid/rfidctl restart
-```
-
-| Clé | Défaut | Rôle |
+| Key | Default | Role |
 | --- | --- | --- |
-| `[general] log_level` | `INFO` | `DEBUG` pour tracer en détail |
-| `[general] log_max_bytes` | `1048576` | rotation du journal |
-| `[rfid] spi_device` | `/dev/spidev0.0` | port du lecteur (CE0) |
-| `[rfid] spi_speed_hz` | `1000000` | baisser à `500000` en cas de fils longs |
-| `[rfid] reset_pin` | `25` | broche RST du RC522 (`-1` si non branché) |
-| `[rfid] poll_interval_ms` | `150` | fréquence d'interrogation du lecteur |
-| `[rfid] same_tag_cooldown_s` | `2.5` | ignore les relectures du même badge |
-| `[rfid] rearm_absent_ms` | `1200` | **mode cartouche** : temps d'absence du badge (ms) avant de pouvoir refaire l'action |
-| `[button] enabled` | `1` | `0` pour désactiver le bouton |
-| `[button] pin` | `17` | broche du bouton (BCM) |
-| `[button] hold_press_s` | `3.0` | durée de l'appui qui autorise un poste |
-| `[button] arm_timeout_s` | `10` | délai pour scanner après un appui |
-| `[button] debounce_ms` | `40` | anti-rebond |
-| `[launch] udp_host` / `udp_port` | `127.0.0.1` / `1337` | interface du frontend |
-| `[launch] action` | `launch` | `launch` = lance le jeu ; `none` = bip seulement (mode cartouche) |
-| `[launch] ignore_when_game_running` | `1` | ignore les scans pendant un jeu |
-| `[feedback] sound` | `1` | bips |
-| `[feedback] sound_player` | `auto` | `paplay`, `aplay` ou `none` |
-| `[agent] enabled` | `1` | agent WebSocket (installateur / gestion) |
-| `[agent] port` | `8765` | port de l'agent |
-| `[update] url` | vide | URL du ZIP de mise à jour |
-| `[update] check_on_start` | `0` | réservé |
+| `[general] log_level` | `INFO` | `DEBUG` to trace everything |
+| `[rfid] spi_device` | `/dev/spidev0.0` | reader port (CE0) |
+| `[rfid] spi_speed_hz` | `1000000` | set by the automatic tuning |
+| `[rfid] reset_pin` | `25` | RST pin of the RC522 (`-1` if not wired) |
+| `[rfid] poll_interval_ms` | `150` | how often the reader is read |
+| `[rfid] same_tag_cooldown_s` | `2.5` | ignores re-reads of the same badge |
+| `[rfid] rearm_absent_ms` | `1200` | **cartridge mode**: absence before the badge can act again |
+| `[button] enabled` / `pin` | `1` / `17` | push button (BCM pin) |
+| `[button] hold_press_s` | `3.0` | press that authorizes a device |
+| `[button] arm_timeout_s` | `10` | time to place the badge |
+| `[launch] action` | `launch` | `launch` = start the game; `none` = beep only |
+| `[launch] ignore_when_game_running` | `1` | ignore badges during a game |
+| `[launch] stop_on_remove` | `0` | quit the game when the badge is removed |
+| `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
+| `[screen] messages` | `1` | messages on the game screen (RetroArch) |
+| `[screen] retroarch_port` | `55355` | RetroArch network command port |
+| `[led] type` | `none` | `none`, `rgb` or `ws2812` |
+| `[led] pin_red` / `pin_green` / `pin_blue` | `22` / `23` / `24` | RGB LED pins (BCM) |
+| `[led] common` | `cathode` | `cathode` (to GND) or `anode` (to 3.3 V) |
+| `[led] count` / `brightness` | `1` / `40` | programmable LEDs: number, brightness (%) |
+| `[led] idle` | `1` | green when nothing happens (`0` = off at rest) |
+| `[feedback] sound` | `1` | beeps |
+| `[agent] enabled` / `port` | `1` / `8765` | management agent and page for phones |
+| `[update] url` | empty | URL of the update ZIP |
 
-## Sauvegarde et restauration
+## Backup and restore
 
-* **Sauvegarde** : copiez `/recalbox/share/system/rfid/tags.json` (et
-  éventuellement `config.ini`) où vous voulez. `rfidctl export` produit aussi un
-  CSV.
-* **Restauration** : recopiez le fichier, ou `rfidctl import fichier.csv`.
-* À chaque enregistrement, l'ancienne version de `tags.json` est conservée dans
-  `tags.json.bak`.
+* **Backup**: "Save the list" in the page (CSV), or copy
+  `tags.json`, `config.ini`, `card-templates.json` and `playtime.json` from
+  `\\RECALBOX\share\system\rfid`.
+* **Restore**: "Restore a list", or copy the files back.
+* At every save, the previous `tags.json` is kept as `tags.json.bak`.
 
-## Journal
+## Log
 
 ```sh
 $RFID logs
-# ou
+# or
 cat /recalbox/share/system/rfid/logs/rfid.log
 ```
 
-Exemples de lignes :
+Example (the log itself is in French):
 
 ```
 2026-01-01 12:00:00 [INFO   ] Lecteur RC522 pret (version 0x92)
-2026-01-01 12:00:42 [INFO   ] Badge detecte : A1:B2:C3:D4
 2026-01-01 12:00:42 [INFO   ] Commande envoyee : START|snes|/recalbox/share/roms/snes/Super Mario World.smc
-2026-01-01 12:00:42 [INFO   ] Lancement de Super Mario World (snes)
+2026-01-01 12:00:42 [INFO   ] Temps de jeu limite a 30 min (Super Mario World)
+2026-01-01 12:00:42 [INFO   ] Lancement de Super Mario World (snes / Super Mario World.smc)
 ```

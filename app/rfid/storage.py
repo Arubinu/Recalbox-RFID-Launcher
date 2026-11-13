@@ -39,7 +39,57 @@ import time
 
 SCHEMA_VERSION = 1
 
-CSV_FIELDS = ("uid", "system", "game", "name")
+CSV_FIELDS = ("uid", "system", "game", "name", "kind", "action", "params", "limit_min")
+
+#: Kinds of entries: a game, or a special card (action).
+KIND_GAME = "game"
+KIND_ACTION = "action"
+
+#: Special cards.
+#:   random   = starts a random game (all consoles, one console, favourites)
+#:   quit     = quits the running game
+#:   bonus    = extra play time for a time-limited game
+#:   poweroff = turns the Recalbox off
+ACTIONS = ("random", "quit", "bonus", "poweroff")
+
+
+def clean_limit(value):
+    """Time limit of a card: None = the general setting, 0 = no limit."""
+    if value is None or value == "":
+        return None
+    try:
+        minutes = int(float(value))
+    except (TypeError, ValueError):
+        raise StorageError("limite de temps invalide : %r" % (value,))
+    if minutes < 0 or minutes > 24 * 60:
+        raise StorageError("limite de temps hors bornes (0 a 1440 minutes)")
+    return minutes
+
+
+def clean_params(action: str, params) -> dict:
+    """Checks the parameters of a special card and returns a clean copy."""
+    params = dict(params or {})
+    if action == "random":
+        system = str(params.get("system") or "").strip()
+        if "/" in system:
+            raise StorageError("console invalide")
+        return {"system": system, "favorites": bool(params.get("favorites"))}
+    if action == "bonus":
+        try:
+            minutes = int(float(params.get("minutes") or 10))
+            uses_raw = params.get("uses")
+            uses = int(float(uses_raw if uses_raw not in (None, "") else 1))
+            period_h = int(float(params.get("period_h") or 24))
+        except (TypeError, ValueError):
+            raise StorageError("parametres de la carte bonus invalides")
+        if not 1 <= minutes <= 240:
+            raise StorageError("temps bonus : 1 a 240 minutes")
+        if not 0 <= uses <= 50:
+            raise StorageError("nombre d'utilisations : 0 a 50 (0 = illimite)")
+        if not 1 <= period_h <= 24 * 31:
+            raise StorageError("periode : 1 heure a 31 jours")
+        return {"minutes": minutes, "uses": uses, "period_h": period_h}
+    return {}
 
 
 class StorageError(Exception):
@@ -140,27 +190,61 @@ class TagStore:
                 continue
             if not isinstance(entry, dict):
                 continue
-            system = str(entry.get("system", "")).strip()
-            game = str(entry.get("game", "")).strip()
-            if not system or not game:
+            try:
+                tags[normalized] = self._clean_entry(entry)
+            except StorageError as exc:
                 if self.log:
-                    self.log.warning("Badge %s ignore (entree incomplete)" % pretty_uid(normalized))
-                continue
-            tags[normalized] = {
-                "system": system,
-                "game": game,
-                "name": str(entry.get("name") or os.path.basename(game)),
-                "path": str(entry.get("path") or ""),
-                "created": str(entry.get("created") or _now()),
-                "last_used": entry.get("last_used"),
-                "hits": int(entry.get("hits") or 0),
-            }
+                    self.log.warning("Badge %s ignore (%s)" % (pretty_uid(normalized), exc))
 
         self._data = {
             "schema": int(raw.get("schema") or SCHEMA_VERSION),
             "updated": str(raw.get("updated") or _now()),
             "tags": tags,
         }
+
+    @staticmethod
+    def _clean_entry(entry: dict) -> dict:
+        """Checks a stored entry and fills in the missing fields."""
+        kind = str(entry.get("kind") or KIND_GAME).strip().lower()
+        try:
+            hits = int(entry.get("hits") or 0)
+        except (TypeError, ValueError):
+            hits = 0
+        common = {
+            "created": str(entry.get("created") or _now()),
+            "last_used": entry.get("last_used"),
+            "hits": hits,
+        }
+        if kind == KIND_ACTION:
+            action = str(entry.get("action") or "").strip().lower()
+            if action not in ACTIONS:
+                raise StorageError("carte speciale inconnue : %r" % (action,))
+            result = {
+                "kind": KIND_ACTION,
+                "action": action,
+                "params": clean_params(action, entry.get("params")),
+                "system": "",
+                "game": "",
+                "path": "",
+                "name": str(entry.get("name") or action).strip() or action,
+                "limit_min": clean_limit(entry.get("limit_min")),
+            }
+            result.update(common)
+            return result
+        system = str(entry.get("system", "")).strip()
+        game = str(entry.get("game", "")).strip()
+        if not system or not game:
+            raise StorageError("entree incomplete")
+        result = {
+            "kind": KIND_GAME,
+            "system": system,
+            "game": game,
+            "name": str(entry.get("name") or os.path.basename(game)),
+            "path": str(entry.get("path") or ""),
+            "limit_min": clean_limit(entry.get("limit_min")),
+        }
+        result.update(common)
+        return result
 
     def ensure_loaded(self) -> None:
         if not self._loaded:
@@ -223,7 +307,7 @@ class TagStore:
         game = str(game).strip()
         if not system or not game:
             raise StorageError("Systeme ou jeu manquant")
-        entry = {
+        entry = self._clean_entry({
             "system": system,
             "game": game,
             "name": (str(name).strip() or os.path.basename(game)),
@@ -231,10 +315,37 @@ class TagStore:
             "created": _now(),
             "last_used": None,
             "hits": 0,
-        }
+        })
         self.tags[normalized] = entry
         self.save()
         return entry
+
+    def put_entry(self, uid: str, entry: dict) -> dict:
+        """Creates or replaces any entry (game or special card)."""
+        self.ensure_loaded()
+        normalized = normalize_uid(uid)
+        cleaned = self._clean_entry(dict(entry, created=_now(), last_used=None, hits=0))
+        self.tags[normalized] = cleaned
+        self.save()
+        return cleaned
+
+    def update(self, uid: str, changes: dict) -> dict:
+        """Changes the name, time limit or parameters of an existing entry."""
+        self.ensure_loaded()
+        normalized = normalize_uid(uid)
+        current = self.tags.get(normalized)
+        if current is None:
+            raise StorageError("badge inconnu")
+        merged = dict(current)
+        for key in ("name", "limit_min", "params"):
+            if key in changes:
+                merged[key] = changes[key]
+        if not str(merged.get("name") or "").strip():
+            merged["name"] = current["name"]
+        cleaned = self._clean_entry(merged)
+        self.tags[normalized] = cleaned
+        self.save()
+        return cleaned
 
     def delete(self, uid: str) -> bool:
         self.ensure_loaded()
@@ -269,7 +380,14 @@ class TagStore:
             writer = csv.writer(handle, delimiter=";")
             writer.writerow(CSV_FIELDS)
             for uid, entry in self.items():
-                writer.writerow([pretty_uid(uid), entry["system"], entry["game"], entry["name"]])
+                limit = entry.get("limit_min")
+                params = entry.get("params") or {}
+                writer.writerow([
+                    pretty_uid(uid), entry["system"], entry["game"], entry["name"],
+                    entry.get("kind") or KIND_GAME, entry.get("action") or "",
+                    json.dumps(params, ensure_ascii=False, sort_keys=True) if params else "",
+                    "" if limit is None else str(limit),
+                ])
         return self.count()
 
     def import_csv(self, source: str, overwrite: bool = True) -> dict:
@@ -283,7 +401,7 @@ class TagStore:
             reader = csv.DictReader(handle, delimiter=delimiter)
             for row in reader:
                 row = {(key or "").strip().lower(): (value or "").strip() for key, value in row.items()}
-                if not row.get("uid") or not row.get("system") or not row.get("game"):
+                if not row.get("uid"):
                     stats["ignores"] += 1
                     continue
                 try:
@@ -295,15 +413,29 @@ class TagStore:
                 if exists and not overwrite:
                     stats["ignores"] += 1
                     continue
-                self.tags[uid] = {
-                    "system": row["system"],
-                    "game": row["game"],
-                    "name": row.get("name") or os.path.basename(row["game"]),
+                previous = self.tags.get(uid, {}) or {}
+                try:
+                    params = json.loads(row["params"]) if row.get("params") else {}
+                except ValueError:
+                    params = {}
+                candidate = {
+                    "kind": row.get("kind") or KIND_GAME,
+                    "action": row.get("action", ""),
+                    "params": params if isinstance(params, dict) else {},
+                    "system": row.get("system", ""),
+                    "game": row.get("game", ""),
+                    "name": row.get("name") or os.path.basename(row.get("game", "")),
                     "path": row.get("path", ""),
-                    "created": (self.tags.get(uid, {}) or {}).get("created") or _now(),
-                    "last_used": (self.tags.get(uid, {}) or {}).get("last_used"),
-                    "hits": int((self.tags.get(uid, {}) or {}).get("hits") or 0),
+                    "limit_min": row.get("limit_min") or None,
+                    "created": previous.get("created") or _now(),
+                    "last_used": previous.get("last_used"),
+                    "hits": int(previous.get("hits") or 0),
                 }
+                try:
+                    self.tags[uid] = self._clean_entry(candidate)
+                except StorageError:
+                    stats["ignores"] += 1
+                    continue
                 stats["mis_a_jour" if exists else "ajoutes"] += 1
         self.save()
         return stats

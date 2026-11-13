@@ -425,7 +425,7 @@
   .tag-name { font-weight: 650; overflow-wrap: anywhere; }
   .tag-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
   .tag-meta .mono { color: var(--faint); font-size: 11.5px; }
-  .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--surface-3); color: var(--text); font-size: 12px; font-weight: 600; }
+  .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--surface-3); color: var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .tag.flash { animation: flash 1.6s ease; }
   @keyframes flash { 0%, 40% { background: var(--ok-soft); } 100% { background: transparent; } }
   .empty { text-align: center; padding: 34px 16px; border: 1px dashed var(--line-2); border-radius: var(--r-lg); color: var(--muted); }
@@ -549,6 +549,93 @@
 
   footer.foot { text-align: center; color: var(--faint); font-size: 12.5px; padding: 26px 0 0; }
 
+  /* ------------------------------------------------ games, special cards */
+  .search-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .search-row .search { flex: 1 1 220px; }
+  .search-row select { flex: 0 1 220px; height: 40px; }
+  .tag-ico img { width: 38px; height: 38px; object-fit: cover; border-radius: 11px; display: block; }
+  .tag-actions { display: flex; gap: 2px; align-items: center; }
+  .chip.time { background: var(--warn-soft); color: var(--warn-text); }
+  .chip.special { background: var(--primary-soft); color: var(--primary-text); }
+  .specials { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .special {
+    display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px; min-width: 0;
+    border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); color: inherit; cursor: pointer;
+    transition: border-color .15s, transform .12s;
+  }
+  .special:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 50%, transparent); transform: translateY(-2px); }
+  .special:disabled { opacity: .5; cursor: not-allowed; }
+  .special .sp-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary-text); }
+  .special .sp-ico svg { width: 19px; height: 19px; }
+  .special b { font-size: 14.5px; }
+  .special span { font-size: 12.5px; color: var(--muted); }
+  .playtime { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent); }
+  .playtime b { font-variant-numeric: tabular-nums; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .switch-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+  /* --------------------------------------------------------- card designer */
+  .designer { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  .designer-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .stage {
+    position: relative; display: grid; place-items: center; padding: 18px; border-radius: var(--r-lg); min-height: 220px;
+    background: repeating-conic-gradient(rgba(var(--ink-rgb), .045) 0 25%, transparent 0 50%) 0 0 / 18px 18px, var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .stage canvas { display: block; max-width: 100%; touch-action: none; cursor: grab; border-radius: 4px; box-shadow: 0 18px 34px -18px rgba(0, 0, 0, .65); }
+  .stage canvas.dragging { cursor: grabbing; }
+  .stage-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .stage-tools .seg { margin: 0; }
+  .source-box { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); }
+  .source-box .grow { min-width: 0; }
+  .source-box b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-box span { font-size: 12.5px; color: var(--muted); }
+  .tpl-list { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
+  .tpl {
+    position: relative; flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; align-items: center;
+    padding: 7px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2);
+    color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; scroll-snap-align: start;
+  }
+  .tpl canvas { display: block; border-radius: 4px; }
+  .tpl[aria-pressed="true"] { border-color: var(--primary); color: var(--text); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .tpl-del { position: absolute; top: -7px; right: -7px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--surface); color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .tpl-del svg { width: 13px; height: 13px; }
+  .layer-tabs { margin: 0; }
+  .layer-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+  .layer-tabs .eye { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .layer-tabs .eye.off { background: var(--faint); opacity: .5; }
+  .controls { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); }
+  .ctl { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+  .ctl > span:first-child { color: var(--muted); font-weight: 600; }
+  .ctl .val { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 4ch; text-align: right; }
+  .ctl input[type=text], .ctl select { height: 38px; }
+  .ctl .row { gap: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--primary); }
+  input[type=color] { width: 46px; height: 36px; padding: 2px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--bg-2); cursor: pointer; }
+  .sheet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+  .sheet-item { position: relative; }
+  .sheet-item img { display: block; width: 100%; border-radius: 5px; box-shadow: 0 8px 18px -12px rgba(0, 0, 0, .6); }
+  .sheet-item .tpl-del { top: -8px; right: -8px; }
+  .sheet-item small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-list { max-height: 50vh; overflow: auto; margin-top: 12px; }
+  .qr-box { display: grid; place-items: center; padding: 16px; background: #fff; border-radius: var(--r-lg); width: fit-content; margin: 14px auto; }
+  .qr-box canvas { display: block; image-rendering: pixelated; }
+  #print-area { display: none; }
+  @media (max-width: 980px) {
+    .designer { grid-template-columns: 1fr; }
+  }
+  @media print {
+    body { background: #fff !important; margin: 0; }
+    body > *:not(#print-area) { display: none !important; }
+    #print-area { display: block; }
+    .print-page { position: relative; width: 210mm; height: 296mm; overflow: hidden; break-after: page; page-break-after: always; }
+    .print-page:last-child { break-after: auto; page-break-after: auto; }
+    .print-page img { position: absolute; display: block; }
+    .print-page .cut { position: absolute; border: 0.1mm solid #bbb; box-sizing: border-box; }
+    @page { size: A4 portrait; margin: 0; }
+  }
+
   /* ---------------------------------------------------------------- mobile */
   @media (max-width: 760px) {
     .shell { padding: 0 16px 32px; }
@@ -560,8 +647,9 @@
     .stepper button { padding: 8px 10px; }
     .now { grid-template-columns: 1fr; }
     .now .btn { width: 100%; }
-    .tag { grid-template-columns: minmax(0, 1fr) auto; }
-    .tag-ico { display: none; }
+    .tag { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .tag-ico { width: 32px; height: 32px; }
+    .tag-ico img { width: 32px; height: 32px; }
     .add-form { grid-template-columns: 1fr; }
     .option { flex-wrap: wrap; }
     .step-foot .btn.primary { flex: 1 1 auto; }
@@ -572,7 +660,21 @@
     .status-pill { padding: 0 10px; }
     .status-pill #link-text { display: none; }
     .icon-btn { width: 34px; }
-    .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+    .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+    .specials { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form-grid { grid-template-columns: 1fr; }
+    .ctl { grid-template-columns: 1fr auto; }
+    .ctl > span:first-child { grid-column: 1 / -1; }
+    .search-row select { flex: 1 1 100%; }
+    .tag { gap: 10px; padding: 10px 12px; }
+    .tag-actions .icon-btn { width: 32px; height: 32px; }
+    .tag-actions .btn .lbl { display: none; }
+    .tag-actions .btn.sm { padding: 0 9px; }
+    .tag-meta .mono { display: none; }
+    .stage { padding: 10px; }
+    .source-box { flex-wrap: wrap; }
+    .source-box > .row { width: 100%; }
+    .source-box > .row .btn { flex: 1 1 auto; }
     .tabs button { flex-direction: column; height: auto; padding: 8px 2px; gap: 3px; font-size: 11.5px; white-space: normal; text-align: center; line-height: 1.2; position: relative; }
     .tabs .tab-dot { position: absolute; top: 6px; right: 12px; }
   }
@@ -613,6 +715,9 @@
     <button class="btn ghost sm" type="button" id="btn-disconnect" hidden title="Déconnecter cet ordinateur">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
       <span class="lbl">Déconnecter</span>
+    </button>
+    <button class="icon-btn" type="button" id="btn-phone" hidden aria-label="Ouvrir sur un téléphone" title="Ouvrir sur un téléphone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
     </button>
     <button class="icon-btn" type="button" id="btn-lang" aria-label="Changer de langue" title="Changer de langue">FR</button>
     <button class="icon-btn" type="button" id="btn-theme" aria-label="Thème clair ou sombre" title="Thème clair ou sombre (appui long : suivre le système)">
@@ -905,6 +1010,9 @@
           <button type="button" role="tab" data-tab="badges" aria-selected="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/><circle cx="9" cy="11" r="1.7"/></svg>
             Badges</button>
+          <button type="button" role="tab" data-tab="cartes" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m7 15 3-3.5 2.5 2.5L15 11l3 4"/><circle cx="8.5" cy="9.2" r="1.2"/></svg>
+            Cartes</button>
           <button type="button" role="tab" data-tab="materiel" aria-selected="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/></svg>
             Matériel<span class="tab-dot" id="dot-materiel" hidden></span></button>
@@ -942,11 +1050,31 @@
               <div class="grow"><b id="armed-title">Posez le badge sur le lecteur</b><span id="armed-text"></span></div>
               <span class="armed-count" id="armed-count"></span>
             </div>
+            <div class="playtime" id="playtime" hidden aria-live="polite">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9.5 2.5h5"/></svg>
+              <span class="grow" id="playtime-text"></span>
+            </div>
             <p class="tip">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>
               <span>Sans ordinateur : sur la Recalbox, placez-vous sur un jeu, appuyez brièvement sur le bouton du boîtier, puis posez le badge.</span>
             </p>
           </section>
+
+          <section class="card">
+            <div class="card-head"><div class="grow">
+              <h2>Chercher un jeu</h2>
+              <p>Trouvez un jeu de la Recalbox sans passer par la télé, puis associez-lui un badge ou créez sa carte.</p>
+            </div></div>
+            <div class="search-row">
+              <label class="search"><span class="sr-only">Nom du jeu</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+                <input type="search" id="games-search" placeholder="Nom du jeu" autocomplete="off" spellcheck="false"></label>
+              <select id="games-system" aria-label="Console"><option value="">Toutes les consoles</option></select>
+            </div>
+            <ul class="tags" id="games-list" hidden></ul>
+            <p class="muted small" id="games-hint">Tapez quelques lettres du nom d'un jeu.</p>
+          </section>
+
 
           <section class="card">
             <div class="card-head"><div class="grow">
@@ -994,6 +1122,91 @@
                 </form>
               </div>
             </details>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div class="grow">
+              <h2>Cartes spéciales</h2>
+              <p>Des badges qui ne lancent pas un jeu précis. Choisissez, réglez, puis posez le badge.</p>
+            </div></div>
+            <div class="specials">
+              <button class="special" type="button" data-special="random">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/></svg></span>
+                <b>Jeu au hasard</b><span>Toutes les consoles, une seule, ou les favoris.</span></button>
+              <button class="special" type="button" data-special="bonus">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9.5v7M8.5 13h7"/><path d="M9.5 2.5h5"/></svg></span>
+                <b>Temps bonus</b><span>Des minutes en plus, un nombre de fois limité.</span></button>
+              <button class="special" type="button" data-special="quit">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg></span>
+                <b>Quitter le jeu</b><span>Retour au menu de la Recalbox.</span></button>
+              <button class="special" type="button" data-special="poweroff">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></span>
+                <b>Éteindre</b><span>Éteint proprement la Recalbox.</span></button>
+            </div>
+          </section>
+        </section>
+
+        <!-- --------------------------------------------------------- cartes -->
+        <section class="panel" data-panel="cartes" role="tabpanel">
+          <section class="card">
+            <div class="card-head"><div class="grow">
+              <h2>Créer une carte à imprimer</h2>
+              <p>Format carte bancaire (85,6 × 54 mm). Choisissez un jeu et un modèle, puis touchez un élément de la carte pour le déplacer, l'agrandir ou le tourner.</p>
+            </div></div>
+            <div class="designer">
+              <div>
+                <div class="stage" id="card-stage"><canvas id="card-canvas" aria-label="Aperçu de la carte"></canvas></div>
+                <div class="stage-tools">
+                  <div class="seg" role="group" aria-label="Sens de la carte">
+                    <button type="button" data-orient="landscape" aria-pressed="true">Horizontale</button>
+                    <button type="button" data-orient="portrait" aria-pressed="false">Verticale</button>
+                  </div>
+                  <label class="row" style="gap:8px"><button class="switch" type="button" role="switch" id="card-guide" aria-checked="true" aria-label="Montrer la partie qui dépasse de la fente"></button><span>Partie qui dépasse de la fente</span></label>
+                  <select id="card-guide-edge" aria-label="Bord qui dépasse" style="width:auto;height:34px">
+                    <option value="top">en haut</option><option value="bottom">en bas</option>
+                    <option value="left">à gauche</option><option value="right">à droite</option>
+                  </select>
+                </div>
+              </div>
+              <div class="designer-side">
+                <div class="source-box">
+                  <span class="tag-ico" id="card-source-ico"></span>
+                  <div class="grow"><b id="card-source-title">Aucun jeu choisi</b><span id="card-source-sub">Choisissez un jeu, ou utilisez votre propre image.</span></div>
+                  <div class="row" style="gap:6px">
+                    <button class="btn sm" type="button" id="card-pick">Choisir un jeu</button>
+                    <button class="btn sm ghost" type="button" id="card-own">Mon image</button>
+                    <input type="file" id="card-file" accept="image/*" hidden>
+                  </div>
+                </div>
+                <div>
+                  <div class="now-label" style="margin-bottom:8px">Modèle</div>
+                  <div class="tpl-list" id="card-templates" role="group" aria-label="Modèles de carte"></div>
+                </div>
+                <div class="seg layer-tabs" role="group" aria-label="Élément à régler" id="card-layers"></div>
+                <div class="controls" id="card-controls"></div>
+                <div class="row">
+                  <button class="btn primary" type="button" id="card-add">Ajouter à la planche</button>
+                  <button class="btn" type="button" id="card-png">Télécharger l'image</button>
+                  <button class="btn ghost" type="button" id="card-save-tpl">Enregistrer comme modèle</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div class="grow">
+              <h2>Planche à imprimer <span class="muted" id="sheet-count"></span></h2>
+              <p>Dix cartes par feuille A4. Imprimez à 100 % (taille réelle), puis découpez le long des traits.</p>
+            </div>
+            <div class="row">
+              <button class="btn ghost sm" type="button" id="sheet-clear" disabled>Vider</button>
+              <button class="btn primary" type="button" id="sheet-print" disabled>Imprimer</button>
+            </div></div>
+            <div class="sheet-grid" id="sheet-grid"></div>
+            <div class="empty" id="sheet-empty">
+              <b>La planche est vide</b>
+              <span>Réglez une carte, puis « Ajouter à la planche ».</span>
+            </div>
           </section>
         </section>
 
@@ -1136,7 +1349,7 @@
     </section>
   </main>
 
-  <footer class="foot">Page locale · elle parle directement à votre Recalbox, rien ne sort de votre réseau.</footer>
+  <footer class="foot"><span class="foot-file">Page locale · elle parle directement à votre Recalbox, rien ne sort de votre réseau.</span><span class="foot-served" hidden>Page servie par votre Recalbox · rien ne sort de votre réseau.</span></footer>
 </div>
 
 <!-- ================================================================ dialogues -->
@@ -1175,6 +1388,41 @@
     <details><summary>Langue et thème</summary>
       <p>Les boutons de l'en-tête suivent ceux de votre ordinateur. Un clic fixe votre choix ; un appui long revient au réglage de l'ordinateur.</p></details>
   </div>
+  <div class="row end"><button class="btn" type="button" data-close>Fermer</button></div>
+</dialog>
+
+<dialog id="card-dialog" aria-labelledby="card-dialog-title">
+  <form method="dialog" id="card-form">
+    <h2 id="card-dialog-title"></h2>
+    <p class="dialog-text" id="card-dialog-text"></p>
+    <div class="form-grid" id="card-fields"></div>
+    <div class="row end">
+      <button class="btn ghost" type="button" id="card-cancel">Annuler</button>
+      <button class="btn primary" type="submit" id="card-ok"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="picker-dialog" class="wide" aria-labelledby="picker-title">
+  <h2 id="picker-title">Choisir un jeu</h2>
+  <div class="search-row" style="margin-top:12px">
+    <label class="search"><span class="sr-only">Nom du jeu</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <input type="search" id="picker-search" placeholder="Nom du jeu" autocomplete="off" spellcheck="false"></label>
+    <select id="picker-system" aria-label="Console"><option value="">Toutes les consoles</option></select>
+  </div>
+  <div class="picker-list"><ul class="tags" id="picker-list" hidden></ul>
+    <p class="muted small" id="picker-hint">Tapez quelques lettres du nom d'un jeu.</p></div>
+  <div class="row end"><button class="btn" type="button" data-close>Fermer</button></div>
+</dialog>
+
+<dialog id="phone-dialog" aria-labelledby="phone-title">
+  <h2 id="phone-title">Sur un téléphone ou une tablette</h2>
+  <p class="dialog-text">Scannez ce code avec l'appareil photo, sur le même réseau que la Recalbox. La page s'ouvre directement depuis la Recalbox : rien à installer.</p>
+  <div class="qr-box"><canvas id="phone-qr" width="10" height="10" aria-hidden="true"></canvas></div>
+  <div class="copy-field"><code id="phone-url"></code>
+    <button class="btn sm" type="button" id="phone-copy">Copier</button></div>
+  <p class="muted small" style="margin-top:12px">Le téléphone devra être autorisé une fois avec le bouton du boîtier, comme cet ordinateur.</p>
   <div class="row end"><button class="btn" type="button" data-close>Fermer</button></div>
 </dialog>
 
@@ -1289,6 +1537,7 @@
 </template>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="print-area" aria-hidden="true" data-no-i18n></div>
 
 <script>
 "use strict";
@@ -1348,6 +1597,16 @@ const ICONS = {
   tag: '<path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/><circle cx="9" cy="11" r="1.7"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/>',
   x: '<path d="m6 6 12 12M18 6 6 18"/>',
+  game: '<path d="M6.5 8h11a3.5 3.5 0 0 1 3.4 4.4l-1 3.9a2.5 2.5 0 0 1-4.2 1.1L13.8 15h-3.6l-1.9 2.4a2.5 2.5 0 0 1-4.2-1.1l-1-3.9A3.5 3.5 0 0 1 6.5 8z"/><path d="M8 10.5v3M6.5 12h3"/>',
+  edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  card: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m7 15 3-3.5 2.5 2.5L15 11l3 4"/>',
+  random: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2"/><circle cx="15" cy="15" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="9" cy="15" r="1.2"/>',
+  bonus: '<circle cx="12" cy="13" r="8"/><path d="M12 9.5v7M8.5 13h7"/><path d="M9.5 2.5h5"/>',
+  quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
+  poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
+  link: '<path d="M12 5v14M5 12h14"/>',
+  rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
+  rotr: '<path d="M20 4v5h-5"/><path d="M18.5 15a7 7 0 1 1-1.6-7.3L20 9"/>',
 };
 function icon(name, size) {
   const span = document.createElement("span");
@@ -2155,6 +2414,8 @@ function setTab(name) {
   try { sessionStorage.setItem("rfid-tab", name); } catch (error) { /* ignore */ }
   if (name === "options") renderOptions(true);
   if (name === "materiel") refreshCalibration();
+  if (name === "cartes") enterDesigner();
+  if (name === "badges" && agent.isOpen) loadSystems();
 }
 
 function setLink(kind, label) {
@@ -2526,6 +2787,8 @@ function render() {
   renderCurrent();
   renderMaintenance();
   renderCalibrationButtons();
+  $("#btn-phone").hidden = SERVED || !phoneUrl() || !(state.agent && state.agent.web);
+  $$("[data-special]").forEach((node) => { node.disabled = busy || !running || Boolean((serviceStatus().controller || {}).mode); });
 }
 
 function renderHealthNotice(problem) {
@@ -2568,10 +2831,20 @@ function renderCurrent() {
   if (mode) {
     armed.classList.toggle("delete", mode === "delete");
     $("#armed-title").textContent = mode === "delete" ? t("Posez le badge à effacer") : t("Posez le badge sur le lecteur");
+    /* The service says what the badge will become ("system / name" for a
+       game, the card name for a special card). */
+    const label = String(controller.target || "").replace(/^[^/]+ \/ /, "");
     $("#armed-text").textContent = mode === "delete"
       ? t("Il sera retiré de la liste.")
-      : (current ? t("Il lancera « {game} ».", { game: gameTitle(current.name, current.game) }) : "");
+      : (label ? t("Il lancera « {game} ».", { game: label })
+        : (current ? t("Il lancera « {game} ».", { game: gameTitle(current.name, current.game) }) : ""));
     $("#armed-count").textContent = Math.max(0, Math.round(controller.seconds_left || 0)) + " s";
+  }
+  const play = serviceStatus().playtime || {};
+  $("#playtime").hidden = !play.name && !play.remaining_s;
+  if (play.remaining_s !== undefined && (play.name || play.remaining_s)) {
+    $("#playtime-text").textContent = t("Temps de jeu restant pour « {game} » : {time}.",
+      { game: play.name || "?", time: t("environ {n} min", { n: Math.max(1, Math.ceil(play.remaining_s / 60)) }) });
   }
   if (!$("#add-system").value && current) $("#add-system").value = current.system;
   if (!$("#add-game").value && current) $("#add-game").value = current.game;
@@ -2602,9 +2875,9 @@ function renderTags(before) {
   $("#tags-count").textContent = count ? "(" + count + ")" : "";
   $("#tags-tools").hidden = count < 6;
   $("#tags-empty").hidden = count > 0;
-  const sorted = tags.slice().sort((a, b) => gameTitle(a.name, a.game).localeCompare(gameTitle(b.name, b.game)));
+  const sorted = tags.slice().sort((a, b) => tagTitle(a).localeCompare(tagTitle(b)));
   const visible = sorted.filter((tag) => !query ||
-    [gameTitle(tag.name, tag.game), tag.game, consoleName(tag.system), tag.system, tag.pretty]
+    [tagTitle(tag), tag.game, systemName(tag.system), tag.system, tag.pretty]
       .join(" ").toLowerCase().includes(query));
   const list = $("#tags-list");
   list.hidden = count === 0;
@@ -2614,29 +2887,58 @@ function renderTags(before) {
   }
   list.replaceChildren(...visible.map((tag) => {
     const uses = Number(tag.hits) || 0;
+    const special = tag.kind === "action";
+    const label = tagTitle(tag);
     const meta = [
-      el("span", { className: "chip", text: consoleName(tag.system) }),
-      el("span", { text: uses ? (uses === 1 ? t("lancé une fois") : t("lancé {n} fois", { n: uses })) + (formatDate(tag.last_used) ? " · " + t("dernière fois le {d}", { d: formatDate(tag.last_used) }) : "") : t("jamais utilisé") }),
+      special ? el("span", { className: "chip special", text: t("Carte spéciale") }) : el("span", { className: "chip", text: systemName(tag.system) }),
+      limitChip(tag),
+      el("span", { text: uses ? (uses === 1 ? t("utilisé une fois") : t("utilisé {n} fois", { n: uses })) + (formatDate(tag.last_used) ? " · " + t("dernière fois le {d}", { d: formatDate(tag.last_used) }) : "") : t("jamais utilisé") }),
       el("span", { className: "mono", text: tag.pretty }),
     ];
     const isNew = before && before.length && !previous.has(tag.uid);
     const row = el("li", { className: "tag" + (isNew ? " flash" : "") }, [
-      el("span", { className: "tag-ico" }, [icon("tag", 19)]),
-      el("div", { attrs: { style: "min-width:0" } }, [el("div", { className: "tag-name", text: gameTitle(tag.name, tag.game), title: tag.game }), el("div", { className: "tag-meta" }, meta)]),
-      el("button", {
-        className: "icon-btn", title: t("Supprimer ce badge"),
-        attrs: { type: "button", "aria-label": t("Supprimer le badge de « {game} »", { game: gameTitle(tag.name, tag.game) }) },
-        onclick: () => removeTag(tag),
-      }, [icon("trash", 18)]),
+      el("span", { className: "tag-ico" }, [icon(special ? (tag.action || "tag") : "tag", 19)]),
+      el("div", { attrs: { style: "min-width:0" } }, [el("div", { className: "tag-name", text: label, title: special ? "" : tag.game }), el("div", { className: "tag-meta" }, meta)]),
+      el("div", { className: "tag-actions" }, [
+        el("button", {
+          className: "icon-btn", title: t("Créer sa carte"),
+          attrs: { type: "button", "aria-label": t("Créer la carte de « {game} »", { game: label }) },
+          onclick: () => designFromTag(tag),
+        }, [icon("card", 18)]),
+        el("button", {
+          className: "icon-btn", title: t("Modifier"),
+          attrs: { type: "button", "aria-label": t("Modifier le badge de « {game} »", { game: label }) },
+          onclick: () => editTag(tag),
+        }, [icon("edit", 18)]),
+        el("button", {
+          className: "icon-btn", title: t("Supprimer ce badge"),
+          attrs: { type: "button", "aria-label": t("Supprimer le badge de « {game} »", { game: label }) },
+          onclick: () => removeTag(tag),
+        }, [icon("trash", 18)]),
+      ]),
     ]);
     return row;
   }));
 }
 
+/* Name shown for a badge: the game, or the special card. */
+function tagTitle(tag) {
+  if (tag.kind === "action") return tag.name || specialName(tag.action, tag.params);
+  return gameTitle(tag.name, tag.game);
+}
+function limitChip(tag) {
+  if (tag.action === "bonus") {
+    const p = tag.params || {};
+    return el("span", { className: "chip time", text: "+" + (p.minutes || 10) + " min" + (p.uses ? " · " + t("{n} fois / {p}", { n: p.uses, p: periodName(p.period_h) }) : "") });
+  }
+  if (tag.limit_min === null || tag.limit_min === undefined || tag.kind === "action" && tag.action !== "random") return null;
+  return el("span", { className: "chip time", text: Number(tag.limit_min) > 0 ? "⏱ " + tag.limit_min + " min" : t("sans limite de temps") });
+}
+
 async function removeTag(tag) {
   const ok = await ask({
     title: t("Supprimer ce badge ?"),
-    text: t("Le badge ne lancera plus « {game} ». Vous pourrez l'associer de nouveau à tout moment.", { game: gameTitle(tag.name, tag.game) }),
+    text: t("Le badge ne lancera plus « {game} ». Vous pourrez l'associer de nouveau à tout moment.", { game: tagTitle(tag) }),
     ok: t("Supprimer"), danger: true,
   });
   if (!ok) return;
@@ -2950,12 +3252,18 @@ const OPTION_GROUPES = [
   ["launch", "Lancement des jeux"],
   ["button", "Bouton du boîtier"],
   ["rfid", "Lecteur de badges"],
+  ["time", "Temps de jeu"],
+  ["screen", "Messages à l'écran"],
+  ["led", "Voyant"],
   ["feedback", "Sons"],
   ["general", "Journal et diagnostic"],
 ];
+/* Choice texts: "section.key=value" first (same value, different meaning), then the value alone. */
 const CHOIX_TEXTES = {
   launch: "lancer le jeu", none: "biper seulement",
   DEBUG: "tout noter (diagnostic)", INFO: "normal", WARNING: "anomalies seulement", ERROR: "erreurs seulement",
+  "led.type=none": "aucun voyant", "led.type=rgb": "LED RGB (3 couleurs)", "led.type=ws2812": "LED programmables (WS2812)",
+  "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
 };
 let optionsData = null;
 let optionsPending = {};
@@ -2968,7 +3276,30 @@ function optionValeur(option) {
 function optionsModifiees() {
   return Boolean(optionsData) && optionsData.options.some((option) => optionValeur(option) !== option.value);
 }
+/* "when": a setting only shown when another one has a given value
+   ("led.type=rgb", "led.type!=none"); follows the unsaved choice too. */
+function optionVisible(option) {
+  if (!option.when || !optionsData) return true;
+  const match = /^([\w.]+)(!?=)(.*)$/.exec(option.when);
+  if (!match) return true;
+  const other = optionsData.options.find((item) => item.full === match[1]);
+  if (!other) return true;
+  const equal = optionValeur(other) === match[3];
+  return match[2] === "=" ? equal : !equal;
+}
+function appliquerConditions() {
+  if (!optionsData) return;
+  for (const option of optionsData.options) {
+    const row = document.querySelector('.option[data-option="' + option.full + '"]');
+    if (row) row.hidden = !optionVisible(option);
+  }
+  $$(".option-group").forEach((group) => {
+    const rows = $$(".option", group);
+    if (rows.length) group.hidden = rows.every((row) => row.hidden);
+  });
+}
 function majEtatOptions() {
+  appliquerConditions();
   const modifie = optionsModifiees();
   if (modifie) optionsMessage = "";
   $("#options-state").textContent = modifie ? t("Modifications non enregistrées") : t(optionsMessage || "Réglages à jour");
@@ -2992,7 +3323,7 @@ function controlerOption(option) {
   if (option.type === "choice") {
     const choix = el("select", { attrs: { "aria-label": label } });
     for (const possible of (option.choices || [])) {
-      const ligne = el("option", { text: t(CHOIX_TEXTES[possible] || possible), attrs: { value: possible } });
+      const ligne = el("option", { text: t(CHOIX_TEXTES[option.full + "=" + possible] || CHOIX_TEXTES[possible] || possible), attrs: { value: possible } });
       ligne.selected = possible === valeur;
       choix.appendChild(ligne);
     }
@@ -3031,7 +3362,7 @@ async function renderOptions(force) {
   for (const cle of Object.keys(optionsPending)) {
     if (!data.options.some((option) => option.full === cle)) delete optionsPending[cle];
   }
-  const ligne = (option) => el("div", { className: "option" }, [
+  const ligne = (option) => el("div", { className: "option", attrs: { "data-option": option.full } }, [
     el("div", { className: "option-text" }, [
       el("span", { className: "option-label", text: t(option.label || option.full) }),
       option.help ? el("span", { className: "option-help", text: t(option.help) }) : null,
@@ -3082,8 +3413,1520 @@ async function enregistrerOptions() {
   optionsPending = {};
   optionsMessage = data.reloaded ? "Enregistré et appliqué" : "Enregistré (le service est arrêté)";
   toast("ok", t(optionsMessage));
+  if (data.reboot) {
+    toast("info", t("Les LED programmables s'activent au prochain démarrage : redémarrez la Recalbox (onglet Mises à jour)."), 9000);
+  }
+  if (data.boot_errors && data.boot_errors.length) {
+    toast("err", t("La configuration de démarrage n'a pas pu être modifiée :") + " " + data.boot_errors.join(" ; "));
+  }
   lastOptionsJson = "";
   await renderOptions(true);
+}
+
+/* =====================================================================
+   Game library (search without the TV)
+   ===================================================================== */
+let systemsList = null;
+async function loadSystems() {
+  if (systemsList) return systemsList;
+  try {
+    const data = await agent.send("games.systems", {}, 20000);
+    systemsList = data.systems || [];
+  } catch (error) { systemsList = null; return []; }
+  for (const select of [$("#games-system"), $("#picker-system")]) fillSystemSelect(select);
+  return systemsList;
+}
+function systemName(id) {
+  const found = (systemsList || []).find((item) => item.id === id);
+  return found && found.name && found.name !== id ? found.name : consoleName(id);
+}
+function fillSystemSelect(select, withAll) {
+  const keep = select.value;
+  const options = [el("option", { text: t(withAll || "Toutes les consoles"), attrs: { value: "" } })];
+  for (const system of (systemsList || [])) options.push(el("option", { text: systemName(system.id), attrs: { value: system.id } }));
+  select.replaceChildren(...options);
+  select.value = keep;
+}
+
+/* A search box + console filter + result list; ``actions(game)`` gives the
+   buttons of each row. */
+function gameSearch(opts) {
+  let timer = null;
+  let sequence = 0;
+  const run = async () => {
+    const query = opts.input.value.trim();
+    const system = opts.select.value;
+    if (!query && !system) {
+      opts.list.hidden = true;
+      opts.hint.hidden = false;
+      opts.hint.textContent = t("Tapez quelques lettres du nom d'un jeu.");
+      return;
+    }
+    const mine = ++sequence;
+    opts.hint.hidden = false;
+    opts.hint.textContent = t("Recherche…");
+    let data;
+    try {
+      data = await agent.send("games.search", { query, system, limit: 60 }, 30000);
+    } catch (error) {
+      if (mine === sequence) opts.hint.textContent = t("Recherche impossible :") + " " + errorText(error);
+      return;
+    }
+    if (mine !== sequence) return;
+    const games = data.games || [];
+    opts.list.hidden = !games.length;
+    opts.hint.hidden = games.length > 0 && games.length < 60;
+    opts.hint.textContent = games.length ? t("Seuls les 60 premiers jeux sont affichés : précisez la recherche.") : t("Aucun jeu trouvé.");
+    opts.list.replaceChildren(...games.map((game) => el("li", { className: "tag" }, [
+      el("span", { className: "tag-ico" }, [icon("game", 19)]),
+      el("div", { attrs: { style: "min-width:0" } }, [
+        el("div", { className: "tag-name", text: game.name }),
+        el("div", { className: "tag-meta" }, [
+          el("span", { className: "chip", text: systemName(game.system) }),
+          game.favorite ? el("span", { text: "★ " + t("favori") }) : null,
+          el("span", { className: "mono", text: String(game.path || "").split("/").pop() }),
+        ]),
+      ]),
+      el("div", { className: "tag-actions" }, opts.actions(game)),
+    ])));
+  };
+  opts.input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 280); });
+  opts.select.addEventListener("change", run);
+  return { run };
+}
+
+async function associateGame(game) {
+  const done = await run(() => agent.send("associate", {
+    mode: "associate", target: { system: game.system, path: game.path, name: game.name },
+  }), "Association impossible :");
+  if (done) {
+    toast("info", t("Posez le badge sur le lecteur : il lancera « {game} ».", { game: game.name }), 6000);
+    refresh();
+  }
+}
+
+/* =====================================================================
+   Special cards and badge settings
+   ===================================================================== */
+const PERIODS = [[1, "heure"], [3, "3 heures"], [12, "12 heures"], [24, "jour"], [168, "semaine"]];
+function periodName(hours) {
+  const found = PERIODS.find((entry) => entry[0] === Number(hours));
+  return found ? t(found[1]) : t("{n} h", { n: hours });
+}
+function specialName(action, params) {
+  const p = params || {};
+  if (action === "random") {
+    const where = p.system ? systemName(p.system) : "";
+    return p.favorites ? t("Favori au hasard") + (where ? " · " + where : "") : t("Jeu au hasard") + (where ? " · " + where : "");
+  }
+  if (action === "bonus") return t("Temps bonus +{n} min", { n: p.minutes || 10 });
+  if (action === "quit") return t("Quitter le jeu");
+  if (action === "poweroff") return t("Éteindre la Recalbox");
+  return action || "";
+}
+
+/* Small form builder for the card dialog. */
+function formField(label, control, help, full) {
+  return el("label", { className: "field" + (full ? " full" : "") }, [
+    el("span", { text: label }), control, help ? el("small", { text: help }) : null,
+  ]);
+}
+function numberInput(id, value, min, max, placeholder) {
+  const input = el("input", { attrs: { type: "number", id, min, max, inputmode: "numeric", placeholder: placeholder || "" } });
+  if (value !== null && value !== undefined && value !== "") input.value = String(value);
+  return input;
+}
+function switchField(id, label, checked) {
+  const toggle = el("button", { className: "switch", attrs: { type: "button", role: "switch", id, "aria-label": label, "aria-checked": checked ? "true" : "false" } });
+  toggle.addEventListener("click", () => toggle.setAttribute("aria-checked", toggle.getAttribute("aria-checked") === "true" ? "false" : "true"));
+  return el("div", { className: "field full" }, [el("div", { className: "switch-field" }, [el("span", { text: label, attrs: { style: "font-size:13px;font-weight:600;color:var(--muted)" } }), toggle])]);
+}
+function limitField(value) {
+  return formField(t("Temps de jeu (minutes)"), numberInput("f-limit", value, 0, 1440, t("réglage général")),
+    t("Vide : le réglage général. 0 : pas de limite. Prévient avant la fin, puis quitte le jeu."));
+}
+
+/* Fields of a special card; ``values`` comes from an existing badge when editing. */
+async function specialFields(action, values) {
+  const p = (values && values.params) || {};
+  const fields = [];
+  if (action === "random") {
+    await loadSystems();
+    const select = el("select", { attrs: { id: "f-system" } });
+    fillSystemSelect(select, "Toutes les consoles");
+    select.value = p.system || "";
+    fields.push(formField(t("Console"), select, "", true));
+    fields.push(switchField("f-fav", t("Seulement parmi les favoris"), Boolean(p.favorites)));
+    fields.push(limitField(values ? values.limit_min : null));
+  } else if (action === "bonus") {
+    fields.push(formField(t("Minutes en plus"), numberInput("f-minutes", p.minutes || 10, 1, 240)));
+    fields.push(formField(t("Utilisations"), numberInput("f-uses", p.uses === undefined ? 2 : p.uses, 0, 50), t("0 = sans limite")));
+    const period = el("select", { attrs: { id: "f-period" } }, PERIODS.map(([hours, label]) => el("option", { text: t("par {p}", { p: t(label) }), attrs: { value: hours } })));
+    period.value = String(p.period_h || 24);
+    fields.push(formField(t("Période"), period, t("Le compteur repart à zéro après cette durée."), true));
+  }
+  return fields;
+}
+function readSpecialParams(action) {
+  if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true" };
+  if (action === "bonus") return { minutes: Number($("#f-minutes").value) || 10, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
+  return {};
+}
+function readLimit() {
+  const field = $("#f-limit");
+  if (!field || field.value.trim() === "") return null;
+  return Math.max(0, Math.round(Number(field.value) || 0));
+}
+
+const SPECIAL_HELP = {
+  random: "Pose le badge : un jeu tiré au sort démarre.",
+  bonus: "Pendant une partie limitée, ajoute du temps. Juste après la fin du temps (moins de 15 minutes), relance la partie avec ce temps en plus.",
+  quit: "Quitte le jeu en cours et revient au menu de la Recalbox.",
+  poweroff: "Éteint la Recalbox proprement, comme depuis son menu.",
+};
+
+/* One dialog for the special cards (creation) and for badge settings. */
+function cardDialog(title, text, fields, okLabel) {
+  const dialog = $("#card-dialog");
+  $("#card-dialog-title").textContent = title;
+  $("#card-dialog-text").textContent = text || "";
+  $("#card-fields").replaceChildren(...fields);
+  $("#card-ok").textContent = okLabel;
+  return new Promise((resolve) => {
+    const form = $("#card-form");
+    const finish = (value) => {
+      form.removeEventListener("submit", submit);
+      dialog.removeEventListener("close", closed);
+      if (dialog.open) dialog.close();
+      resolve(value);
+    };
+    const submit = (event) => { event.preventDefault(); finish(true); };
+    const closed = () => finish(false);
+    form.addEventListener("submit", submit);
+    dialog.addEventListener("close", closed);
+    $("#card-cancel").onclick = () => finish(false);
+    dialog.showModal();
+  });
+}
+
+async function createSpecial(action) {
+  const fields = await specialFields(action, null);
+  const name = el("input", { attrs: { type: "text", id: "f-name", placeholder: specialName(action, {}), maxlength: 60 } });
+  fields.unshift(formField(t("Nom affiché"), name, "", true));
+  const ok = await cardDialog(specialName(action, {}), t(SPECIAL_HELP[action]), fields, t("Poser le badge"));
+  if (!ok) return;
+  const params = readSpecialParams(action);
+  const entry = { kind: "action", action, params, name: $("#f-name").value.trim() || specialName(action, params) };
+  if (action === "random") entry.limit_min = readLimit();
+  const done = await run(() => agent.send("associate", { mode: "card", entry }), "Création impossible :");
+  if (done) { toast("info", t("Posez le badge sur le lecteur : il deviendra « {name} ».", { name: entry.name }), 6000); refresh(); }
+}
+
+async function editTag(tag) {
+  const special = tag.kind === "action";
+  const fields = [formField(t("Nom affiché"), el("input", { attrs: { type: "text", id: "f-name", value: tagTitle(tag), maxlength: 80 } }), "", true)];
+  if (special) fields.push(...await specialFields(tag.action, tag));
+  else fields.push(limitField(tag.limit_min));
+  const ok = await cardDialog(t("Modifier le badge"), special ? t(SPECIAL_HELP[tag.action] || "") : tag.game, fields, t("Enregistrer"));
+  if (!ok) return;
+  const changes = { name: $("#f-name").value.trim() };
+  if (!special || tag.action === "random") changes.limit_min = readLimit();
+  if (special) changes.params = readSpecialParams(tag.action);
+  const done = await run(() => agent.send("tags.update", { uid: tag.uid, changes }), "Enregistrement impossible :");
+  if (done) { toast("ok", t("Badge enregistré.")); lastTagsJson = ""; refresh(); }
+}
+
+/* =====================================================================
+   Card designer: one CR80 card (85.6 x 54 mm), drawn on a canvas in
+   millimetres. Templates draw the frame; the picture, the title, the
+   console logo and the console drawing are layers the user moves, scales
+   and rotates (mouse, finger, two fingers, or the controls).
+   ===================================================================== */
+const CARD_MM = { long: 85.6, short: 54 };
+const CARD_RADIUS_MM = 3.2;
+const PRINT_PX_MM = 300 / 25.4;
+const FONT_STACKS = {
+  sans: '800 {s}px ui-sans-serif, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  round: '800 {s}px "Arial Rounded MT Bold", "Varela Round", Nunito, ui-rounded, "Segoe UI", sans-serif',
+  serif: '700 {s}px Georgia, "Times New Roman", serif',
+  mono: '700 {s}px ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace',
+  narrow: '700 {s}px "Arial Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif',
+};
+const FONT_NAMES = { sans: "Moderne", round: "Arrondie", serif: "Classique", mono: "Rétro", narrow: "Étroite" };
+const COLOR_NAMES = { auto: "Automatique", ink: "Foncé", paper: "Blanc", accent: "Couleur de la carte", original: "Couleurs d'origine" };
+
+function cardSize(orientation) {
+  return orientation === "portrait" ? { w: CARD_MM.short, h: CARD_MM.long } : { w: CARD_MM.long, h: CARD_MM.short };
+}
+
+/* ---- colours ---- */
+function hexToRgb(hex) {
+  let value = String(hex || "").replace("#", "");
+  if (value.length === 3) value = value.split("").map((c) => c + c).join("");
+  const number = parseInt(value, 16);
+  return Number.isNaN(number) ? [128, 128, 128] : [(number >> 16) & 255, (number >> 8) & 255, number & 255];
+}
+function rgbToHex(rgb) { return "#" + rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join(""); }
+function mixColor(a, b, ratio) { const x = hexToRgb(a); const y = hexToRgb(b); return rgbToHex(x.map((v, i) => v + (y[i] - v) * ratio)); }
+function lightness(hex) { const [r, g, b] = hexToRgb(hex).map((v) => v / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+function saturation(hex) { const c = hexToRgb(hex); const max = Math.max(...c); const min = Math.min(...c); return max ? (max - min) / max : 0; }
+function inkOn(hex) { return lightness(hex) > 0.6 ? "#14161b" : "#ffffff"; }
+/* Main colour of a console logo (most used saturated colour of the SVG). */
+function accentFromSvg(svg) {
+  const counts = new Map();
+  for (let match of String(svg || "").match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g) || []) {
+    if (match.length === 4) match = "#" + match.slice(1).split("").map((c) => c + c).join("");
+    match = match.toLowerCase();
+    if (saturation(match) < 0.35 || lightness(match) > 0.92 || lightness(match) < 0.06) continue;
+    counts.set(match, (counts.get(match) || 0) + 1);
+  }
+  let best = null;
+  for (const [color, count] of counts) if (!best || count > best[1] || (count === best[1] && saturation(color) > saturation(best[0]))) best = [color, count];
+  if (!best) return null;
+  /* Very light colours make a pale card: darkened a little. */
+  return lightness(best[0]) > 0.7 ? mixColor(best[0], "#000000", 0.25) : best[0];
+}
+function fallbackAccent(system) {
+  let hash = 0;
+  for (const char of String(system || "rfid")) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  const hue = hash % 360;
+  const f = (n) => { const k = (n + hue / 30) % 12; const a = 0.62 * Math.min(0.45, 1 - 0.45); return 0.45 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return rgbToHex([f(0) * 255, f(8) * 255, f(4) * 255]);
+}
+function cardColors(d) {
+  const accent = d.accent || "#3f5be6";
+  return {
+    accent,
+    dark: mixColor(accent, "#05060a", 0.62),
+    deep: mixColor(accent, "#05060a", 0.82),
+    light: mixColor(accent, "#ffffff", 0.86),
+    onAccent: inkOn(accent),
+    ink: "#15171c",
+    paper: "#ffffff",
+  };
+}
+function resolveColor(token, c) {
+  if (!token || token === "auto") return c.onAccent;
+  if (token === "accent") return c.accent;
+  if (token === "ink") return c.ink;
+  if (token === "paper") return c.paper;
+  if (token === "onAccent") return c.onAccent;
+  return token;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.max(0, Math.min(r || 0, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+/* ---- templates (original designs; sizes in millimetres) ----
+   layout(W, H) gives the picture window and the default place of each layer;
+   under() draws behind the picture, over() on top of it. */
+const CARD_TEMPLATES = [
+  {
+    id: "cartouche", name: "Cartouche",
+    layout(W, H) {
+      const portrait = H > W;
+      const band = portrait ? H * 0.12 : H * 0.21;
+      const grip = portrait ? H * 0.12 : H * 0.17;
+      return {
+        window: { x: W * 0.08, y: band + H * 0.035, w: W * 0.84, h: H - band - grip - H * 0.06, r: 1.4 },
+        title: { x: portrait ? W * 0.5 : W * 0.56, y: band * 0.53, size: band * (portrait ? 0.34 : 0.42), maxw: portrait ? W * 0.86 : W * 0.66, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 },
+        logo: { x: portrait ? W * 0.5 : W * 0.13, y: portrait ? H - grip * 0.55 : band * 0.52, h: portrait ? grip * 0.42 : band * 0.56, w: portrait ? W * 0.6 : W * 0.2, tint: "auto", visible: true, rotation: 0 },
+        console: { x: W * 0.82, y: H * 0.72, h: H * 0.26, w: W * 0.32, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H, c, L) {
+      const body = ctx.createLinearGradient(0, 0, 0, H);
+      body.addColorStop(0, c.dark); body.addColorStop(1, c.deep);
+      ctx.fillStyle = body; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = c.accent;
+      ctx.fillRect(0, 0, W, L.window.y - (H > W ? H * 0.035 : H * 0.035));
+    },
+    over(ctx, W, H, c, L) {
+      const win = L.window;
+      ctx.lineWidth = 0.8; ctx.strokeStyle = c.accent;
+      roundRect(ctx, win.x, win.y, win.w, win.h, win.r); ctx.stroke();
+      const top = win.y + win.h + H * 0.035;
+      const lines = 4;
+      const gap = (H - top - H * 0.04) / lines;
+      ctx.lineWidth = Math.min(0.9, gap * 0.45); ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,255,255,.14)";
+      const portrait = H > W;
+      for (let i = 0; i < lines && !portrait; i++) {
+        const y = top + gap * (i + 0.5);
+        ctx.beginPath(); ctx.moveTo(W * 0.3, y); ctx.lineTo(W * 0.7, y); ctx.stroke();
+      }
+    },
+  },
+  {
+    id: "bandeau", name: "Bandeau",
+    layout(W, H) {
+      const portrait = H > W;
+      const band = portrait ? H * 0.13 : H * 0.22;
+      return {
+        window: { x: 0, y: 0, w: W, h: H, r: 0 },
+        title: { x: portrait ? W * 0.5 : W * 0.42, y: band * 0.52, size: band * (portrait ? 0.34 : 0.42), maxw: portrait ? W * 0.88 : W * 0.66, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 },
+        logo: { x: portrait ? W * 0.5 : W * 0.855, y: portrait ? H - H * 0.07 : band * 0.52, h: portrait ? H * 0.06 : band * 0.55, w: portrait ? W * 0.6 : W * 0.21, tint: portrait ? "paper" : "auto", visible: true, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: band / 2, scale: 1, rotation: 0, visible: true },
+        band,
+      };
+    },
+    under() {},
+    over(ctx, W, H, c, L) {
+      const band = L.band || H * 0.22;
+      const shade = ctx.createLinearGradient(0, 0, 0, band * 1.6);
+      shade.addColorStop(0, c.accent); shade.addColorStop(0.62, c.accent); shade.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = shade; ctx.fillRect(0, 0, W, band * 1.6);
+      if (H > W) {
+        const foot = ctx.createLinearGradient(0, H * 0.8, 0, H);
+        foot.addColorStop(0, "rgba(0,0,0,0)"); foot.addColorStop(1, "rgba(0,0,0,.65)");
+        ctx.fillStyle = foot; ctx.fillRect(0, H * 0.8, W, H * 0.2);
+      }
+      ctx.lineWidth = 0.5; ctx.strokeStyle = "rgba(255,255,255,.75)";
+      roundRect(ctx, 1.6, 1.6, W - 3.2, H - 3.2, 2); ctx.stroke();
+    },
+  },
+  {
+    id: "boite", name: "Boîte de jeu",
+    layout(W, H) {
+      const portrait = H > W;
+      const spine = portrait ? W * 0.2 : W * 0.17;
+      return {
+        window: { x: spine + 1.4, y: 1.4, w: W - spine - 2.8, h: H - 2.8, r: 1.2 },
+        title: { x: spine / 2, y: H / 2, size: spine * 0.42, maxw: H * 0.9, color: "auto", font: "narrow", outline: false, visible: true, rotation: -90 },
+        logo: { x: spine + (W - spine) / 2, y: H - H * (portrait ? 0.07 : 0.11), h: H * (portrait ? 0.06 : 0.12), w: (W - spine) * 0.55, tint: "paper", visible: true, rotation: 0 },
+        console: { x: W * 0.82, y: H * 0.75, h: H * 0.3, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H, c, L) {
+      ctx.fillStyle = c.deep; ctx.fillRect(0, 0, W, H);
+      const spine = L.window.x - 1.4;
+      const g = ctx.createLinearGradient(0, 0, spine, 0);
+      g.addColorStop(0, c.accent); g.addColorStop(1, mixColor(c.accent, "#000000", 0.25));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, spine, H);
+    },
+    over(ctx, W, H, c, L) {
+      const win = L.window;
+      const foot = ctx.createLinearGradient(0, win.y + win.h * 0.7, 0, win.y + win.h);
+      foot.addColorStop(0, "rgba(0,0,0,0)"); foot.addColorStop(1, "rgba(0,0,0,.55)");
+      ctx.save(); roundRect(ctx, win.x, win.y, win.w, win.h, win.r); ctx.clip();
+      ctx.fillStyle = foot; ctx.fillRect(win.x, win.y + win.h * 0.7, win.w, win.h * 0.3);
+      ctx.restore();
+    },
+  },
+  {
+    id: "arcade", name: "Arcade",
+    layout(W, H) {
+      const portrait = H > W;
+      const top = portrait ? H * 0.15 : H * 0.24;
+      return {
+        window: { x: 4, y: top, w: W - 8, h: H - top - 4, r: 2.4 },
+        title: { x: W / 2, y: top * 0.52, size: top * (portrait ? 0.36 : 0.44), maxw: W * 0.9, color: "paper", font: "round", outline: true, visible: true, rotation: 0 },
+        logo: { x: 4 + (portrait ? W * 0.22 : W * 0.14), y: H - 4 - (portrait ? H * 0.04 : H * 0.07), h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.4 : W * 0.24, tint: "paper", visible: true, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H, c) {
+      ctx.fillStyle = "#0b0b14"; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(255,255,255,.05)"; ctx.lineWidth = 0.25;
+      for (let x = 0; x < W; x += 2.5) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 2.5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    },
+    over(ctx, W, H, c, L) {
+      const win = L.window;
+      ctx.save();
+      ctx.shadowColor = c.accent; ctx.shadowBlur = 2.6;
+      ctx.lineWidth = 0.9; ctx.strokeStyle = mixColor(c.accent, "#ffffff", 0.25);
+      roundRect(ctx, win.x, win.y, win.w, win.h, win.r); ctx.stroke();
+      ctx.restore();
+    },
+  },
+  {
+    id: "minimal", name: "Minimal",
+    layout(W, H) {
+      const portrait = H > W;
+      const foot = portrait ? H * 0.16 : H * 0.24;
+      return {
+        window: { x: 3, y: 3, w: W - 6, h: H - 3 - foot, r: 1.2 },
+        title: { x: portrait ? W / 2 : W * 0.42, y: H - foot / 2, size: foot * (portrait ? 0.34 : 0.4), maxw: portrait ? W * 0.88 : W * 0.66, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
+        logo: { x: portrait ? W / 2 : W * 0.855, y: portrait ? H - foot * 0.2 : H - foot / 2, h: portrait ? foot * 0.22 : foot * 0.5, w: portrait ? W * 0.5 : W * 0.21, tint: "original", visible: !portrait, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); },
+    over(ctx, W, H, c, L) {
+      ctx.fillStyle = c.accent;
+      ctx.fillRect(3, L.window.y + L.window.h + 0.9, Math.min(W - 6, 14), 0.8);
+    },
+  },
+  {
+    id: "collection", name: "Collection",
+    layout(W, H) {
+      const portrait = H > W;
+      return {
+        window: portrait ? { x: 3.5, y: H * 0.17, w: W - 7, h: H * 0.48, r: 2 } : { x: 3.5, y: H * 0.26, w: W * 0.5, h: H * 0.68, r: 2 },
+        title: { x: W / 2, y: portrait ? H * 0.085 : H * 0.13, size: portrait ? H * 0.045 : H * 0.1, maxw: W * 0.9, color: "auto", font: "round", outline: false, visible: true, rotation: 0 },
+        logo: { x: portrait ? W / 2 : W * 0.78, y: portrait ? H * 0.71 : H * 0.36, h: portrait ? H * 0.06 : H * 0.12, w: portrait ? W * 0.7 : W * 0.36, tint: "auto", visible: true, rotation: 0 },
+        console: { x: portrait ? W / 2 : W * 0.78, y: portrait ? H * 0.86 : H * 0.7, h: portrait ? H * 0.18 : H * 0.42, w: portrait ? W * 0.8 : W * 0.38, tint: "original", visible: true, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H, c) {
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, c.accent); g.addColorStop(1, c.dark);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(255,255,255,.07)";
+      ctx.beginPath(); ctx.arc(W * 0.85, H * 0.15, Math.max(W, H) * 0.35, 0, Math.PI * 2); ctx.fill();
+    },
+    over(ctx, W, H, c, L) {
+      const win = L.window;
+      ctx.lineWidth = 0.7; ctx.strokeStyle = "rgba(255,255,255,.85)";
+      roundRect(ctx, win.x, win.y, win.w, win.h, win.r); ctx.stroke();
+    },
+  },
+  {
+    id: "image", name: "Image seule",
+    layout(W, H) {
+      return {
+        window: { x: 0, y: 0, w: W, h: H, r: 0 },
+        title: { x: W / 2, y: H > W ? H * 0.08 : H * 0.12, size: H > W ? H * 0.045 : H * 0.09, maxw: W * 0.9, color: "paper", font: "sans", outline: true, visible: false, rotation: 0 },
+        logo: { x: W / 2, y: H - (H > W ? H * 0.06 : H * 0.1), h: H > W ? H * 0.05 : H * 0.1, w: W * 0.45, tint: "paper", visible: false, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); },
+    over() {},
+  },
+];
+function templateById(id) { return CARD_TEMPLATES.find((tpl) => tpl.id === id) || CARD_TEMPLATES[0]; }
+function templateLayers(id, orientation) {
+  const { w, h } = cardSize(orientation);
+  return JSON.parse(JSON.stringify(templateById(id).layout(w, h)));
+}
+
+const DESIGN_KEY = "rfid-card-design";
+const design = {
+  orientation: "landscape",
+  template: "cartouche",
+  layers: null,
+  game: null,          /* { system, path, name } */
+  title: "",
+  image: null,         /* HTMLImageElement */
+  imageLabel: "",
+  logo: null,
+  logoSvg: "",
+  consoleArt: null,
+  accent: "",
+  autoAccent: "",
+  rounded: true,
+  selected: "image",
+  guide: true,
+  guideEdge: "top",
+  guideMm: 10,
+  bounds: {},
+};
+(function restoreDesign() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DESIGN_KEY) || "{}");
+    if (saved.orientation) design.orientation = saved.orientation;
+    if (saved.template && CARD_TEMPLATES.some((tpl) => tpl.id === saved.template)) design.template = saved.template;
+    if (saved.guideEdge) design.guideEdge = saved.guideEdge;
+    if (saved.guide === false) design.guide = false;
+  } catch (error) { /* ignore */ }
+})();
+function rememberDesign() {
+  try { localStorage.setItem(DESIGN_KEY, JSON.stringify({ orientation: design.orientation, template: design.template, guideEdge: design.guideEdge, guide: design.guide })); } catch (error) { /* ignore */ }
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(t("image illisible")));
+    image.src = src;
+  });
+}
+/* SVG without width/height: the browser would draw it at 0 x 0. */
+function svgWithSize(svg) {
+  if (/<svg[^>]*\swidth=/.test(svg) && /<svg[^>]*\sheight=/.test(svg)) return svg;
+  const box = /viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(svg);
+  const w = box ? box[1] : 300;
+  const h = box ? box[2] : 100;
+  return svg.replace(/<svg\b/, '<svg width="' + w + '" height="' + h + '"');
+}
+async function svgImage(svg) {
+  const url = URL.createObjectURL(new Blob([svgWithSize(svg)], { type: "image/svg+xml" }));
+  try { return await loadImage(url); } finally { setTimeout(() => URL.revokeObjectURL(url), 3000); }
+}
+const logoCache = new Map();
+async function consoleArtwork(system) {
+  if (!system) return { logo: null, console: null, svg: "" };
+  if (logoCache.has(system)) return logoCache.get(system);
+  const result = { logo: null, console: null, svg: "" };
+  try {
+    const logo = await agent.send("media.logo", { system, kind: "logo" }, 15000);
+    if (logo.found) { result.svg = logo.svg; result.logo = await svgImage(logo.svg); }
+  } catch (error) { /* no theme logo */ }
+  try {
+    const art = await agent.send("media.logo", { system, kind: "console" }, 15000);
+    if (art.found) result.console = await svgImage(art.svg);
+  } catch (error) { /* no console drawing */ }
+  logoCache.set(system, result);
+  return result;
+}
+
+/* ---- drawing ---- */
+function tinted(image, color, w, h, scale) {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(w * scale));
+  canvas.height = Math.max(1, Math.round(h * scale));
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+function naturalRatio(image) {
+  const w = image.naturalWidth || image.width || 3;
+  const h = image.naturalHeight || image.height || 1;
+  return w / h;
+}
+function drawPicture(ctx, image, layer, c, scale, key, bounds) {
+  if (!image || !layer || !layer.visible) return;
+  /* The picture fits inside its box (h tall, w wide): a wide logo never
+     leaves the card, whatever the console. */
+  const ratio = naturalRatio(image);
+  let h = Math.max(0.5, layer.h);
+  if (layer.w && h * ratio > layer.w) h = layer.w / ratio;
+  const w = h * ratio;
+  ctx.save();
+  ctx.translate(layer.x, layer.y);
+  ctx.rotate((layer.rotation || 0) * Math.PI / 180);
+  const source = !layer.tint || layer.tint === "original" ? image : tinted(image, resolveColor(layer.tint, c), w, h, scale);
+  ctx.drawImage(source, -w / 2, -h / 2, w, h);
+  ctx.restore();
+  bounds[key] = { cx: layer.x, cy: layer.y, w, h, rot: layer.rotation || 0 };
+}
+function fitTitle(ctx, text, layer) {
+  const stack = FONT_STACKS[layer.font] || FONT_STACKS.sans;
+  let size = Math.max(0.8, layer.size);
+  const max = Math.max(5, layer.maxw || 60);
+  ctx.font = stack.replace("{s}", size);
+  let lines = [text];
+  if (ctx.measureText(text).width > max) {
+    const shrunk = size * max / ctx.measureText(text).width;
+    if (shrunk >= size * 0.62 || !text.includes(" ")) {
+      size = shrunk;
+    } else {
+      /* Two lines, cut at the space closest to the middle. */
+      const words = text.split(" ");
+      let best = 1;
+      let bestDiff = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const diff = Math.abs(words.slice(0, i).join(" ").length - words.slice(i).join(" ").length);
+        if (diff < bestDiff) { bestDiff = diff; best = i; }
+      }
+      lines = [words.slice(0, best).join(" "), words.slice(best).join(" ")];
+      size *= 0.86;
+      ctx.font = stack.replace("{s}", size);
+      const widest = Math.max(...lines.map((line) => ctx.measureText(line).width));
+      if (widest > max) size *= max / widest;
+    }
+  }
+  ctx.font = stack.replace("{s}", size);
+  return { size, lines, width: Math.max(...lines.map((line) => ctx.measureText(line).width)) };
+}
+function drawTitle(ctx, text, layer, c, bounds) {
+  if (!layer || !layer.visible || !String(text || "").trim()) return;
+  const fit = fitTitle(ctx, String(text).trim(), layer);
+  const lineHeight = fit.size * 1.12;
+  ctx.save();
+  ctx.translate(layer.x, layer.y);
+  ctx.rotate((layer.rotation || 0) * Math.PI / 180);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const color = resolveColor(layer.color, c);
+  fit.lines.forEach((line, index) => {
+    const y = (index - (fit.lines.length - 1) / 2) * lineHeight;
+    if (layer.outline) {
+      ctx.lineJoin = "round";
+      ctx.lineWidth = fit.size * 0.22;
+      ctx.strokeStyle = lightness(color) > 0.5 ? "rgba(0,0,0,.85)" : "rgba(255,255,255,.9)";
+      ctx.strokeText(line, 0, y);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(line, 0, y);
+  });
+  ctx.restore();
+  bounds.title = { cx: layer.x, cy: layer.y, w: fit.width + fit.size * 0.3, h: lineHeight * fit.lines.length, rot: layer.rotation || 0 };
+}
+function drawImageLayer(ctx, d, L, c, bounds) {
+  const win = L.window;
+  const layer = L.image;
+  ctx.save();
+  roundRect(ctx, win.x, win.y, win.w, win.h, win.r);
+  ctx.clip();
+  if (!d.image || !layer.visible) {
+    /* Empty window: soft stripes, and a hint while designing. */
+    ctx.fillStyle = c.light; ctx.fillRect(win.x, win.y, win.w, win.h);
+    ctx.strokeStyle = mixColor(c.accent, "#ffffff", 0.6); ctx.lineWidth = 1.2;
+    for (let x = win.x - win.h; x < win.x + win.w; x += 4) { ctx.beginPath(); ctx.moveTo(x, win.y + win.h); ctx.lineTo(x + win.h, win.y); ctx.stroke(); }
+    ctx.restore();
+    bounds.image = { cx: win.x + win.w / 2, cy: win.y + win.h / 2, w: win.w, h: win.h, rot: 0 };
+    return;
+  }
+  const iw = d.image.naturalWidth || d.image.width;
+  const ih = d.image.naturalHeight || d.image.height;
+  const rad = (layer.rotation || 0) * Math.PI / 180;
+  /* "Cover" scale, computed on the rotated picture so that a quarter turn still fills the window. */
+  const quarter = Math.abs(Math.round((layer.rotation || 0) / 90)) % 2 === 1;
+  const base = Math.max(win.w / (quarter ? ih : iw), win.h / (quarter ? iw : ih));
+  const s = base * (layer.scale || 1);
+  const cx = win.x + win.w / 2 + (layer.dx || 0);
+  const cy = win.y + win.h / 2 + (layer.dy || 0);
+  ctx.translate(cx, cy);
+  ctx.rotate(rad);
+  ctx.drawImage(d.image, -iw * s / 2, -ih * s / 2, iw * s, ih * s);
+  ctx.restore();
+  bounds.image = { cx, cy, w: iw * s, h: ih * s, rot: layer.rotation || 0, clip: win };
+}
+/* Draws the card. pxPerMm: resolution; overlay: guide + selection (editor only). */
+function renderCard(canvas, d, pxPerMm, overlay) {
+  const { w: W, h: H } = cardSize(d.orientation);
+  const width = Math.round(W * pxPerMm);
+  const height = Math.round(H * pxPerMm);
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.setTransform(pxPerMm, 0, 0, pxPerMm, 0, 0);
+  const tpl = templateById(d.template);
+  const L = d.layers || templateLayers(d.template, d.orientation);
+  const c = cardColors(d);
+  const bounds = {};
+  ctx.save();
+  roundRect(ctx, 0, 0, W, H, d.rounded ? CARD_RADIUS_MM : 0);
+  ctx.clip();
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  tpl.under(ctx, W, H, c, L);
+  drawImageLayer(ctx, d, L, c, bounds);
+  tpl.over(ctx, W, H, c, L);
+  drawPicture(ctx, d.consoleArt, L.console, c, pxPerMm, "console", bounds);
+  drawPicture(ctx, d.logo, L.logo, c, pxPerMm, "logo", bounds);
+  drawTitle(ctx, d.title, L.title, c, bounds);
+  ctx.restore();
+  if (overlay) {
+    if (d.guide) drawGuide(ctx, d, W, H, pxPerMm);
+    const box = bounds[d.selected];
+    if (box) {
+      ctx.save();
+      /* The picture may be larger than its window: only the visible part is outlined. */
+      if (box.clip) { roundRect(ctx, box.clip.x, box.clip.y, box.clip.w, box.clip.h, box.clip.r); ctx.clip(); }
+      ctx.translate(box.cx, box.cy);
+      ctx.rotate(box.rot * Math.PI / 180);
+      ctx.setLineDash([1.4, 1]);
+      ctx.lineWidth = 2 / pxPerMm * 1.2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.strokeRect(-box.w / 2, -box.h / 2, box.w, box.h);
+      ctx.lineDashOffset = 1.2;
+      ctx.strokeStyle = "#3f5be6";
+      ctx.strokeRect(-box.w / 2, -box.h / 2, box.w, box.h);
+      ctx.restore();
+    }
+  }
+  return bounds;
+}
+function drawGuide(ctx, d, W, H, pxPerMm) {
+  const size = d.guideMm;
+  const edge = d.guideEdge;
+  const rect = edge === "top" ? [0, 0, W, size] : edge === "bottom" ? [0, H - size, W, size]
+    : edge === "left" ? [0, 0, size, H] : [W - size, 0, size, H];
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 200, 0, .14)";
+  ctx.fillRect(...rect);
+  ctx.setLineDash([1.6, 1.2]);
+  ctx.lineWidth = 1.6 / pxPerMm;
+  ctx.strokeStyle = "rgba(255, 190, 0, .95)";
+  ctx.beginPath();
+  if (edge === "top") { ctx.moveTo(0, size); ctx.lineTo(W, size); }
+  if (edge === "bottom") { ctx.moveTo(0, H - size); ctx.lineTo(W, H - size); }
+  if (edge === "left") { ctx.moveTo(size, 0); ctx.lineTo(size, H); }
+  if (edge === "right") { ctx.moveTo(W - size, 0); ctx.lineTo(W - size, H); }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ---- editor ---- */
+let designReady = false;
+let designFrame = 0;
+function designScale() {
+  const canvas = $("#card-canvas");
+  const stage = $("#card-stage");
+  const { w, h } = cardSize(design.orientation);
+  const avail = Math.max(160, stage.clientWidth - 24);
+  const maxHeight = design.orientation === "portrait" ? Math.min(520, window.innerHeight * 0.62) : 420;
+  const cssWidth = Math.min(avail, maxHeight * w / h, design.orientation === "portrait" ? 330 : 560);
+  canvas.style.width = cssWidth + "px";
+  canvas.style.height = (cssWidth * h / w) + "px";
+  return { css: cssWidth / w, px: (cssWidth / w) * Math.min(3, window.devicePixelRatio || 1) };
+}
+function redrawDesign() {
+  if (designFrame) return;
+  designFrame = requestAnimationFrame(() => {
+    designFrame = 0;
+    const scale = designScale();
+    design.bounds = renderCard($("#card-canvas"), design, scale.px, true);
+  });
+}
+function resetLayers() {
+  design.layers = templateLayers(design.template, design.orientation);
+}
+function hitTest(x, y) {
+  const order = ["title", "logo", "console", "image"];
+  for (const key of order) {
+    const box = design.bounds[key];
+    if (!box) continue;
+    const rad = -box.rot * Math.PI / 180;
+    const dx = x - box.cx;
+    const dy = y - box.cy;
+    const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+    const margin = 1.5;
+    if (Math.abs(lx) <= box.w / 2 + margin && Math.abs(ly) <= box.h / 2 + margin) {
+      if (key === "image" && box.clip) {
+        const win = box.clip;
+        if (x < win.x || x > win.x + win.w || y < win.y || y > win.y + win.h) continue;
+      }
+      return key;
+    }
+  }
+  return null;
+}
+function layerOf(key) { return key === "image" ? design.layers.image : design.layers[key]; }
+function selectLayer(key) {
+  design.selected = key;
+  renderLayerTabs();
+  renderControls();
+  redrawDesign();
+}
+function moveLayer(key, start, dx, dy) {
+  const layer = layerOf(key);
+  if (key === "image") { layer.dx = start.dx + dx; layer.dy = start.dy + dy; }
+  else { layer.x = start.x + dx; layer.y = start.y + dy; }
+}
+function scaleLayer(key, start, factor) {
+  const layer = layerOf(key);
+  if (key === "image") layer.scale = Math.max(0.2, Math.min(6, start.scale * factor));
+  else if (key === "title") layer.size = Math.max(1, Math.min(40, start.size * factor));
+  else {
+    const next = Math.max(1, Math.min(90, start.h * factor));
+    if (start.w) layer.w = start.w * next / start.h;
+    layer.h = next;
+  }
+}
+function wireCanvas() {
+  const canvas = $("#card-canvas");
+  canvas.tabIndex = 0;
+  const pointers = new Map();
+  let gesture = null;
+  const toMm = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const { w } = cardSize(design.orientation);
+    const k = w / rect.width;
+    return { x: (event.clientX - rect.left) * k, y: (event.clientY - rect.top) * k };
+  };
+  const begin = () => {
+    const list = [...pointers.values()];
+    const key = design.selected;
+    const snapshot = JSON.parse(JSON.stringify(layerOf(key)));
+    if (list.length === 1) gesture = { kind: "move", key, start: snapshot, from: list[0] };
+    else if (list.length >= 2) {
+      const [a, b] = list;
+      gesture = { kind: "pinch", key, start: snapshot, dist: Math.hypot(b.x - a.x, b.y - a.y) || 1, angle: Math.atan2(b.y - a.y, b.x - a.x) };
+    }
+  };
+  canvas.addEventListener("pointerdown", (event) => {
+    const point = toMm(event);
+    if (pointers.size === 0) {
+      const hit = hitTest(point.x, point.y);
+      if (hit && hit !== design.selected) selectLayer(hit);
+    }
+    try { canvas.setPointerCapture(event.pointerId); } catch (error) { /* synthetic pointer */ }
+    pointers.set(event.pointerId, point);
+    canvas.classList.add("dragging");
+    begin();
+    event.preventDefault();
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (!pointers.has(event.pointerId) || !gesture) return;
+    pointers.set(event.pointerId, toMm(event));
+    const list = [...pointers.values()];
+    if (gesture.kind === "move" && list.length === 1) {
+      moveLayer(gesture.key, gesture.start, list[0].x - gesture.from.x, list[0].y - gesture.from.y);
+    } else if (gesture.kind === "pinch" && list.length >= 2) {
+      const [a, b] = list;
+      scaleLayer(gesture.key, gesture.start, Math.hypot(b.x - a.x, b.y - a.y) / gesture.dist);
+      const turn = (Math.atan2(b.y - a.y, b.x - a.x) - gesture.angle) * 180 / Math.PI;
+      layerOf(gesture.key).rotation = Math.round(((gesture.start.rotation || 0) + turn) * 10) / 10;
+    }
+    redrawDesign();
+    syncControls();
+  });
+  const end = (event) => {
+    pointers.delete(event.pointerId);
+    if (!pointers.size) { gesture = null; canvas.classList.remove("dragging"); }
+    else begin();
+  };
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) => canvas.addEventListener(type, end));
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const key = design.selected;
+    const layer = layerOf(key);
+    if (event.shiftKey || event.altKey) layer.rotation = Math.round(((layer.rotation || 0) + (event.deltaY > 0 ? 5 : -5)) * 10) / 10;
+    else scaleLayer(key, JSON.parse(JSON.stringify(layer)), event.deltaY > 0 ? 1 / 1.06 : 1.06);
+    redrawDesign();
+    syncControls();
+  }, { passive: false });
+  canvas.addEventListener("keydown", (event) => {
+    const step = event.shiftKey ? 2 : 0.5;
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (!moves[event.key]) return;
+    event.preventDefault();
+    const layer = layerOf(design.selected);
+    moveLayer(design.selected, JSON.parse(JSON.stringify(layer)), moves[event.key][0], moves[event.key][1]);
+    redrawDesign();
+  });
+  window.addEventListener("resize", () => { if (designReady) redrawDesign(); });
+}
+
+const LAYER_NAMES = { image: "Image", title: "Titre", logo: "Logo", console: "Console", colors: "Couleurs" };
+function renderLayerTabs() {
+  const box = $("#card-layers");
+  box.replaceChildren(...Object.keys(LAYER_NAMES).map((key) => {
+    const layer = key === "colors" ? null : layerOf(key);
+    const shown = !layer || layer.visible !== false;
+    return el("button", { attrs: { type: "button", "aria-pressed": design.selected === key ? "true" : "false" }, onclick: () => selectLayer(key) },
+      [layer ? el("span", { className: "eye" + (shown ? "" : " off") }) : null, t(LAYER_NAMES[key])]);
+  }));
+}
+function ctlRow(label, control, value) {
+  return el("div", { className: "ctl" }, [el("span", { text: label }), control, value || el("span")]);
+}
+function rangeControl(key, prop, min, max, step, format, factor) {
+  const layer = layerOf(key);
+  const k = factor || 1;
+  const input = el("input", { attrs: { type: "range", min, max, step, "data-prop": prop } });
+  input.value = String((layer[prop] || 0) * k);
+  const value = el("span", { className: "val", text: format(layer[prop] || 0) });
+  input.addEventListener("input", () => {
+    /* Logo and console: the box keeps its proportions. */
+    if (prop === "h" && layer.w && layer.h) layer.w = layer.w * (Number(input.value) / k) / layer.h;
+    layer[prop] = Number(input.value) / k;
+    value.textContent = format(layer[prop]);
+    redrawDesign();
+  });
+  input._sync = () => { input.value = String((layer[prop] || 0) * k); value.textContent = format(layer[prop] || 0); };
+  return [input, value];
+}
+function rotationControls(key) {
+  const [range, value] = rangeControl(key, "rotation", -180, 180, 1, (v) => Math.round(v) + "°");
+  const turn = (delta) => {
+    const layer = layerOf(key);
+    let next = Math.round((layer.rotation || 0) + delta);
+    if (next > 180) next -= 360;
+    if (next < -180) next += 360;
+    layer.rotation = next;
+    range._sync();
+    redrawDesign();
+  };
+  const buttons = el("div", { className: "row" }, [
+    el("button", { className: "icon-btn", title: t("Tourner d'un quart vers la gauche"), attrs: { type: "button", "aria-label": t("Tourner d'un quart vers la gauche") }, onclick: () => turn(-90) }, [icon("rotl", 17)]),
+    el("button", { className: "btn sm ghost", text: "0°", attrs: { type: "button", "aria-label": t("Remettre droit") }, onclick: () => { layerOf(key).rotation = 0; range._sync(); redrawDesign(); } }),
+    el("button", { className: "icon-btn", title: t("Tourner d'un quart vers la droite"), attrs: { type: "button", "aria-label": t("Tourner d'un quart vers la droite") }, onclick: () => turn(90) }, [icon("rotr", 17)]),
+  ]);
+  return [ctlRow(t("Rotation"), range, value), ctlRow("", buttons)];
+}
+function visibleControl(key) {
+  const layer = layerOf(key);
+  const toggle = el("button", { className: "switch", attrs: { type: "button", role: "switch", "aria-label": t("Afficher"), "aria-checked": layer.visible !== false ? "true" : "false" } });
+  toggle.addEventListener("click", () => {
+    layer.visible = layer.visible === false;
+    toggle.setAttribute("aria-checked", layer.visible ? "true" : "false");
+    renderLayerTabs();
+    redrawDesign();
+  });
+  return ctlRow(t("Afficher"), el("span"), toggle);
+}
+function tintControl(key, choices) {
+  const layer = layerOf(key);
+  const select = el("select", { attrs: { "aria-label": t("Couleur") } }, choices.map((choice) => el("option", { text: t(COLOR_NAMES[choice] || choice), attrs: { value: choice } })));
+  select.value = layer.tint || "original";
+  select.addEventListener("change", () => { layer.tint = select.value; redrawDesign(); });
+  return ctlRow(t("Couleur"), select);
+}
+function resetLayerButton(key) {
+  return el("button", {
+    className: "btn sm ghost", text: t("Replacer"), attrs: { type: "button" },
+    onclick: () => {
+      const fresh = templateLayers(design.template, design.orientation)[key];
+      const keepVisible = layerOf(key).visible;
+      design.layers[key] = Object.assign(fresh, { visible: keepVisible });
+      renderControls();
+      redrawDesign();
+    },
+  });
+}
+let controlSyncers = [];
+function syncControls() { controlSyncers.forEach((sync) => sync()); }
+function renderControls() {
+  const box = $("#card-controls");
+  const key = design.selected;
+  const rows = [];
+  controlSyncers = [];
+  const track = (pair) => { controlSyncers.push(pair[0]._sync); return pair; };
+  if (key === "colors") {
+    const color = el("input", { attrs: { type: "color", "aria-label": t("Couleur de la carte") } });
+    color.value = design.accent || "#3f5be6";
+    color.addEventListener("input", () => { design.accent = color.value; redrawDesign(); scheduleTemplateThumbs(); });
+    const auto = el("button", {
+      className: "btn sm ghost", text: t("Couleur de la console"), attrs: { type: "button" },
+      onclick: () => { design.accent = design.autoAccent || fallbackAccent(design.game && design.game.system); color.value = design.accent; redrawDesign(); scheduleTemplateThumbs(); },
+    });
+    rows.push(ctlRow(t("Couleur de la carte"), el("div", { className: "row" }, [color, auto])));
+    const corners = el("button", { className: "switch", attrs: { type: "button", role: "switch", "aria-label": t("Coins arrondis"), "aria-checked": design.rounded ? "true" : "false" } });
+    corners.addEventListener("click", () => { design.rounded = !design.rounded; corners.setAttribute("aria-checked", design.rounded ? "true" : "false"); redrawDesign(); });
+    rows.push(ctlRow(t("Coins arrondis"), el("span", { className: "muted small", text: t("comme une carte bancaire") }), corners));
+  } else if (key === "image") {
+    const [size, sizeValue] = track(rangeControl("image", "scale", 20, 400, 1, (v) => Math.round(v * 100) + " %", 100));
+    rows.push(ctlRow(t("Taille"), size, sizeValue));
+    const rotation = rotationControls("image");
+    controlSyncers.push(rotation[0].querySelector("input")._sync);
+    rows.push(...rotation);
+    rows.push(ctlRow("", el("div", { className: "row" }, [
+      el("button", { className: "btn sm ghost", text: t("Recadrer"), attrs: { type: "button" }, onclick: () => { Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image); renderControls(); redrawDesign(); } }),
+      el("button", { className: "btn sm ghost", text: t("Mon image…"), attrs: { type: "button" }, onclick: () => $("#card-file").click() }),
+      design.game ? el("button", { className: "btn sm ghost", text: t("Image du jeu"), attrs: { type: "button" }, onclick: () => loadGameImage(design.game) }) : null,
+    ])));
+  } else if (key === "title") {
+    const layer = layerOf("title");
+    rows.push(visibleControl("title"));
+    const text = el("input", { attrs: { type: "text", "aria-label": t("Texte"), maxlength: 80 } });
+    text.value = design.title;
+    text.addEventListener("input", () => { design.title = text.value; redrawDesign(); });
+    rows.push(ctlRow(t("Texte"), text));
+    const font = el("select", { attrs: { "aria-label": t("Police") } }, Object.keys(FONT_STACKS).map((id) => el("option", { text: t(FONT_NAMES[id]), attrs: { value: id } })));
+    font.value = layer.font || "sans";
+    font.addEventListener("change", () => { layer.font = font.value; redrawDesign(); });
+    rows.push(ctlRow(t("Police"), font));
+    const [size, sizeValue] = track(rangeControl("title", "size", 1.5, 24, 0.1, (v) => (Math.round(v * 10) / 10).toLocaleString(document.documentElement.lang || undefined) + " mm"));
+    rows.push(ctlRow(t("Taille"), size, sizeValue));
+    const rotation = rotationControls("title");
+    controlSyncers.push(rotation[0].querySelector("input")._sync);
+    rows.push(...rotation);
+    const color = el("select", { attrs: { "aria-label": t("Couleur") } }, ["auto", "paper", "ink", "accent"].map((choice) => el("option", { text: t(COLOR_NAMES[choice]), attrs: { value: choice } })));
+    color.value = ["auto", "paper", "ink", "accent"].includes(layer.color) ? layer.color : "auto";
+    color.addEventListener("change", () => { layer.color = color.value; redrawDesign(); });
+    const outline = el("button", { className: "switch", attrs: { type: "button", role: "switch", "aria-label": t("Contour"), "aria-checked": layer.outline ? "true" : "false" } });
+    outline.addEventListener("click", () => { layer.outline = !layer.outline; outline.setAttribute("aria-checked", layer.outline ? "true" : "false"); redrawDesign(); });
+    rows.push(ctlRow(t("Couleur"), color));
+    rows.push(ctlRow(t("Contour"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline));
+    rows.push(ctlRow("", resetLayerButton("title")));
+  } else {
+    const missing = key === "logo" ? !design.logo : !design.consoleArt;
+    if (missing) {
+      rows.push(el("p", { className: "muted small", text: design.game
+        ? t("Le thème de la Recalbox n'a pas d'image pour cette console.")
+        : t("Choisissez un jeu : le logo et le dessin de sa console viennent du thème de la Recalbox.") }));
+    }
+    rows.push(visibleControl(key));
+    const [size, sizeValue] = track(rangeControl(key, "h", 2, key === "logo" ? 40 : 80, 0.1, (v) => Math.round(v) + " mm"));
+    rows.push(ctlRow(t("Taille"), size, sizeValue));
+    const rotation = rotationControls(key);
+    controlSyncers.push(rotation[0].querySelector("input")._sync);
+    rows.push(...rotation);
+    rows.push(tintControl(key, ["original", "auto", "paper", "ink", "accent"]));
+    rows.push(ctlRow("", resetLayerButton(key)));
+  }
+  box.replaceChildren(...rows);
+}
+
+/* Template gallery: built-in templates and the saved ones. */
+let savedTemplates = [];
+const LOCAL_TEMPLATES = "rfid-card-templates";
+async function loadSavedTemplates() {
+  let list = [];
+  if (agent.isOpen) {
+    try { list = (await agent.send("cards.templates", {}, 10000)).templates || []; } catch (error) { list = []; }
+  }
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem(LOCAL_TEMPLATES) || "[]"); } catch (error) { local = []; }
+  savedTemplates = list.concat(local.filter((item) => !list.some((other) => other.id === item.id)).map((item) => Object.assign(item, { local: true })));
+  renderTemplateList();
+}
+let thumbTimer = null;
+function scheduleTemplateThumbs() { clearTimeout(thumbTimer); thumbTimer = setTimeout(renderTemplateList, 250); }
+function thumbDesign(base) {
+  return Object.assign({}, design, base, { guide: false, selected: "" });
+}
+function renderTemplateList() {
+  const box = $("#card-templates");
+  const items = [];
+  const thumbPx = 96 / CARD_MM.long;
+  for (const tpl of CARD_TEMPLATES) {
+    const canvas = document.createElement("canvas");
+    renderCard(canvas, thumbDesign({ template: tpl.id, layers: templateLayers(tpl.id, design.orientation) }), thumbPx * 2, false);
+    canvas.style.width = (design.orientation === "portrait" ? 54 * thumbPx : 96) + "px";
+    items.push(el("button", {
+      className: "tpl", attrs: { type: "button", "aria-pressed": !design.savedId && design.template === tpl.id ? "true" : "false" },
+      onclick: () => { design.savedId = ""; design.template = tpl.id; resetLayers(); rememberDesign(); afterDesignChange(); },
+    }, [canvas, t(tpl.name)]));
+  }
+  for (const saved of savedTemplates) {
+    const canvas = document.createElement("canvas");
+    renderCard(canvas, thumbDesign(savedDesign(saved)), thumbPx * 2, false);
+    canvas.style.width = (saved.orientation === "portrait" ? 54 * thumbPx : 96) + "px";
+    items.push(el("button", {
+      className: "tpl", attrs: { type: "button", "aria-pressed": design.savedId === saved.id ? "true" : "false", title: saved.local ? t("Enregistré sur cet appareil") : t("Enregistré sur la Recalbox") },
+      onclick: () => applySavedTemplate(saved),
+    }, [canvas, saved.name,
+      el("span", { className: "tpl-del", attrs: { role: "button", tabindex: 0, "aria-label": t("Supprimer le modèle « {name} »", { name: saved.name }) },
+        onclick: (event) => { event.stopPropagation(); deleteTemplate(saved); } }, [icon("x", 13)])]));
+  }
+  box.replaceChildren(...items);
+}
+function savedDesign(saved) {
+  return {
+    orientation: saved.orientation === "portrait" ? "portrait" : "landscape",
+    template: templateById(saved.template).id,
+    layers: Object.assign(templateLayers(saved.template, saved.orientation), JSON.parse(JSON.stringify(saved.layers || {}))),
+    accent: saved.accent || design.accent,
+    rounded: saved.rounded !== false,
+  };
+}
+function applySavedTemplate(saved) {
+  Object.assign(design, savedDesign(saved));
+  design.savedId = saved.id;
+  if (saved.titleTextKept && saved.title) design.title = saved.title;
+  setOrientationButtons();
+  afterDesignChange();
+}
+async function saveTemplate() {
+  const input = el("input", { attrs: { type: "text", id: "f-tpl-name", maxlength: 60, placeholder: t("Mon modèle") } });
+  const keep = switchField("f-tpl-color", t("Garder cette couleur pour toutes les consoles"), false);
+  const ok = await cardDialog(t("Enregistrer comme modèle"),
+    t("Le modèle retient le sens de la carte, la place, la taille et la rotation de chaque élément. L'image et le texte viennent du jeu choisi."),
+    [formField(t("Nom du modèle"), input, "", true), keep], t("Enregistrer"));
+  if (!ok) return;
+  const name = $("#f-tpl-name").value.trim() || t("Mon modèle");
+  const template = {
+    name, orientation: design.orientation, template: design.template,
+    layers: JSON.parse(JSON.stringify(design.layers)), rounded: design.rounded,
+    accent: $("#f-tpl-color").getAttribute("aria-checked") === "true" ? design.accent : "",
+  };
+  let saved = null;
+  if (agent.isOpen) {
+    try { saved = (await agent.send("cards.template.save", { template }, 10000)).template; } catch (error) { toast("warn", t("Modèle gardé sur cet appareil seulement :") + " " + errorText(error)); }
+  }
+  if (!saved) {
+    saved = Object.assign({ id: "local-" + Date.now().toString(36) }, template);
+    try {
+      const local = JSON.parse(localStorage.getItem(LOCAL_TEMPLATES) || "[]");
+      local.push(saved);
+      localStorage.setItem(LOCAL_TEMPLATES, JSON.stringify(local));
+    } catch (error) { toast("err", t("Enregistrement impossible.")); return; }
+  }
+  design.savedId = saved.id;
+  toast("ok", t("Modèle « {name} » enregistré.", { name }));
+  await loadSavedTemplates();
+}
+async function deleteTemplate(saved) {
+  const ok = await ask({ title: t("Supprimer ce modèle ?"), text: t("« {name} » ne sera plus proposé. Les cartes déjà imprimées ne changent pas.", { name: saved.name }), ok: t("Supprimer"), danger: true });
+  if (!ok) return;
+  if (saved.local) {
+    try {
+      const local = JSON.parse(localStorage.getItem(LOCAL_TEMPLATES) || "[]").filter((item) => item.id !== saved.id);
+      localStorage.setItem(LOCAL_TEMPLATES, JSON.stringify(local));
+    } catch (error) { /* ignore */ }
+  } else {
+    await run(() => agent.send("cards.template.delete", { template: saved.id }), "Suppression impossible :");
+  }
+  if (design.savedId === saved.id) design.savedId = "";
+  await loadSavedTemplates();
+}
+
+function setOrientationButtons() {
+  $$("[data-orient]").forEach((node) => node.setAttribute("aria-pressed", node.dataset.orient === design.orientation ? "true" : "false"));
+}
+function afterDesignChange() {
+  if (!design.layers) resetLayers();
+  renderLayerTabs();
+  renderControls();
+  redrawDesign();
+  scheduleTemplateThumbs();
+}
+function renderSource() {
+  const ico = $("#card-source-ico");
+  ico.replaceChildren(icon(design.game ? "game" : "card", 19));
+  $("#card-source-title").textContent = design.game ? design.game.name : (design.imageLabel || t("Aucun jeu choisi"));
+  $("#card-source-sub").textContent = design.game
+    ? systemName(design.game.system) + (design.image ? "" : " · " + t("pas d'image trouvée"))
+    : (design.image ? t("Image personnelle") : t("Choisissez un jeu, ou utilisez votre propre image."));
+}
+async function loadGameImage(game) {
+  try {
+    const data = await agent.send("media.image", { system: game.system, path: game.path }, 20000);
+    design.image = data.found ? await loadImage("data:" + data.type + ";base64," + data.data) : null;
+  } catch (error) {
+    design.image = null;
+  }
+  design.imageLabel = "";
+  Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);
+  renderSource();
+  afterDesignChange();
+}
+/* Picks a game for the designer: picture, title, logo and colour of its console. */
+async function designGame(game) {
+  if (!design.layers) resetLayers();
+  design.game = { system: game.system, path: game.path, name: game.name };
+  design.title = game.name;
+  renderSource();
+  $("#card-source-sub").textContent = t("Chargement de l'image…");
+  const art = await consoleArtwork(game.system);
+  design.logo = art.logo;
+  design.consoleArt = art.console;
+  design.autoAccent = accentFromSvg(art.svg) || fallbackAccent(game.system);
+  design.accent = design.autoAccent;
+  const saved = savedTemplates.find((item) => item.id === design.savedId);
+  if (saved && saved.accent) design.accent = saved.accent;
+  await loadGameImage(game);
+}
+async function designFromTag(tag) {
+  setTab("cartes");
+  if (tag.kind === "action") {
+    design.game = null;
+    design.title = tagTitle(tag);
+    design.logo = null;
+    design.consoleArt = null;
+    design.image = null;
+    design.imageLabel = tagTitle(tag);
+    design.accent = design.accent || "#3f5be6";
+    if (!design.layers) resetLayers();
+    renderSource();
+    afterDesignChange();
+    return;
+  }
+  await designGame({ system: tag.system, path: tag.path || tag.game, name: tagTitle(tag) });
+}
+async function enterDesigner() {
+  if (!designReady) {
+    designReady = true;
+    if (!design.layers) resetLayers();
+    if (!design.accent) design.accent = "#3f5be6";
+    setOrientationButtons();
+    $("#card-guide").setAttribute("aria-checked", design.guide ? "true" : "false");
+    $("#card-guide-edge").value = design.guideEdge;
+    renderSource();
+    afterDesignChange();
+    loadSystems();
+  }
+  await loadSavedTemplates();
+  redrawDesign();
+}
+
+/* ---- export, sheet and printing ---- */
+function exportCanvas(rotateForSheet) {
+  const card = document.createElement("canvas");
+  renderCard(card, Object.assign({}, design, { guide: false, selected: "" }), PRINT_PX_MM, false);
+  if (!rotateForSheet || design.orientation !== "portrait") return card;
+  const turned = document.createElement("canvas");
+  turned.width = card.height;
+  turned.height = card.width;
+  const ctx = turned.getContext("2d");
+  ctx.translate(turned.width, 0);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(card, 0, 0);
+  return turned;
+}
+function cardFileName() {
+  const base = (design.title || (design.game && design.game.name) || "carte").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "carte";
+  return "carte-" + base + ".png";
+}
+function downloadCard() {
+  exportCanvas(false).toBlob((blob) => {
+    if (!blob) { toast("err", t("Image impossible à créer.")); return; }
+    downloadBlob(cardFileName(), blob, "image/png");
+    toast("ok", t("Image enregistrée (300 dpi, 85,6 × 54 mm)."));
+  }, "image/png");
+}
+const sheet = [];
+function addToSheet() {
+  const preview = exportCanvas(false);
+  const printable = exportCanvas(true);
+  sheet.push({ name: design.title || t("Carte"), preview: preview.toDataURL("image/jpeg", 0.8), print: printable.toDataURL("image/png") });
+  renderSheet();
+  toast("ok", t("Carte ajoutée à la planche ({n}/10 sur la feuille).", { n: ((sheet.length - 1) % 10) + 1 }));
+}
+function renderSheet() {
+  $("#sheet-count").textContent = sheet.length ? "(" + sheet.length + ")" : "";
+  $("#sheet-empty").hidden = sheet.length > 0;
+  $("#sheet-print").disabled = !sheet.length;
+  $("#sheet-clear").disabled = !sheet.length;
+  $("#sheet-grid").replaceChildren(...sheet.map((item, index) => el("div", { className: "sheet-item" }, [
+    el("img", { attrs: { src: item.preview, alt: item.name } }),
+    el("small", { text: item.name }),
+    el("button", { className: "tpl-del", attrs: { type: "button", "aria-label": t("Retirer « {name} » de la planche", { name: item.name }) },
+      onclick: () => { sheet.splice(index, 1); renderSheet(); } }, [icon("x", 13)]),
+  ])));
+}
+/* A4 portrait, 2 columns x 5 rows of 85.6 x 54 mm, 2 mm apart. */
+function printSheet() {
+  const area = $("#print-area");
+  const pages = [];
+  const gap = 2;
+  const left = (210 - 2 * CARD_MM.long - gap) / 2;
+  const top = (296 - 5 * CARD_MM.short - 4 * gap) / 2;
+  for (let start = 0; start < sheet.length; start += 10) {
+    const page = el("div", { className: "print-page" });
+    sheet.slice(start, start + 10).forEach((item, index) => {
+      const x = left + (index % 2) * (CARD_MM.long + gap);
+      const y = top + Math.floor(index / 2) * (CARD_MM.short + gap);
+      const style = "left:" + x + "mm;top:" + y + "mm;width:" + CARD_MM.long + "mm;height:" + CARD_MM.short + "mm";
+      page.appendChild(el("div", { className: "cut", attrs: { style } }));
+      page.appendChild(el("img", { attrs: { src: item.print, alt: "", style } }));
+    });
+    pages.push(page);
+  }
+  area.replaceChildren(...pages);
+  const images = $$("img", area);
+  Promise.all(images.map((image) => image.decode ? image.decode().catch(() => {}) : Promise.resolve())).then(() => {
+    window.print();
+  });
+}
+window.addEventListener("afterprint", () => $("#print-area").replaceChildren());
+
+async function pickGameForCard() {
+  const dialog = $("#picker-dialog");
+  await loadSystems();
+  fillSystemSelect($("#picker-system"));
+  dialog.showModal();
+  setTimeout(() => $("#picker-search").focus(), 50);
+}
+
+/* =====================================================================
+   Phone: the page served by the Recalbox itself, and its QR code
+   ===================================================================== */
+function phoneUrl() {
+  const agentInfo = (state && state.agent) || {};
+  return agentInfo.ip ? "http://" + agentInfo.ip + ":" + (agentInfo.port || DEFAULT_PORT) + "/" : "";
+}
+function showPhoneDialog() {
+  const url = phoneUrl();
+  if (!url) return;
+  $("#phone-url").textContent = url;
+  drawQr($("#phone-qr"), url, 6);
+  $("#phone-dialog").showModal();
+}
+
+/* QR code generator (byte mode, error correction M, versions 1 to 10),
+   after the ISO/IEC 18004 algorithm. */
+const QR = (() => {
+  const ECC_M = [-1, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
+  const BLOCKS_M = [-1, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z & 0xFF; };
+  const divisor = (degree) => {
+    const result = new Array(degree).fill(0);
+    result[degree - 1] = 1;
+    let root = 1;
+    for (let i = 0; i < degree; i++) {
+      for (let j = 0; j < result.length; j++) { result[j] = mul(result[j], root); if (j + 1 < result.length) result[j] ^= result[j + 1]; }
+      root = mul(root, 0x02);
+    }
+    return result;
+  };
+  const remainder = (data, div) => {
+    const result = div.map(() => 0);
+    for (const b of data) {
+      const factor = b ^ result.shift();
+      result.push(0);
+      div.forEach((coef, i) => { result[i] ^= mul(coef, factor); });
+    }
+    return result;
+  };
+  const rawModules = (ver) => {
+    let result = (16 * ver + 128) * ver + 64;
+    if (ver >= 2) { const n = Math.floor(ver / 7) + 2; result -= (25 * n - 10) * n - 55; if (ver >= 7) result -= 36; }
+    return result;
+  };
+  const dataCodewords = (ver) => Math.floor(rawModules(ver) / 8) - ECC_M[ver] * BLOCKS_M[ver];
+  const alignments = (ver, size) => {
+    if (ver === 1) return [];
+    const n = Math.floor(ver / 7) + 2;
+    const step = Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+    const result = [6];
+    for (let pos = size - 7; result.length < n; pos -= step) result.splice(1, 0, pos);
+    return result;
+  };
+  function encode(text) {
+    const bytes = Array.from(new TextEncoder().encode(text));
+    let ver = 1;
+    for (; ver <= 10; ver++) if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break;
+    if (ver > 10) throw new Error("text too long");
+    const size = ver * 4 + 17;
+    const bits = [];
+    const put = (value, length) => { for (let i = length - 1; i >= 0; i--) bits.push((value >>> i) & 1); };
+    put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach((b) => put(b, 8));
+    const capacity = dataCodewords(ver) * 8;
+    put(0, Math.min(4, capacity - bits.length));
+    put(0, (8 - bits.length % 8) % 8);
+    for (let pad = 0xEC; bits.length < capacity; pad ^= 0xEC ^ 0x11) put(pad, 8);
+    const data = [];
+    for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(""), 2));
+    /* Error correction and interleaving. */
+    const blocks = BLOCKS_M[ver];
+    const eccLen = ECC_M[ver];
+    const raw = Math.floor(rawModules(ver) / 8);
+    const shortCount = blocks - raw % blocks;
+    const shortLen = Math.floor(raw / blocks);
+    const div = divisor(eccLen);
+    const parts = [];
+    for (let i = 0, k = 0; i < blocks; i++) {
+      const chunk = data.slice(k, k + shortLen - eccLen + (i < shortCount ? 0 : 1));
+      k += chunk.length;
+      const ecc = remainder(chunk, div);
+      if (i < shortCount) chunk.push(0);
+      parts.push(chunk.concat(ecc));
+    }
+    const codewords = [];
+    for (let i = 0; i < parts[0].length; i++) {
+      parts.forEach((part, j) => { if (i !== shortLen - eccLen || j >= shortCount) codewords.push(part[i]); });
+    }
+    /* Function patterns. */
+    const modules = Array.from({ length: size }, () => new Array(size).fill(false));
+    const fixed = Array.from({ length: size }, () => new Array(size).fill(false));
+    const set = (x, y, dark) => { modules[y][x] = dark; fixed[y][x] = true; };
+    for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+    for (const [cx, cy] of [[3, 3], [size - 4, 3], [3, size - 4]]) {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const x = cx + dx; const y = cy + dy;
+        if (x >= 0 && x < size && y >= 0 && y < size) { const d = Math.max(Math.abs(dx), Math.abs(dy)); set(x, y, d !== 2 && d !== 4); }
+      }
+    }
+    const align = alignments(ver, size);
+    align.forEach((ay, i) => align.forEach((ax, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === align.length - 1) || (i === align.length - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+    const drawFormat = (mask) => {
+      const value = (0 << 3) | mask;          /* level M = 00 */
+      let rem = value;
+      for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      const f = ((value << 10) | rem) ^ 0x5412;
+      const bit = (i) => ((f >>> i) & 1) !== 0;
+      for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+      set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8));
+      for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+      for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+      for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+      set(8, size - 8, true);
+    };
+    drawFormat(0);
+    if (ver >= 7) {
+      let rem = ver;
+      for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+      const v = (ver << 12) | rem;
+      for (let i = 0; i < 18; i++) {
+        const dark = ((v >>> i) & 1) !== 0;
+        const a = size - 11 + i % 3; const b = Math.floor(i / 3);
+        set(a, b, dark); set(b, a, dark);
+      }
+    }
+    /* Data, in the zigzag order. */
+    let index = 0;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let vert = 0; vert < size; vert++) {
+        for (let j = 0; j < 2; j++) {
+          const x = right - j;
+          const upward = ((right + 1) & 2) === 0;
+          const y = upward ? size - 1 - vert : vert;
+          if (!fixed[y][x] && index < codewords.length * 8) {
+            modules[y][x] = ((codewords[index >>> 3] >>> (7 - (index & 7))) & 1) !== 0;
+            index++;
+          }
+        }
+      }
+    }
+    const maskTest = [
+      (x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+      (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+      (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0, (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0,
+    ];
+    const applyMask = (mask) => {
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fixed[y][x] && maskTest[mask](x, y)) modules[y][x] = !modules[y][x];
+    };
+    const penalty = () => {
+      let score = 0;
+      const lines = [];
+      for (let y = 0; y < size; y++) lines.push(modules[y]);
+      for (let x = 0; x < size; x++) lines.push(modules.map((row) => row[x]));
+      for (const line of lines) {
+        let run = 1;
+        for (let i = 1; i <= line.length; i++) {
+          if (i < line.length && line[i] === line[i - 1]) run++;
+          else { if (run >= 5) score += run - 2; run = 1; }
+        }
+        const s = line.map((v) => (v ? "1" : "0")).join("");
+        score += 40 * ((s.match(/(?=10111010000)/g) || []).length + (s.match(/(?=00001011101)/g) || []).length);
+      }
+      for (let y = 0; y + 1 < size; y++) for (let x = 0; x + 1 < size; x++) {
+        const v = modules[y][x];
+        if (v === modules[y][x + 1] && v === modules[y + 1][x] && v === modules[y + 1][x + 1]) score += 3;
+      }
+      const dark = modules.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+      score += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+      return score;
+    };
+    let best = 0;
+    let bestScore = Infinity;
+    for (let mask = 0; mask < 8; mask++) {
+      applyMask(mask); drawFormat(mask);
+      const score = penalty();
+      if (score < bestScore) { bestScore = score; best = mask; }
+      applyMask(mask);
+    }
+    applyMask(best); drawFormat(best);
+    return modules;
+  }
+  return { encode };
+})();
+function drawQr(canvas, text, scale) {
+  const modules = QR.encode(text);
+  const quiet = 4;
+  const size = modules.length + quiet * 2;
+  canvas.width = size * scale;
+  canvas.height = size * scale;
+  canvas.style.width = Math.min(240, size * scale) + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#000000";
+  modules.forEach((row, y) => row.forEach((dark, x) => { if (dark) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale); }));
 }
 
 /* =====================================================================
@@ -3382,6 +5225,8 @@ function rerender() {
   if (typeof state === "undefined") return;
   if (state) { render(); renderTags(); }
   if (calibState) showCalibration(calibState);
+  if (designReady) { renderLayerTabs(); renderControls(); renderSource(); scheduleTemplateThumbs(); }
+  renderSheet();
   if (agent.isOpen && $('[data-panel="options"]').classList.contains("is-active")) renderOptions(true);
   if (!agent.isOpen && document.body.dataset.view !== "app") setLink("", t("Non connecté"));
 }
@@ -3462,6 +5307,72 @@ function wire() {
     if (uid && await run(() => agent.send("scan", { uid }))) toast("info", t("Pose du badge simulée."));
   });
 
+  gameSearch({
+    input: $("#games-search"), select: $("#games-system"), list: $("#games-list"), hint: $("#games-hint"),
+    actions: (game) => [
+      el("button", { className: "btn sm", title: t("Associer un badge"), attrs: { type: "button", "aria-label": t("Associer un badge à « {game} »", { game: game.name }) }, onclick: () => associateGame(game) },
+        [icon("tag", 16), el("span", { className: "lbl", text: t("Associer un badge") })]),
+      el("button", { className: "icon-btn", title: t("Créer sa carte"), attrs: { type: "button", "aria-label": t("Créer la carte de « {game} »", { game: game.name }) },
+        onclick: () => { setTab("cartes"); designGame(game); } }, [icon("card", 18)]),
+    ],
+  });
+  gameSearch({
+    input: $("#picker-search"), select: $("#picker-system"), list: $("#picker-list"), hint: $("#picker-hint"),
+    actions: (game) => [el("button", { className: "btn sm primary", text: t("Choisir"), attrs: { type: "button" },
+      onclick: () => { $("#picker-dialog").close(); designGame(game); } })],
+  });
+  $$("[data-special]").forEach((node) => node.addEventListener("click", () => createSpecial(node.dataset.special)));
+  $("#btn-phone").addEventListener("click", showPhoneDialog);
+  $("#phone-copy").addEventListener("click", async () => {
+    const copied = await copyText(phoneUrl());
+    toast(copied ? "ok" : "err", copied ? t("Adresse copiée.") : t("Copie impossible : tapez l'adresse à la main."));
+  });
+
+  /* Card designer */
+  wireCanvas();
+  $$("[data-orient]").forEach((node) => node.addEventListener("click", () => {
+    if (design.orientation === node.dataset.orient) return;
+    design.orientation = node.dataset.orient;
+    design.savedId = "";
+    resetLayers();
+    setOrientationButtons();
+    rememberDesign();
+    afterDesignChange();
+  }));
+  $("#card-guide").addEventListener("click", () => {
+    design.guide = !design.guide;
+    $("#card-guide").setAttribute("aria-checked", design.guide ? "true" : "false");
+    rememberDesign();
+    redrawDesign();
+  });
+  $("#card-guide-edge").addEventListener("change", () => { design.guideEdge = $("#card-guide-edge").value; design.guide = true; $("#card-guide").setAttribute("aria-checked", "true"); rememberDesign(); redrawDesign(); });
+  $("#card-pick").addEventListener("click", pickGameForCard);
+  $("#card-own").addEventListener("click", () => $("#card-file").click());
+  $("#card-file").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    try {
+      design.image = await loadImage(url);
+      design.imageLabel = file.name;
+      if (!design.layers) resetLayers();
+      Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);
+      design.selected = "image";
+      renderSource();
+      afterDesignChange();
+    } catch (error) {
+      toast("err", t("Cette image ne peut pas être lue."));
+    }
+  });
+  $("#card-add").addEventListener("click", addToSheet);
+  $("#card-png").addEventListener("click", downloadCard);
+  $("#card-save-tpl").addEventListener("click", saveTemplate);
+  $("#sheet-print").addEventListener("click", printSheet);
+  $("#sheet-clear").addEventListener("click", async () => {
+    if (await ask({ title: t("Vider la planche ?"), text: t("Les cartes ajoutées seront retirées de la planche."), ok: t("Vider"), danger: true })) { sheet.length = 0; renderSheet(); }
+  });
+
   $("#btn-reader-test").addEventListener("click", runReaderTest);
   $("#btn-calibrate").addEventListener("click", startCalibration);
   $("#btn-calibrate-cancel").addEventListener("click", stopCalibration);
@@ -3505,14 +5416,33 @@ function placeWiring() {
 
 /* Served over http(s) (GitHub Pages): the WebSocket to the Recalbox is mixed
    content and gets blocked, only the copy steps work online. */
-const ONLINE = /^https?:$/.test(window.location.protocol);
+/* Served by the Recalbox itself (phone, tablet): same address as the agent. */
+const SERVED = Boolean(document.querySelector('meta[name="rfid-agent"]'));
+const ONLINE = /^https?:$/.test(window.location.protocol) && !SERVED;
 
 (function demarrer() {
   placeWiring();
   initLangues();
   initTheme();
   wire();
+  renderSheet();
   $("#online-notice").hidden = !ONLINE;
+  if (SERVED) {
+    /* Nothing to install from a phone: straight to the connection. */
+    store.patch({ host: window.location.hostname, port: parseInt(window.location.port, 10) || 80 });
+    document.body.classList.add("is-served");
+    $$('.choice[data-goto="install"]').forEach((node) => { node.hidden = true; });
+    $(".choices").style.gridTemplateColumns = "minmax(0, 520px)";
+    $(".choices").style.justifyContent = "center";
+    $("#host").readOnly = true;
+    $(".foot-file").hidden = true;
+    $(".foot-served").hidden = false;
+    $("#host").value = settings().host;
+    $("#port").value = settings().port;
+    setView("accueil");
+    autoConnect();
+    return;
+  }
   initCopyStep();
   let version = "10";
   try { version = localStorage.getItem("rfid-rbver") || "10"; } catch (error) { /* ignore */ }

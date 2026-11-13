@@ -409,15 +409,41 @@ class InstallerChoiceTest(AgentTestCase):
 
 
 class ProtocolTest(AgentTestCase):
-    def test_handshake_non_websocket(self):
-        self.start_agent()
+    def _http(self, request: bytes) -> bytes:
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=3)
         try:
-            sock.sendall(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
-            response = sock.recv(200)
-            self.assertIn(b"400", response)
+            sock.sendall(request)
+            data = b""
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    return data
+                data += chunk
         finally:
             sock.close()
+
+    def test_handshake_non_websocket(self):
+        self.start_agent()
+        response = self._http(b"POST / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        self.assertIn(b"400", response[:40])
+
+    def test_page_refusee_sous_un_nom_inconnu(self):
+        """DNS rebinding: a foreign host name never gets the page."""
+        self.start_agent()
+        response = self._http(b"GET / HTTP/1.1\r\nHost: evil.example:8765\r\n\r\n")
+        self.assertIn(b"403", response[:40])
+
+    def test_page_servie_au_telephone(self):
+        self.start_agent()
+        os.makedirs(os.path.join(self.home, "web"), exist_ok=True)
+        with open(os.path.join(self.home, "web", "index.html"), "w", encoding="utf-8") as handle:
+            handle.write("<!DOCTYPE html><html><head><title>t</title></head><body>ok</body></html>")
+        response = self._http(b"GET / HTTP/1.1\r\nHost: 127.0.0.1:8765\r\n\r\n")
+        self.assertIn(b"200 OK", response[:40])
+        self.assertIn(b'<meta name="rfid-agent" content="1">', response)
+        self.assertIn(b"no-store", response)
+        missing = self._http(b"GET /secret.json HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        self.assertIn(b"404", missing[:40])
 
     def test_authentification_requise(self):
         self.start_agent()
@@ -1012,6 +1038,107 @@ class FragmentationTest(unittest.TestCase):
     def test_fermeture_renvoyee(self):
         self.left.sendall(_frame(0x8, b""))
         self.assertEqual(wsagent._read_message(self.client)[0], 0x8)
+
+
+class FakeLibrary:
+    def systems(self, force=False):
+        return [{"id": "snes", "name": "Super Nintendo", "manufacturer": "", "region": ""}]
+
+    def search(self, query="", system="", limit=60):
+        return [{"system": "snes", "path": "/recalbox/share/roms/snes/Mario.smc", "name": "Mario",
+                 "favorite": False, "genre": ""}][:limit]
+
+    def game_image(self, system, path):
+        return ("image/png", b"PNG") if path.endswith("Mario.smc") else None
+
+    def system_logo(self, system, kind="logo", region=""):
+        return ("image/svg+xml", b"<svg/>")
+
+
+class CardsCommandsTest(AgentTestCase):
+    """Library, special cards and card templates, from the page."""
+
+    def client_with_library(self):
+        client = self.authenticated_client()
+        self.agent.library = FakeLibrary()
+        return client
+
+    def test_recherche_et_images(self):
+        client = self.client_with_library()
+        self.assertEqual(client.call("games.systems")["systems"][0]["id"], "snes")
+        self.assertEqual(client.call("games.search", query="mar")["games"][0]["name"], "Mario")
+        image = client.call("media.image", system="snes", path="/recalbox/share/roms/snes/Mario.smc")
+        self.assertEqual(base64.b64decode(image["data"]), b"PNG")
+        self.assertFalse(client.call("media.image", system="snes", path="/x.smc")["found"])
+        self.assertEqual(client.call("media.logo", system="snes")["svg"], "<svg/>")
+
+    def test_associer_un_jeu_choisi(self):
+        client = self.authenticated_client()
+        recorded = {}
+        with mock.patch.object(wsagent, "process_alive", return_value=True), \
+                mock.patch.object(wsagent.Agent, "_write_command",
+                                  lambda self, command, **extra: recorded.update(command=command, **extra)):
+            client.call("associate", mode="associate",
+                        target={"system": "snes", "path": "/recalbox/share/roms/snes/Mario.smc", "name": "Mario"})
+        self.assertEqual(recorded["command"], "arm_target")
+        self.assertEqual(recorded["target"]["path"], "/recalbox/share/roms/snes/Mario.smc")
+
+    def test_creer_une_carte_speciale(self):
+        client = self.authenticated_client()
+        recorded = {}
+        with mock.patch.object(wsagent, "process_alive", return_value=True), \
+                mock.patch.object(wsagent.Agent, "_write_command",
+                                  lambda self, command, **extra: recorded.update(command=command, **extra)):
+            data = client.call("associate", mode="card",
+                               entry={"kind": "action", "action": "bonus", "params": {"minutes": 15}})
+            with self.assertRaises(WsError) as context:
+                client.call("associate", mode="card", entry={"kind": "action", "action": "rm -rf"})
+        self.assertEqual(recorded["command"], "arm_entry")
+        self.assertEqual(data["entry"]["params"]["minutes"], 15)
+        self.assertIn("inconnue", str(context.exception))
+
+    def test_modifier_un_badge(self):
+        client = self.authenticated_client()
+        client.call("tags.add", uid="A1B2C3D4", system="snes", game="Mario.smc")
+        entry = client.call("tags.update", uid="A1B2C3D4", changes={"limit_min": 25, "name": "Mario"})["entry"]
+        self.assertEqual(entry["limit_min"], 25)
+        listed = client.call("tags.list")["tags"][0]
+        self.assertEqual((listed["kind"], listed["limit_min"], listed["name"]), ("game", 25, "Mario"))
+
+    def test_modeles_de_carte(self):
+        client = self.authenticated_client()
+        saved = client.call("cards.template.save", template={"name": "Penché", "orientation": "portrait",
+                                                              "template": "cartouche", "layers": {}})["template"]
+        self.assertTrue(saved["id"])
+        self.assertEqual([t["name"] for t in client.call("cards.templates")["templates"]], ["Penché"])
+        client.call("cards.template.save", template=dict(saved, name="Renommé"))
+        self.assertEqual([t["name"] for t in client.call("cards.templates")["templates"]], ["Renommé"])
+        self.assertTrue(client.call("cards.template.delete", template=saved["id"])["removed"])
+        self.assertEqual(client.call("cards.templates")["templates"], [])
+        with self.assertRaises(WsError):
+            client.call("cards.template.save", template={"name": "", "layers": {}})
+        with self.assertRaises(WsError):
+            client.call("cards.template.save", template={"name": "gros", "blob": "x" * 70000})
+
+    def test_status_donne_l_adresse_du_telephone(self):
+        client = self.authenticated_client()
+        agent_info = client.call("status")["agent"]
+        self.assertIn("ip", agent_info)
+        self.assertFalse(agent_info["web"])
+
+
+class SameOriginTest(unittest.TestCase):
+    def test_page_servie_par_l_agent(self):
+        self.assertTrue(wsagent.same_origin("http://192.168.1.20:8765", "192.168.1.20:8765"))
+        self.assertTrue(wsagent.same_origin("http://recalbox.local:8765", "recalbox.local:8765"))
+        self.assertFalse(wsagent.same_origin("http://evil.example:8765", "evil.example:8765"))
+        self.assertFalse(wsagent.same_origin("https://192.168.1.20:8765", "192.168.1.20:8765"))
+        self.assertFalse(wsagent.same_origin("http://192.168.1.20:8765", ""))
+
+    def test_noms_locaux(self):
+        self.assertTrue(wsagent.local_host_header("[fe80::1]:8765"))
+        self.assertTrue(wsagent.local_host_header("RECALBOX:8765"))
+        self.assertFalse(wsagent.local_host_header("192.168.1.20.nip.io:8765"))
 
 
 if __name__ == "__main__":

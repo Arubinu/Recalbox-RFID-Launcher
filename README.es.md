@@ -5,6 +5,7 @@
 **Una tarjeta, un juego.** Coloca una tarjeta RFID sobre un lector conectado a tu Recalbox: el juego asociado
 arranca, como un cartucho. Todo se configura desde una sola página web abierta en tu ordenador, sin instalar nada en
 él y sin línea de comandos.
+La misma página se abre también en un móvil, servida por la propia Recalbox.
 
 ## 💡 La idea
 
@@ -27,6 +28,13 @@ cualquiera puede usar, niños incluidos, sin pasar nunca por los menús.
 - 🔄 **Actualizaciones con un clic** desde la página; las tarjetas y los ajustes se conservan siempre
 - 🌍 **6 idiomas** (inglés, francés, alemán, español, italiano, portugués), temas claro y oscuro
 - 🧩 **Sin dependencias**: solo el Python 3 que ya trae Recalbox, sin paquetes ni cambios en el sistema
+- 🖨️ **Tarjetas para imprimir**: la imagen del juego, el logotipo y los colores de su consola, siete plantillas, cada
+  elemento se puede mover y girar; diez tarjetas por hoja A4
+- 📱 **También en el móvil**: la Recalbox sirve la página ella misma (código QR); busca un juego y asocia una tarjeta
+  sin la tele
+- 🎲 **Tarjetas especiales**: juego al azar, tiempo extra, salir del juego, apagar
+- ⏱️ **Tiempo de juego**: un límite por tarjeta o para todas, avisos antes del final, tarjetas de tiempo extra con cupo
+- 💡 **Piloto y mensajes en pantalla**: un LED RGB o LED programables, mensajes en la pantalla del juego
 
 ## 🧰 Qué necesitas
 
@@ -38,6 +46,7 @@ cualquiera puede usar, niños incluidos, sin pasar nunca por los menús.
 | Tarjetas / llaveros | 13,56 MHz ISO 14443-A (MIFARE Classic, Ultralight…). Las tarjetas de 125 kHz no funcionan |
 | Un pulsador | cualquier botón de contacto momentáneo, sin resistencia |
 | Cables Dupont | 7 (6 para el lector y 1 más para el botón) |
+| Piloto (opcional) | un módulo LED RGB o LED programables WS2812: ver [docs/WIRING.md](docs/WIRING.md) |
 
 > ⚠️ El RC522 funciona **solo con 3,3 V**. Nunca lo conectes al pin de 5 V de la Raspberry Pi: se destruiría.
 
@@ -57,7 +66,7 @@ cualquiera puede usar, niños incluidos, sin pasar nunca por los menús.
 | **Botón** | GPIO17 y GND | 11 y 9 |
 
 El programa activa el pull-up interno de la Raspberry Pi: sin resistencia. Detalles:
-[docs/WIRING.md](docs/WIRING.md) (en francés).
+[docs/WIRING.md](docs/WIRING.md) (en inglés).
 
 ## 🚀 Instalación
 
@@ -95,7 +104,7 @@ El programa activa el pull-up interno de la Raspberry Pi: sin resistencia. Detal
 - **Por SSH**: `ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --start"` (contraseña por
   defecto `recalboxroot`).
 
-Guía paso a paso: [docs/INSTALLATION.md](docs/INSTALLATION.md) (en francés).
+Guía paso a paso: [docs/INSTALLATION.md](docs/INSTALLATION.md) (en inglés).
 
 ## 🎯 En el día a día
 
@@ -117,11 +126,26 @@ Guía paso a paso: [docs/INSTALLATION.md](docs/INSTALLATION.md) (en francés).
 | 2 pitidos graves descendentes | tarjeta desconocida o acción rechazada |
 | 3 pitidos descendentes | tiempo agotado (10 s para colocar la tarjeta) |
 
+## 🖨️ Tarjetas, tarjetas especiales y tiempo de juego
+
+- **Buscar un juego** (pestaña Tarjetas): escribe algunas letras y asocia una tarjeta al juego, sin la
+  tele. Práctico en un móvil: abre `http://recalbox.local:8765/` (o escanea el código QR del botón del teléfono de la
+  cabecera).
+- **Imprimir las tarjetas** (pestaña Imprimir): elige un juego y una plantilla, horizontal o vertical; toca un elemento
+  de la tarjeta para moverlo, agrandarlo o girarlo; una franja amarilla muestra la parte que sobresale de la ranura.
+  Guarda tu diseño como plantilla, añade las tarjetas a la hoja e imprime al 100 % (diez tarjetas por hoja A4).
+- **Tarjetas especiales** (pestaña Tarjetas): juego al azar, tiempo extra, salir del juego, apagar la Recalbox.
+- **Tiempo de juego**: Ajustes › Tiempo de juego por partida, o por tarjeta con el lápiz. La Recalbox avisa 5 minutos y
+  1 minuto antes del final y después sale del juego; una tarjeta de tiempo extra añade minutos, un número limitado de
+  veces por día, semana…
+
+Detalles: [docs/USAGE.md](docs/USAGE.md) (en inglés).
+
 ## 🔄 Actualizar
 
 En la página, pestaña **Actualizaciones** › **«Actualizar a X»**: la página envía el programa que contiene. Las
 tarjetas y los ajustes se conservan, y la página se reconecta sola. Otras formas (archivo ZIP, dirección, SSH):
-[docs/UPDATING.md](docs/UPDATING.md) (en francés).
+[docs/UPDATING.md](docs/UPDATING.md) (en inglés).
 
 ## 🗑️ Desinstalar
 
@@ -141,7 +165,7 @@ tarjetas y los ajustes se conservan, y la página se reconecta sola. Otras forma
 | El juego no arranca | hace falta Recalbox 9 o superior; el juego debe estar *seleccionado*, no una carpeta |
 | La página vuelve a pedir autorización | la Recalbox se reinició: mantén pulsado el botón de la caja 3 segundos |
 
-Guía completa: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (en francés).
+Guía completa: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (en inglés).
 
 ## 🛠️ Para desarrolladores
 
@@ -168,14 +192,14 @@ Funcionamiento, en resumen:
 - **Arranque**: dos scripts de usuario permanentes (servicio + agente) y, en Recalbox 10, dos scripts del menú
   (instalar / desinstalar).
 
-Publicación en GitHub (Pages y versiones): [docs/PUBLISHING.md](docs/PUBLISHING.md) (en inglés). Los documentos
-detallados de `docs/` y el [historial de versiones](CHANGELOG.md) están en francés.
+Publicación en GitHub (Pages y versiones): [docs/PUBLISHING.md](docs/PUBLISHING.md). Los documentos
+detallados de `docs/` y el [historial de versiones](CHANGELOG.md) están en inglés.
 
 ## 📚 Documentación
 
-- [docs/WIRING.md](docs/WIRING.md): cableado detallado y elección de pines
+- [docs/WIRING.md](docs/WIRING.md): cableado detallado, elección de pines y piloto
 - [docs/INSTALLATION.md](docs/INSTALLATION.md): instalación paso a paso (Windows, macOS, Linux)
-- [docs/USAGE.md](docs/USAGE.md): asociación, órdenes, configuración
+- [docs/USAGE.md](docs/USAGE.md): asociación, tarjetas para imprimir, tarjetas especiales, tiempo de juego, órdenes, configuración
 - [docs/UPDATING.md](docs/UPDATING.md): actualizaciones y vuelta atrás
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): diagnóstico y soluciones
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): GitHub Pages y versiones

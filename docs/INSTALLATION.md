@@ -1,308 +1,207 @@
 # Installation
 
-L'installation consiste à copier le programme sur le partage Recalbox puis à
-lancer un script. Comptez 5 minutes.
+The program is copied to the network share of the Recalbox, then installed by
+the Recalbox itself. Allow 5 minutes.
 
-## Pré-requis
+## Requirements
 
-* Recalbox **9 ou plus** (menus > `SYSTÈME` > `INFORMATIONS` : la version est
-  affichée). Le lancement de jeu par script n'existe pas avant Recalbox 9.
-* Le **serveur SSH** activé : `RÉSEAU` > `SERVEUR SSH` > `ON`.
-* Le **partage réseau** activé : `RÉSEAU` > `PARTAGE SMB` > `ON` (activé par
-  défaut) : c'est par lui que le programme arrive sur la Recalbox.
-* Le montage du Raspberry Pi et le câblage du lecteur : voir
-  [`WIRING.md`](WIRING.md).
-
-Mot de passe par défaut du compte `root` : `recalboxroot`.
+* Recalbox **9 or later** (menu › System › Information shows the version);
+  Recalbox 10 is recommended: the installation then runs from its menu, without
+  a restart. Starting a game from a script does not exist before Recalbox 9.
+* The **network share** enabled (Network › SMB share, on by default): this is
+  how the program reaches the Recalbox.
+* The reader and the button wired: see [WIRING.md](WIRING.md).
+* For the SSH methods only: Network › SSH server › On. Default `root` password:
+  `recalboxroot`.
 
 ---
 
-## Méthode 0 — l'installateur `.cmd` (le plus simple)
+## Method 1 — the page (recommended)
 
-Le sélecteur de dossier de Windows ne sait pas atteindre un partage UNC : on
-l'évite complètement. La page génère un **fichier unique** qui fait tout.
+1. Open **`recalbox-rfid-installer.html`** (from the latest release, or
+   `dist/recalbox-rfid-installer.html` in the repository) with **Edge or
+   Chrome**, then choose **"Install for the first time"**.
+2. **Wire**: the diagram is on screen.
+3. **Copy**: click "Choose the Recalbox folder". The page copies the address
+   `\\RECALBOX\share` to the clipboard: paste it in the window (Ctrl+V,
+   Enter), then "Select folder" and accept the changes. The page writes:
+   * `\\RECALBOX\share\recalbox-rfid\` (the whole program);
+   * `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3` (starts
+     the installation and the management agent at boot);
+   * `\\RECALBOX\share\userscripts\manual\Install-RFID-reader.sh` and
+     `Uninstall-RFID-reader.sh` (Recalbox 10 menu).
 
-1. **Ouvrez `dist\recalbox-rfid-installer.html`** (ou régénérez-le :
-   `python tools/build_installer.py`) et indiquez l'adresse de la Recalbox.
-2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
-3. **Double-cliquez** sur le fichier téléchargé. Windows peut afficher
-   « Windows a protégé votre PC » : *Informations complémentaires* →
-   *Exécuter quand même*.
-   Le script (`recalbox-rfid-installation.cmd`) :
-   * se connecte au partage (`net use` : `root`/`recalboxroot`, puis invité) ;
-   * décompresse les fichiers embarqués (`certutil` + `tar`) ;
-   * copie `\\RECALBOX\share\recalbox-rfid\` et
-     `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`.
-4. **Redémarrez Recalbox.** Le script d'amorçage installe tout seul (programme,
-   SPI, service) et redémarre une fois de plus si le SPI vient d'être activé.
-   Le déroulé est dans `\\RECALBOX\share\system\rfid\logs\auto-install.log`.
-5. **Rouvrez la page** (le `.cmd` le fait pour vous), cliquez sur **« Se
-   connecter »**, puis **gardez le bouton du boîtier appuyé 3 secondes** pendant
-   le compte à rebours (30 s) : c'est toute l'autorisation.
+   The page remembers the folder: next time, no window opens.
+4. **Run**:
+   * **Recalbox 10**: with the controller, START › Advanced settings › User
+     scripts › **Install-RFID-reader**. No restart needed.
+   * **Recalbox 9**: restart the Recalbox; the installation runs during the
+     boot.
 
-Si le message est `ECHEC : acces au partage impossible`, le script affiche le
-code d'erreur et les pistes (adresse IP, mot de passe, accès invité).
+   The page waits and moves on by itself. The Recalbox may restart once on
+   its own: that is what enables the reader (SPI bus). The log is in
+   `\\RECALBOX\share\system\rfid\logs\auto-install.log`.
+5. **Authorize**: hold the case button for 3 seconds during the countdown. The
+   badge management opens.
 
-## Méthode 1 — copie depuis la page (sélecteur de dossier, Edge/Chrome)
+> The online version (GitHub Pages) can do steps 2 and 3, but a browser forbids
+> an `https://` page to talk to a device of your network: it offers to download
+> itself for the rest. See [PUBLISHING.md](PUBLISHING.md).
 
-Le sélecteur de dossier de Windows ne sait pas toujours atteindre un partage
-UNC : c'est une méthode de repli, à utiliser si elle fonctionne chez vous.
+### If Windows does not open `\\RECALBOX\share`
 
-1. **Ouvrez le fichier** (double-clic) dans **Edge ou Chrome** — Firefox et
-   Safari ne permettent pas l'écriture locale.
-2. Cliquez sur **« Choisir `\\RECALBOX\share` et copier… »**, puis sélectionnez le
-   partage Recalbox (le dossier qui contient `roms`, `system`…).
-   La page crée :
-   * `\\RECALBOX\share\recalbox-rfid\` (programme complet) ;
-   * `\\RECALBOX\share\userscripts\recalbox-rfid-agent(permanent).py3`
-     (démarrage automatique de l'agent).
-3. **Redémarrez Recalbox.**
-4. Dans la même page, connectez-vous (étape 2) : adresse, port `8765`, puis
-   cliquez sur **« Se connecter »** et **gardez le bouton du boîtier appuyé
-   3 secondes** pendant le compte à rebours (30 s). Rien à recopier, aucun
-   fichier à chercher.
-5. Cliquez sur **« Installer / mettre à jour »**, puis sur
-   **« Redémarrer Recalbox »** si le journal signale l'activation du SPI.
+* **Windows offers to "Diagnose"**: the connection is on a *Public* network,
+  which hides the devices of your network. Settings › Network & Internet ›
+  Wi-Fi or Ethernet › your network › Network profile type › **Private**. Or
+  type the IP address of the Recalbox, e.g. `\\192.168.1.20\share` (START ›
+  Network settings shows it).
+* **Windows asks for a user name**: recent Windows versions (11 24H2 and later)
+  block guest access to shares. Either sign in with `root` / `recalboxroot`
+  ("Remember my credentials"), or allow guest access in an **administrator
+  PowerShell**:
 
-En cas de navigateur non compatible (ou d'API d'écriture refusée), utilisez la
-méthode 2 : le résultat est identique, seules les copies sont manuelles.
-
-### Si `\\RECALBOX\share` demande un identifiant
-
-C'est normal sur les Windows récents : le partage Recalbox est un partage
-« invité » et **Windows 11 (24H2 et plus) bloque les accès invités par défaut**.
-Deux solutions :
-
-1. **Se connecter avec le compte Recalbox** (le plus simple) :
-
-   * utilisateur : `root`
-   * mot de passe : `recalboxroot` (mot de passe par défaut)
-
-   Cochez « Se souvenir de mes informations d'identification ». Recalbox crée ce
-   compte Samba à chaque démarrage (script `S35securepasswd`).
-
-2. **Autoriser les accès invités dans Windows** (plus aucune demande de mot de
-   passe). Dans une console **PowerShell en administrateur** :
-
-   ```powershell
-   Set-SmbClientConfiguration -EnableInsecureGuestLogons $true
-   ```
-
-   (équivalent graphique : `gpedit.msc` → Configuration ordinateur → Modèles
-   d'administration → Réseau → Station de travail Lanman → « Activer les
-   ouvertures de session invité non sécurisées »).
-
-Astuce : si Windows a mémorisé de mauvais identifiants, supprimez-les avant de
-réessayer :
-
-```cmd
-net use \\RECALBOX\share /delete
-cmdkey /delete:RECALBOX
-```
-
-Puis, pour éviter les dialogues dans la sélecteur de dossier, montez le partage
-en lecteur (le sélecteur de la page pourra choisir `Z:\`) :
-
-```cmd
-net use Z: \\RECALBOX\share /user:root recalboxroot /persistent:yes
-```
-
-> `\\RECALBOX` seul (sans `\share`) n'est pas parcourable : c'est normal, seul le
-> partage nommé est exposé. Utilisez `\\RECALBOX\share` ou
-> `\\<adresse-ip>\share`.
-
-Si `root` / `recalboxroot` est refusé, c'est que le mot de passe racine a été
-personnalisé : réinitialisez le mot de passe Samba en SSH
-(`smbpasswd -a root`), ou utilisez la méthode A (copie manuelle) / la méthode C
-(SSH).
-
-## Méthode 2 — copie manuelle du dossier
-
-Aucune ligne de commande : une page locale (`installer.html`) parle à un agent
-WebSocket protégé qui tourne sur la Recalbox.
-
-1. **Copiez le dossier du projet** sur le partage Recalbox : ouvrez
-   `\\RECALBOX\share` dans l'Explorateur et déposez-y le dossier
-   `recalbox-rfid` (celui qui contient `install.sh`).
-2. **Copiez le script de l'agent** :
-
-   ```
-   recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3
-   ```
-
-   dans le dossier `userscripts` du partage, c'est-à-dire
-   `\\RECALBOX\share\userscripts\`.
-3. **Redémarrez Recalbox** (`QUITTER` > `REDÉMARRER`) : l'agent démarre avec
-   l'interface.
-4. **Double-cliquez sur `installer.html`** (le fichier est à la racine du
-   projet, sur votre PC). Renseignez l'adresse (`recalbox.local`, ou l'IP
-   affichée dans `RÉSEAU` > `INFORMATIONS`) et le port `8765`, puis cliquez sur
-   « Se connecter » et gardez le bouton du boîtier appuyé 3 secondes pendant le
-   compte à rebours (30 s) : c'est l'autorisation. Il n'y a aucun fichier à
-   chercher et aucun mot de passe à saisir.
-5. Cliquez sur **« Installer / mettre à jour »**
-   (onglet « Maintenance ») : le journal défile en direct.
-6. Si l'installation active le bus SPI, cliquez sur **« Redémarrer la Recalbox »**
-   (indispensable pour que le lecteur soit reconnu).
-
-Tout est journalisé dans `/recalbox/share/system/rfid/logs/install.log` et
-`logs/agent.log`.
-
-> `installer.html` ne nécessite ni serveur local ni installation : un
-> navigateur récent (Edge, Chrome, Firefox, Safari) suffit. Il mémorise
-> l'adresse et l'autorisation pour les fois suivantes : une actualisation de la
-> page ne redemande donc rien.
-
-## Méthode 3 — assistant Windows
-
-1. Téléchargez / décompressez le projet `recalbox-rfid` sur le PC.
-2. Double-cliquez sur **`windows\INSTALLER.cmd`**.
-3. L'assistant demande l'adresse de la Recalbox (par défaut `recalbox.local`),
-   copie les fichiers sur le partage et y place automatiquement le script de
-   l'agent.
-4. Il propose ensuite d'installer tout de suite par SSH (mot de passe
-   `recalboxroot`) ; sinon il ouvre `installer.html` pour finir dans le
-   navigateur après redémarrage.
-
-## Méthode 4 — Windows, macOS ou Linux, en ligne de commande (SSH)
-
-**Étape 1 — copier le dossier sur la Recalbox**
-
-* Windows : ouvrez `\\RECALBOX\share` dans l'Explorateur et copiez-y le dossier
-  `recalbox-rfid` (celui qui contient `install.sh`).
-* macOS / Linux : depuis un terminal, dans le dossier du projet :
-
-  ```sh
-  scp -r recalbox-rfid root@recalbox.local:/recalbox/share/
+  ```powershell
+  Set-SmbClientConfiguration -EnableInsecureGuestLogons $true
   ```
 
-**Étape 2 — lancer l'installateur**
+  If Windows remembered wrong credentials, remove them first:
 
-Windows (PowerShell), macOS ou Linux :
+  ```cmd
+  net use \\RECALBOX\share /delete
+  cmdkey /delete:RECALBOX
+  ```
+
+* `\\RECALBOX` alone (without `\share`) cannot be browsed: only the named
+  share is exposed.
+* **Nothing works**: use method 2.
+
+## Method 2 — the Windows installer (`.cmd`)
+
+In the page, step 2 › "It doesn't work? Use the Windows installer":
+
+1. **Download the installer** (a small `.cmd` file holding the whole program).
+2. **Double-click it**. If Windows shows "Windows protected your PC": More info
+   › Run anyway. The script:
+   * finds the Recalbox and connects to the share (`net use`: `root` /
+     `recalboxroot`, then guest);
+   * unpacks the embedded files and copies them (same files as method 1);
+   * reopens the page at the "Run" step.
+3. Go on with step 4 of method 1.
+
+On `FAILED: share not reachable`, the script shows the error code and what to
+check (IP address, password, guest access).
+
+## Method 3 — by hand
+
+1. Copy the `recalbox-rfid` folder (the one holding `install.sh`) into
+   `\\RECALBOX\share`.
+2. Copy `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` into
+   `\\RECALBOX\share\userscripts\`.
+3. Recalbox 10: copy the content of `recalbox-rfid\bootstrap\manual` into
+   `\\RECALBOX\share\userscripts\manual\`, then run *Install-RFID-reader* from
+   the menu. Recalbox 9: restart.
+4. Open the page, "Manage my badges", and authorize with the button.
+
+## Method 4 — SSH (Windows, macOS, Linux)
 
 ```sh
+# 1. copy the folder (Windows: drop it into \\RECALBOX\share instead)
+scp -r recalbox-rfid root@recalbox.local:/recalbox/share/
+# 2. install and start
 ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --start"
-```
-
-**Étape 3 — redémarrer et vérifier**
-
-Si l'installateur indique qu'un redémarrage est nécessaire (activation du SPI),
-redémarrez Recalbox (`QUITTER` > `REDÉMARRER`), puis connectez `installer.html`
-(agent sur le port 8765) ou lancez :
-
-```sh
+# 3. if asked (SPI just enabled), restart, then check
 ssh root@recalbox.local "sh /recalbox/share/system/rfid/rfidctl test"
 ```
 
-## Méthode 5 — directement sur la Recalbox
+---
 
-Avec un clavier branché, quittez le frontend (`QUITTER` > `QUITTER
-EMULATIONSTATION`) pour obtenir une console, connectez-vous en `root`
-(`recalboxroot`), puis :
+## After the installation: phones and tablets
+
+The Recalbox now serves the management page itself:
+`http://recalbox.local:8765/` (or `http://<IP>:8765/`). On a connected
+computer, the phone button of the header shows a QR code. A phone is
+authorized once with the 3 s press, like a computer.
+
+## What the installer does
+
+| Item | Detail |
+| --- | --- |
+| Program | `/recalbox/share/system/rfid/app` |
+| Page for phones | `/recalbox/share/system/rfid/web/index.html` |
+| Configuration | `/recalbox/share/system/rfid/config.ini` (created if missing, **never overwritten**) |
+| Badges | `/recalbox/share/system/rfid/tags.json` (**never overwritten**) |
+| Card templates, play time | `card-templates.json`, `playtime.json` (same folder) |
+| Command | `sh /recalbox/share/system/rfid/rfidctl` |
+| Startup | `/recalbox/share/userscripts/recalbox-rfid(permanent).py3` (reader service) and `recalbox-rfid-agent(permanent).py3` (management agent) |
+| Recalbox 10 menu | `userscripts/manual/Install-RFID-reader.sh`, `Uninstall-RFID-reader.sh` |
+| Logs | `/recalbox/share/system/rfid/logs/` (`rfid.log`, `agent.log`, `install.log`) |
+| SPI bus | `dtparam=spi=on` in `/boot/recalbox-user-config.txt` and in the global section of `/boot/config.txt` (backup `.bak-rfid-launcher`) |
+| Authorization | 3 s press on the case button; session secret in a private folder, never on the share |
+
+Everything lives on the share: **nothing is written into the Recalbox system**
+(except the SPI line of the boot configuration), so a Recalbox update keeps
+the installation. After a major Recalbox upgrade, check that SPI is still
+enabled (Hardware tab).
+
+The installer is **idempotent**: running it again reinstalls cleanly and keeps
+the configuration and the badges. It is also the update procedure.
+
+## Installer options
 
 ```sh
-sh /recalbox/share/recalbox-rfid/install.sh --start
+sh install.sh                 # install / update
+sh install.sh --start         # ... and start the service right away
+sh install.sh --upgrade       # update (keeps everything)
+sh install.sh --no-restart    # do not restart the service (used by the agent)
+sh install.sh --no-spi        # do not touch the SPI configuration
+sh install.sh --from-url URL  # install a ZIP hosted online
+sh install.sh --uninstall     # uninstall
+```
+
+## Odd errors (`: not found`, `illegal option`)
+
+The file has **Windows line endings (CRLF)**: Recalbox runs the scripts with
+`/bin/sh`, which only accepts Unix line endings (LF). The page and the `.cmd`
+installer write LF files. When copying by hand from a Git checkout, the
+`.gitattributes` of the project already keeps `*.sh`, `*.py` and `*.py3` in LF.
+To fix a file on the Recalbox:
+
+```sh
+sed -i 's/\r$//' /recalbox/share/recalbox-rfid/install.sh
+```
+
+## Enabling SPI by hand
+
+If the installation could not write into `/boot`:
+
+```sh
+mount -o remount,rw /boot
+echo "dtparam=spi=on" >> /boot/recalbox-user-config.txt
+mount -o remount,ro /boot
 reboot
 ```
 
----
+Check: `ls -l /dev/spidev0.0` must exist.
 
-## Ce que fait l'installateur
+## First full test
 
-| Action | Détail |
-| --- | --- |
-| Programme | copié dans `/recalbox/share/system/rfid/app` |
-| Configuration | `/recalbox/share/system/rfid/config.ini` (créée si absente, **jamais écrasée**) |
-| Badges | `/recalbox/share/system/rfid/tags.json` (**jamais écrasé**) |
-| Journaux | `/recalbox/share/system/rfid/logs/rfid.log` |
-| Commande | `/recalbox/share/system/rfid/rfidctl` |
-| Démarrage auto | `/recalbox/share/userscripts/recalbox-rfid(permanent).py3` (service RFID) |
-| Agent de gestion | `/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3` (WebSocket) |
-| Autorisation | appui de 3 s sur le bouton du boîtier ; secret de session **en mémoire**, aucun fichier |
-| Journaux | `/recalbox/share/system/rfid/logs/rfid.log`, `agent.log`, `install.log` |
-| Bus SPI | ajoute `dtparam=spi=on` dans `/boot/recalbox-user-config.txt` (sauvegarde `.bak-rfid-launcher`) |
+1. Hardware tab › "Test with a badge": the identifier of the badge shows up.
+2. On the Recalbox, select a game.
+3. Short press on the button (one high beep).
+4. Place the badge (two rising beeps).
+5. Place it again: the game starts.
 
-Aucun secret n'est écrit sur le partage : l'agent tire un secret de session
-aléatoire à chaque démarrage, et il reste en mémoire. Les fichiers `token.txt` et
-`paired.ok` d'une ancienne version sont supprimés automatiquement au démarrage de
-l'agent.
+## Uninstalling
 
-Tout est dans le partage : **rien n'est écrit dans le système Recalbox**, une
-mise à jour de Recalbox ne supprime donc pas l'installation (mais vérifiez que
-`dtparam=spi=on` est toujours présent dans le fichier de configuration du boot
-après une montée de version majeure).
-
-L'installateur est **idempotent** : le relancer réinstalle proprement, en
-conservant configuration et badges. C'est aussi la procédure de mise à jour ;
-après chaque réinstallation, l'autorisation est à redonner (un appui de 3 s sur
-le bouton).
-
-## Options de l'installateur
-
-```sh
-sh install.sh                 # installer / mettre a jour
-sh install.sh --start         # ... et demarrer le service tout de suite
-sh install.sh --upgrade       # mise a jour (conserve tout)
-sh install.sh --no-restart    # ne pas redemarrer le service (utilise par l'agent)
-sh install.sh --no-spi        # ne pas toucher a la configuration du SPI
-sh install.sh --from-url URL  # installer un ZIP heberge en ligne
-sh install.sh --uninstall     # desinstaller
-```
-
-## Si l'installation affiche des erreurs bizarres (`: not found`, `illegal option`)
-
-Le fichier a des **fins de ligne Windows (CRLF)** : Recalbox exécute les scripts
-avec `/bin/sh`, qui n'accepte que les fins de ligne Unix (LF).
-
-* le plus simple : utilisez l'assistant `windows\INSTALLER.cmd`, il convertit
-  automatiquement les fichiers ;
-* ou convertissez le fichier avant de le copier :
-
-  ```powershell
-  (Get-Content install.sh -Raw) -replace "`r`n", "`n" | Set-Content -NoNewline install.sh
-  ```
-
-* en ligne de commande sur Recalbox (si `dos2unix` est absent) :
+* **Recalbox 10**: START › Advanced settings › User scripts ›
+  **Uninstall-RFID-reader**. The badges and settings are kept, and
+  *Install-RFID-reader* stays in the menu to reinstall in one click.
+* **SSH**:
 
   ```sh
-  sed -i 's/\r$//' /recalbox/share/recalbox-rfid/install.sh
+  ssh root@recalbox.local "sh /recalbox/share/system/rfid/uninstall.sh"
   ```
 
-Le fichier `.gitattributes` du projet force déjà les fichiers `*.sh`, `*.py` et
-`*.py3` en LF : un `git clone` sur Windows est donc sûr.
-
-## Activation manuelle du SPI
-
-Si l'installation n'a pas pu écrire dans `/boot` (droits), éditez
-`/boot/recalbox-user-config.txt` et ajoutez à la fin :
-
-```
-dtparam=spi=on
-```
-
-Puis redémarrez. Vérification :
-
-```sh
-ls -l /dev/spidev0.0
-```
-
-Le fichier doit exister.
-
-## Premier test complet
-
-1. Posez un badge : `rfidctl test` doit afficher son UID.
-2. Dans Recalbox, sélectionnez un jeu.
-3. Appui court sur le bouton (1 bip aigu).
-4. Scannez le badge : le jeu se lance.
-5. Quittez le jeu, scannez à nouveau le badge : le jeu se relance.
-
-## Désinstallation
-
-```sh
-ssh root@recalbox.local "sh /recalbox/share/system/rfid/uninstall.sh"
-```
-
-Options :
-
-* `--keep-data` : conserve `config.ini` et `tags.json` ;
-* `--remove-spi` : retire aussi `dtparam=spi=on` de la configuration du boot.
+  Options: `--keep-data` keeps `config.ini`, `tags.json` and the templates;
+  `--remove-spi` also removes the SPI lines (reader and status LEDs) from the
+  boot configuration.

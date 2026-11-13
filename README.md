@@ -5,6 +5,7 @@
 **One badge, one game.** Place an RFID badge on a reader plugged into your Recalbox: the matching game starts, like
 a cartridge. Everything is set up from a single web page opened on your computer, with nothing to install on it and
 no command line.
+The same page also opens on a phone, served by the Recalbox itself.
 
 ## 💡 The idea
 
@@ -26,6 +27,12 @@ use, children included, without ever going through the menus.
 - 🔄 **One-click updates** from the page; badges and settings are always kept
 - 🌍 **6 languages** (English, French, German, Spanish, Italian, Portuguese), light and dark themes
 - 🧩 **Zero dependency**: only the Python 3 already shipped with Recalbox, no package, no OS change
+- 🖨️ **Printable cards**: the game's picture, its console's logo and colours, seven templates, every element can be
+  moved and rotated; ten cards per A4 sheet
+- 📱 **On a phone too**: the Recalbox serves the page itself (QR code); find a game and pair a badge without the TV
+- 🎲 **Special cards**: random game, bonus time, quit the game, turn off
+- ⏱️ **Play time**: a limit per badge or for all, warnings before the end, bonus cards with a quota
+- 💡 **Status light and on-screen messages**: an RGB LED or programmable LEDs, messages on the game screen
 
 ## 🧰 What you need
 
@@ -37,6 +44,7 @@ use, children included, without ever going through the menus.
 | Badges / key fobs | 13.56 MHz ISO 14443-A (MIFARE Classic, Ultralight…). 125 kHz badges do not work |
 | A push button | any momentary button, no resistor needed |
 | Dupont wires | 7 (6 for the reader, 1 extra for the button) |
+| Status light (optional) | an RGB LED module, or WS2812 programmable LEDs: see [docs/WIRING.md](docs/WIRING.md) |
 
 > ⚠️ The RC522 works on **3.3 V only**. Never wire it to the Raspberry Pi 5 V pin: it would be destroyed.
 
@@ -113,6 +121,19 @@ Step by step guide: [docs/INSTALLATION.md](docs/INSTALLATION.md).
 | 2 falling low beeps | unknown badge or refused action |
 | 3 falling beeps | time out (10 s to place the badge) |
 
+## 🖨️ Cards, special cards and play time
+
+- **Find a game** (Badges tab): type a few letters, then pair a badge with the game, without the TV. Handy on a phone:
+  open `http://recalbox.local:8765/` (or scan the QR code of the phone button in the header).
+- **Print the cards** (Cards tab): choose a game and a template, landscape or portrait; touch an element of the card to
+  move, resize or rotate it; a yellow band shows the part sticking out of the slot. Save your layout as a template,
+  add the cards to the sheet, then print at 100 % (ten cards per A4 page).
+- **Special cards** (Badges tab): random game, bonus time, quit the game, turn off the Recalbox.
+- **Play time**: Settings › Play time per game, or per badge with the pencil. The Recalbox warns 5 and 1 minute before
+  the end, then quits the game; a bonus card adds minutes, a limited number of times per day, week…
+
+Details: [docs/USAGE.md](docs/USAGE.md).
+
 ## 🔄 Updating
 
 In the page, **Updates** tab › **"Update to X"**: the page sends the program it contains. Badges and settings are
@@ -163,14 +184,13 @@ How it works, in short:
 - **Startup**: two permanent Recalbox user scripts (service + agent) and, on Recalbox 10, two menu scripts
   (install / uninstall).
 
-Publishing on GitHub (Pages and releases): [docs/PUBLISHING.md](docs/PUBLISHING.md). The detailed documents in
-`docs/` and the [changelog](CHANGELOG.md) are written in French.
+Publishing on GitHub (Pages and releases): [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ## 📚 Documentation
 
-- [docs/WIRING.md](docs/WIRING.md): detailed wiring and pin choices
+- [docs/WIRING.md](docs/WIRING.md): detailed wiring, pin choices and status light
 - [docs/INSTALLATION.md](docs/INSTALLATION.md): step by step installation (Windows, macOS, Linux)
-- [docs/USAGE.md](docs/USAGE.md): pairing, commands, configuration
+- [docs/USAGE.md](docs/USAGE.md): pairing, printable cards, special cards, play time, commands, configuration
 - [docs/UPDATING.md](docs/UPDATING.md): updates and rollback
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): diagnostics and fixes
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): GitHub Pages and releases

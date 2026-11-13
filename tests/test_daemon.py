@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -421,6 +422,122 @@ class StopOnRemoveTest(BadgeLatchTest):
         self.presence(True)
         self.service._badge_seen("A1B2C3D4")
         self.assertEqual(self.actions, ["A1B2C3D4", "A1B2C3D4"])
+
+
+class BonusSwapTest(StopOnRemoveTest):
+    """Cartridge mode: a bonus card put in place of the game card."""
+
+    def test_carte_bonus_a_la_place_du_jeu(self):
+        self.service._badge_seen("A1B2C3D4")
+        self.presence(False)
+        self.laisse_tourner(5.2)        # removal noticed, stop not run yet
+        self.service._stop_pending = ("A1B2C3D4", self.now + 5)
+        self.service.controller.last_action = ""
+        self.service.controller.on_badge = lambda uid: "extended"
+        self.presence(True)
+        self.service._badge_seen("B0B0B0B0")
+        self.assertIsNone(self.service._stop_pending, "la partie continue")
+        self.assertEqual(self.service._launched_uid, "B0B0B0B0", "la carte bonus tient le jeu")
+
+
+class ServiceExtrasTest(unittest.TestCase):
+    """Commands from the page, end of play time, status light."""
+
+    def setUp(self):
+        from unittest import mock as _mock
+
+        from rfid import daemon as _daemon
+        from rfid.playtime import PlayTimer
+
+        self.mock = _mock
+        self.daemon = _daemon
+        self.home = tempfile.mkdtemp(prefix="rfid-extras-")
+        self.addCleanup(shutil.rmtree, self.home, True)
+        service = _daemon.Service.__new__(_daemon.Service)
+        service.home = self.home
+        service.log = support.RecordingLog()
+        service._web_command_signature = None
+        service._active_uid = None
+        service._absent_since = None
+        service._absent_hits = 0
+        service._last_read_at = 0.0
+        service._adopt_next_read = False
+        service._adopt_until = 0.0
+        service._expire_at = None
+        service._next_game_check = 0.0
+        service._game_gone = 0
+        service._launched_uid = "A1"
+        service._pairing_shown = None
+        service._next_light_check = 0.0
+        service._light_pairing = False
+        service.reader = object()
+        service.screen = _mock.Mock()
+        service.light = _mock.Mock()
+        service.light.enabled = True
+        service.feedback = _mock.Mock()
+        service.controller = _mock.Mock()
+        service.controller.mode = ""
+        service.controller.launched_uid = "A1"
+        self.clock = support.FakeClock(500.0)
+        service.playtime = PlayTimer(None, clock=self.clock)
+        self.service = service
+        patch = _mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.clock.now)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def command(self, payload):
+        with open(os.path.join(self.home, "agent-command.json"), "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        self.service._consume_agent_command()
+
+    def test_commande_jeu_choisi(self):
+        self.command({"cmd": "arm_target", "target": {"system": "snes", "name": "Mario",
+                                                       "path": "/recalbox/share/roms/snes/Mario.smc"}})
+        target = self.service.controller.arm_target.call_args[0][0]
+        self.assertEqual((target.system, target.game, target.path),
+                         ("snes", "Mario.smc", "/recalbox/share/roms/snes/Mario.smc"))
+
+    def test_commande_carte_speciale(self):
+        self.command({"cmd": "arm_entry", "entry": {"kind": "action", "action": "quit"}})
+        self.service.controller.arm_entry.assert_called_once_with({"kind": "action", "action": "quit"})
+
+    def test_fin_du_temps_de_jeu(self):
+        self.service.playtime.start("A1", {"name": "Mario"}, 1)
+        self.clock.advance(61)
+        self.service._playtime_step()
+        self.service.screen.say.assert_called_with("expired")
+        self.service.light.flash.assert_called_with("timeup")
+        self.service.controller.stop_game.assert_not_called()
+        self.clock.advance(self.daemon.Service.EXPIRE_NOTICE_S + 0.1)
+        self.service._playtime_step()
+        self.service.controller.stop_game.assert_called_once_with("time")
+
+    def test_jeu_quitte_depuis_son_menu(self):
+        self.service.playtime.start("A1", {"name": "Mario"}, 30)
+        self.service.controller.game_running.return_value = False
+        for _ in range(3):
+            self.clock.advance(21)
+            self.service._playtime_step()
+        self.assertIsNone(self.service.playtime.session)
+        self.assertEqual(self.service.playtime.last["reason"], "quit")
+
+    def test_voyant(self):
+        self.service._light_step()
+        self.service.light.set_state.assert_called_with("playing")
+        self.service.controller.mode = "associate"
+        self.service._light_step()
+        self.service.light.set_state.assert_called_with("associate")
+        self.service.reader = None
+        self.service._light_step()
+        self.service.light.set_state.assert_called_with("noreader")
+
+    def test_demande_d_acces_affichee_une_fois(self):
+        with self.mock.patch.object(self.daemon.pairing, "pending", return_value={"id": "R1"}):
+            self.service._light_step()
+            self.clock.advance(1)
+            self.service._light_step()
+        self.service.screen.say.assert_called_once_with("pairing")
+        self.service.light.set_state.assert_called_with("pairing")
 
 
 if __name__ == "__main__":

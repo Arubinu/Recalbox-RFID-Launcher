@@ -17,8 +17,9 @@ At startup, this script:
 * starts the RFID service;
 * then runs the WebSocket agent that lets `installer.html` manage the badges.
 
-No interface is served by the Recalbox: only the WebSocket agent, open to a
-computer once it has been authorized with a 3 s press on the box button.
+The agent also serves the management page to phones (http://<recalbox>:8765/);
+a computer or a phone can only act once authorized with a 3 s press on the
+box button.
 """
 
 import glob

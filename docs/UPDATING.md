@@ -1,174 +1,114 @@
-# Mise à jour
+# Updating
 
-## Méthode automatique — copier un dossier plus récent puis redémarrer
-
-1. Copiez le dossier de la nouvelle version (par exemple
-   `recalbox-rfid-1.7.0`) sur `\\RECALBOX\share` (ou laissez l'installateur
-   `.cmd` le faire).
-2. Redémarrez Recalbox.
-
-Au démarrage, le script permanent compare la version du dossier présent sur le
-partage à celle qui est installée : si elle est **plus récente**, il l'installe
-tout seul, puis redémarre le service. Les versions identiques ou plus anciennes
-sont ignorées (pas de rétrogradation). Détail :
-`/recalbox/share/system/rfid/logs/auto-install.log`.
-
-## Régénérer l'installateur unique
-
-Après chaque modification d'un fichier du projet :
-
-```sh
-python tools/build_installer.py
-```
-
-Le fichier `dist/recalbox-rfid-installer.html` est reconstruit avec le
-contenu à jour. Un test échoue si le fichier livré n'est pas régénéré.
-
-## Principe
-
-Le programme est installé dans un dossier **avec** ses données :
+Badges, settings, card templates and play time quotas are **always kept**:
+an update only replaces the program.
 
 ```
 /recalbox/share/system/rfid/
-├── app/         <- programme (remplacé à chaque mise à jour)
-├── config.ini   <- VOTRE configuration (conservée)
-├── tags.json    <- VOS badges (conservés)
+├── app/                 <- program (replaced by every update)
+├── web/                 <- page served to phones (replaced)
+├── config.ini           <- YOUR settings (kept)
+├── tags.json            <- YOUR badges (kept)
+├── card-templates.json  <- YOUR card templates (kept)
+├── playtime.json        <- bonus card uses (kept)
 ├── logs/
 ├── rfidctl
-├── installer.html
-├── install.sh   <- copie de l'installateur
-├── uninstall.sh
-└── VERSION      <- version installée
+├── install.sh, uninstall.sh, installer.html, README*.md, CHANGELOG.md
+└── VERSION              <- installed version
 ```
 
-La mise à jour **remplace uniquement `app/`** (et les fichiers de programme),
-puis l'agent se recharge et redémarre le service. Configuration et badges ne sont
-jamais touchés. Aucun secret n'est stocké dans ce dossier : l'agent tire un
-nouveau secret de session à chaque démarrage, donc l'autorisation est à redonner
-après chaque mise à jour (appui de 3 s sur le bouton).
+## Method 1 — one click from the page (recommended)
 
-## Méthode 1 — depuis `installer.html` (aucune ligne de commande)
+Open the latest `recalbox-rfid-installer.html`, tab **Updates** › **"Update to
+X"**: the page sends the program it contains, the Recalbox installs it, the
+service and the agent restart, and the page reconnects on its own. The
+authorization survives the update (no button press needed).
 
-1. Double-cliquez sur `installer.html`, renseignez l'adresse et le port `8765`,
-   puis cliquez sur « Se connecter » et gardez le bouton du boîtier appuyé
-   3 secondes (compte à rebours de 30 s).
-2. Ouvrez **« Mettre à jour depuis un fichier ZIP ou une adresse »** (dernière
-   carte, tout en bas) puis **« Choisir un fichier ZIP »** : l'archive est
-   envoyée par WebSocket depuis le PC, installée sur la Recalbox, et le journal
-   s'affiche ;
-3. ou collez une URL puis cliquez sur « Installer depuis cette adresse ».
+The page warns when it is older than the Recalbox ("This page is older than the
+Recalbox"): open the newest one.
 
-L'agent se recharge tout seul avec la nouvelle version (la page se reconnecte et
-demande une nouvelle autorisation : un appui de 3 s sur le bouton suffit), puis il
-suffit de cliquer sur **« Redémarrer la Recalbox »** (carte « Installation et
-service ») si le SPI vient d'être activé.
+## Method 2 — other ways, from the page
 
-Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
+Tab **Updates** › "Other ways to update":
 
-## Méthode 2 — nouvelle version copiée sur le partage
+* **Send a ZIP file**: a release archive (`recalbox-rfid-X.Y.Z.zip`), sent from
+  the computer;
+* **Install from the share**: a newer `recalbox-rfid` folder copied into
+  `\\RECALBOX\share`;
+* **Install from this address**: the URL of a ZIP (a GitHub release, for
+  example);
+* **Reinstall the same version**: repairs an installation.
 
-1. Copiez le nouveau dossier (par exemple `recalbox-rfid-1.1.0`) sur
-   `\\RECALBOX\share`.
-2. Lancez :
+The ZIP must hold `install.sh` at its root or in a single sub-folder.
 
-   ```powershell
-   ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid-1.1.0/install.sh --upgrade"
-   ```
+## Method 3 — copy a newer folder, then restart
 
-3. Vérifiez la version :
+Copy the folder of the new version into `\\RECALBOX\share` (the page's step 2
+or the `.cmd` installer do it), then restart the Recalbox. At boot, the
+permanent script compares the version on the share with the installed one: if
+it is **newer**, it installs it. Same or older versions are ignored (no
+downgrade). Log: `/recalbox/share/system/rfid/logs/auto-install.log`.
 
-   ```sh
-   sh /recalbox/share/system/rfid/rfidctl version
-   ```
-
-Le service redémarre automatiquement s'il tournait (aucun redémarrage de
-Recalbox nécessaire, sauf si le SPI vient d'être activé).
-
-## Méthode 3 — depuis une URL (mise à jour à distance)
-
-Hébergez un ZIP du projet (contenu du dossier `recalbox-rfid`, avec `install.sh`
-à la racine), par exemple sur GitHub Releases, sur un serveur web personnel ou
-sur un NAS. Ensuite, soit dans `installer.html` (champ URL), soit en SSH :
+## Method 4 — SSH
 
 ```sh
-sh /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid-1.3.0.zip
+# a folder copied to the share
+ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --upgrade"
+# a ZIP hosted online
+ssh root@recalbox.local "sh /recalbox/share/system/rfid/rfidctl self-update https://example.com/recalbox-rfid.zip"
 ```
 
-Ou :
-
-```sh
-sh /recalbox/share/system/rfid/install.sh --from-url https://exemple.fr/recalbox-rfid-1.3.0.zip
-```
-
-Le ZIP est téléchargé avec `curl` (présent dans Recalbox), décompressé avec
-`python3 -m zipfile`, puis l'installateur de la nouvelle version est exécuté en
-mode `--upgrade`.
-
-Astuce : pour ne pas retaper l'URL, notez-la dans `config.ini` :
+The ZIP is downloaded with `curl`, unpacked with `python3 -m zipfile`, then the
+installer of the new version runs in `--upgrade` mode. To avoid typing the URL
+again, set it in `config.ini`:
 
 ```ini
 [update]
-url = https://exemple.fr/recalbox-rfid.zip
+url = https://example.com/recalbox-rfid.zip
 ```
 
-`rfidctl self-update` sans argument utilisera alors cette URL. Sans URL
-configurée, la commande réinstalle simplement la version locale (utile pour
-réparer une installation).
+`rfidctl self-update` without an argument then uses it; without a configured
+URL, it reinstalls the local version (repair).
 
-## Méthode 4 — depuis la console Recalbox
+## For developers: rebuild the page and the ZIP
+
+After any change to a project file:
 
 ```sh
-sh /recalbox/share/system/rfid/install.sh --upgrade
+python tools/build_installer.py                       # dist/recalbox-rfid-installer.html
+python tools/build_installer.py --zip dist/recalbox-rfid.zip
 ```
 
-La copie de `install.sh` présente dans le dossier d'installation réinstalle la
-version… déjà installée. Pour une nouvelle version, utilisez la méthode 2 ou 3.
+A test fails when the delivered page is not rebuilt. The GitHub workflow builds
+both for every release (see [PUBLISHING.md](PUBLISHING.md)).
 
-## Fabriquer le ZIP de distribution
+## Going back
 
-Depuis le dossier du projet (Windows, PowerShell) :
-
-```powershell
-Compress-Archive -Path app, userscript, bootstrap, docs, tools, dist, installer.html, `
-                  install.sh, uninstall.sh, VERSION, README.md, CHANGELOG.md `
-                 -DestinationPath recalbox-rfid-1.4.0.zip
-```
-
-Depuis un système Unix :
+Install the older version with method 2 or 4. The data stay compatible: the
+format of `tags.json` is versioned (`"schema": 1`); entries added by newer
+versions (special cards, time limits) are ignored by older ones with a line in
+the log. Before a big update, keep a copy:
 
 ```sh
-zip -r recalbox-rfid-1.4.0.zip app userscript bootstrap docs tools dist installer.html \
-                              install.sh uninstall.sh VERSION README.md CHANGELOG.md
+cp /recalbox/share/system/rfid/tags.json /recalbox/share/tags-backup.json
 ```
 
-Le ZIP doit contenir `install.sh` **à sa racine** (ou dans un unique
-sous-dossier : l'installateur le retrouve).
+or use "Save the list" in the page.
 
-## Retour arrière
+## Checking what is installed
 
-Réinstallez l'ancienne version avec la méthode 2 (`install.sh --upgrade`).
-Les données restent compatibles : le format de `tags.json` est versionné
-(`"schema": 1`) et n'a pas changé.
+* Page: tab **Updates** (installed version, version of the running service).
+* SSH:
 
-Avant toute mise à jour importante, gardez une copie de :
+  ```sh
+  sh /recalbox/share/system/rfid/rfidctl version
+  sh /recalbox/share/system/rfid/rfidctl status
+  ```
 
-```sh
-cp /recalbox/share/system/rfid/tags.json /recalbox/share/tags-sauvegarde.json
-```
+## When it fails
 
-## Vérifier ce qui est installé
-
-```sh
-sh /recalbox/share/system/rfid/rfidctl version   # version du programme
-cat /recalbox/share/system/rfid/VERSION       # version du paquet installé
-sh /recalbox/share/system/rfid/rfidctl status    # service + uptime
-```
-
-## En cas d'échec
-
-* `rfidctl logs` ou `cat /recalbox/share/system/rfid/logs/rfid.log` ;
-* si le service ne démarre pas, `logs/service.out` contient la sortie de la
-  tentative de démarrage manuelle ;
-* relancer l'installateur est sans danger (idempotent) ;
-* pour repartir d'une base saine : `rfidctl restart`, puis au besoin
-  `rfidctl self-update ...` à nouveau.
+* The installation log is in the page (Updates › Installation log) and in
+  `logs/install.log`;
+* `rfidctl logs`, or `logs/rfid.log`; when the service does not start,
+  `logs/service.out` holds the output of the start attempt;
+* running the installer again is safe (idempotent).

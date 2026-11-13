@@ -1,10 +1,13 @@
 """WebSocket agent: installation, update and management from `installer.html`.
 
-Why a WebSocket rather than a page served by the Recalbox? Because the
-interface is a plain HTML file opened on the PC (`file://`): it does not
-share the Recalbox origin, so `fetch()` would be blocked by the browser,
-whereas a `WebSocket` is allowed (checked: the `null` origin of a local file
-is accepted).
+Two ways to open the page:
+
+* a plain HTML file opened on the PC (`file://`): it does not share the
+  Recalbox origin, so `fetch()` would be blocked, whereas a `WebSocket` is
+  allowed (the `null` origin of a local file is accepted);
+* the same page served by this agent over plain HTTP (`GET /`), for phones
+  and tablets: same origin, accepted only under a local name or an IP
+  address (protection against DNS rebinding).
 
 Everything comes from the standard library: HTTP handshake, RFC 6455 frames
 and the service loop. Only a session authorized by a physical press can act.
@@ -14,8 +17,11 @@ Commands (JSON, one answer per `id`):
 * ``pair.request`` / ``pair.check`` / ``pair.cancel`` (pairing confirmed with the button);
 * ``auth`` (session secret), ``status``, ``version``, ``log``;
 * ``install`` (share folder or URL), ``upload.begin/chunk/end`` (ZIP);
-* ``tags.list/add/remove/export/import``;
-* ``associate``, ``scan`` (association mode / simulated badge);
+* ``tags.list/add/update/remove/export/import``;
+* ``associate`` (selected game, game chosen in the page, special card, erase),
+  ``scan`` (simulated badge);
+* ``games.systems/search``, ``media.image/logo`` (game library, card designer);
+* ``cards.templates``, ``cards.template.save/delete`` (card templates);
 * ``service`` (start/stop/restart), ``reboot``.
 
 Server -> client events: ``{"event": "log"}``, ``{"event": "install"}``,
@@ -50,10 +56,12 @@ from .consts import (
     READER_TEST_FILENAME,
     TOKEN_FILENAME,
 )
+from . import bootcfg
 from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import current_target, read_state, resolve_rom_path, supports_start_command
+from .library import Library, LibraryError
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -72,6 +80,14 @@ SESSION_FILENAME = "session-secret"
 PAIRING_MINUTES = 15
 USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT = "/recalbox/share/userscripts/recalbox-rfid-agent(permanent).py3"
+#: Card templates saved from the page (shared by every computer and phone).
+TEMPLATES_FILENAME = "card-templates.json"
+MAX_TEMPLATES = 60
+MAX_TEMPLATE_BYTES = 64 * 1024
+#: Management page served to phones (built by tools/build_installer.py).
+WEB_PAGES = ("web/index.html", "installer.html")
+#: Host names accepted for the page served by the agent (DNS rebinding guard).
+LOCAL_HOSTNAMES = ("recalbox", "recalbox.local", "localhost")
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +345,8 @@ class Agent:
         open_pairing_window(self.home)
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
+        self.library = Library(log=log)
+        self._templates_guard = threading.Lock()
         self._install_lock = threading.Lock()
         self._install_running = False
         self.server = None
@@ -446,6 +464,14 @@ class Agent:
     def config_path(self) -> str:
         return os.path.join(self.home, CONFIG_FILENAME)
 
+    def web_page(self):
+        """Management page to serve to phones (or None)."""
+        for relative in WEB_PAGES:
+            path = os.path.join(self.home, relative)
+            if os.path.isfile(path):
+                return path
+        return None
+
     def _tags(self) -> TagStore:
         with self._store_guard:
             self._store.reload_if_changed()
@@ -508,6 +534,8 @@ class Agent:
                 "port": self.port,
                 "session": bool(self.token),
                 "pairing": pairing_is_open(self.home),
+                "ip": lan_ip(),
+                "web": self.web_page() is not None,
             },
         }
 
@@ -975,13 +1003,121 @@ class Agent:
         return {"ok": result.returncode == 0, "output": result.stdout or ""}
 
     def _cmd_associate(self, client, message):
+        """Waits for a badge: selected game, game chosen in the page, special
+        card, or badge to erase."""
         mode = str(message.get("mode") or "associate")
-        if mode not in ("associate", "delete"):
+        if mode not in ("associate", "delete", "card"):
             raise ValueError("mode inconnu")
         if not process_alive(read_pid(self.home)):
             raise RuntimeError("le service RFID n'est pas demarre")
+        if mode == "card":
+            entry = message.get("entry")
+            if not isinstance(entry, dict):
+                raise ValueError("carte manquante")
+            # Checked now: the page gets a clear message rather than a silent failure.
+            clean = TagStore._clean_entry(entry)
+            self._write_command("arm_entry", entry=clean)
+            return {"armed": "associate", "entry": clean}
+        target = message.get("target")
+        if mode == "associate" and isinstance(target, dict):
+            system = str(target.get("system") or "").strip()
+            path = str(target.get("path") or "").strip()
+            if not system or not path or "|" in path:
+                raise ValueError("jeu invalide")
+            self._write_command("arm_target", target={
+                "system": system, "path": path, "name": str(target.get("name") or "")})
+            return {"armed": "associate"}
         self._write_command("arm_" + mode)
         return {"armed": mode}
+
+    # ------------------------------------------------------------- library
+    def _cmd_games_systems(self, client, message):
+        return {"systems": self.library.systems(force=bool(message.get("refresh")))}
+
+    def _cmd_games_search(self, client, message):
+        try:
+            limit = max(1, min(200, int(message.get("limit") or 60)))
+        except (TypeError, ValueError):
+            limit = 60
+        games = self.library.search(str(message.get("query") or ""),
+                                    str(message.get("system") or ""), limit)
+        return {"games": games}
+
+    def _cmd_media_image(self, client, message):
+        """Scraped picture of a game (base64), for the card designer."""
+        try:
+            found = self.library.game_image(str(message.get("system") or ""), str(message.get("path") or ""))
+        except LibraryError as exc:
+            raise RuntimeError(str(exc))
+        if not found:
+            return {"found": False}
+        kind, data = found
+        return {"found": True, "type": kind, "data": base64.b64encode(data).decode("ascii")}
+
+    def _cmd_media_logo(self, client, message):
+        """Theme logo of a console (SVG text)."""
+        try:
+            found = self.library.system_logo(str(message.get("system") or ""),
+                                             str(message.get("kind") or "logo"),
+                                             str(message.get("region") or ""))
+        except LibraryError as exc:
+            raise ValueError(str(exc))
+        if not found:
+            return {"found": False}
+        return {"found": True, "type": found[0], "svg": found[1].decode("utf-8", "replace")}
+
+    # ------------------------------------------------------- card templates
+    def _templates_path(self) -> str:
+        return os.path.join(self.home, TEMPLATES_FILENAME)
+
+    def _read_templates(self) -> list:
+        try:
+            with open(self._templates_path(), "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            return []
+        items = data.get("templates") if isinstance(data, dict) else None
+        return [item for item in (items or []) if isinstance(item, dict) and item.get("id")]
+
+    def _write_templates(self, items: list) -> None:
+        path = self._templates_path()
+        temporary = path + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"templates": items}, handle, ensure_ascii=False)
+        os.replace(temporary, path)
+
+    def _cmd_cards_templates(self, client, message):
+        with self._templates_guard:
+            return {"templates": self._read_templates()}
+
+    def _cmd_cards_template_save(self, client, message):
+        template = message.get("template")
+        if not isinstance(template, dict):
+            raise ValueError("modele manquant")
+        if len(json.dumps(template)) > MAX_TEMPLATE_BYTES:
+            raise ValueError("modele trop volumineux")
+        name = str(template.get("name") or "").strip()[:60]
+        if not name:
+            raise ValueError("donnez un nom au modele")
+        ident = str(template.get("id") or "").strip()[:40] or secrets.token_hex(6)
+        template = dict(template, id=ident, name=name, saved=time.strftime("%Y-%m-%dT%H:%M:%S"))
+        with self._templates_guard:
+            items = [item for item in self._read_templates() if item.get("id") != ident]
+            items.append(template)
+            if len(items) > MAX_TEMPLATES:
+                raise ValueError("trop de modeles enregistres (%d au plus)" % MAX_TEMPLATES)
+            self._write_templates(items)
+        return {"template": template}
+
+    def _cmd_cards_template_delete(self, client, message):
+        # "template", not "id": "id" is the request number of every message.
+        ident = str(message.get("template") or "")
+        with self._templates_guard:
+            items = self._read_templates()
+            kept = [item for item in items if item.get("id") != ident]
+            if len(kept) != len(items):
+                self._write_templates(kept)
+        return {"removed": len(kept) != len(items)}
 
     def _cmd_config_get(self, client, message):
         """Settings editable from the page (with their current value)."""
@@ -1017,7 +1153,18 @@ class Agent:
                 "Options enregistrees : %s (%s)"
                 % (", ".join(sorted(modifiees)), "service recharge" if applique else "service arrete")
             )
-        return {"saved": sorted(modifiees), "reloaded": applique}
+        reboot = False
+        boot_errors = []
+        if cfg.get("led", "type", "none").lower() == "ws2812" and not os.path.exists("/dev/spidev1.0"):
+            # Programmable LEDs: the second SPI bus is enabled at the next boot.
+            if os.path.isdir("/boot"):
+                outcome = bootcfg.ensure_line()
+                boot_errors = outcome["errors"]
+                if self.log and outcome["changed"]:
+                    self.log.info("Second bus SPI active dans %s" % ", ".join(outcome["changed"]))
+            reboot = bootcfg.has_line(bootcfg.SPI1_OVERLAY)
+        return {"saved": sorted(modifiees), "reloaded": applique, "reboot": reboot,
+                "boot_errors": boot_errors}
 
     def _reload_service(self) -> bool:
         """Asks the service to read its configuration again (SIGHUP)."""
@@ -1174,11 +1321,24 @@ class Agent:
                     "system": entry["system"],
                     "game": entry["game"],
                     "name": entry["name"],
+                    "path": entry.get("path") or "",
+                    "kind": entry.get("kind") or "game",
+                    "action": entry.get("action") or "",
+                    "params": entry.get("params") or {},
+                    "limit_min": entry.get("limit_min"),
                     "hits": entry.get("hits", 0),
                     "last_used": entry.get("last_used") or "",
                 }
             )
         return {"count": len(items), "tags": items}
+
+    def _cmd_tags_update(self, client, message):
+        """Renames a badge, or changes its time limit / card parameters."""
+        uid = str(message.get("uid") or "")
+        changes = message.get("changes")
+        if not uid or not isinstance(changes, dict):
+            raise ValueError("badge ou modifications manquants")
+        return {"entry": self._tags().update(uid, changes)}
 
     def _cmd_tags_add(self, client, message):
         system = str(message.get("system") or "").strip()
@@ -1240,7 +1400,8 @@ class Agent:
 
 #: Settings shown in the page's Settings tab (section, key, type...). The
 #: labels are French on purpose: they are the translation keys of the page
-#: (i18n/<code>.json). "advanced" settings are folded away by the page.
+#: (i18n/<code>.json). "advanced" settings are folded away by the page;
+#: "when" ("section.key=value" or "!=") shows a setting only when it matters.
 OPTIONS = (
     {"section": "launch", "key": "action", "type": "choice",
      "choices": ["launch", "none"], "default": "launch",
@@ -1261,6 +1422,36 @@ OPTIONS = (
     {"section": "feedback", "key": "sound", "type": "bool", "default": True,
      "label": "Bips sonores",
      "help": "Confirment l'association d'un badge et signalent les erreurs."},
+    {"section": "time", "key": "default_limit_min", "type": "number", "min": 0, "max": 600,
+     "default": 0, "label": "Temps de jeu par partie (minutes)",
+     "help": "Pour les badges sans limite à eux. 0 = pas de limite. Prévient 5 minutes puis 1 minute avant la fin, puis quitte le jeu."},
+    {"section": "screen", "key": "messages", "type": "bool", "default": True,
+     "label": "Messages à l'écran pendant les parties",
+     "help": "Temps restant, temps bonus, demande d'accès d'un appareil… Affichés par les jeux RetroArch (le menu de la Recalbox ne peut pas les afficher)."},
+    {"section": "led", "key": "type", "type": "choice", "choices": ["none", "rgb", "ws2812"],
+     "default": "none", "label": "Voyant",
+     "help": "Une LED qui montre ce que fait le lecteur : prêt, association, erreur, fin du temps de jeu."},
+    {"section": "led", "key": "idle", "type": "bool", "default": True, "when": "led.type!=none",
+     "label": "Voyant allumé au repos",
+     "help": "Vert quand tout est prêt. Désactivé : le voyant ne s'allume que pour signaler quelque chose."},
+    {"section": "led", "key": "common", "type": "choice", "choices": ["cathode", "anode"], "when": "led.type=rgb",
+     "default": "cathode", "label": "LED RGB : patte commune",
+     "help": "La plus longue patte de la LED : reliée à la masse (cathode commune, le plus courant) ou au 3,3 V (anode commune)."},
+    {"section": "led", "key": "count", "type": "number", "min": 1, "max": 150, "default": 1, "when": "led.type=ws2812",
+     "label": "LED programmables : nombre de LED",
+     "help": "Une seule LED, un anneau ou un bout de ruban : toutes prennent la même couleur."},
+    {"section": "led", "key": "brightness", "type": "number", "min": 2, "max": 100, "default": 40, "when": "led.type=ws2812",
+     "label": "LED programmables : luminosité (%)",
+     "help": "Moins fort, c'est moins éblouissant et ça consomme moins."},
+    {"section": "led", "key": "pin_red", "type": "number", "min": 2, "max": 27, "when": "led.type=rgb", "default": 22,
+     "advanced": True, "label": "LED RGB : broche du rouge (GPIO)",
+     "help": "Numéro GPIO (BCM), pas le numéro de broche. 22 = broche 15."},
+    {"section": "led", "key": "pin_green", "type": "number", "min": 2, "max": 27, "when": "led.type=rgb", "default": 23,
+     "advanced": True, "label": "LED RGB : broche du vert (GPIO)",
+     "help": "23 = broche 16."},
+    {"section": "led", "key": "pin_blue", "type": "number", "min": 2, "max": 27, "when": "led.type=rgb", "default": 24,
+     "advanced": True, "label": "LED RGB : broche du bleu (GPIO)",
+     "help": "24 = broche 18."},
     {"section": "rfid", "key": "poll_interval_ms", "type": "number", "min": 50, "max": 1000,
      "default": 150, "advanced": True,
      "label": "Fréquence de lecture (millisecondes)",
@@ -1347,14 +1538,23 @@ class _Handler(socketserver.BaseRequestHandler):
             return
         origin = ""
         key = ""
+        host = ""
         for line in headers.split("\r\n")[1:]:
             if line.lower().startswith("sec-websocket-key:"):
                 key = line.split(":", 1)[1].strip()
             elif line.lower().startswith("origin:"):
                 origin = line.split(":", 1)[1].strip()
-        # Web origins are refused: only a local page (file://, origin "null") or
-        # a client without an Origin header can connect.
-        if origin and origin.lower() != "null":
+            elif line.lower().startswith("host:"):
+                host = line.split(":", 1)[1].strip()
+        request_line = headers.split("\r\n", 1)[0]
+        if not key and request_line.upper().startswith(("GET ", "HEAD ")):
+            # Plain HTTP request: the management page, for phones and tablets.
+            self._serve_page(agent, sock, request_line, host)
+            return
+        # Web origins are refused: only a local page (file://, origin "null"),
+        # the page served by this agent (same origin), or a client without an
+        # Origin header can connect.
+        if origin and origin.lower() != "null" and not same_origin(origin, host):
             try:
                 sock.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
             except OSError:
@@ -1404,6 +1604,42 @@ class _Handler(socketserver.BaseRequestHandler):
             keep = agent.process(client, message)
         client.close()
 
+    def _serve_page(self, agent, sock, request_line: str, host: str) -> None:
+        """Serves the management page (http://recalbox.local:8765/)."""
+        parts = request_line.split()
+        target = parts[1] if len(parts) > 1 else "/"
+        path = target.split("?", 1)[0].split("#", 1)[0]
+        page = agent.web_page()
+        status = "200 OK"
+        body = b""
+        kind = "text/html; charset=utf-8"
+        if not is_private_address(self.client_address) or not local_host_header(host):
+            status, body, kind = "403 Forbidden", b"", "text/plain"
+        elif path not in ("/", "/index.html"):
+            status, body, kind = "404 Not Found", b"not found", "text/plain"
+        elif page is None:
+            status = "503 Service Unavailable"
+            body = ("<!doctype html><meta charset=utf-8><p>Page indisponible : "
+                    "mettez le programme a jour.</p>").encode("utf-8")
+        else:
+            try:
+                with open(page, "rb") as handle:
+                    body = handle.read()
+            except OSError:
+                status, body = "500 Internal Server Error", b""
+            # Tells the page it is served by the Recalbox itself.
+            body = body.replace(b"<head>", b'<head>\n<meta name="rfid-agent" content="1">', 1)
+        head = request_line.upper().startswith("HEAD ")
+        response = (
+            "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n"
+            "Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n"
+            "Referrer-Policy: no-referrer\r\nConnection: close\r\n\r\n" % (status, kind, len(body))
+        ).encode("ascii")
+        try:
+            sock.sendall(response + (b"" if head else body))
+        except OSError:
+            pass
+
     @staticmethod
     def _read_headers(sock) -> str:
         data = b""
@@ -1415,6 +1651,61 @@ class _Handler(socketserver.BaseRequestHandler):
             if len(data) > 16384:
                 raise ValueError("en-tetes trop longs")
         return data.decode("latin-1")
+
+
+def _host_name(host: str) -> str:
+    """``192.168.1.20:8765`` -> ``192.168.1.20``; ``[fe80::1]:8765`` -> ``fe80::1``."""
+    host = str(host or "").strip().lower()
+    if host.startswith("["):
+        return host[1:host.find("]")] if "]" in host else host[1:]
+    return host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+
+
+def local_host_header(host: str) -> bool:
+    """The page is only served under a local name or an IP address.
+
+    Refusing other names blocks "DNS rebinding": a web site whose name
+    suddenly points to the Recalbox would otherwise be treated as the
+    Recalbox's own page.
+    """
+    name = _host_name(host)
+    if not name:
+        return False
+    if name in LOCAL_HOSTNAMES:
+        return True
+    try:
+        own = socket.gethostname().lower()
+    except OSError:
+        own = ""
+    if own and name in (own, own + ".local"):
+        return True
+    try:
+        socket.inet_pton(socket.AF_INET6 if ":" in name else socket.AF_INET, name)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def same_origin(origin: str, host: str) -> bool:
+    """True for the page served by this agent (Origin == http://<Host>)."""
+    origin = str(origin or "").strip().lower().rstrip("/")
+    return bool(host) and local_host_header(host) and origin == "http://" + str(host).strip().lower()
+
+
+def lan_ip() -> str:
+    """Local network address of the Recalbox (for the phone link)."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # No packet is sent: connect() only picks the outgoing interface.
+        probe.connect(("192.0.2.1", 9))
+        address = probe.getsockname()[0]
+    except OSError:
+        address = ""
+    finally:
+        probe.close()
+    if not address or address.startswith("127."):
+        address = _local_ip()
+    return address
 
 
 def _local_ip() -> str:

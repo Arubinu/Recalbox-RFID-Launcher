@@ -75,6 +75,35 @@ sound = 1
 # auto, paplay, aplay or none
 sound_player = auto
 
+[time]
+# Play time allowed by a game card that has no limit of its own
+# (minutes, 0 = no limit). Warnings 5 and 1 minute before the end.
+default_limit_min = 0
+
+[screen]
+# Messages on the game screen (time left, bonus, access request...).
+# Shown by RetroArch during a game; the Recalbox menu cannot show them.
+messages = 1
+# RetroArch network command port
+retroarch_port = 55355
+
+[led]
+# Status light: none, rgb (RGB LED on 3 GPIO pins) or ws2812 (programmable
+# LEDs on the second SPI bus, data on GPIO20 = physical pin 38).
+type = none
+# RGB LED: GPIO pins (BCM) of the red, green and blue legs
+pin_red = 22
+pin_green = 23
+pin_blue = 24
+# Shared leg of the RGB LED: cathode (to GND) or anode (to 3.3 V)
+common = cathode
+# Programmable LEDs: number of LEDs, brightness (%), SPI port
+count = 1
+brightness = 40
+spi_device = /dev/spidev1.0
+# Light on (green) when nothing happens (0 = off at rest)
+idle = 1
+
 [agent]
 # WebSocket agent used by installer.html (ws://recalbox.local:8765)
 enabled = 1

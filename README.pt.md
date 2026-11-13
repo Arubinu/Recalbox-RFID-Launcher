@@ -5,6 +5,7 @@
 **Um tag, um jogo.** Coloque um tag RFID num leitor ligado ao seu Recalbox: o jogo associado arranca, como um
 cartucho. Tudo se configura a partir de uma única página web aberta no computador, sem instalar nada nele e sem linha
 de comandos.
+A mesma página também abre num telemóvel, servida pelo próprio Recalbox.
 
 ## 💡 A ideia
 
@@ -27,6 +28,13 @@ usar, crianças incluídas, sem nunca passar pelos menus.
 - 🔄 **Atualizações com um clique** a partir da página; os tags e as definições são sempre mantidos
 - 🌍 **6 idiomas** (inglês, francês, alemão, espanhol, italiano, português), temas claro e escuro
 - 🧩 **Sem dependências**: apenas o Python 3 já incluído no Recalbox, sem pacotes nem alterações ao sistema
+- 🖨️ **Cartões para imprimir**: a imagem do jogo, o logótipo e as cores da sua consola, sete modelos, cada elemento
+  pode ser movido e rodado; dez cartões por folha A4
+- 📱 **Também no telemóvel**: o Recalbox serve a página ele próprio (código QR); procure um jogo e associe um tag sem
+  a TV
+- 🎲 **Cartões especiais**: jogo ao acaso, tempo bónus, sair do jogo, desligar
+- ⏱️ **Tempo de jogo**: um limite por tag ou para todos, avisos antes do fim, cartões bónus com quota
+- 💡 **Luz de estado e mensagens no ecrã**: um LED RGB ou LED programáveis, mensagens no ecrã do jogo
 
 ## 🧰 O que é preciso
 
@@ -38,6 +46,7 @@ usar, crianças incluídas, sem nunca passar pelos menus.
 | Tags / porta-chaves | 13,56 MHz ISO 14443-A (MIFARE Classic, Ultralight…). Os tags de 125 kHz não funcionam |
 | Um botão de pressão | qualquer botão de contacto momentâneo, sem resistência |
 | Fios Dupont | 7 (6 para o leitor, mais 1 para o botão) |
+| Luz de estado (opcional) | um módulo LED RGB ou LED programáveis WS2812: ver [docs/WIRING.md](docs/WIRING.md) |
 
 > ⚠️ O RC522 funciona **apenas com 3,3 V**. Nunca o ligue ao pino de 5 V do Raspberry Pi: ficaria destruído.
 
@@ -57,7 +66,7 @@ usar, crianças incluídas, sem nunca passar pelos menus.
 | **Botão** | GPIO17 e GND | 11 e 9 |
 
 O programa ativa o pull-up interno do Raspberry Pi: sem resistência. Detalhes: [docs/WIRING.md](docs/WIRING.md)
-(em francês).
+(em inglês).
 
 ## 🚀 Instalação
 
@@ -95,7 +104,7 @@ O programa ativa o pull-up interno do Raspberry Pi: sem resistência. Detalhes: 
 - **Por SSH**: `ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --start"` (palavra-passe
   predefinida `recalboxroot`).
 
-Guia passo a passo: [docs/INSTALLATION.md](docs/INSTALLATION.md) (em francês).
+Guia passo a passo: [docs/INSTALLATION.md](docs/INSTALLATION.md) (em inglês).
 
 ## 🎯 No dia a dia
 
@@ -117,11 +126,25 @@ Guia passo a passo: [docs/INSTALLATION.md](docs/INSTALLATION.md) (em francês).
 | 2 bips graves descendentes | tag desconhecido ou ação recusada |
 | 3 bips descendentes | tempo esgotado (10 s para colocar o tag) |
 
+## 🖨️ Cartões, cartões especiais e tempo de jogo
+
+- **Procurar um jogo** (separador Tags): escreva algumas letras e associe um tag ao jogo, sem a TV. Prático num
+  telemóvel: abra `http://recalbox.local:8765/` (ou leia o código QR do botão do telemóvel no cabeçalho).
+- **Imprimir os cartões** (separador Cartões): escolha um jogo e um modelo, horizontal ou vertical; toque num elemento
+  do cartão para o mover, aumentar ou rodar; uma faixa amarela mostra a parte que fica fora da ranhura. Guarde o
+  esquema como modelo, adicione os cartões à folha e imprima a 100 % (dez cartões por folha A4).
+- **Cartões especiais** (separador Tags): jogo ao acaso, tempo bónus, sair do jogo, desligar o Recalbox.
+- **Tempo de jogo**: Definições › Tempo de jogo por partida, ou por tag com o lápis. O Recalbox avisa 5 minutos e
+  1 minuto antes do fim e depois sai do jogo; um cartão bónus acrescenta minutos, um número limitado de vezes por dia,
+  semana…
+
+Detalhes: [docs/USAGE.md](docs/USAGE.md) (em inglês).
+
 ## 🔄 Atualizar
 
 Na página, separador **Atualizações** › **«Atualizar para X»**: a página envia o programa que contém. Os tags e as
 definições são mantidos, e a página volta a ligar-se sozinha. Outras formas (ficheiro ZIP, endereço, SSH):
-[docs/UPDATING.md](docs/UPDATING.md) (em francês).
+[docs/UPDATING.md](docs/UPDATING.md) (em inglês).
 
 ## 🗑️ Desinstalar
 
@@ -141,7 +164,7 @@ definições são mantidos, e a página volta a ligar-se sozinha. Outras formas 
 | O jogo não arranca | é preciso o Recalbox 9 ou mais recente; o jogo tem de estar *selecionado*, não uma pasta |
 | A página volta a pedir autorização | o Recalbox reiniciou: mantenha o botão da caixa premido 3 segundos |
 
-Guia completo: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (em francês).
+Guia completo: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (em inglês).
 
 ## 🛠️ Para programadores
 
@@ -169,14 +192,14 @@ O funcionamento, em resumo:
 - **Arranque do sistema**: dois scripts do utilizador permanentes (serviço + agente) e, no Recalbox 10, dois scripts
   do menu (instalar / desinstalar).
 
-Publicação no GitHub (Pages e versões): [docs/PUBLISHING.md](docs/PUBLISHING.md) (em inglês). Os documentos
-detalhados de `docs/` e o [histórico de versões](CHANGELOG.md) estão em francês.
+Publicação no GitHub (Pages e versões): [docs/PUBLISHING.md](docs/PUBLISHING.md). Os documentos
+detalhados de `docs/` e o [histórico de versões](CHANGELOG.md) estão em inglês.
 
 ## 📚 Documentação
 
-- [docs/WIRING.md](docs/WIRING.md): ligações em detalhe e escolha dos pinos
+- [docs/WIRING.md](docs/WIRING.md): ligações em detalhe, escolha dos pinos e luz de estado
 - [docs/INSTALLATION.md](docs/INSTALLATION.md): instalação passo a passo (Windows, macOS, Linux)
-- [docs/USAGE.md](docs/USAGE.md): associação, comandos, configuração
+- [docs/USAGE.md](docs/USAGE.md): associação, cartões para imprimir, cartões especiais, tempo de jogo, comandos, configuração
 - [docs/UPDATING.md](docs/UPDATING.md): atualizações e regresso a uma versão anterior
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): diagnóstico e soluções
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): GitHub Pages e versões

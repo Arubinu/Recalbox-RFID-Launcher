@@ -13,7 +13,7 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="2.9.0"
+VERSION="2.10.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
@@ -236,6 +236,11 @@ else
     if [ -d "$SCRIPT_DIR/docs" ]; then
         rm -rf "$HOME_DIR/docs"
         cp -R "$SCRIPT_DIR/docs" "$HOME_DIR/docs"
+    fi
+    # Management page served to phones (http://recalbox.local:8765/).
+    if [ -d "$SCRIPT_DIR/web" ]; then
+        rm -rf "$HOME_DIR/web"
+        cp -R "$SCRIPT_DIR/web" "$HOME_DIR/web"
     fi
     for extra in install.sh uninstall.sh VERSION CHANGELOG.md installer.html; do
         if [ -f "$SCRIPT_DIR/$extra" ]; then

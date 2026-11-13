@@ -3,6 +3,14 @@
 This class touches neither the hardware nor the file system: it receives a
 badge store, a launcher, a user feedback and a state source. That is what
 makes it testable on a PC, without a Raspberry Pi.
+
+Optional helpers (all may be None):
+
+* ``library``  -- game list, for the "random game" cards;
+* ``playtime`` -- time-limited games and bonus cards;
+* ``screen``   -- messages on the game screen (RetroArch);
+* ``light``    -- status light;
+* ``power``    -- function that turns the Recalbox off.
 """
 
 from __future__ import annotations
@@ -11,12 +19,14 @@ import time
 
 from .esbridge import (
     EsLauncher,
+    Target,
     current_target,
     describe_state,
     game_is_running,
     read_state,
 )
-from .storage import StorageError, pretty_uid
+from .library import LibraryError, relative_to_system
+from .storage import KIND_ACTION, StorageError, pretty_uid
 
 MODE_IDLE = ""
 MODE_ASSOCIATE = "associate"
@@ -25,6 +35,9 @@ MODE_DELETE = "delete"
 # Action to perform when an already registered badge is scanned.
 ACTION_LAUNCH = "launch"   # starts the game (historical behaviour)
 ACTION_NONE = "none"       # confirmation beep and log, without starting anything
+
+#: Special cards that act even while a game is running.
+ACTIONS_DURING_GAME = ("quit", "bonus", "poweroff")
 
 
 class Controller:
@@ -39,6 +52,11 @@ class Controller:
         log=None,
         state_provider=None,
         clock=None,
+        library=None,
+        playtime=None,
+        screen=None,
+        light=None,
+        power=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -47,24 +65,43 @@ class Controller:
         self.log = log
         self.state_provider = state_provider or (lambda: read_state())
         self.clock = clock or time.monotonic
+        self.library = library
+        self.playtime = playtime
+        self.screen = screen
+        self.light = light
+        self.power = power
 
         self.ignore_when_running = True
         self.arm_timeout_s = 10.0
         self.action = ACTION_LAUNCH
+        self.default_limit_min = 0
         if cfg is not None:
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
             self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
+            self.default_limit_min = max(0, cfg.get_int("time", "default_limit_min", 0))
 
         self.mode = MODE_IDLE
         self.target = None
+        #: Entry to store at the next badge (special card or game chosen in the page).
+        self.pending_entry = None
         self._deadline = 0.0
         self.last_action = ""
+        #: UID of the card that started the running game (None otherwise).
+        self.launched_uid = None
 
     # ------------------------------------------------------------------ helpers
     def _log(self, level: str, message: str) -> None:
         if self.log:
             getattr(self.log, level)(message)
+
+    def _flash(self, event: str) -> None:
+        if self.light is not None:
+            self.light.flash(event)
+
+    def _say(self, key: str, **values) -> None:
+        if self.screen is not None:
+            self.screen.say(key, **values)
 
     def _arm(self, mode: str, target=None) -> None:
         self.mode = mode
@@ -76,6 +113,7 @@ class Controller:
             self._log("info", "Mode %s termine%s" % (self.mode, (" (%s)" % reason) if reason else ""))
         self.mode = MODE_IDLE
         self.target = None
+        self.pending_entry = None
         self._deadline = 0.0
 
     @property
@@ -83,9 +121,13 @@ class Controller:
         return self.mode != MODE_IDLE
 
     def status(self) -> dict:
+        if self.pending_entry is not None:
+            label = self.pending_entry.get("name") or self.pending_entry.get("action") or ""
+        else:
+            label = self.target.describe() if self.target else None
         return {
             "mode": self.mode,
-            "target": self.target.describe() if self.target else None,
+            "target": label,
             "seconds_left": max(0.0, round(self._deadline - self.clock(), 1)) if self.armed else 0.0,
         }
 
@@ -95,6 +137,7 @@ class Controller:
         if self.armed and self.clock() >= self._deadline:
             self.disarm("delai depasse")
             self.feedback.timeout()
+            self._flash("error")
             return "expired"
         return ""
 
@@ -117,6 +160,7 @@ class Controller:
         target = current_target(state, allow_running=True)
         if target is None:
             self.feedback.error()
+            self._flash("error")
             self._log(
                 "warning",
                 "Aucun jeu selectionne dans Recalbox (%s) : choisissez un jeu dans la "
@@ -124,8 +168,13 @@ class Controller:
             )
             return "no_target"
 
+        return self.arm_target(target)
+
+    def arm_target(self, target: Target) -> str:
+        """Waits for a badge to pair with ``target`` (selected or chosen in the page)."""
         self._arm(MODE_ASSOCIATE, target)
         self.feedback.armed()
+        self._say("armed")
         self._log(
             "info",
             "Association en attente : scannez un badge pour l'associer a %s (%.0f s)"
@@ -133,11 +182,28 @@ class Controller:
         )
         return "armed_associate"
 
+    def arm_entry(self, entry: dict) -> str:
+        """Waits for a badge to become a special card (or any prepared entry)."""
+        self._arm(MODE_ASSOCIATE, None)
+        self.pending_entry = dict(entry)
+        self.feedback.armed()
+        self._log(
+            "info",
+            "Association en attente : scannez un badge pour en faire la carte %s (%.0f s)"
+            % (entry.get("name") or entry.get("action"), self.arm_timeout_s),
+        )
+        return "armed_associate"
+
     # ------------------------------------------------------------------- badge
     def on_badge(self, uid: str) -> str:
         """Handles a badge read (hex UID without separator)."""
         uid = str(uid).upper()
+        # "launched" only describes THIS badge (the service uses it to know
+        # which card holds the running game).
+        self.last_action = ""
 
+        if self.mode == MODE_ASSOCIATE and self.pending_entry is not None:
+            return self._bind_entry(uid, self.pending_entry)
         if self.mode == MODE_ASSOCIATE and self.target is not None:
             return self._bind(uid, self.target)
         if self.mode == MODE_DELETE:
@@ -147,15 +213,19 @@ class Controller:
             entry = self.store.get(uid)
         except StorageError as exc:
             self.feedback.error()
+            self._flash("error")
             self._log("error", "Base de badges illisible : %s" % exc)
             return "failed"
 
         if not entry:
             self.feedback.error()
+            self._flash("error")
+            self._say("unknown")
             self._log("info", "Badge inconnu : %s" % pretty_uid(uid))
             return "unknown"
 
-        if self.ignore_when_running:
+        is_action = entry.get("kind") == KIND_ACTION
+        if self.ignore_when_running and not (is_action and entry.get("action") in ACTIONS_DURING_GAME):
             state = self.state_provider()
             if game_is_running(state):
                 self._log("info", "Jeu deja en cours : badge %s ignore" % pretty_uid(uid))
@@ -164,6 +234,7 @@ class Controller:
         # action = none: the badge is recognized but nothing is started
         if self.action == ACTION_NONE:
             self.feedback.recognized()
+            self._flash("ok")
             self._log(
                 "info",
                 "Badge %s reconnu : %s (%s) -- action desactivee (action = none)"
@@ -171,6 +242,8 @@ class Controller:
             )
             return "recognized"
 
+        if is_action:
+            return self._special(uid, entry)
         return self._launch(entry, uid)
 
     # ------------------------------------------------------------------ interne
@@ -182,6 +255,7 @@ class Controller:
             EsLauncher.build_payload(target.system, target.game)
         except ValueError as exc:
             self.feedback.error()
+            self._flash("error")
             self._log("error", "Association impossible : %s" % exc)
             return "failed"
 
@@ -189,6 +263,7 @@ class Controller:
             self.store.put(uid, target.system, target.game, target.name, target.path)
         except StorageError as exc:
             self.feedback.error()
+            self._flash("error")
             self._log("error", "Enregistrement du badge impossible : %s" % exc)
             return "failed"
 
@@ -203,11 +278,28 @@ class Controller:
             )
 
         self.feedback.ok()
+        self._flash("ok")
+        self._say("bound")
         self._log(
             "info",
             "Badge %s associe a %s (%s / %s)"
             % (pretty_uid(uid), target.name or target.game, target.system, target.game),
         )
+        return "bound"
+
+    def _bind_entry(self, uid: str, entry: dict) -> str:
+        self.disarm("association")
+        try:
+            saved = self.store.put_entry(uid, entry)
+        except StorageError as exc:
+            self.feedback.error()
+            self._flash("error")
+            self._log("error", "Enregistrement de la carte impossible : %s" % exc)
+            return "failed"
+        self.feedback.ok()
+        self._flash("ok")
+        self._say("bound")
+        self._log("info", "Badge %s devenu la carte « %s »" % (pretty_uid(uid), saved.get("name")))
         return "bound"
 
     def game_running(self) -> bool:
@@ -217,14 +309,17 @@ class Controller:
         except Exception:  # noqa: BLE001 - unreadable /proc: nothing is concluded
             return False
 
-    def stop_game(self) -> bool:
-        """Quits the running game (badge removed, option enabled)."""
+    def stop_game(self, reason: str = "removed") -> bool:
+        """Quits the running game (badge removed, quit card, time up)."""
+        if self.playtime is not None:
+            self.playtime.end(reason)
+        self.launched_uid = None
         if not self.launcher.stop_game():
             self._log("info", "Aucun jeu en cours a arreter")
             self.last_action = ""
             return False
         self.last_action = ""
-        self._log("info", "Jeu arrete : le badge a ete retire")
+        self._log("info", "Jeu arrete (%s)" % reason)
         return True
 
     def _delete(self, uid: str) -> str:
@@ -233,17 +328,27 @@ class Controller:
             removed = self.store.delete(uid)
         except StorageError as exc:
             self.feedback.error()
+            self._flash("error")
             self._log("error", "Effacement impossible : %s" % exc)
             return "failed"
         if removed:
             self.feedback.removed()
+            self._flash("ok")
             self._log("info", "Badge %s efface" % pretty_uid(uid))
             return "deleted"
         self.feedback.error()
+        self._flash("error")
         self._log("info", "Badge %s inconnu : rien a effacer" % pretty_uid(uid))
         return "unknown"
 
-    def _launch(self, entry, uid: str, touch: bool = True) -> str:
+    def limit_for(self, entry: dict) -> int:
+        """Minutes of play allowed by a card (0 = no limit)."""
+        limit = entry.get("limit_min")
+        if limit is None:
+            return self.default_limit_min
+        return max(0, int(limit))
+
+    def _launch(self, entry, uid: str, touch: bool = True, minutes=None) -> str:
         system = entry.get("system", "")
         # The frontend identifies a game by its FULL PATH, as it writes it itself
         # in /tmp/es_state.inf (e.g. /recalbox/share_init/roms/...). The file name
@@ -258,6 +363,10 @@ class Controller:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
             # No beep: the launch is visible on screen (game splash).
             self.last_action = "launched"
+            self.launched_uid = uid
+            self._flash("launch")
+            if self.playtime is not None:
+                self.playtime.start(uid, entry, self.limit_for(entry) if minutes is None else minutes)
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"
@@ -265,5 +374,101 @@ class Controller:
             )
             return "launched"
         self.feedback.error()
+        self._flash("error")
         self._log("error", "Le frontend n'a pas pu etre contacte pour lancer %s" % game)
         return "failed"
+
+    # --------------------------------------------------------- special cards
+    def _special(self, uid: str, entry: dict) -> str:
+        action = entry.get("action")
+        params = entry.get("params") or {}
+        if action == "quit":
+            if self.stop_game("quit"):
+                self.feedback.ok()
+                self._flash("ok")
+                self._touch(uid)
+                return "quit"
+            self.feedback.error()
+            self._flash("error")
+            return "nothing"
+        if action == "poweroff":
+            self._log("info", "Carte « eteindre » : arret de la Recalbox")
+            self.feedback.ok()
+            self._flash("ok")
+            self._touch(uid)
+            if self.power is not None:
+                self.power()
+            return "poweroff"
+        if action == "random":
+            return self._random(uid, entry, params)
+        if action == "bonus":
+            return self._bonus(uid, params)
+        self.feedback.error()
+        return "unknown"
+
+    def _touch(self, uid: str) -> None:
+        try:
+            self.store.touch(uid)
+        except StorageError:
+            pass
+
+    def _random(self, uid: str, entry: dict, params: dict) -> str:
+        if self.library is None:
+            self.feedback.error()
+            self._flash("error")
+            return "failed"
+        try:
+            game = self.library.pick_random(params.get("system") or "", bool(params.get("favorites")))
+        except LibraryError as exc:
+            game = None
+            self._log("warning", "Liste des jeux illisible : %s" % exc)
+        if not game:
+            self.feedback.error()
+            self._flash("error")
+            self._log("info", "Carte « jeu au hasard » : aucun jeu trouve")
+            return "nothing"
+        chosen = {
+            "system": game["system"],
+            "game": relative_to_system(game["system"], game["path"]),
+            "path": game["path"],
+            "name": game["name"],
+            "limit_min": entry.get("limit_min"),
+        }
+        self._log("info", "Jeu au hasard : %s (%s)" % (game["name"], game["system"]))
+        self._touch(uid)
+        return self._launch(chosen, uid, touch=False)
+
+    def _bonus(self, uid: str, params: dict) -> str:
+        if self.playtime is None:
+            self.feedback.error()
+            return "nothing"
+        result = self.playtime.bonus(uid, params)
+        kind = result["result"]
+        if kind == "exhausted":
+            self.feedback.error()
+            self._flash("error")
+            self._say("exhausted")
+            self._log("info", "Carte bonus : plus d'utilisation possible pour cette periode")
+            return "exhausted"
+        if kind == "nothing":
+            self.feedback.error()
+            self._flash("error")
+            self._log("info", "Carte bonus : aucun jeu limite en cours ou juste termine")
+            return "nothing"
+        self._touch(uid)
+        left = result.get("left")
+        if kind == "extended":
+            self.feedback.ok()
+            self._flash("bonus")
+            if left is None:
+                self._say("bonus", n=result["minutes"])
+            else:
+                self._say("bonus_left", n=result["minutes"], k=left)
+            self._log("info", "Carte bonus : +%d min" % result["minutes"])
+            return "extended"
+        # Game just ended: started again with the bonus time.
+        self._flash("bonus")
+        self._log("info", "Carte bonus : reprise de %s pour %d min"
+                  % (result["entry"].get("name"), result["minutes"]))
+        outcome = self._launch(result["entry"], uid, touch=False, minutes=result["minutes"])
+        return "resumed" if outcome == "launched" else outcome

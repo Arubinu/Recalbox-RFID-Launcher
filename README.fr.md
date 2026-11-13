@@ -5,6 +5,7 @@
 **Un badge, un jeu.** Posez un badge RFID sur un lecteur branché à votre Recalbox : le jeu associé démarre, comme
 une cartouche. Tout se règle depuis une seule page web ouverte sur votre ordinateur, sans rien y installer et sans
 ligne de commande.
+La même page s'ouvre aussi sur un téléphone, servie par la Recalbox elle-même.
 
 ## 💡 L'idée
 
@@ -28,6 +29,13 @@ Recalbox, exactement comme on retire une cartouche. Chaque carte peut porter l'i
 - 🌍 **6 langues** (anglais, français, allemand, espagnol, italien, portugais), thèmes clair et sombre
 - 🧩 **Zéro dépendance** : uniquement le Python 3 déjà présent dans Recalbox, aucun paquet, aucune modification du
   système
+- 🖨️ **Cartes à imprimer** : l'image du jeu, le logo et les couleurs de sa console, sept modèles, chaque élément se
+  déplace et se tourne ; dix cartes par feuille A4
+- 📱 **Aussi sur téléphone** : la Recalbox sert la page elle-même (QR code) ; cherchez un jeu et associez un badge sans
+  la télé
+- 🎲 **Cartes spéciales** : jeu au hasard, temps bonus, quitter le jeu, éteindre
+- ⏱️ **Temps de jeu** : une limite par badge ou pour tous, avertissements avant la fin, cartes bonus avec quota
+- 💡 **Voyant et messages à l'écran** : une LED RGB ou des LED programmables, des messages sur l'écran du jeu
 
 ## 🧰 Ce qu'il vous faut
 
@@ -39,6 +47,7 @@ Recalbox, exactement comme on retire une cartouche. Chaque carte peut porter l'i
 | Badges / porte-clés | 13,56 MHz ISO 14443-A (MIFARE Classic, Ultralight…). Les badges 125 kHz ne marchent pas |
 | Un bouton poussoir | n'importe quel bouton à contact momentané, sans résistance |
 | Fils Dupont | 7 (6 pour le lecteur, 1 de plus pour le bouton) |
+| Voyant (facultatif) | un module LED RGB, ou des LED programmables WS2812 : voir [docs/WIRING.md](docs/WIRING.md) |
 
 > ⚠️ Le RC522 fonctionne **en 3,3 V uniquement**. Ne le branchez jamais sur le 5 V du Raspberry Pi : il serait détruit.
 
@@ -118,6 +127,21 @@ Guide pas à pas : [docs/INSTALLATION.md](docs/INSTALLATION.md).
 | 2 bips graves descendants | badge inconnu ou action refusée |
 | 3 bips descendants | délai dépassé (10 s pour poser le badge) |
 
+## 🖨️ Cartes, cartes spéciales et temps de jeu
+
+- **Chercher un jeu** (onglet Badges) : tapez quelques lettres, puis associez un badge au jeu, sans la télé. Pratique
+  sur un téléphone : ouvrez `http://recalbox.local:8765/` (ou scannez le QR code du bouton téléphone de l'en-tête).
+- **Imprimer les cartes** (onglet Cartes) : choisissez un jeu et un modèle, horizontal ou vertical ; touchez un élément
+  de la carte pour le déplacer, l'agrandir ou le tourner ; une bande jaune montre la partie qui dépasse de la fente.
+  Enregistrez votre mise en page comme modèle, ajoutez les cartes à la planche, puis imprimez à 100 % (dix cartes par
+  feuille A4).
+- **Cartes spéciales** (onglet Badges) : jeu au hasard, temps bonus, quitter le jeu, éteindre la Recalbox.
+- **Temps de jeu** : Réglages › Temps de jeu par partie, ou par badge avec le crayon. La Recalbox prévient 5 minutes
+  puis 1 minute avant la fin, puis quitte le jeu ; une carte bonus ajoute des minutes, un nombre de fois limité par
+  jour, par semaine…
+
+Détails : [docs/USAGE.md](docs/USAGE.md) (en anglais).
+
 ## 🔄 Mettre à jour
 
 Dans la page, onglet **Mises à jour** › **« Mettre à jour vers X »** : la page envoie le programme qu'elle contient.
@@ -170,14 +194,14 @@ Le fonctionnement, en bref :
 - **Démarrage** : deux scripts utilisateur permanents (service + agent) et, sur Recalbox 10, deux scripts du menu
   (installer / désinstaller).
 
-Publication sur GitHub (Pages et versions) : [docs/PUBLISHING.md](docs/PUBLISHING.md). Les documents détaillés du
-dossier `docs/` et l'[historique des versions](CHANGELOG.md) sont en français.
+Publication sur GitHub (Pages et versions) : [docs/PUBLISHING.md](docs/PUBLISHING.md). La documentation
+détaillée du dossier `docs/` et l'[historique des versions](CHANGELOG.md) sont en anglais.
 
 ## 📚 Documentation
 
-- [docs/WIRING.md](docs/WIRING.md) : câblage détaillé et choix des broches
+- [docs/WIRING.md](docs/WIRING.md) : câblage détaillé, choix des broches et voyant
 - [docs/INSTALLATION.md](docs/INSTALLATION.md) : installation pas à pas (Windows, macOS, Linux)
-- [docs/USAGE.md](docs/USAGE.md) : association, commandes, configuration
+- [docs/USAGE.md](docs/USAGE.md) : association, cartes à imprimer, cartes spéciales, temps de jeu, commandes, configuration
 - [docs/UPDATING.md](docs/UPDATING.md) : mises à jour et retour arrière
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) : diagnostic et solutions
 - [docs/PUBLISHING.md](docs/PUBLISHING.md) : GitHub Pages et versions (en anglais)

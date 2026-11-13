@@ -5,6 +5,7 @@
 **Ein Badge, ein Spiel.** Legen Sie einen RFID-Badge auf einen Leser an Ihrer Recalbox: Das zugeordnete Spiel
 startet, wie ein Steckmodul. Alles wird über eine einzige Webseite auf Ihrem Computer eingerichtet, ohne Installation
 dort und ohne Kommandozeile.
+Dieselbe Seite öffnet sich auch auf einem Telefon, direkt von der Recalbox bereitgestellt.
 
 ## 💡 Die Idee
 
@@ -27,6 +28,14 @@ können, auch Kinder, ohne je durch die Menüs zu gehen.
 - 🔄 **Updates mit einem Klick** aus der Seite; Badges und Einstellungen bleiben immer erhalten
 - 🌍 **6 Sprachen** (Englisch, Französisch, Deutsch, Spanisch, Italienisch, Portugiesisch), helles und dunkles Design
 - 🧩 **Keine Abhängigkeiten**: nur das in Recalbox enthaltene Python 3, kein Paket, keine Systemänderung
+- 🖨️ **Karten zum Drucken**: das Bild des Spiels, Logo und Farben seiner Konsole, sieben Vorlagen, jedes Element
+  verschieb- und drehbar; zehn Karten pro A4-Blatt
+- 📱 **Auch auf dem Telefon**: Die Recalbox stellt die Seite selbst bereit (QR-Code); Spiel suchen und Badge zuordnen,
+  ohne Fernseher
+- 🎲 **Sonderkarten**: Zufallsspiel, Bonuszeit, Spiel beenden, ausschalten
+- ⏱️ **Spielzeit**: ein Limit pro Badge oder für alle, Warnungen vor dem Ende, Bonuskarten mit Kontingent
+- 💡 **Statusleuchte und Bildschirmmeldungen**: eine RGB-LED oder programmierbare LEDs, Meldungen auf dem
+  Spielbildschirm
 
 ## 🧰 Was Sie brauchen
 
@@ -38,6 +47,7 @@ können, auch Kinder, ohne je durch die Menüs zu gehen.
 | Badges / Schlüsselanhänger | 13,56 MHz ISO 14443-A (MIFARE Classic, Ultralight…). 125-kHz-Badges funktionieren nicht |
 | Eine Drucktaste | jeder Taster, kein Widerstand nötig |
 | Dupont-Kabel | 7 (6 für den Leser, 1 zusätzlich für die Taste) |
+| Statusleuchte (optional) | ein RGB-LED-Modul oder programmierbare WS2812-LEDs: siehe [docs/WIRING.md](docs/WIRING.md) |
 
 > ⚠️ Der RC522 arbeitet **nur mit 3,3 V**. Schließen Sie ihn nie an den 5-V-Pin des Raspberry Pi an: Er würde zerstört.
 
@@ -57,7 +67,7 @@ können, auch Kinder, ohne je durch die Menüs zu gehen.
 | **Taste** | GPIO17 und GND | 11 und 9 |
 
 Der interne Pull-up des Raspberry Pi wird vom Programm aktiviert: kein Widerstand. Details:
-[docs/WIRING.md](docs/WIRING.md) (auf Französisch).
+[docs/WIRING.md](docs/WIRING.md) (auf Englisch).
 
 ## 🚀 Installation
 
@@ -97,7 +107,7 @@ Der interne Pull-up des Raspberry Pi wird vom Programm aktiviert: kein Widerstan
 - **Per SSH**: `ssh root@recalbox.local "sh /recalbox/share/recalbox-rfid/install.sh --start"` (Standardpasswort
   `recalboxroot`).
 
-Schritt-für-Schritt-Anleitung: [docs/INSTALLATION.md](docs/INSTALLATION.md) (auf Französisch).
+Schritt-für-Schritt-Anleitung: [docs/INSTALLATION.md](docs/INSTALLATION.md) (auf Englisch).
 
 ## 🎯 Im Alltag
 
@@ -119,11 +129,25 @@ Schritt-für-Schritt-Anleitung: [docs/INSTALLATION.md](docs/INSTALLATION.md) (au
 | 2 fallende tiefe Pieptöne | unbekannter Badge oder abgelehnte Aktion |
 | 3 fallende Pieptöne | Zeit abgelaufen (10 s zum Auflegen) |
 
+## 🖨️ Karten, Sonderkarten und Spielzeit
+
+- **Spiel suchen** (Tab Badges): ein paar Buchstaben eingeben, dann dem Spiel einen Badge zuordnen, ohne Fernseher.
+  Praktisch auf dem Telefon: `http://recalbox.local:8765/` öffnen (oder den QR-Code der Telefon-Taste in der Kopfzeile
+  scannen).
+- **Karten drucken** (Tab Karten): Spiel und Vorlage wählen, quer oder hoch; ein Element der Karte antippen, um es zu
+  verschieben, zu vergrößern oder zu drehen; ein gelber Streifen zeigt den Teil, der aus dem Schlitz ragt. Das Layout
+  als Vorlage speichern, die Karten zum Druckbogen hinzufügen, dann mit 100 % drucken (zehn Karten pro A4-Blatt).
+- **Sonderkarten** (Tab Badges): Zufallsspiel, Bonuszeit, Spiel beenden, Recalbox ausschalten.
+- **Spielzeit**: Einstellungen › Spielzeit pro Partie, oder pro Badge mit dem Stift. Die Recalbox warnt 5 und 1 Minute
+  vor dem Ende und beendet dann das Spiel; eine Bonuskarte fügt Minuten hinzu, begrenzt oft pro Tag, Woche…
+
+Details: [docs/USAGE.md](docs/USAGE.md) (auf Englisch).
+
 ## 🔄 Aktualisieren
 
 In der Seite, Tab **Updates** › **„Auf X aktualisieren“**: Die Seite sendet das Programm, das sie enthält. Badges und
 Einstellungen bleiben erhalten, und die Seite verbindet sich selbst wieder. Andere Wege (ZIP-Datei, Adresse, SSH):
-[docs/UPDATING.md](docs/UPDATING.md) (auf Französisch).
+[docs/UPDATING.md](docs/UPDATING.md) (auf Englisch).
 
 ## 🗑️ Deinstallieren
 
@@ -143,7 +167,7 @@ Einstellungen bleiben erhalten, und die Seite verbindet sich selbst wieder. Ande
 | Das Spiel startet nicht | Recalbox 9 oder neuer nötig; das Spiel muss *ausgewählt* sein, kein Ordner |
 | Die Seite verlangt erneut eine Freigabe | die Recalbox wurde neu gestartet: Gehäusetaste 3 Sekunden halten |
 
-Vollständige Anleitung: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (auf Französisch).
+Vollständige Anleitung: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (auf Englisch).
 
 ## 🛠️ Für Entwickler
 
@@ -171,14 +195,14 @@ Funktionsweise in Kürze:
 - **Start**: zwei dauerhafte Recalbox-Benutzerskripte (Dienst + Agent) und unter Recalbox 10 zwei Menüskripte
   (installieren / deinstallieren).
 
-Veröffentlichung auf GitHub (Pages und Releases): [docs/PUBLISHING.md](docs/PUBLISHING.md) (auf Englisch). Die
-ausführlichen Dokumente in `docs/` und das [Änderungsprotokoll](CHANGELOG.md) sind auf Französisch.
+Veröffentlichung auf GitHub (Pages und Releases): [docs/PUBLISHING.md](docs/PUBLISHING.md). Die ausführlichen
+Dokumente in `docs/` und die [Versionsgeschichte](CHANGELOG.md) sind auf Englisch.
 
 ## 📚 Dokumentation
 
-- [docs/WIRING.md](docs/WIRING.md): Verkabelung im Detail und Pin-Wahl
+- [docs/WIRING.md](docs/WIRING.md): Verkabelung im Detail, Pin-Wahl und Statusleuchte
 - [docs/INSTALLATION.md](docs/INSTALLATION.md): Installation Schritt für Schritt (Windows, macOS, Linux)
-- [docs/USAGE.md](docs/USAGE.md): Zuordnung, Befehle, Konfiguration
+- [docs/USAGE.md](docs/USAGE.md): Zuordnung, Karten zum Drucken, Sonderkarten, Spielzeit, Befehle, Konfiguration
 - [docs/UPDATING.md](docs/UPDATING.md): Updates und Rückkehr zu einer älteren Version
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): Diagnose und Lösungen
 - [docs/PUBLISHING.md](docs/PUBLISHING.md): GitHub Pages und Releases

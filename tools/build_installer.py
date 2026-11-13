@@ -68,6 +68,9 @@ LANGUE_SOURCE = "fr"
 #: Name of the delivered file (no version number).
 DIST_NAME = "recalbox-rfid-installer.html"
 
+#: Page served by the agent (http://recalbox.local:8765/): translations, no payload.
+WEB_PAGE = "web/index.html"
+
 #: Insertion point of the embedded content.
 MARKER = "<body>"
 
@@ -98,6 +101,8 @@ def collect_files() -> dict:
                 continue
             relative = path.relative_to(ROOT).as_posix()
             files[relative] = path.read_bytes()
+    # Management page served by the agent to phones (no embedded files).
+    files[WEB_PAGE] = build_html(with_payload=False).encode("utf-8")
     return dict(sorted(files.items()))
 
 
@@ -134,18 +139,21 @@ def collect_languages() -> dict:
     return languages
 
 
-def build_html(payload: dict = None) -> str:
-    payload = payload if payload is not None else build_payload()
+def build_html(payload: dict = None, with_payload: bool = True) -> str:
+    if with_payload:
+        payload = payload if payload is not None else build_payload()
     source_path = ROOT / HTML_SOURCE
     if not source_path.is_file():
         raise SystemExit("%s introuvable" % source_path)
     source = source_path.read_text(encoding="utf-8")
     if MARKER not in source:
         raise SystemExit("balise %s introuvable dans %s" % (MARKER, HTML_SOURCE))
-    encoded = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
-    # The content is base64: it cannot contain "</script>".
-    tag = '<script id="rfid-payload" type="application/json">%s</script>' % encoded
-    html = source.replace(MARKER, MARKER + "\n" + tag, 1)
+    html = source
+    if with_payload:
+        encoded = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
+        # The content is base64: it cannot contain "</script>".
+        tag = '<script id="rfid-payload" type="application/json">%s</script>' % encoded
+        html = source.replace(MARKER, MARKER + "\n" + tag, 1)
 
     languages = collect_languages()
     if languages:
