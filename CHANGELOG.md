@@ -20,6 +20,13 @@ by `rfidctl version`.
 * **Print shop option**: bleed (2, 3 or 5 mm, edges stretched outwards), crop
   marks and a safe area line in the editor; eight cards per A4 page then. The
   downloaded PNG gets the bleed too.
+* **The Cards tab starts from the game selected on the Recalbox**, and a
+  "Recalbox game" button brings it back after picking another one.
+* **Wiring diagram drawn by the page**: the 40-pin header with the used pins in
+  colour, and one list per part (reader, button, status light). The light shows
+  the RGB LED or the programmable LEDs, following the settings (pins and common
+  anode / cathode included); touching a wire lights up its pin.
+  `docs/wiring.svg` (English) shows the light too.
 
 ### Changed
 
@@ -27,9 +34,19 @@ by `rfidctl version`.
   the card direction.
 * The connection button sits right of the address field.
 * The wiring diagram is a regular section of the Hardware tab.
+* **Add a badge by its identifier**: the console and the game are picked from
+  the game list (the game selected on the Recalbox is suggested) instead of
+  typing a folder and a file name; `tags.add` accepts the full path alone.
+  "Simulate placing a badge" has its own block with a label.
+* Phone layout: card headers put their buttons below the text, button groups
+  share the width evenly (main action first), technical tiles go two per row,
+  the element tabs of the card designer form a tidy grid, the bleed size only
+  shows when the option is on.
 
 ### Fixed
 
+* The Cards tab failed when the page reopened directly on it before the
+  Recalbox state arrived.
 * **"No game selected" while a game was on screen**: the Recalbox screensaver
   blanks the state file of the frontend (`Action=sleep`). The service now
   remembers the last selected game, used during the screensaver (the page shows

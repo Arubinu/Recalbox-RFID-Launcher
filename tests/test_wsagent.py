@@ -512,6 +512,15 @@ class TagsTest(AgentTestCase):
         with self.assertRaises(WsError):
             client.call("tags.add", uid="A1B2C3D4", system="snes")
 
+    def test_jeu_choisi_dans_la_liste(self):
+        """The page sends only the full path of the picked game."""
+        client = self.authenticated_client()
+        client.call("tags.add", uid="A1B2C3D4", system="snes",
+                    path="/recalbox/share/roms/snes/Platform/Mario World.smc", name="Mario World")
+        tag = client.call("tags.list")["tags"][0]
+        self.assertEqual(tag["game"], "Platform/Mario World.smc")
+        self.assertEqual(tag["path"], "/recalbox/share/roms/snes/Platform/Mario World.smc")
+
 
 class InstallTest(AgentTestCase):
     def setUp(self):

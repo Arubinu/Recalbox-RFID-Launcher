@@ -63,7 +63,7 @@ from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
 from .esbridge import read_state, resolve_rom_path, selected_target, supports_start_command
-from .library import Library, LibraryError
+from .library import Library, LibraryError, relative_to_system
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -1490,9 +1490,12 @@ class Agent:
     def _cmd_tags_add(self, client, message):
         system = str(message.get("system") or "").strip()
         game = str(message.get("game") or "").strip()
+        chemin = str(message.get("path") or "").strip()
+        if not game and chemin:
+            # Picked from the game list: only the full path is known.
+            game = relative_to_system(system, chemin)
         if not system or not game:
             raise ValueError("systeme et jeu obligatoires")
-        chemin = str(message.get("path") or "").strip()
         if not chemin:
             # Without a path the frontend could not start the game: it is rebuilt
             # from the system and the file name.
