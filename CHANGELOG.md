@@ -14,9 +14,28 @@ et affichée par `rfidctl version`.
   sans redémarrer. Le script démarre, détaché, le script permanent habituel
   (installation, service, agent) ; Recalbox ne redémarre qu'une fois, seule,
   pour activer le lecteur. Vérifié sur Recalbox 10.1.1.
-* `install.sh` pose ce script (réparation sans SSH), `uninstall.sh` le retire.
-* L'installateur `.cmd` le copie aussi et rouvre la page directement à l'étape
+* **Désinstallation depuis le menu** : `Uninstall-RFID-reader` retire le
+  programme, les scripts de démarrage et la ligne SPI, arrête service et agent,
+  et garde badges, réglages et « Install-RFID-reader » (réinstallation en un
+  clic). Vérifié sur Recalbox 10.1.1.
+* `install.sh` pose ces deux scripts (et retire l'ancien nom
+  `Installer-lecteur-RFID.sh`), `uninstall.sh` les retire (`--from-menu` garde
+  celui d'installation).
+* L'installateur `.cmd` les copie aussi et rouvre la page directement à l'étape
   « Lancer » (`#etape=3`).
+* Au clic sur « Choisir le dossier de la Recalbox », la page copie
+  `\\RECALBOX\share` dans le presse-papiers et retient le dossier choisi : la
+  fois suivante, la copie se fait sans fenêtre.
+
+### Ajouté — publication sur GitHub
+
+* `.github/workflows/pages.yml` : tests, génération de la page et de l'archive
+  de mise à jour (`tools/build_installer.py --zip`), publication sur GitHub
+  Pages et pièces jointes des versions `v*`. Voir `docs/PUBLISHING.md`.
+* La page servie en `https://` le détecte : la connexion à la Recalbox y est
+  bloquée par le navigateur, elle propose donc de se télécharger.
+* Un README par langue (anglais par défaut, français, allemand, espagnol,
+  italien, portugais).
 
 ### Modifié — nouvelle interface
 
@@ -36,6 +55,13 @@ et affichée par `rfidctl version`.
 * Messages et confirmations intégrés à la page (plus de fenêtres `alert`).
 * Toutes les chaînes affichées sont traduites (6 langues), mise en page
   mobile revue (en-tête, onglets).
+* **Réglages** : libellés et aides en langage courant, unités dans le titre ;
+  les réglages techniques sont rangés dans « Réglages avancés ».
+* Aide pour Windows qui propose de « Diagnostiquer » `\\RECALBOX` : connexion en
+  réseau *Public* (à passer en *Privé*), ou adresse IP.
+* Fichiers renommés en anglais (`docs/WIRING.md`, `TROUBLESHOOTING.md`,
+  `UPDATING.md`, `USAGE.md`, `docs/wiring.svg`, `tools/build_wiring.py`) et tous
+  les commentaires du code traduits en anglais.
 
 ### Corrigé
 
@@ -47,6 +73,14 @@ et affichée par `rfidctl version`.
   le cas sur le partage exFAT) et laissait l'agent tourner.
 * Documentation : `rfidctl` s'appelle avec `sh` (le partage exFAT ne garde pas
   le droit d'exécution).
+* **L'envoi d'un ZIP depuis la page restait sans réponse** : Chromium découpe
+  les messages WebSocket de plus de 64 Ko et l'agent ne réassemblait pas les
+  trames de continuation. L'agent les réassemble, et la page envoie des
+  morceaux de 32 Ko (compatible avec les agents déjà installés).
+* `install.sh` n'écrivait pas la ligne SPI quand le bus était déjà actif : après
+  une désinstallation suivie d'une réinstallation sans redémarrage, le lecteur
+  était désactivé au démarrage suivant. La ligne est toujours écrite ; le
+  redémarrage n'est demandé que si le bus n'est pas encore actif.
 
 ## [2.8.2]
 
