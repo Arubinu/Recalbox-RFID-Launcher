@@ -13,11 +13,12 @@
 set -eu
 
 APP_NAME="Recalbox RFID Launcher"
-VERSION="2.8.2"
+VERSION="2.9.0"
 DEFAULT_HOME="/recalbox/share/system/rfid"
 USERSCRIPTS_DIR="/recalbox/share/userscripts"
 USERSCRIPT_NAME="recalbox-rfid(permanent).py3"
 AGENT_USERSCRIPT_NAME="recalbox-rfid-agent(permanent).py3"
+MANUAL_SCRIPT_NAME="Installer-lecteur-RFID.sh"
 BOOT_CONFIG="/boot/recalbox-user-config.txt"
 BOOT_CONFIG_MAIN="/boot/config.txt"
 
@@ -88,7 +89,7 @@ Exemples :
   sh install.sh
   sh install.sh --start
   sh install.sh --upgrade
-  $HOME_DIR/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
+  sh $HOME_DIR/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
 EOF
 }
 
@@ -290,6 +291,16 @@ if [ "$IS_ROOT" = "1" ] && [ -f "$TEMPLATE" ]; then
         chmod +x "$USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
         ok "Agent WebSocket : $USERSCRIPTS_DIR/$AGENT_USERSCRIPT_NAME"
     fi
+
+    # Recalbox 10 : script lancable depuis le menu (reparation sans SSH).
+    MANUAL_TEMPLATE="$HOME_DIR/bootstrap/manual/$MANUAL_SCRIPT_NAME"
+    [ -f "$MANUAL_TEMPLATE" ] || MANUAL_TEMPLATE="$SCRIPT_DIR/bootstrap/manual/$MANUAL_SCRIPT_NAME"
+    if [ -f "$MANUAL_TEMPLATE" ]; then
+        mkdir -p "$USERSCRIPTS_DIR/manual"
+        cp -f "$MANUAL_TEMPLATE" "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
+        chmod +x "$USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
+        ok "Script du menu Recalbox : $USERSCRIPTS_DIR/manual/$MANUAL_SCRIPT_NAME"
+    fi
 else
     warn "Script de demarrage non installe (droits root necessaires)."
     say "  Copiez manuellement le fichier $USERSCRIPT_NAME dans $USERSCRIPTS_DIR"
@@ -422,7 +433,7 @@ elif [ "$WAS_RUNNING" = "1" ] || [ "$DO_START" = "1" ]; then
     fi
 else
     say "Le service demarrera automatiquement au prochain demarrage de Recalbox."
-    say "Pour le demarrer maintenant : $HOME_DIR/rfidctl start"
+    say "Pour le demarrer maintenant : sh $HOME_DIR/rfidctl start"
 fi
 
 # --------------------------------------------------------------------------- #
@@ -458,7 +469,7 @@ say "  $STEP. Cliquez sur « Installer », puis redemarrez si le SPI etait inact
 STEP=$((STEP + 1))
 say "  $STEP. Choisissez un jeu dans Recalbox, appuyez sur le bouton, scannez un badge."
 say ""
-say "Aide : $HOME_DIR/rfidctl help   --   Mise a jour : $HOME_DIR/install.sh --upgrade"
+say "Aide : sh $HOME_DIR/rfidctl help   --   Mise a jour : $HOME_DIR/install.sh --upgrade"
 if [ "$WARN_FRONTEND" = "1" ]; then
     say ""
     warn "Pensez a mettre a jour Recalbox (version 9 minimum) pour le lancement des jeux."

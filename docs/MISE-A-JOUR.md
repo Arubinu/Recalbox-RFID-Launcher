@@ -78,7 +78,7 @@ Le ZIP doit contenir `install.sh` à sa racine (ou dans un sous-dossier).
 3. Vérifiez la version :
 
    ```sh
-   /recalbox/share/system/rfid/rfidctl version
+   sh /recalbox/share/system/rfid/rfidctl version
    ```
 
 Le service redémarre automatiquement s'il tournait (aucun redémarrage de
@@ -91,7 +91,7 @@ Hébergez un ZIP du projet (contenu du dossier `recalbox-rfid`, avec `install.sh
 sur un NAS. Ensuite, soit dans `installer.html` (champ URL), soit en SSH :
 
 ```sh
-/recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid-1.3.0.zip
+sh /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid-1.3.0.zip
 ```
 
 Ou :
@@ -159,9 +159,9 @@ cp /recalbox/share/system/rfid/tags.json /recalbox/share/tags-sauvegarde.json
 ## Vérifier ce qui est installé
 
 ```sh
-/recalbox/share/system/rfid/rfidctl version   # version du programme
+sh /recalbox/share/system/rfid/rfidctl version   # version du programme
 cat /recalbox/share/system/rfid/VERSION       # version du paquet installé
-/recalbox/share/system/rfid/rfidctl status    # service + uptime
+sh /recalbox/share/system/rfid/rfidctl status    # service + uptime
 ```
 
 ## En cas d'échec

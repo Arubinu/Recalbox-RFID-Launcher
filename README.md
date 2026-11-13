@@ -59,35 +59,49 @@ programme.
 
 ## 3. Installation
 
-### Méthode A — l'installateur `.cmd` (aucune fenêtre, aucun choix de dossier)
+### Méthode A — tout depuis la page (recommandée)
 
-1. Ouvrez **`dist\recalbox-rfid-installer.html`** (fourni ; sinon
-   `python tools/build_installer.py` le régénère) et renseignez l'adresse de la
-   Recalbox (`recalbox.local` ou son IP) dans la zone de connexion.
-2. Cliquez sur **« Télécharger l'installateur Windows (.cmd) »**.
-3. **Double-cliquez** sur `recalbox-rfid-installation.cmd` (si Windows affiche
+Ouvrez **`dist\recalbox-rfid-installer.html`** dans Edge ou Chrome et choisissez
+**« Installer pour la première fois »**. La page guide en quatre étapes :
+
+1. **Brancher** — schéma de câblage à l'écran.
+2. **Copier** — « Choisir le dossier de la Recalbox », taper `\\RECALBOX\share`
+   dans la fenêtre : la page écrit elle-même `recalbox-rfid\`, le script de
+   démarrage dans `userscripts\` et le script du menu dans `userscripts\manual\`.
+3. **Lancer** — **Recalbox 10** : avec la manette, `START` → réglages avancés →
+   scripts utilisateur → **Installer-lecteur-RFID** : l'installation démarre
+   **sans redémarrage** (Recalbox ne redémarre qu'une fois, toute seule, pour
+   activer le lecteur). **Recalbox 9** : redémarrez la Recalbox.
+   La page attend la Recalbox et passe seule à la suite.
+4. **Autoriser** — gardez le bouton du boîtier appuyé 3 secondes : la gestion
+   des badges s'ouvre.
+
+> Si Windows ne parvient pas à ouvrir `\\RECALBOX\share` (accès invité bloqué
+> par Windows 11), utilisez la méthode B, proposée par la page à l'étape 2.
+
+### Méthode B — l'installateur Windows `.cmd`
+
+1. Dans la page, étape 2 : **« Télécharger l'installateur Windows »**.
+2. **Double-cliquez** sur `recalbox-rfid-installation.cmd` (si Windows affiche
    « Windows a protégé votre PC » : *Informations complémentaires* →
-   *Exécuter quand même*). Il se connecte au partage, copie les fichiers et le
-   script de démarrage — sans rien demander.
-4. **Redémarrez Recalbox.** L'installation se fait toute seule au démarrage
-   (SPI, service, agent) et Recalbox redémarre une fois de plus si nécessaire.
-5. **Ouvrez `installer.html`, cliquez sur « Se connecter », puis gardez le bouton du
-   boîtier appuyé 3 secondes** (demande valable 30 s, une seule à la fois) : c'est
-   toute l'autorisation, **rien à recopier et aucun fichier à chercher**. Le `.cmd`
-   rouvre cette page avec l'adresse déjà remplie ; le relancer reste une solution de
-   secours.
+   *Exécuter quand même*). Il se connecte au partage et copie tout, sans rien
+   demander.
+3. Lancez l'installation comme à l'étape 3 de la méthode A : la page se rouvre
+   d'elle-même à cette étape.
 
-> Le `.cmd` tente `root` / `recalboxroot`, puis l'accès invité. Mot de passe root
-> personnalisé ? Ouvrez le fichier avec le Bloc-notes et modifiez
-> `set PASS=...`. Dépannage : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), §14.
+> Le `.cmd` tente `root` / `recalboxroot`, `root` sans mot de passe, puis l'accès
+> invité. Mot de passe root personnalisé ? Ouvrez le fichier avec le Bloc-notes
+> et modifiez `set PASS=...`. Dépannage : [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md), §14.
 
-### Méthode B — copier le dossier à la main
+### Méthode C — copier le dossier à la main
 
 1. Ouvrez `\\RECALBOX\share` dans l'Explorateur et copiez-y le dossier
    `recalbox-rfid` (celui qui contient `install.sh`).
 2. Copiez `recalbox-rfid\bootstrap\recalbox-rfid-agent(permanent).py3` dans
-   `\\RECALBOX\share\userscripts\`.
-3. **Redémarrez Recalbox.**
+   `\\RECALBOX\share\userscripts\` (et, pour Recalbox 10, le dossier
+   `recalbox-rfid\bootstrap\manual` dans `userscripts\`).
+3. **Redémarrez Recalbox** (ou, sur Recalbox 10, lancez *Installer-lecteur-RFID*
+   depuis le menu des scripts utilisateur).
 4. Ouvrez `installer.html` (la copie sur la Recalbox ou celle du projet), cliquez
    sur « Se connecter », puis gardez le bouton du boîtier appuyé 3 secondes
    pendant le compte à rebours : c'est l'autorisation.
@@ -95,10 +109,10 @@ programme.
 > L'assistant Windows `windows\INSTALLER.cmd` fait les étapes 1 et 2 à votre
 > place, propose l'installation par SSH et ouvre `installer.html` à la fin.
 
-### Méthode C — en ligne de commande (SSH)
+### Méthode D — en ligne de commande (SSH)
 
 1. Activez le SSH : menu `RÉSEAU` → `SERVEUR SSH` → `ON`.
-2. Copiez le dossier `recalbox-rfid` sur `\\RECALBOX\share` (étape B.1).
+2. Copiez le dossier `recalbox-rfid` sur `\\RECALBOX\share` (étape C.1).
 3. Lancez, depuis PowerShell / un terminal :
 
    ```sh
@@ -121,8 +135,11 @@ programme.
 **Vérification** (le MFRC522 doit être branché) :
 
 ```sh
-/recalbox/share/system/rfid/rfidctl test
+sh /recalbox/share/system/rfid/rfidctl test
 ```
+
+> Toujours `sh …/rfidctl` : le partage de Recalbox 10 est en exFAT, qui ne
+> conserve aucun droit d'exécution (`./rfidctl` répond *Permission denied*).
 
 Le diagnostic affiche la version du MFRC522, détecte un badge posé sur le
 lecteur et teste le bouton.
@@ -239,7 +256,7 @@ Les bips sont générés à la volée (`/tmp/rfid-launcher/beep-*.wav`) et joué
 ### Gérer les badges sans le bouton
 
 ```sh
-RFID=/recalbox/share/system/rfid/rfidctl
+RFID="sh /recalbox/share/system/rfid/rfidctl"
 
 $RFID list                              # liste des associations
 $RFID add A1B2C3D4 --current            # associe au jeu sélectionné dans Recalbox
@@ -261,20 +278,21 @@ ou `Classiques/jeu.smc` pour un jeu dans un sous-dossier).
 
 Quatre méthodes, aucune ne touche aux badges :
 
-1. **Depuis `installer.html`** (le plus simple) : connectez-vous, ouvrez
-   « Mettre à jour depuis un fichier ZIP ou une adresse », puis choisissez un ZIP
-   (ou collez une URL). L'agent installe et se recharge tout seul.
+1. **Depuis la page** (le plus simple) : onglet **Mises à jour**, bouton
+   **« Mettre à jour vers X »** — la page envoie le programme qu'elle contient.
+   « Autres façons de mettre à jour » accepte aussi un ZIP ou une URL.
 2. **Depuis un dossier, en SSH** (pratique pour tester) :
    `sh /recalbox/share/<nouveau-dossier>/install.sh --upgrade`.
 3. **Depuis une URL, en SSH** (ZIP hébergé où vous voulez) :
 
    ```sh
-   /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
+   sh /recalbox/share/system/rfid/rfidctl self-update https://exemple.fr/recalbox-rfid.zip
    ```
 
 La mise à jour remplace le programme, conserve `config.ini` + `tags.json`,
-redémarre le service et affiche la nouvelle version. L'autorisation de la page est
-à redonner : le service redémarre, un appui de 3 s sur le bouton suffit. Détails :
+redémarre le service et affiche la nouvelle version. La page se reconnecte
+toute seule : l'autorisation n'est à redonner qu'après un redémarrage complet
+de la Recalbox. Détails :
 [`docs/MISE-A-JOUR.md`](docs/MISE-A-JOUR.md).
 
 ## 7. Tester sur un PC (sans Raspberry Pi)

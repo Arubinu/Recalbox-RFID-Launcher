@@ -71,7 +71,7 @@ Si vous préférez une autre broche, modifiez `pin = 17` dans la section
 Une fois Recalbox redémarré (SPI activé) :
 
 ```sh
-/recalbox/share/system/rfid/rfidctl test
+sh /recalbox/share/system/rfid/rfidctl test
 ```
 
 Résultat attendu :

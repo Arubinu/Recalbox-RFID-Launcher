@@ -191,7 +191,7 @@ redémarrez Recalbox (`QUITTER` > `REDÉMARRER`), puis connectez `installer.html
 (agent sur le port 8765) ou lancez :
 
 ```sh
-ssh root@recalbox.local "/recalbox/share/system/rfid/rfidctl test"
+ssh root@recalbox.local "sh /recalbox/share/system/rfid/rfidctl test"
 ```
 
 ## Méthode 5 — directement sur la Recalbox

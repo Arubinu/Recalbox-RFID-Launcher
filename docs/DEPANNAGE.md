@@ -3,7 +3,7 @@
 Toujours commencer par :
 
 ```sh
-RFID=/recalbox/share/system/rfid/rfidctl
+RFID="sh /recalbox/share/system/rfid/rfidctl"
 $RFID status
 $RFID logs
 $RFID test

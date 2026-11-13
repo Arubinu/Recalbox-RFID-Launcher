@@ -4,6 +4,50 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique. La version courante est aussi dans le fichier `VERSION`
 et affichée par `rfidctl version`.
 
+## [2.9.0]
+
+### Ajouté — installation complète depuis la page, sans redémarrage (Recalbox 10)
+
+* La page dépose aussi `userscripts/manual/Installer-lecteur-RFID.sh`. Recalbox 10
+  liste ce dossier dans **START → réglages avancés → scripts utilisateur** et le
+  relit à chaque ouverture du menu : on lance l'installation avec la manette,
+  sans redémarrer. Le script démarre, détaché, le script permanent habituel
+  (installation, service, agent) ; Recalbox ne redémarre qu'une fois, seule,
+  pour activer le lecteur. Vérifié sur Recalbox 10.1.1.
+* `install.sh` pose ce script (réparation sans SSH), `uninstall.sh` le retire.
+* L'installateur `.cmd` le copie aussi et rouvre la page directement à l'étape
+  « Lancer » (`#etape=3`).
+
+### Modifié — nouvelle interface
+
+* **Assistant d'installation en 4 étapes** (Brancher, Copier, Lancer,
+  Autoriser) : la page attend la Recalbox toute seule, puis demande l'appui de
+  3 s. Plus de choix techniques à faire.
+* **Un seul écran « Autoriser cet ordinateur »** partout (installation,
+  connexion, reconnexion après redémarrage), avec compte à rebours visuel.
+* **Badges** : le jeu sélectionné sur la Recalbox en grand, un bouton
+  « Associer un badge à ce jeu », le compte à rebours de pose, et un message
+  clair à la fin (associé, ou délai dépassé). Liste lisible (nom du jeu, nom de
+  la console, nombre de lancements), recherche dès 6 badges.
+* **Matériel** : une liste de vérifications en langage courant, avec l'action
+  à faire ; l'éventuel problème s'affiche aussi en haut du tableau de bord.
+* **Mises à jour** : « Mettre à jour vers X » envoie le programme contenu dans
+  la page elle-même ; plus besoin de fichier ZIP.
+* Messages et confirmations intégrés à la page (plus de fenêtres `alert`).
+* Toutes les chaînes affichées sont traduites (6 langues), mise en page
+  mobile revue (en-tête, onglets).
+
+### Corrigé
+
+* `uninstall.sh --remove-spi` échouait sur `/boot` en lecture seule (et
+  s'arrêtait avant de supprimer le programme) ; il ne retirait pas non plus la
+  ligne ajoutée à `/boot/config.txt`. Il remonte maintenant `/boot` le temps
+  de la modification et ne retire que les lignes ajoutées par l'installation.
+* `uninstall.sh` n'arrêtait le service que si `rfidctl` était exécutable (jamais
+  le cas sur le partage exFAT) et laissait l'agent tourner.
+* Documentation : `rfidctl` s'appelle avec `sh` (le partage exFAT ne garde pas
+  le droit d'exécution).
+
 ## [2.8.2]
 
 ### Corrigé

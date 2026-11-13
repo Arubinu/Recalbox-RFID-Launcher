@@ -951,5 +951,69 @@ class CalibrationCommandTest(AgentTestCase):
             client.call("calibrate.status")
 
 
+def _frame(opcode, payload, fin=True):
+    """Trame client masquee, comme l'envoie un navigateur."""
+    mask = b"\x0a\x0b\x0c\x0d"
+    head = bytearray([(0x80 if fin else 0) | opcode])
+    length = len(payload)
+    if length < 126:
+        head.append(0x80 | length)
+    elif length < 65536:
+        head.append(0x80 | 126)
+        head += struct.pack("!H", length)
+    else:
+        head.append(0x80 | 127)
+        head += struct.pack("!Q", length)
+    return bytes(head) + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+
+
+class FragmentationTest(unittest.TestCase):
+    """Chromium decoupe les gros messages : l'agent doit les reassembler."""
+
+    def setUp(self):
+        self.left, self.right = socket.socketpair()
+        self.client = wsagent._Client(self.right, ("test", 0))
+
+    def tearDown(self):
+        self.left.close()
+        self.right.close()
+
+    def test_message_fragmente_reassemble(self):
+        data = json.dumps({"id": 7, "cmd": "upload.chunk", "data": "A" * 150000}).encode()
+        parts = [data[:60000], data[60000:120000], data[120000:]]
+        self.left.sendall(
+            _frame(0x1, parts[0], fin=False)
+            + _frame(0x0, parts[1], fin=False)
+            + _frame(0x0, parts[2], fin=True)
+        )
+        opcode, payload = wsagent._read_message(self.client)
+        self.assertEqual(opcode, 0x1)
+        self.assertEqual(json.loads(payload)["id"], 7)
+
+    def test_ping_entre_deux_fragments(self):
+        pings = []
+        self.left.sendall(
+            _frame(0x1, b'{"id": 1,', fin=False)
+            + _frame(0x9, b"ping")
+            + _frame(0x0, b' "cmd": "status"}', fin=True)
+        )
+        opcode, payload = wsagent._read_message(self.client, lambda op, p: pings.append((op, p)))
+        self.assertEqual(json.loads(payload), {"id": 1, "cmd": "status"})
+        self.assertEqual(pings, [(0x9, b"ping")])
+
+    def test_message_simple_inchange(self):
+        self.left.sendall(_frame(0x1, b'{"id": 2}'))
+        self.assertEqual(wsagent._read_message(self.client), (0x1, b'{"id": 2}'))
+
+    def test_continuation_orpheline_refusee(self):
+        self.left.sendall(_frame(0x0, b"reste", fin=True))
+        with self.assertRaises(wsagent.ProtocolError):
+            wsagent._read_message(self.client)
+
+    def test_fermeture_renvoyee(self):
+        self.left.sendall(_frame(0x8, b""))
+        self.assertEqual(wsagent._read_message(self.client)[0], 0x8)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -254,6 +254,43 @@ def _read_frame(client: _Client):
     return fin, opcode, payload
 
 
+def _read_message(client: _Client, on_control=None):
+    """Lit un message complet et renvoie ``(opcode, payload)``.
+
+    Les navigateurs (Chromium notamment) decoupent les gros messages en
+    plusieurs trames : une premiere trame texte sans le bit FIN, puis des
+    trames de continuation (opcode 0). Les lire une par une donnait un JSON
+    tronque, et l'envoi d'un ZIP depuis la page restait sans reponse. Les
+    trames de controle (ping, pong) peuvent s'intercaler entre les fragments
+    (RFC 6455, 5.4) : elles sont confiees a ``on_control``. Une trame de
+    fermeture est renvoyee telle quelle.
+    """
+    message_opcode = None
+    parts = []
+    size = 0
+    while True:
+        fin, opcode, payload = _read_frame(client)
+        if opcode >= 0x8:
+            if opcode == 0x8:
+                return opcode, payload
+            if on_control is not None:
+                on_control(opcode, payload)
+            continue
+        if opcode == 0x0:
+            if message_opcode is None:
+                raise ProtocolError("trame de continuation sans debut de message")
+        else:
+            if message_opcode is not None:
+                raise ProtocolError("nouveau message avant la fin du precedent")
+            message_opcode = opcode
+        parts.append(payload)
+        size += len(payload)
+        if size > MAX_MESSAGE:
+            raise ProtocolError("message trop volumineux")
+        if fin:
+            return message_opcode, b"".join(parts)
+
+
 def _send_frame(sock, opcode: int, payload: bytes) -> None:
     header = bytearray([0x80 | opcode])
     length = len(payload)
@@ -1336,21 +1373,18 @@ class _Handler(socketserver.BaseRequestHandler):
         sock.settimeout(None)
         client = _Client(sock, self.client_address)
         keep = True
+
+        def control(opcode, payload):
+            if opcode == 0x9:  # ping -> pong
+                _send_frame(sock, 0xA, payload)
+
         while keep and agent.running:
             try:
-                fin, opcode, payload = _read_frame(client)
+                opcode, payload = _read_message(client, control)
             except (ConnectionError, OSError, ProtocolError, struct.error):
                 break
             if opcode == 0x8:  # close
                 break
-            if opcode == 0x9:  # ping
-                try:
-                    _send_frame(sock, 0xA, payload)
-                except OSError:
-                    break
-                continue
-            if opcode in (0xA,):  # pong
-                continue
             if opcode != 0x1:
                 continue
             try:

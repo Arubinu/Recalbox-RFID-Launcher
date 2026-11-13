@@ -9,8 +9,10 @@ Fonctionnement dans le navigateur (Edge ou Chrome) :
 
 1. la page propose de choisir ``\\\\RECALBOX\\share`` (API File System Access) ;
 2. elle crée ``recalbox-rfid\\`` et le script de démarrage dans ``userscripts\\`` ;
-3. après redémarrage de la Recalbox, la même page se connecte à l'agent
-   WebSocket pour installer.
+3. elle depose aussi ``userscripts/manual/Installer-lecteur-RFID.sh`` :
+   sur Recalbox 10, on le lance depuis le menu (START > Reglages avances >
+   Scripts utilisateur), sans redemarrer ; sur Recalbox 9, on redemarre ;
+4. la meme page attend l'agent WebSocket puis demande l'appui de 3 s.
 
 Relancez ce script après chaque modification d'un fichier du projet :
 
@@ -32,6 +34,10 @@ PROJECT_NAME = "recalbox-rfid"
 
 #: Script permanent à copier dans ``userscripts/``.
 USERSCRIPT = "bootstrap/recalbox-rfid-agent(permanent).py3"
+
+#: Script a lancer depuis le menu de Recalbox 10 (``userscripts/manual/``) :
+#: il demarre l'installation sans redemarrage.
+MANUALSCRIPT = "bootstrap/manual/Installer-lecteur-RFID.sh"
 
 #: Fichiers de la racine utiles sur la Recalbox.
 ROOT_FILES = (
@@ -95,6 +101,7 @@ def build_payload(files: dict = None) -> dict:
         "project": PROJECT_NAME,
         "version": version(),
         "userscript": USERSCRIPT,
+        "manualscript": MANUALSCRIPT,
         "files": {
             path: base64.b64encode(content).decode("ascii") for path, content in files.items()
         },

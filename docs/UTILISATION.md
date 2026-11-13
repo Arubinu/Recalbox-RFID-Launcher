@@ -254,7 +254,7 @@ puis `rfidctl restart`.
 Le raccourci est `/recalbox/share/system/rfid/rfidctl` :
 
 ```sh
-RFID=/recalbox/share/system/rfid/rfidctl
+RFID="sh /recalbox/share/system/rfid/rfidctl"
 
 $RFID test              # diagnostic materiel (SPI, badge, bouton, frontend)
 $RFID list              # associations enregistrees
@@ -307,7 +307,7 @@ Fichier : `/recalbox/share/system/rfid/config.ini` (modifiable depuis le
 partage réseau, avec le Bloc-notes par exemple). Après modification :
 
 ```sh
-/recalbox/share/system/rfid/rfidctl restart
+sh /recalbox/share/system/rfid/rfidctl restart
 ```
 
 | Clé | Défaut | Rôle |
