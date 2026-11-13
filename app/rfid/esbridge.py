@@ -181,6 +181,66 @@ def current_target(state, allow_running: bool = False) -> "Target | None":
     return Target(system=system, game=game, name=(state.get("Game") or "").strip(), path=absolute)
 
 
+#: Frontend events that blank the state file while the selection stays the same
+#: (screensaver): the last selected game is then still the right one.
+IDLE_ACTIONS = ("sleep", "wakeup")
+
+
+def last_target_path() -> str:
+    """File holding the last selected game (tmpfs, cleared at boot)."""
+    import tempfile
+
+    return os.environ.get("RFID_LAST_TARGET") or os.path.join(
+        tempfile.gettempdir(), "rfid-launcher-last-target.json")
+
+
+def remember_target(target, path: str = None) -> None:
+    """Keeps the selected game: the screensaver erases it from the state file."""
+    import json
+
+    path = path or last_target_path()
+    try:
+        temporary = path + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"system": target.system, "game": target.game, "name": target.name,
+                       "path": target.path}, handle)
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
+def last_target(path: str = None):
+    import json
+
+    try:
+        with open(path or last_target_path(), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        if data.get("system") and data.get("game"):
+            return Target(system=data["system"], game=data["game"], name=data.get("name", ""),
+                          path=data.get("path", ""))
+    except (OSError, ValueError, AttributeError):
+        pass
+    return None
+
+
+def selected_target(state, allow_running: bool = False):
+    """(game, remembered): the selected game, or the last one during the screensaver."""
+    target = current_target(state, allow_running=allow_running)
+    if target is not None:
+        remember_target(target)
+        return target, False
+    if state is None:
+        idle = True                       # no state file at all
+    else:
+        empty = not any((state.get(key) or "").strip() for key in CLES_CHEMIN)
+        idle = empty and str(state.get("Action") or "").lower() in IDLE_ACTIONS
+    if idle:
+        remembered = last_target()
+        if remembered is not None:
+            return remembered, True
+    return None, False
+
+
 #: Emulator processes that may be stopped (never EmulationStation).
 EMULATEURS = (
     "retroarch",

@@ -4,6 +4,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.11.0]
+
+### Added
+
+* **Optional page password**, asked after the 3 s press on the button (Settings ›
+  Security): the button proves someone stands next to the Recalbox, the password
+  that it is an adult (play time, badges, settings). Salted PBKDF2-SHA256 hash
+  in `access.json`, 5 attempts per request, one second of pause after a wrong
+  password. Setting or changing it logs out every other device.
+* **Setting to turn off the page for phones** (Settings › Connection, on by
+  default): only the page saved on a computer can then connect.
+* **Undo / redo** in the card designer (buttons and Ctrl+Z / Ctrl+Y), one step
+  per gesture.
+* **Print shop option**: bleed (2, 3 or 5 mm, edges stretched outwards), crop
+  marks and a safe area line in the editor; eight cards per A4 page then. The
+  downloaded PNG gets the bleed too.
+
+### Changed
+
+* "Part sticking out of the slot": one row of buttons (None, ↑, ↓, ←, →) next to
+  the card direction.
+* The connection button sits right of the address field.
+* The wiring diagram is a regular section of the Hardware tab.
+
+### Fixed
+
+* **"No game selected" while a game was on screen**: the Recalbox screensaver
+  blanks the state file of the frontend (`Action=sleep`). The service now
+  remembers the last selected game, used during the screensaver (the page shows
+  "Recalbox screensaver" next to it).
+
 ## [2.10.0]
 
 ### Added — printable cards

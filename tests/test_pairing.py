@@ -56,6 +56,14 @@ class PairingTest(unittest.TestCase):
         self.assertTrue(pairing.take_grant(self.home, request["id"]))
         self.assertFalse(pairing.take_grant(self.home, request["id"]), "accord rejoue")
 
+    def test_demande_servie_libere_la_place(self):
+        """Another device may ask right after a successful pairing."""
+        request = pairing.create_request(self.home)
+        pairing.grant(self.home, request, press_started=self.now + 1)
+        self.assertTrue(pairing.take_grant(self.home, request["id"]))
+        self.assertIsNone(pairing.pending(self.home))
+        self.assertTrue(pairing.create_request(self.home)["id"])
+
     def test_accord_refuse_pour_une_autre_demande(self):
         """The dreaded race: the press meant for A must not validate B."""
         premiere = pairing.create_request(self.home)

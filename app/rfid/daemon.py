@@ -17,6 +17,7 @@ from .consts import (
     CALIBRATION_BACKUP_FILENAME,
     TAG_WRITE_FILENAME,
     CALIBRATION_FILENAME,
+    ES_STATE_FILE,
     LOCK_FILE,
     READER_TEST_FILENAME,
     db_path,
@@ -27,7 +28,9 @@ from .esbridge import (
     EsLauncher,
     Target,
     read_state,
+    current_target,
     relative_game_key,
+    remember_target,
     state_snapshot,
     supports_start_command,
 )
@@ -213,6 +216,8 @@ class Service:
         self._next_game_check = 0.0
         self._game_gone = 0
         self._tag_write = None
+        self._es_state_mtime = None
+        self._next_es_check = 0.0
 
     # ------------------------------------------------------------------ setup
     def setup(self) -> bool:
@@ -381,6 +386,7 @@ class Service:
                     self.log.info("Mode arme expire")
                 self._playtime_step()
                 self._light_step()
+                self._watch_frontend()
 
                 try:
                     self.store.reload_if_changed()
@@ -446,6 +452,23 @@ class Service:
             self._launched_uid = uid
             if self.log:
                 self.log.info("Carte bonus inseree a la place du jeu : la partie continue")
+
+    def _watch_frontend(self) -> None:
+        """Remembers the selected game: the screensaver erases it from the state file."""
+        now = time.monotonic()
+        if now < self._next_es_check:
+            return
+        self._next_es_check = now + 1.0
+        try:
+            mtime = os.stat(ES_STATE_FILE).st_mtime
+        except OSError:
+            return
+        if mtime == self._es_state_mtime:
+            return
+        self._es_state_mtime = mtime
+        target = current_target(read_state(), allow_running=True)
+        if target is not None:
+            remember_target(target)
 
     # ------------------------------------------------------------- play time
     #: Time given to read "play time is over" before the game is quit.

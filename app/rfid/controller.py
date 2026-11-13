@@ -22,10 +22,10 @@ import time
 from .esbridge import (
     EsLauncher,
     Target,
-    current_target,
     describe_state,
     game_is_running,
     read_state,
+    selected_target,
 )
 from . import portable
 from .library import LibraryError, relative_to_system
@@ -162,7 +162,9 @@ class Controller:
         # allow_running: the frontend sometimes leaves State=playing while the
         # user is simply on a game's page (no game running). For an association,
         # the displayed game is indeed the one wanted.
-        target = current_target(state, allow_running=True)
+        # During the screensaver, the frontend blanks the state file: the last
+        # selected game (remembered by the service) is still the right one.
+        target, _remembered = selected_target(state, allow_running=True)
         if target is None:
             self.feedback.error()
             self._flash("error")

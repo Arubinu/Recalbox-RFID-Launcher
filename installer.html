@@ -256,7 +256,8 @@
   .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
   .field > small { font-size: 12.5px; color: var(--faint); }
-  input[type=text], input[type=number], input[type=search], select {
+  .field .field-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+  input[type=text], input[type=password], input[type=number], input[type=search], select {
     width: 100%; height: 44px; padding: 0 13px;
     background: var(--bg-2); color: var(--text);
     border: 1px solid var(--line-2); border-radius: var(--r-md);
@@ -585,8 +586,14 @@
   }
   .stage canvas { display: block; max-width: 100%; touch-action: none; cursor: grab; border-radius: 4px; box-shadow: 0 18px 34px -18px rgba(0, 0, 0, .65); }
   .stage canvas.dragging { cursor: grabbing; }
-  .stage-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .stage-tools { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .tool-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tool-label { font-weight: 600; min-width: 0; }
   .stage-tools .seg { margin: 0; }
+  .stage-tools .seg button { min-width: 38px; }
+  .inline-field { display: flex; gap: 10px; align-items: center; }
+  .inline-field input { flex: 1 1 auto; min-width: 0; }
+  .inline-field .btn { height: 44px; flex: 0 0 auto; }
   .source-box { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); }
   .source-box .grow { min-width: 0; }
   .source-box b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -633,6 +640,7 @@
     .print-page:last-child { break-after: auto; page-break-after: auto; }
     .print-page img { position: absolute; display: block; }
     .print-page .cut { position: absolute; border: 0.1mm solid #bbb; box-sizing: border-box; }
+    .print-page .mark { position: absolute; border-left: 0.15mm solid #000; border-top: 0.15mm solid #000; }
     @page { size: A4 portrait; margin: 0; }
   }
 
@@ -979,16 +987,18 @@
         </button>
         <div>
           <h1 id="t-connect" tabindex="-1">Se connecter à la Recalbox</h1>
-          <p>Aucun mot de passe : c'est le bouton du boîtier qui autorise cet ordinateur.</p>
+          <p>C'est le bouton du boîtier qui autorise cet appareil, puis le mot de passe de la page s'il y en a un.</p>
         </div>
       </div>
       <section class="card" id="connect-form">
         <form class="stack" id="form-connect">
-          <label class="field"><span>Nom ou adresse de la Recalbox</span>
-            <input type="text" id="host" autocomplete="off" spellcheck="false" placeholder="recalbox.local">
+          <div class="field"><label for="host"><span class="field-title">Nom ou adresse de la Recalbox</span></label>
+            <div class="inline-field">
+              <input type="text" id="host" autocomplete="off" spellcheck="false" placeholder="recalbox.local">
+              <button class="btn primary" type="submit" id="btn-connect">Se connecter</button>
+            </div>
             <small>En général « recalbox.local ». Sinon, l'adresse IP s'affiche dans Recalbox : START › Réglages réseau.</small>
-          </label>
-          <div class="row"><button class="btn primary lg" type="submit" id="btn-connect">Se connecter</button></div>
+          </div>
         </form>
         <details class="more">
           <summary>Options avancées</summary>
@@ -1157,15 +1167,32 @@
               <div>
                 <div class="stage" id="card-stage"><canvas id="card-canvas" aria-label="Aperçu de la carte"></canvas></div>
                 <div class="stage-tools">
-                  <div class="seg" role="group" aria-label="Sens de la carte">
-                    <button type="button" data-orient="landscape" aria-pressed="true">Horizontale</button>
-                    <button type="button" data-orient="portrait" aria-pressed="false">Verticale</button>
+                  <div class="tool-row">
+                    <span class="tool-label">Sens</span>
+                    <div class="seg" role="group" aria-label="Sens de la carte">
+                      <button type="button" data-orient="landscape" aria-pressed="true">Horizontale</button>
+                      <button type="button" data-orient="portrait" aria-pressed="false">Verticale</button>
+                    </div>
+                    <span class="grow"></span>
+                    <div class="row" style="gap:4px">
+                      <button class="icon-btn" type="button" id="card-undo" disabled title="Annuler (Ctrl+Z)" aria-label="Annuler la dernière modification">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                      </button>
+                      <button class="icon-btn" type="button" id="card-redo" disabled title="Rétablir (Ctrl+Y)" aria-label="Rétablir la modification annulée">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+                      </button>
+                    </div>
                   </div>
-                  <label class="row" style="gap:8px"><button class="switch" type="button" role="switch" id="card-guide" aria-checked="true" aria-label="Montrer la partie qui dépasse de la fente"></button><span>Partie qui dépasse de la fente</span></label>
-                  <select id="card-guide-edge" aria-label="Bord qui dépasse" style="width:auto;height:34px">
-                    <option value="top">en haut</option><option value="bottom">en bas</option>
-                    <option value="left">à gauche</option><option value="right">à droite</option>
-                  </select>
+                  <div class="tool-row">
+                    <span class="tool-label">Partie qui dépasse de la fente</span>
+                    <div class="seg" role="group" aria-label="Partie qui dépasse de la fente" id="card-guide">
+                      <button type="button" data-guide="none" aria-pressed="false">Aucune</button>
+                      <button type="button" data-guide="top" aria-pressed="true" title="En haut" aria-label="En haut">↑</button>
+                      <button type="button" data-guide="bottom" aria-pressed="false" title="En bas" aria-label="En bas">↓</button>
+                      <button type="button" data-guide="left" aria-pressed="false" title="À gauche" aria-label="À gauche">←</button>
+                      <button type="button" data-guide="right" aria-pressed="false" title="À droite" aria-label="À droite">→</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="designer-side">
@@ -1196,12 +1223,26 @@
           <section class="card">
             <div class="card-head"><div class="grow">
               <h2>Planche à imprimer <span class="muted" id="sheet-count"></span></h2>
-              <p>Dix cartes par feuille A4. Imprimez à 100 % (taille réelle), puis découpez le long des traits.</p>
+              <p>Dix cartes par feuille A4 (huit avec le fond perdu). Imprimez à 100 % (taille réelle), puis découpez le long des traits.</p>
             </div>
             <div class="row">
               <button class="btn ghost sm" type="button" id="sheet-clear" disabled>Vider</button>
               <button class="btn primary" type="button" id="sheet-print" disabled>Imprimer</button>
             </div></div>
+            <div class="option-group" style="margin-bottom:14px">
+              <div class="option">
+                <div class="option-text">
+                  <span class="option-label">Pour un imprimeur : fond perdu et traits de coupe</span>
+                  <span class="option-help">Le fond déborde autour de la carte, des repères montrent où couper, et une ligne rouge pointillée montre la zone de sécurité (gardez-y le texte). Vaut pour la planche et l'image téléchargée.</span>
+                </div>
+                <div class="option-control row" style="gap:8px">
+                  <select id="print-bleed-mm" aria-label="Taille du fond perdu" style="width:auto;height:38px">
+                    <option value="2">2 mm</option><option value="3">3 mm</option><option value="5">5 mm</option>
+                  </select>
+                  <button class="switch" type="button" role="switch" id="print-bleed" aria-checked="false" aria-label="Fond perdu et traits de coupe"></button>
+                </div>
+              </div>
+            </div>
             <div class="sheet-grid" id="sheet-grid"></div>
             <div class="empty" id="sheet-empty">
               <b>La planche est vide</b>
@@ -1252,10 +1293,13 @@
             </div>
           </section>
 
-          <details class="more card">
-            <summary>Schéma de branchement</summary>
-            <div class="more-body"><div class="wiring" data-wiring></div></div>
-          </details>
+          <section class="card">
+            <div class="card-head"><div class="grow">
+              <h2>Schéma de branchement</h2>
+              <p>Le lecteur, le bouton et, si vous en avez un, le voyant (détails dans docs/WIRING.md).</p>
+            </div></div>
+            <div class="wiring" data-wiring></div>
+          </section>
         </section>
 
         <!-- ------------------------------------------------------ settings -->
@@ -1264,6 +1308,16 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
             <div class="grow"><b>Les réglages s'appliquent tout de suite.</b><span>Pas besoin de redémarrer la Recalbox. Les valeurs d'origine conviennent à la plupart des boîtiers.</span></div>
           </div>
+          <section class="option-group" id="access-group" style="margin-bottom:12px">
+            <h3>Sécurité</h3>
+            <div class="option">
+              <div class="option-text">
+                <span class="option-label">Mot de passe de la page</span>
+                <span class="option-help" id="access-help">Demandé après l'appui de 3 s sur le bouton : seuls ceux qui le connaissent peuvent changer les badges, le temps de jeu et les réglages. Les autres appareils devront se reconnecter.</span>
+              </div>
+              <div class="option-control row" id="access-actions" style="gap:6px"></div>
+            </div>
+          </section>
           <div id="options-body"></div>
           <p class="muted small" id="options-hint" style="margin-top:10px"></p>
           <div class="savebar" id="savebar">
@@ -2238,6 +2292,7 @@ async function pairWithButton(url, onWait, control) {
       }
       const check = await socketCall(socket, "pair.check", { request: request.request });
       if (check.accepted && check.token) return { token: check.token };
+      if (check.accepted && check.password) return { password: true, request: request.request };
       onWait(check.seconds || Math.max(0, Math.round((end - Date.now()) / 1000)), total, hold);
     }
     return { error: "timeout" };
@@ -2315,7 +2370,47 @@ function pairingView(root) {
       count.textContent = "";
       set("err", heading, body, buttons);
     },
+    password(onSubmit, message) {
+      bar.setAttribute("stroke-dashoffset", "0");
+      count.textContent = "";
+      set("wait", t("Mot de passe de la page"), message || t("Le bouton a bien été maintenu. Tapez maintenant le mot de passe de la page."));
+      const input = el("input", { attrs: { type: "password", autocomplete: "current-password", "aria-label": t("Mot de passe") } });
+      const ok = el("button", { className: "btn primary", text: t("Valider"), attrs: { type: "submit" } });
+      const form = el("form", { className: "inline-field", attrs: { style: "width:min(380px,100%)" } }, [input, ok]);
+      form.addEventListener("submit", (event) => { event.preventDefault(); onSubmit(input.value, form); });
+      actions.replaceChildren(form);
+      setTimeout(() => input.focus(), 60);
+    },
   };
+}
+
+/* Second step when a password is set: returns the token, or { error }. */
+function passwordMessage(text) {
+  const left = /(\d+) essai/.exec(text);
+  if (/incorrect/i.test(text) && left) return t("Mot de passe incorrect. Encore {n} essai(s).", { n: left[1] });
+  if (/essais/i.test(text)) return t("Trop d'essais : recommencez avec le bouton du boîtier.");
+  if (/expir/i.test(text)) return t("Demande expirée : recommencez avec le bouton du boîtier.");
+  return text;
+}
+function askPairPassword(view, url, request) {
+  return new Promise((resolve) => {
+    const submit = async (password, form) => {
+      $$("input, button", form).forEach((node) => { node.disabled = true; });
+      let socket = null;
+      try {
+        socket = await openSocket(url);
+        const answer = await socketCall(socket, "pair.password", { request, password }, 15000);
+        resolve(answer.token);
+      } catch (error) {
+        const text = errorText(error);
+        if (/essais|expir/i.test(text) && !/encore/i.test(text)) { resolve({ error: passwordMessage(text) }); return; }
+        view.password(submit, passwordMessage(text));
+      } finally {
+        if (socket) { try { socket.close(); } catch (ignored) { /* ignore */ } }
+      }
+    };
+    view.password(submit);
+  });
 }
 
 /* Explication d'un echec, en langage courant. */
@@ -2367,15 +2462,25 @@ async function authorize(root) {
   const control = pairControl;
   const result = await pairWithButton(url, (seconds, total, hold) =>
     view.waiting(seconds, total, hold, () => { control.cancelled = true; }), control);
-  if (!result.token) {
+  let token = result.token;
+  if (result.password) {
+    const answer = await askPairPassword(view, url, result.request);
+    if (typeof answer !== "string") {
+      view.failure(t("L'autorisation n'a pas abouti"), (answer && answer.error) || "",
+        [el("button", { className: "btn primary", text: t("Recommencer"), attrs: { type: "button" }, onclick: () => authorizeInto(root) })]);
+      return false;
+    }
+    token = answer;
+  }
+  if (!token) {
     const [heading, body] = pairingFailure(result, current.host);
     view.failure(heading, body, [el("button", { className: "btn primary", text: t("Recommencer"), attrs: { type: "button" }, onclick: () => authorizeInto(root) })]);
     return false;
   }
-  store.patch({ token: result.token });
+  store.patch({ token });
   view.success();
   try {
-    await agent.connect(url, result.token, 6000);
+    await agent.connect(url, token, 6000);
   } catch (error) {
     view.failure(t("La connexion a échoué"), errorText(error),
       [el("button", { className: "btn primary", text: t("Réessayer"), attrs: { type: "button" }, onclick: () => authorizeInto(root) })]);
@@ -2412,7 +2517,7 @@ function setTab(name) {
   $$("[data-tab]").forEach((node) => node.setAttribute("aria-selected", node.dataset.tab === name ? "true" : "false"));
   $$("[data-panel]").forEach((node) => node.classList.toggle("is-active", node.dataset.panel === name));
   try { sessionStorage.setItem("rfid-tab", name); } catch (error) { /* ignore */ }
-  if (name === "options") renderOptions(true);
+  if (name === "options") { renderOptions(true); renderAccess(); }
   if (name === "materiel") refreshCalibration();
   if (name === "cartes") enterDesigner();
   if (name === "badges" && agent.isOpen) loadSystems();
@@ -2816,7 +2921,8 @@ function renderCurrent() {
   const running = serviceRunning();
   if (current) {
     $("#now-title").textContent = gameTitle(current.name, current.game);
-    $("#now-sub").textContent = consoleName(current.system) + " · " + current.game;
+    $("#now-sub").textContent = consoleName(current.system) + " · " + current.game +
+      (current.remembered ? " · " + t("écran de veille de la Recalbox") : "");
   } else {
     $("#now-title").textContent = t("Aucun jeu sélectionné");
     $("#now-sub").textContent = t("Sur la Recalbox, placez-vous sur un jeu dans la liste, sans le lancer.");
@@ -3255,6 +3361,7 @@ const OPTION_GROUPES = [
   ["time", "Temps de jeu"],
   ["screen", "Messages à l'écran"],
   ["led", "Voyant"],
+  ["agent", "Connexion"],
   ["feedback", "Sons"],
   ["general", "Journal et diagnostic"],
 ];
@@ -3345,6 +3452,43 @@ function controlerOption(option) {
   });
   return champ;
 }
+async function renderAccess() {
+  const box = $("#access-actions");
+  let status;
+  try { status = await agent.send("access.status", {}, 8000); } catch (error) { $("#access-group").hidden = true; return; }
+  $("#access-group").hidden = false;
+  box.replaceChildren(...(status.password
+    ? [button(t("Changer"), () => changePassword(true)), button(t("Retirer"), removePassword, "ghost")]
+    : [button(t("Définir un mot de passe"), () => changePassword(false), "primary")]));
+}
+function passwordInput(id, label, auto) {
+  return formField(label, el("input", { attrs: { type: "password", id, autocomplete: auto, maxlength: 128 } }), "", true);
+}
+async function changePassword(hasOne) {
+  const fields = [];
+  if (hasOne) fields.push(passwordInput("f-pw-current", t("Mot de passe actuel"), "current-password"));
+  fields.push(passwordInput("f-pw-new", t("Nouveau mot de passe"), "new-password"));
+  fields.push(passwordInput("f-pw-again", t("Encore une fois"), "new-password"));
+  const ok = await cardDialog(hasOne ? t("Changer le mot de passe") : t("Définir un mot de passe"),
+    t("4 caractères au moins. Les autres ordinateurs et téléphones devront être autorisés de nouveau (bouton, puis mot de passe)."),
+    fields, t("Enregistrer"));
+  if (!ok) return;
+  const password = $("#f-pw-new").value;
+  if (password !== $("#f-pw-again").value) { toast("err", t("Les deux mots de passe ne sont pas identiques.")); return; }
+  const data = await run(() => agent.send("access.set", { password, current: hasOne ? $("#f-pw-current").value : "" }), "Enregistrement impossible :");
+  if (!data) return;
+  store.patch({ token: data.token });
+  toast("ok", t("Mot de passe enregistré. Les autres appareils sont déconnectés."));
+  renderAccess();
+}
+async function removePassword() {
+  const ok = await cardDialog(t("Retirer le mot de passe"), t("L'appui de 3 s sur le bouton suffira de nouveau pour autoriser un appareil."),
+    [passwordInput("f-pw-current", t("Mot de passe actuel"), "current-password")], t("Retirer"));
+  if (!ok) return;
+  const done = await run(() => agent.send("access.clear", { current: $("#f-pw-current").value }), "Impossible :");
+  if (done) { toast("ok", t("Mot de passe retiré.")); renderAccess(); }
+}
+
 async function renderOptions(force) {
   if (!agent.isOpen) return;
   let data;
@@ -4147,6 +4291,14 @@ function renderCard(canvas, d, pxPerMm, overlay) {
   ctx.restore();
   if (overlay) {
     if (d.guide) drawGuide(ctx, d, W, H, pxPerMm);
+    if (d.safe) {
+      ctx.save();
+      ctx.setLineDash([1.2, 1]);
+      ctx.lineWidth = 1.4 / pxPerMm;
+      ctx.strokeStyle = "rgba(230, 40, 40, .9)";
+      ctx.strokeRect(SAFE_MM, SAFE_MM, W - 2 * SAFE_MM, H - 2 * SAFE_MM);
+      ctx.restore();
+    }
     const box = bounds[d.selected];
     if (box) {
       ctx.save();
@@ -4205,7 +4357,9 @@ function redrawDesign() {
   designFrame = requestAnimationFrame(() => {
     designFrame = 0;
     const scale = designScale();
+    design.safe = printOptions.bleed;
     design.bounds = renderCard($("#card-canvas"), design, scale.px, true);
+    scheduleHistory();
   });
 }
 function resetLayers() {
@@ -4653,8 +4807,7 @@ async function enterDesigner() {
     if (!design.layers) resetLayers();
     if (!design.accent) design.accent = "#3f5be6";
     setOrientationButtons();
-    $("#card-guide").setAttribute("aria-checked", design.guide ? "true" : "false");
-    $("#card-guide-edge").value = design.guideEdge;
+    setGuideButtons();
     renderSource();
     afterDesignChange();
     loadSystems();
@@ -4663,11 +4816,106 @@ async function enterDesigner() {
   redrawDesign();
 }
 
-/* ---- export, sheet and printing ---- */
-function exportCanvas(rotateForSheet) {
-  const card = document.createElement("canvas");
-  renderCard(card, Object.assign({}, design, { guide: false, selected: "" }), PRINT_PX_MM, false);
-  if (!rotateForSheet || design.orientation !== "portrait") return card;
+function setGuideButtons() {
+  $$("[data-guide]").forEach((node) => node.setAttribute("aria-pressed",
+    (design.guide ? design.guideEdge : "none") === node.dataset.guide ? "true" : "false"));
+}
+
+/* ---- history: undo / redo of the card visual ----
+   A snapshot is taken half a second after the last change (one per gesture,
+   not one per mouse move). Pictures are kept by reference. */
+const HISTORY_MAX = 80;
+const designHistory = { past: [], future: [], timer: null };
+function designSnapshot() {
+  return {
+    json: JSON.stringify({
+      orientation: design.orientation, template: design.template, savedId: design.savedId || "",
+      layers: design.layers, accent: design.accent, rounded: design.rounded, title: design.title,
+      imageLabel: design.imageLabel, game: design.game,
+    }),
+    image: design.image, logo: design.logo, consoleArt: design.consoleArt, autoAccent: design.autoAccent,
+  };
+}
+function scheduleHistory() {
+  clearTimeout(designHistory.timer);
+  designHistory.timer = setTimeout(commitHistory, 500);
+}
+function commitHistory() {
+  if (!designReady || !design.layers) return;
+  const snap = designSnapshot();
+  const top = designHistory.past[designHistory.past.length - 1];
+  if (top && top.json === snap.json && top.image === snap.image) return;
+  designHistory.past.push(snap);
+  if (designHistory.past.length > HISTORY_MAX) designHistory.past.shift();
+  designHistory.future = [];
+  updateHistoryButtons();
+}
+function restoreSnapshot(snap) {
+  const data = JSON.parse(snap.json);
+  Object.assign(design, data, { image: snap.image, logo: snap.logo, consoleArt: snap.consoleArt, autoAccent: snap.autoAccent });
+  setOrientationButtons();
+  renderSource();
+  renderLayerTabs();
+  renderControls();
+  redrawDesign();
+  scheduleTemplateThumbs();
+  updateHistoryButtons();
+}
+function undoDesign() {
+  clearTimeout(designHistory.timer);
+  commitHistory();
+  if (designHistory.past.length < 2) return;
+  designHistory.future.push(designHistory.past.pop());
+  restoreSnapshot(designHistory.past[designHistory.past.length - 1]);
+}
+function redoDesign() {
+  clearTimeout(designHistory.timer);
+  if (!designHistory.future.length) return;
+  const snap = designHistory.future.pop();
+  designHistory.past.push(snap);
+  restoreSnapshot(snap);
+}
+function updateHistoryButtons() {
+  $("#card-undo").disabled = designHistory.past.length < 2;
+  $("#card-redo").disabled = !designHistory.future.length;
+}
+
+/* ---- export, sheet and printing ----
+   "Bleed" (for a print shop): the background goes past the cut line, so that
+   a slightly shifted cut never leaves a white edge. The edges of the card are
+   stretched outwards; corners are not rounded (the shop cuts them). */
+const PRINT_KEY = "rfid-print-options";
+const printOptions = (() => {
+  const defaults = { bleed: false, bleedMm: 3 };
+  try { return Object.assign(defaults, JSON.parse(localStorage.getItem(PRINT_KEY) || "{}")); } catch (error) { return defaults; }
+})();
+const SAFE_MM = 3;
+function savePrintOptions() {
+  try { localStorage.setItem(PRINT_KEY, JSON.stringify(printOptions)); } catch (error) { /* ignore */ }
+}
+function withBleed(source, bleed) {
+  const out = document.createElement("canvas");
+  const w = source.width;
+  const h = source.height;
+  /* The outer pixel rows may be partly transparent (anti-aliasing of the
+     millimetre grid): the colour is taken two pixels inside. */
+  const i = Math.min(2, Math.floor(Math.min(w, h) / 4));
+  out.width = w + 2 * bleed;
+  out.height = h + 2 * bleed;
+  const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, bleed, bleed);
+  ctx.drawImage(source, 0, i, w, 1, bleed, 0, w, bleed + i);
+  ctx.drawImage(source, 0, h - 1 - i, w, 1, bleed, h + bleed - i, w, bleed + i);
+  ctx.drawImage(source, i, 0, 1, h, 0, bleed, bleed + i, h);
+  ctx.drawImage(source, w - 1 - i, 0, 1, h, w + bleed - i, bleed, bleed + i, h);
+  ctx.drawImage(source, i, i, 1, 1, 0, 0, bleed + i, bleed + i);
+  ctx.drawImage(source, w - 1 - i, i, 1, 1, w + bleed - i, 0, bleed + i, bleed + i);
+  ctx.drawImage(source, i, h - 1 - i, 1, 1, 0, h + bleed - i, bleed + i, bleed + i);
+  ctx.drawImage(source, w - 1 - i, h - 1 - i, 1, 1, w + bleed - i, h + bleed - i, bleed + i, bleed + i);
+  return out;
+}
+function turnForSheet(card) {
   const turned = document.createElement("canvas");
   turned.width = card.height;
   turned.height = card.width;
@@ -4677,25 +4925,68 @@ function exportCanvas(rotateForSheet) {
   ctx.drawImage(card, 0, 0);
   return turned;
 }
+function exportCanvas(rotateForSheet, bleedMm) {
+  const card = document.createElement("canvas");
+  const settings = { guide: false, safe: false, selected: "" };
+  if (bleedMm) settings.rounded = false;
+  renderCard(card, Object.assign({}, design, settings), PRINT_PX_MM, false);
+  const result = bleedMm ? withBleed(card, Math.round(bleedMm * PRINT_PX_MM)) : card;
+  return rotateForSheet && design.orientation === "portrait" ? turnForSheet(result) : result;
+}
+function sheetLayout() {
+  const bleed = printOptions.bleed ? Number(printOptions.bleedMm) || 3 : 0;
+  const cellW = CARD_MM.long + 2 * bleed;
+  const cellH = CARD_MM.short + 2 * bleed;
+  const gap = bleed ? 8 : 2;
+  const cols = 2;
+  const rows = Math.max(1, Math.floor((296 - 12 + gap) / (cellH + gap)));
+  return {
+    bleed, cellW, cellH, gap, cols, rows, perPage: cols * rows,
+    left: (210 - cols * cellW - (cols - 1) * gap) / 2,
+    top: (296 - rows * cellH - (rows - 1) * gap) / 2,
+  };
+}
 function cardFileName() {
   const base = (design.title || (design.game && design.game.name) || "carte").normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "carte";
   return "carte-" + base + ".png";
 }
 function downloadCard() {
-  exportCanvas(false).toBlob((blob) => {
+  exportCanvas(false, printOptions.bleed ? Number(printOptions.bleedMm) || 3 : 0).toBlob((blob) => {
     if (!blob) { toast("err", t("Image impossible à créer.")); return; }
     downloadBlob(cardFileName(), blob, "image/png");
-    toast("ok", t("Image enregistrée (300 dpi, 85,6 × 54 mm)."));
+    toast("ok", printOptions.bleed
+      ? t("Image enregistrée (300 dpi, 85,6 × 54 mm et {n} mm de fond perdu).", { n: printOptions.bleedMm })
+      : t("Image enregistrée (300 dpi, 85,6 × 54 mm)."));
   }, "image/png");
 }
 const sheet = [];
 function addToSheet() {
   const preview = exportCanvas(false);
-  const printable = exportCanvas(true);
-  sheet.push({ name: design.title || t("Carte"), preview: preview.toDataURL("image/jpeg", 0.8), print: printable.toDataURL("image/png") });
+  /* Both versions are kept: the bleed option may change before printing. */
+  sheet.push({
+    name: design.title || t("Carte"),
+    preview: preview.toDataURL("image/jpeg", 0.8),
+    print: exportCanvas(true).toDataURL("image/png"),
+    printBleed: {},
+    design: designSnapshot(),
+  });
   renderSheet();
-  toast("ok", t("Carte ajoutée à la planche ({n}/10 sur la feuille).", { n: ((sheet.length - 1) % 10) + 1 }));
+  const perPage = sheetLayout().perPage;
+  toast("ok", t("Carte ajoutée à la planche ({n}/{max} sur la feuille).", { n: ((sheet.length - 1) % perPage) + 1, max: perPage }));
+}
+/* Bleed version of a sheet card, rendered when needed from its snapshot. */
+function bleedImage(item, bleedMm) {
+  if (item.printBleed[bleedMm]) return item.printBleed[bleedMm];
+  const current = designSnapshot();
+  const saved = JSON.parse(item.design.json);
+  Object.assign(design, saved, { image: item.design.image, logo: item.design.logo, consoleArt: item.design.consoleArt });
+  try {
+    item.printBleed[bleedMm] = exportCanvas(true, bleedMm).toDataURL("image/png");
+  } finally {
+    Object.assign(design, JSON.parse(current.json), { image: current.image, logo: current.logo, consoleArt: current.consoleArt });
+  }
+  return item.printBleed[bleedMm];
 }
 function renderSheet() {
   $("#sheet-count").textContent = sheet.length ? "(" + sheet.length + ")" : "";
@@ -4709,21 +5000,40 @@ function renderSheet() {
       onclick: () => { sheet.splice(index, 1); renderSheet(); } }, [icon("x", 13)]),
   ])));
 }
-/* A4 portrait, 2 columns x 5 rows of 85.6 x 54 mm, 2 mm apart. */
+/* A4 portrait, 2 columns: 10 cards 2 mm apart, or 8 cards with bleed and
+   crop marks (short lines outside the bleed, in line with the cut). */
 function printSheet() {
   const area = $("#print-area");
   const pages = [];
-  const gap = 2;
-  const left = (210 - 2 * CARD_MM.long - gap) / 2;
-  const top = (296 - 5 * CARD_MM.short - 4 * gap) / 2;
-  for (let start = 0; start < sheet.length; start += 10) {
+  const layout = sheetLayout();
+  const mark = (x, y, w, h) => el("div", { className: "mark", attrs: { style: "left:" + x + "mm;top:" + y + "mm;width:" + w + "mm;height:" + h + "mm" } });
+  for (let start = 0; start < sheet.length; start += layout.perPage) {
     const page = el("div", { className: "print-page" });
-    sheet.slice(start, start + 10).forEach((item, index) => {
-      const x = left + (index % 2) * (CARD_MM.long + gap);
-      const y = top + Math.floor(index / 2) * (CARD_MM.short + gap);
-      const style = "left:" + x + "mm;top:" + y + "mm;width:" + CARD_MM.long + "mm;height:" + CARD_MM.short + "mm";
-      page.appendChild(el("div", { className: "cut", attrs: { style } }));
-      page.appendChild(el("img", { attrs: { src: item.print, alt: "", style } }));
+    sheet.slice(start, start + layout.perPage).forEach((item, index) => {
+      const x = layout.left + (index % layout.cols) * (layout.cellW + layout.gap);
+      const y = layout.top + Math.floor(index / layout.cols) * (layout.cellH + layout.gap);
+      const style = "left:" + x + "mm;top:" + y + "mm;width:" + layout.cellW + "mm;height:" + layout.cellH + "mm";
+      if (!layout.bleed) {
+        page.appendChild(el("div", { className: "cut", attrs: { style } }));
+        page.appendChild(el("img", { attrs: { src: item.print, alt: "", style } }));
+        return;
+      }
+      page.appendChild(el("img", { attrs: { src: bleedImage(item, layout.bleed), alt: "", style } }));
+      const b = layout.bleed;
+      const left = x + b;
+      const right = x + b + CARD_MM.long;
+      const topY = y + b;
+      const bottom = y + b + CARD_MM.short;
+      const length = 3;
+      const away = 0.5;
+      for (const cx of [left, right]) {
+        page.appendChild(mark(cx, y - away - length, 0, length));
+        page.appendChild(mark(cx, y + layout.cellH + away, 0, length));
+      }
+      for (const cy of [topY, bottom]) {
+        page.appendChild(mark(x - away - length, cy, length, 0));
+        page.appendChild(mark(x + layout.cellW + away, cy, length, 0));
+      }
     });
     pages.push(page);
   }
@@ -5354,13 +5664,25 @@ function wire() {
     rememberDesign();
     afterDesignChange();
   }));
-  $("#card-guide").addEventListener("click", () => {
-    design.guide = !design.guide;
-    $("#card-guide").setAttribute("aria-checked", design.guide ? "true" : "false");
+  $$("[data-guide]").forEach((node) => node.addEventListener("click", () => {
+    const edge = node.dataset.guide;
+    design.guide = edge !== "none";
+    if (design.guide) design.guideEdge = edge;
+    setGuideButtons();
     rememberDesign();
     redrawDesign();
+  }));
+  $("#card-undo").addEventListener("click", undoDesign);
+  $("#card-redo").addEventListener("click", redoDesign);
+  document.addEventListener("keydown", (event) => {
+    if (!designReady || !$('[data-panel="cartes"]').classList.contains("is-active")) return;
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const target = event.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) return;
+    const key = event.key.toLowerCase();
+    if (key === "z" && !event.shiftKey) { event.preventDefault(); undoDesign(); }
+    else if (key === "y" || (key === "z" && event.shiftKey)) { event.preventDefault(); redoDesign(); }
   });
-  $("#card-guide-edge").addEventListener("change", () => { design.guideEdge = $("#card-guide-edge").value; design.guide = true; $("#card-guide").setAttribute("aria-checked", "true"); rememberDesign(); redrawDesign(); });
   $("#card-pick").addEventListener("click", pickGameForCard);
   $("#card-own").addEventListener("click", () => $("#card-file").click());
   $("#card-file").addEventListener("change", async (event) => {
@@ -5379,6 +5701,18 @@ function wire() {
     } catch (error) {
       toast("err", t("Cette image ne peut pas être lue."));
     }
+  });
+  $("#print-bleed").setAttribute("aria-checked", printOptions.bleed ? "true" : "false");
+  $("#print-bleed-mm").value = String(printOptions.bleedMm);
+  $("#print-bleed").addEventListener("click", () => {
+    printOptions.bleed = !printOptions.bleed;
+    $("#print-bleed").setAttribute("aria-checked", printOptions.bleed ? "true" : "false");
+    savePrintOptions();
+    redrawDesign();
+  });
+  $("#print-bleed-mm").addEventListener("change", () => {
+    printOptions.bleedMm = Number($("#print-bleed-mm").value) || 3;
+    savePrintOptions();
   });
   $("#card-add").addEventListener("click", addToSheet);
   $("#card-png").addEventListener("click", downloadCard);

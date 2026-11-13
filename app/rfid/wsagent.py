@@ -58,11 +58,11 @@ from .consts import (
     TAG_WRITE_FILENAME,
     TOKEN_FILENAME,
 )
-from . import bootcfg, portable
+from . import access, bootcfg, portable
 from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
-from .esbridge import current_target, read_state, resolve_rom_path, supports_start_command
+from .esbridge import read_state, resolve_rom_path, selected_target, supports_start_command
 from .library import Library, LibraryError
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
@@ -349,6 +349,11 @@ class Agent:
         self._store_guard = threading.Lock()
         self.library = Library(log=log)
         self._templates_guard = threading.Lock()
+        #: Connected clients (to log out the others when the password changes).
+        self._clients = set()
+        self._clients_guard = threading.Lock()
+        #: Requests granted by the button that still wait for the password.
+        self._awaiting_password = {}
         self._install_lock = threading.Lock()
         self._install_running = False
         self.server = None
@@ -373,6 +378,35 @@ class Agent:
         except OSError:
             pass                     # disk full: the secret stays in memory
         return token
+
+    def rotate_secret(self, keep=None) -> str:
+        """New session secret: every other device must be authorized again."""
+        path = os.path.join(pairing.state_dir(self.home), SESSION_FILENAME)
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        self.token = self._session_secret()
+        with self._clients_guard:
+            for other in self._clients:
+                if other is not keep:
+                    other.authenticated = False
+        return self.token
+
+    def register(self, client) -> None:
+        with self._clients_guard:
+            self._clients.add(client)
+
+    def unregister(self, client) -> None:
+        with self._clients_guard:
+            self._clients.discard(client)
+
+    def web_enabled(self) -> bool:
+        """Page for phones (and same-origin connections) allowed by the settings."""
+        try:
+            return Config(self.config_path()).get_bool("agent", "web", True)
+        except Exception:  # noqa: BLE001 - unreadable file: keep the default
+            return True
 
     def _forget_legacy_tokens(self) -> None:
         """Deletes the tokens of previous versions (they lived on the share)."""
@@ -502,7 +536,7 @@ class Agent:
             pass
         # allow_running: the frontend keeps State=playing on a game's page
         # (and right after leaving a game); the display must show it.
-        target = current_target(read_state(), allow_running=True)
+        target, remembered = selected_target(read_state(), allow_running=True)
         frontend = supports_start_command() if os.path.exists("/usr/bin/emulationstation") else None
         return {
             "app_version": __version__,
@@ -527,6 +561,7 @@ class Agent:
                     "game": target.game,
                     "name": target.name,
                     "path": target.path,
+                    "remembered": remembered,
                 }
                 if target
                 else None
@@ -659,7 +694,7 @@ class Agent:
             })
             return True
 
-        if command in ("pair.request", "pair.check", "pair.cancel"):
+        if command in ("pair.request", "pair.check", "pair.cancel", "pair.password"):
             return self._handle_pairing(client, request_id, command, message)
 
         if command == "auth":
@@ -750,11 +785,23 @@ class Agent:
                 })
                 return True
 
+            if command == "pair.password":
+                return self._pair_password(client, request_id, message)
+
             if command == "pair.check":
                 wanted = str(message.get("request") or "").strip()
                 if pairing.take_grant(self.home, wanted):
                     if self.log:
                         self.log.warning("Appairage : demande %s acceptee au bouton" % wanted)
+                    if access.has_password(self.home):
+                        # The press is not enough: the password comes next.
+                        self._awaiting_password[wanted] = {"until": time.time() + 120.0, "tries": 0}
+                        client.send({
+                            "id": request_id,
+                            "ok": True,
+                            "data": {"accepted": True, "password": True},
+                        })
+                        return True
                     client.send({
                         "id": request_id,
                         "ok": True,
@@ -786,6 +833,66 @@ class Agent:
                 self.log.error("Appairage : erreur sur %s : %s" % (command, exc))
             client.send({"id": request_id, "ok": False, "error": "appairage impossible : %s" % exc})
         return True
+
+    PASSWORD_TRIES = 5
+    #: Pause after a wrong password (slows down guessing).
+    PASSWORD_DELAY_S = 1.0
+
+    def _pair_password(self, client, request_id, message) -> bool:
+        """Second step of the pairing when a password is set."""
+        wanted = str(message.get("request") or "").strip()
+        waiting = self._awaiting_password.get(wanted)
+        if waiting is None or waiting["until"] < time.time():
+            self._awaiting_password.pop(wanted, None)
+            client.send({"id": request_id, "ok": False,
+                         "error": "demande expiree : recommencez avec le bouton"})
+            return True
+        if access.check(self.home, str(message.get("password") or "")):
+            self._awaiting_password.pop(wanted, None)
+            if self.log:
+                self.log.warning("Appairage : mot de passe correct (demande %s)" % wanted)
+            client.send({"id": request_id, "ok": True, "data": {"accepted": True, "token": self.token}})
+            return True
+        waiting["tries"] += 1
+        time.sleep(self.PASSWORD_DELAY_S)
+        left = self.PASSWORD_TRIES - waiting["tries"]
+        if left <= 0:
+            self._awaiting_password.pop(wanted, None)
+            if self.log:
+                self.log.warning("Appairage : trop d'essais de mot de passe (demande %s)" % wanted)
+            client.send({"id": request_id, "ok": False,
+                         "error": "trop d'essais : recommencez avec le bouton"})
+            return True
+        client.send({"id": request_id, "ok": False,
+                     "error": "mot de passe incorrect (encore %d essai%s)" % (left, "s" if left > 1 else "")})
+        return True
+
+    # ---------------------------------------------------------- password
+    def _cmd_access_status(self, client, message):
+        return {"password": access.has_password(self.home)}
+
+    def _cmd_access_set(self, client, message):
+        """Sets or changes the password; the other devices are logged out."""
+        if access.has_password(self.home) and not access.check(self.home, str(message.get("current") or "")):
+            time.sleep(self.PASSWORD_DELAY_S)
+            raise ValueError("mot de passe actuel incorrect")
+        try:
+            access.set_password(self.home, str(message.get("password") or ""))
+        except access.AccessError as exc:
+            raise ValueError(str(exc))
+        token = self.rotate_secret(keep=client)
+        if self.log:
+            self.log.warning("Mot de passe de la page defini : les autres appareils sont deconnectes")
+        return {"password": True, "token": token}
+
+    def _cmd_access_clear(self, client, message):
+        if not access.check(self.home, str(message.get("current") or "")):
+            time.sleep(self.PASSWORD_DELAY_S)
+            raise ValueError("mot de passe actuel incorrect")
+        access.clear_password(self.home)
+        if self.log:
+            self.log.warning("Mot de passe de la page retire")
+        return {"password": False}
 
     # ------------------------------------------------------------- diagnostic
     def _cmd_diag(self, client, message):
@@ -1468,6 +1575,9 @@ OPTIONS = (
     {"section": "screen", "key": "messages", "type": "bool", "default": True,
      "label": "Messages à l'écran pendant les parties",
      "help": "Temps restant, temps bonus, demande d'accès d'un appareil… Affichés par les jeux RetroArch (le menu de la Recalbox ne peut pas les afficher)."},
+    {"section": "agent", "key": "web", "type": "bool", "default": True,
+     "label": "Page pour téléphones et tablettes",
+     "help": "La Recalbox sert la page à l'adresse http://recalbox.local:8765. Désactivé : seule la page enregistrée sur un ordinateur peut se connecter (un téléphone connecté par cette adresse sera coupé)."},
     {"section": "led", "key": "type", "type": "choice", "choices": ["none", "rgb", "ws2812"],
      "default": "none", "label": "Voyant",
      "help": "Une LED qui montre ce que fait le lecteur : prêt, association, erreur, fin du temps de jeu."},
@@ -1594,7 +1704,7 @@ class _Handler(socketserver.BaseRequestHandler):
         # Web origins are refused: only a local page (file://, origin "null"),
         # the page served by this agent (same origin), or a client without an
         # Origin header can connect.
-        if origin and origin.lower() != "null" and not same_origin(origin, host):
+        if origin and origin.lower() != "null" and not (same_origin(origin, host) and agent.web_enabled()):
             try:
                 sock.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
             except OSError:
@@ -1621,6 +1731,7 @@ class _Handler(socketserver.BaseRequestHandler):
             return
         sock.settimeout(None)
         client = _Client(sock, self.client_address)
+        agent.register(client)
         keep = True
 
         def control(opcode, payload):
@@ -1642,6 +1753,7 @@ class _Handler(socketserver.BaseRequestHandler):
                 client.send({"ok": False, "error": "JSON invalide"})
                 continue
             keep = agent.process(client, message)
+        agent.unregister(client)
         client.close()
 
     def _serve_page(self, agent, sock, request_line: str, host: str) -> None:
@@ -1655,6 +1767,8 @@ class _Handler(socketserver.BaseRequestHandler):
         kind = "text/html; charset=utf-8"
         if not is_private_address(self.client_address) or not local_host_header(host):
             status, body, kind = "403 Forbidden", b"", "text/plain"
+        elif not agent.web_enabled():
+            status, body, kind = "404 Not Found", b"page disabled", "text/plain"
         elif path not in ("/", "/index.html"):
             status, body, kind = "404 Not Found", b"not found", "text/plain"
         elif page is None:

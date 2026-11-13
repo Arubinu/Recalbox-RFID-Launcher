@@ -9,6 +9,13 @@ APP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
+# The last selected game is remembered in a temporary file: the tests get their
+# own, so that they never read a real one (nor each other's).
+import tempfile as _tempfile  # noqa: E402
+
+os.environ["RFID_LAST_TARGET"] = os.path.join(
+    _tempfile.mkdtemp(prefix="rfid-tests-"), "last-target.json")
+
 
 class FakeClock:
     """Clock controlled by the test."""

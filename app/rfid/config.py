@@ -108,6 +108,9 @@ idle = 1
 # WebSocket agent used by installer.html (ws://recalbox.local:8765)
 enabled = 1
 port = 8765
+# Serve the management page to phones and tablets (http://recalbox.local:8765/).
+# 0 = only the page saved on a computer can connect.
+web = 1
 
 [update]
 # URL of the update ZIP file (see docs/UPDATING.md). Optional.

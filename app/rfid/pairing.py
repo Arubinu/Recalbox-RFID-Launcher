@@ -211,4 +211,10 @@ def take_grant(home: str, request_id: str) -> bool:
         still_valid = float(data.get("request_until") or 0) > time.time()
     except (TypeError, ValueError):
         return False
+    if still_valid:
+        # The request is served: another device may ask right away (it used to
+        # stay "pending" until its 30 s ran out).
+        current = _read(request_path(home))
+        if current and str(current.get("id") or "") == str(request_id or ""):
+            _remove(request_path(home))
     return still_valid

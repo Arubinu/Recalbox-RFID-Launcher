@@ -53,8 +53,18 @@ a RetroArch game, the request is also shown on the TV.
   it, even with a name pointing to the Recalbox.
 * Never expose port 8765 on the Internet; for remote access, use a VPN
   (WireGuard, Tailscale…).
-* To withdraw every authorization: restart the Recalbox. To disable the agent:
-  `enabled = 0` in `[agent]`.
+* **Page password** (Settings › Security, optional): asked after the 3 s press.
+  A child can hold the button too; with a password, only those who know it can
+  change the badges, the play time or the settings. Setting or changing it logs
+  out every other device. 5 attempts per request. Only a salted hash is stored
+  (`access.json`). Forgotten: delete `access.json` from
+  `\\RECALBOX\share\system\rfid` and restart the Recalbox.
+* **Page for phones** (Settings › Connection): on by default. The page itself
+  holds no secret and every action still needs the button (and the password, if
+  set), so serving it adds no access that the agent did not already offer on
+  port 8765. Turn it off to only allow the page saved on a computer.
+* To withdraw every authorization: restart the Recalbox, or set/change the
+  password. To disable the agent: `enabled = 0` in `[agent]`.
 
 When the connection drops (restart, network), the page greys out, shows "Connection
 lost for N s" and reconnects on its own.
@@ -183,7 +193,15 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    deletes it.
 6. **Add to the sheet**, then **Print**: ten cards per A4 page, with cut lines.
    Print at **100 %** (actual size, no "fit to page"). **Download the image**
-   saves one card as a PNG (for a print shop, for example).
+   saves one card as a PNG.
+7. **For a print shop**: turn on "bleed and crop marks" (2, 3 or 5 mm). The
+   background goes past the cut line, crop marks show where to cut, corners are
+   left square (the shop cuts them), and a red dotted line in the editor shows
+   the safe area where the text must stay. Eight cards per A4 page then; the
+   downloaded PNG gets the bleed too.
+
+**Undo / redo**: the arrows above the card, or Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z).
+One step per gesture, up to 80 steps.
 
 ## Status light and on-screen messages
 
