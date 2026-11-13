@@ -4168,33 +4168,27 @@ async function setImageSource(source) {
   renderSource();
   afterDesignChange();
 }
-async function setLogoSource(source) {
+/* Title written in text, or the logo of the game when the server has one. */
+async function setTitleStyle(style) {
   const game = design.game;
   if (!game) return;
-  design.busy = "logo";
+  if (style !== "logo") {
+    design.titleStyle = "text";
+    renderControls();
+    afterDesignChange();
+    return;
+  }
+  design.busy = "title";
   renderControls();
   try {
-    if (source === "game") {
-      const image = await onlinePicture(game, "logo");
-      if (!image) throw new Error(t("image introuvable"));
-      if (design.game === game) {
-        design.logo = image;
-        design.logoSource = "game";
-        /* A game logo is in colour: the template tint is for console logos. */
-        layerOf("logo").tint = "original";
-      }
-    } else {
-      const art = await consoleArtwork(game.system);
-      if (design.game === game) {
-        design.logo = art.logo;
-        design.logoSource = "console";
-        layerOf("logo").tint = (templateLayers(design.template, design.orientation).logo || {}).tint || "original";
-      }
-    }
+    const image = await onlinePicture(game, "logo");
+    if (!image) throw new Error(t("image introuvable"));
+    if (design.game === game) { design.titleLogo = image; design.titleStyle = "logo"; }
   } catch (error) {
     toast("err", t("Image en ligne indisponible : {error}", { error: error.message }));
   }
   design.busy = "";
+  renderControls();
   afterDesignChange();
 }
 
@@ -4284,6 +4278,27 @@ function drawTitle(ctx, text, layer, c, bounds) {
   ctx.restore();
   bounds.title = { cx: layer.x, cy: layer.y, w: fit.width + fit.size * 0.3, h: lineHeight * fit.lines.length, rot: layer.rotation || 0 };
 }
+/* Game logo in the title place: as tall as about two text lines, never wider
+   than the text width allowed by the template. */
+function drawTitleLogo(ctx, image, layer, bounds) {
+  if (!image || !layer || !layer.visible) return;
+  const ratio = naturalRatio(image);
+  let h = Math.max(1, layer.size * 2.2);
+  const max = Math.max(5, layer.maxw || 60);
+  if (h * ratio > max) h = max / ratio;
+  const w = h * ratio;
+  ctx.save();
+  ctx.translate(layer.x, layer.y);
+  ctx.rotate((layer.rotation || 0) * Math.PI / 180);
+  if (layer.outline) {
+    ctx.shadowColor = "rgba(0, 0, 0, .55)";
+    ctx.shadowBlur = h * 0.08;
+    ctx.shadowOffsetY = h * 0.03;
+  }
+  ctx.drawImage(image, -w / 2, -h / 2, w, h);
+  ctx.restore();
+  bounds.title = { cx: layer.x, cy: layer.y, w, h, rot: layer.rotation || 0 };
+}
 function drawImageLayer(ctx, d, L, c, bounds) {
   const win = L.window;
   const layer = L.image;
@@ -4338,7 +4353,8 @@ function renderCard(canvas, d, pxPerMm, overlay) {
   tpl.over(ctx, W, H, c, L);
   drawPicture(ctx, d.consoleArt, L.console, c, pxPerMm, "console", bounds);
   drawPicture(ctx, d.logo, L.logo, c, pxPerMm, "logo", bounds);
-  drawTitle(ctx, d.title, L.title, c, bounds);
+  if (d.titleStyle === "logo" && d.titleLogo) drawTitleLogo(ctx, d.titleLogo, L.title, bounds);
+  else drawTitle(ctx, d.title, L.title, c, bounds);
   ctx.restore();
   if (overlay) {
     if (d.guide) drawGuide(ctx, d, W, H, pxPerMm);
@@ -4415,8 +4431,6 @@ function redrawDesign() {
 }
 function resetLayers() {
   design.layers = templateLayers(design.template, design.orientation);
-  /* The template tint is meant for console logos, not a game logo in colour. */
-  if (design.logoSource === "game" && design.layers.logo) design.layers.logo.tint = "original";
 }
 function hitTest(x, y) {
   const order = ["title", "logo", "console", "image"];
@@ -4608,7 +4622,6 @@ function resetLayerButton(key) {
       const fresh = templateLayers(design.template, design.orientation)[key];
       const keepVisible = layerOf(key).visible;
       design.layers[key] = Object.assign(fresh, { visible: keepVisible });
-      if (key === "logo" && design.logoSource === "game") design.layers.logo.tint = "original";
       renderControls();
       redrawDesign();
     },
@@ -4661,14 +4674,30 @@ function renderControls() {
   } else if (key === "title") {
     const layer = layerOf("title");
     rows.push(visibleControl("title"));
-    const text = el("input", { attrs: { type: "text", "aria-label": t("Texte"), maxlength: 80 } });
-    text.value = design.title;
-    text.addEventListener("input", () => { design.title = text.value; redrawDesign(); });
-    rows.push(ctlRow(t("Texte"), text));
-    const font = el("select", { attrs: { "aria-label": t("Police") } }, Object.keys(FONT_STACKS).map((id) => el("option", { text: t(FONT_NAMES[id]), attrs: { value: id } })));
-    font.value = layer.font || "sans";
-    font.addEventListener("change", () => { layer.font = font.value; redrawDesign(); });
-    rows.push(ctlRow(t("Police"), font));
+    const asLogo = design.titleStyle === "logo" && design.titleLogo;
+    if (design.game) {
+      const entry = onlineState();
+      const style = el("select", { attrs: { "aria-label": t("Style du titre") } }, [
+        el("option", { text: t("Texte"), attrs: { value: "text" } }),
+        (entry && entry.found.logo) || asLogo ? el("option", { text: t("Logo du jeu"), attrs: { value: "logo" } }) : null,
+      ].filter(Boolean));
+      style.value = design.busy === "title" ? "logo" : (asLogo ? "logo" : "text");
+      style.disabled = design.busy === "title";
+      style.addEventListener("change", () => setTitleStyle(style.value));
+      rows.push(ctlRow(t("Style"), style));
+      const note = onlineNote(["logo"]);
+      if (note && !asLogo) rows.push(note);
+    }
+    if (!asLogo) {
+      const text = el("input", { attrs: { type: "text", "aria-label": t("Texte"), maxlength: 80 } });
+      text.value = design.title;
+      text.addEventListener("input", () => { design.title = text.value; redrawDesign(); });
+      rows.push(ctlRow(t("Texte"), text));
+      const font = el("select", { attrs: { "aria-label": t("Police") } }, Object.keys(FONT_STACKS).map((id) => el("option", { text: t(FONT_NAMES[id]), attrs: { value: id } })));
+      font.value = layer.font || "sans";
+      font.addEventListener("change", () => { layer.font = font.value; redrawDesign(); });
+      rows.push(ctlRow(t("Police"), font));
+    }
     const [size, sizeValue] = track(rangeControl("title", "size", 1.5, 24, 0.1, (v) => (Math.round(v * 10) / 10).toLocaleString(document.documentElement.lang || undefined) + " mm"));
     rows.push(ctlRow(t("Taille"), size, sizeValue));
     const rotation = rotationControls("title");
@@ -4679,8 +4708,10 @@ function renderControls() {
     color.addEventListener("change", () => { layer.color = color.value; redrawDesign(); });
     const outline = el("button", { className: "switch", attrs: { type: "button", role: "switch", "aria-label": t("Contour"), "aria-checked": layer.outline ? "true" : "false" } });
     outline.addEventListener("click", () => { layer.outline = !layer.outline; outline.setAttribute("aria-checked", layer.outline ? "true" : "false"); redrawDesign(); });
-    rows.push(ctlRow(t("Couleur"), color));
-    rows.push(ctlRow(t("Contour"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline));
+    if (!asLogo) rows.push(ctlRow(t("Couleur"), color));
+    rows.push(asLogo
+      ? ctlRow(t("Ombre"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline)
+      : ctlRow(t("Contour"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline));
     rows.push(ctlRow("", resetLayerButton("title")));
   } else {
     const missing = key === "logo" ? !design.logo : !design.consoleArt;
@@ -4690,19 +4721,6 @@ function renderControls() {
         : t("Choisissez un jeu : le logo et le dessin de sa console viennent du thème de la Recalbox.") }));
     }
     rows.push(visibleControl(key));
-    if (key === "logo" && design.game) {
-      const entry = onlineState();
-      const source = el("select", { attrs: { "aria-label": t("Logo") } }, [
-        el("option", { text: t("Logo de la console"), attrs: { value: "console" } }),
-        entry && entry.found.logo ? el("option", { text: t("Logo du jeu"), attrs: { value: "game" } }) : null,
-      ].filter(Boolean));
-      source.value = design.logoSource === "game" && entry && entry.found.logo ? "game" : "console";
-      source.disabled = design.busy === "logo";
-      source.addEventListener("change", () => setLogoSource(source.value));
-      rows.push(ctlRow(t("Logo"), source));
-      const note = onlineNote(["logo"]);
-      if (note) rows.push(note);
-    }
     const [size, sizeValue] = track(rangeControl(key, "h", 2, key === "logo" ? 40 : 80, 0.1, (v) => Math.round(v) + " mm"));
     rows.push(ctlRow(t("Taille"), size, sizeValue));
     const rotation = rotationControls(key);
@@ -4838,12 +4856,16 @@ function renderSource() {
     : (design.image ? t("Image personnelle") : t("Choisissez un jeu, ou utilisez votre propre image."));
 }
 async function loadGameImage(game) {
+  let image = null;
   try {
     const data = await agent.send("media.image", { system: game.system, path: game.path }, 20000);
-    design.image = data.found ? await loadImage("data:" + data.type + ";base64," + data.data) : null;
+    image = data.found ? await loadImage("data:" + data.type + ";base64," + data.data) : null;
   } catch (error) {
-    design.image = null;
+    image = null;
   }
+  /* Picture of a game that is no longer the chosen one: dropped. */
+  if (onlineKey(game) !== onlineKey(design.game)) return;
+  design.image = image;
   design.imageSource = "recalbox";
   design.imageLabel = "";
   Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);
@@ -4853,23 +4875,24 @@ async function loadGameImage(game) {
 /* Picks a game for the designer: picture, title, logo and colour of its console. */
 async function designGame(game) {
   if (!design.layers) resetLayers();
-  design.game = { system: game.system, path: game.path, name: game.name };
+  const chosen = { system: game.system, path: game.path, name: game.name };
+  design.game = chosen;
   design.title = game.name;
   renderSource();
   $("#card-source-sub").textContent = t("Chargement de l'image…");
   const art = await consoleArtwork(game.system);
+  /* Another game was chosen meanwhile: this slower load must not win. */
+  if (design.game !== chosen) return;
   design.logo = art.logo;
-  if (design.logoSource === "game" && design.layers.logo) {
-    design.layers.logo.tint = (templateLayers(design.template, design.orientation).logo || {}).tint || "original";
-  }
-  design.logoSource = "console";
+  design.titleStyle = "text";
+  design.titleLogo = null;
   design.consoleArt = art.console;
   design.autoAccent = accentFromSvg(art.svg) || fallbackAccent(game.system);
   design.accent = design.autoAccent;
   const saved = savedTemplates.find((item) => item.id === design.savedId);
   if (saved && saved.accent) design.accent = saved.accent;
-  await loadGameImage(game);
-  lookupOnline(design.game);
+  await loadGameImage(chosen);
+  if (design.game === chosen) lookupOnline(chosen);
 }
 async function designFromTag(tag) {
   setTab("cartes");
@@ -4877,6 +4900,8 @@ async function designFromTag(tag) {
     design.game = null;
     design.title = tagTitle(tag);
     design.logo = null;
+    design.titleStyle = "text";
+    design.titleLogo = null;
     design.consoleArt = null;
     design.image = null;
     design.imageLabel = tagTitle(tag);
@@ -4924,7 +4949,8 @@ async function enterDesigner() {
   }
   await loadSavedTemplates();
   redrawDesign();
-  if (auto) { cardAutoDone = true; await designGame(auto); }
+  /* Only if nothing was chosen while the templates were loading. */
+  if (auto && !design.game && !design.image) { cardAutoDone = true; await designGame(auto); }
   renderCurrentForCard();
 }
 
@@ -4944,9 +4970,10 @@ function designSnapshot() {
       orientation: design.orientation, template: design.template, savedId: design.savedId || "",
       layers: design.layers, accent: design.accent, rounded: design.rounded, title: design.title,
       imageLabel: design.imageLabel, game: design.game,
-      imageSource: design.imageSource || "", logoSource: design.logoSource || "",
+      imageSource: design.imageSource || "", titleStyle: design.titleStyle || "text",
     }),
     image: design.image, logo: design.logo, consoleArt: design.consoleArt, autoAccent: design.autoAccent,
+    titleLogo: design.titleLogo || null,
   };
 }
 function scheduleHistory() {
@@ -4965,7 +4992,7 @@ function commitHistory() {
 }
 function restoreSnapshot(snap) {
   const data = JSON.parse(snap.json);
-  Object.assign(design, data, { image: snap.image, logo: snap.logo, consoleArt: snap.consoleArt, autoAccent: snap.autoAccent });
+  Object.assign(design, data, { image: snap.image, logo: snap.logo, consoleArt: snap.consoleArt, autoAccent: snap.autoAccent, titleLogo: snap.titleLogo });
   setOrientationButtons();
   renderSource();
   renderLayerTabs();
@@ -5093,11 +5120,11 @@ function bleedImage(item, bleedMm) {
   if (item.printBleed[bleedMm]) return item.printBleed[bleedMm];
   const current = designSnapshot();
   const saved = JSON.parse(item.design.json);
-  Object.assign(design, saved, { image: item.design.image, logo: item.design.logo, consoleArt: item.design.consoleArt });
+  Object.assign(design, saved, { image: item.design.image, logo: item.design.logo, consoleArt: item.design.consoleArt, titleLogo: item.design.titleLogo });
   try {
     item.printBleed[bleedMm] = exportCanvas(true, bleedMm).toDataURL("image/png");
   } finally {
-    Object.assign(design, JSON.parse(current.json), { image: current.image, logo: current.logo, consoleArt: current.consoleArt });
+    Object.assign(design, JSON.parse(current.json), { image: current.image, logo: current.logo, consoleArt: current.consoleArt, titleLogo: current.titleLogo });
   }
   return item.printBleed[bleedMm];
 }

@@ -26,7 +26,8 @@ by `rfidctl version`.
   (No-Intro), then the game name, preferring the plain release over
   compilations and betas. Folder lists cached two weeks in `cache/libretro`;
   a picture is only downloaded when chosen. Picture element: "Source" list;
-  Logo element: console logo or game logo (kept in its colours). Commands
+  Title element: "Style" = written text or the game logo (in its colours,
+  optional shadow), so the console logo can stay beside it. Commands
   `media.online` and `media.online.get`; setting `[cards] online_art` (on by
   default, Settings › Cards).
 * **The Cards tab starts from the game selected on the Recalbox**, and a
@@ -54,6 +55,9 @@ by `rfidctl version`.
 
 ### Fixed
 
+* Card designer: a game chosen while the tab was opening (for example "Create
+  its card" from a badge) was replaced by the game selected on the Recalbox;
+  a slower picture load no longer overwrites a more recent choice.
 * The Cards tab failed when the page reopened directly on it before the
   Recalbox state arrived.
 * **"No game selected" while a game was on screen**: the Recalbox screensaver

@@ -179,8 +179,9 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    **Online pictures**: the Recalbox also looks the game up in the RetroArch
    picture database (libretro thumbnails, no account). When found, the
    **Source** list of the Picture element offers **Box art**, **Screenshot** and
-   **Title screen**, and the Logo element offers the **Game logo** besides the
-   console logo. Matching uses the file name (No-Intro names such as
+   **Title screen**, and the **Style** of the Title element offers the **Game
+   logo** instead of the written title (the Logo element stays the console
+   logo: both can be shown together). Matching uses the file name (No-Intro names such as
    "Tetris (World) (Rev 1)" work best), then the game name; homebrews are
    rarely there. It needs internet on the Recalbox; only the console and the
    game name are sent. The folder lists are cached for two weeks in
