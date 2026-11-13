@@ -531,6 +531,36 @@ class ServiceExtrasTest(unittest.TestCase):
         self.service._light_step()
         self.service.light.set_state.assert_called_with("noreader")
 
+    def test_ecriture_dans_le_badge(self):
+        from fake_rc522 import FakeRc522Spi
+        from rfid.drivers.rc522 import Rc522Reader
+
+        spi = FakeRc522Spi(bytes.fromhex("A1B2C3D4"))
+        self.service.reader = Rc522Reader(spi)
+        self.service.reader.start()
+        self.service._arm_adoption = lambda *a: None
+        self.command({"cmd": "write_tag", "uid": "A1B2C3D4", "data": b"RL1|nes|a.nes\x00".hex()})
+        self.service._tag_write_step()
+        self.assertIsNone(self.service._tag_write)
+        self.assertTrue(spi.read_text().startswith(b"RL1|nes|a.nes"))
+        with open(os.path.join(self.home, "tag-write.json"), encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle)["state"], "done")
+
+    def test_ecriture_abandonnee_sans_badge(self):
+        from fake_rc522 import FakeRc522Spi
+        from rfid.drivers.rc522 import Rc522Reader
+
+        self.service.reader = Rc522Reader(FakeRc522Spi(None))
+        self.service.reader.start()
+        self.command({"cmd": "write_tag", "uid": "A1B2C3D4", "data": "00"})
+        self.service._tag_write_step()
+        self.assertIsNotNone(self.service._tag_write, "attend le badge")
+        self.clock.advance(self.daemon.Service.TAG_WRITE_S + 1)
+        self.service._tag_write_step()
+        self.assertIsNone(self.service._tag_write)
+        with open(os.path.join(self.home, "tag-write.json"), encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle)["state"], "error")
+
     def test_demande_d_acces_affichee_une_fois(self):
         with self.mock.patch.object(self.daemon.pairing, "pending", return_value={"id": "R1"}):
             self.service._light_step()

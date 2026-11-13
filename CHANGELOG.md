@@ -57,6 +57,15 @@ by `rfidctl version`.
   game card for the bonus card quickly keeps the game running. Uses are kept in
   `playtime.json`.
 
+### Added — portable cards
+
+* "Write the game into the badge" (pencil of a game badge): the game is stored
+  in the chip of the badge (`RL1|<console>|<file>`), so the badge works on any
+  Recalbox running this program that has the game, even if it is not in its
+  list. MIFARE Classic (factory keys tried in turn), Ultralight and NTAG; the
+  driver gained authentication, block and page read/write, and the simulator
+  the matching memory.
+
 ### Added — status light and on-screen messages
 
 * **Status light**: an RGB LED on three GPIO pins (common cathode or anode), or

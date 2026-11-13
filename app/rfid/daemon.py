@@ -15,6 +15,7 @@ from .config import Config
 from .consts import (
     AGENT_COMMAND_FILENAME,
     CALIBRATION_BACKUP_FILENAME,
+    TAG_WRITE_FILENAME,
     CALIBRATION_FILENAME,
     LOCK_FILE,
     READER_TEST_FILENAME,
@@ -211,6 +212,7 @@ class Service:
         self._light_pairing = False
         self._next_game_check = 0.0
         self._game_gone = 0
+        self._tag_write = None
 
     # ------------------------------------------------------------------ setup
     def setup(self) -> bool:
@@ -268,8 +270,15 @@ class Service:
         self.controller = Controller(
             self.store, self.launcher, self.feedback, self.cfg, self.log,
             library=self.library, playtime=self.playtime, screen=self.screen,
-            light=self.light, power=self._power_off,
+            light=self.light, power=self._power_off, card_reader=self._read_card_memory,
         )
+
+    def _read_card_memory(self):
+        """Memory of the badge on the reader (portable cards), or None."""
+        reader = self.reader
+        if reader is None or not hasattr(reader, "read_memory"):
+            return None
+        return reader.read_memory()
 
     def _power_off(self) -> None:
         """Turns the Recalbox off cleanly (the frontend saves its lists)."""
@@ -339,7 +348,8 @@ class Service:
                         self._write_status()
 
                 if (self.reader is not None and self._reader_test is None
-                        and self._calibration is None and now >= next_slot):
+                        and self._calibration is None and self._tag_write is None
+                        and now >= next_slot):
                     # Read again at each turn: the setting applies without a restart.
                     interval = max(0.02, self.cfg.get_int("rfid", "poll_interval_ms", 150) / 1000.0)
                     next_slot = now + interval
@@ -363,6 +373,7 @@ class Service:
                     self._check_presence()
                     self._service_stop()
                 self._calibration_step()
+                self._tag_write_step()
                 self._consume_agent_command()
                 self._reader_test_step()
 
@@ -738,6 +749,8 @@ class Service:
             self._reset_calibration_settings()
         elif command == "reader_test":
             self._start_reader_test(float(payload.get("seconds") or 5))
+        elif command == "write_tag":
+            self._start_tag_write(payload)
         elif command == "simulate_scan":
             uid = str(payload.get("uid") or "")
             if uid:
@@ -1141,6 +1154,73 @@ class Service:
         except OSError as exc:
             if self.log:
                 self.log.warning("Ecriture impossible (%s) : %s" % (chemin, exc))
+
+    # ------------------------------------------------------- portable cards
+    TAG_WRITE_S = 15.0
+
+    def _tag_write_path(self) -> str:
+        return os.path.join(self.home, TAG_WRITE_FILENAME)
+
+    def _start_tag_write(self, payload: dict) -> None:
+        """Waits for a badge, then writes its game into it (portable card)."""
+        try:
+            data = bytes.fromhex(str(payload.get("data") or ""))
+        except ValueError:
+            data = b""
+        try:
+            os.remove(self._tag_write_path())
+        except OSError:
+            pass
+        if not data:
+            self._write_json(self._tag_write_path(), {"state": "error", "message": "rien a ecrire"})
+            return
+        self._tag_write = {
+            "uid": str(payload.get("uid") or "").upper(),
+            "data": data,
+            "deadline": time.monotonic() + self.TAG_WRITE_S,
+            "next": 0.0,
+            "error": "",
+        }
+        self._write_json(self._tag_write_path(), {"state": "waiting"})
+        self.feedback.armed()
+        if self.light is not None:
+            self.light.flash("launch")
+        self.log.info("Ecriture du jeu dans le badge %s demandee" % (self._tag_write["uid"] or "?"))
+
+    def _tag_write_step(self) -> None:
+        job = getattr(self, "_tag_write", None)
+        if job is None:
+            return
+        now = time.monotonic()
+        if now < job["next"]:
+            return
+        job["next"] = now + 0.3
+        if self.reader is None:
+            job["error"] = "lecteur indisponible"
+        else:
+            try:
+                self.reader.write_memory(job["data"], job["uid"])
+                written = self.reader.read_memory() or b""
+                if not written.startswith(job["data"].rstrip(b"\x00")):
+                    raise Rc522Error("la relecture ne correspond pas")
+            except Rc522Error as exc:
+                job["error"] = str(exc)
+            else:
+                self._tag_write = None
+                self._arm_adoption()
+                self.feedback.ok()
+                if self.light is not None:
+                    self.light.flash("ok")
+                self._write_json(self._tag_write_path(), {"state": "done", "bytes": len(job["data"])})
+                self.log.info("Jeu ecrit dans le badge %s (%d octets)" % (job["uid"], len(job["data"])))
+                return
+        if now >= job["deadline"]:
+            self._tag_write = None
+            self.feedback.error()
+            if self.light is not None:
+                self.light.flash("error")
+            self._write_json(self._tag_write_path(), {"state": "error", "message": job["error"] or "aucun badge"})
+            self.log.warning("Ecriture dans le badge abandonnee : %s" % (job["error"] or "aucun badge"))
 
     # ------------------------------------------------------------ reader test
     def _now_text(self) -> str:

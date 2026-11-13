@@ -135,6 +135,8 @@ Guide pas à pas : [docs/INSTALLATION.md](docs/INSTALLATION.md).
   de la carte pour le déplacer, l'agrandir ou le tourner ; une bande jaune montre la partie qui dépasse de la fente.
   Enregistrez votre mise en page comme modèle, ajoutez les cartes à la planche, puis imprimez à 100 % (dix cartes par
   feuille A4).
+- **Cartes portables** : crayon d'un badge › « Écrire le jeu dans le badge » enregistre le jeu dans le badge
+  lui-même ; il marche alors sur toute Recalbox qui a ce jeu (badges MIFARE Classic, Ultralight, NTAG).
 - **Cartes spéciales** (onglet Badges) : jeu au hasard, temps bonus, quitter le jeu, éteindre la Recalbox.
 - **Temps de jeu** : Réglages › Temps de jeu par partie, ou par badge avec le crayon. La Recalbox prévient 5 minutes
   puis 1 minute avant la fin, puis quitte le jeu ; une carte bonus ajoute des minutes, un nombre de fois limité par

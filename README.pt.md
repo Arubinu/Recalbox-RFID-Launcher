@@ -133,6 +133,8 @@ Guia passo a passo: [docs/INSTALLATION.md](docs/INSTALLATION.md) (em inglês).
 - **Imprimir os cartões** (separador Cartões): escolha um jogo e um modelo, horizontal ou vertical; toque num elemento
   do cartão para o mover, aumentar ou rodar; uma faixa amarela mostra a parte que fica fora da ranhura. Guarde o
   esquema como modelo, adicione os cartões à folha e imprima a 100 % (dez cartões por folha A4).
+- **Cartões portáteis**: lápis de um tag › «Escrever o jogo no tag» guarda o jogo no próprio tag; funciona
+  então em qualquer Recalbox que tenha o jogo (tags MIFARE Classic, Ultralight, NTAG).
 - **Cartões especiais** (separador Tags): jogo ao acaso, tempo bónus, sair do jogo, desligar o Recalbox.
 - **Tempo de jogo**: Definições › Tempo de jogo por partida, ou por tag com o lápis. O Recalbox avisa 5 minutos e
   1 minuto antes do fim e depois sai do jogo; um cartão bónus acrescenta minutos, um número limitado de vezes por dia,

@@ -134,6 +134,8 @@ Guía paso a paso: [docs/INSTALLATION.md](docs/INSTALLATION.md) (en inglés).
 - **Imprimir las tarjetas** (pestaña Imprimir): elige un juego y una plantilla, horizontal o vertical; toca un elemento
   de la tarjeta para moverlo, agrandarlo o girarlo; una franja amarilla muestra la parte que sobresale de la ranura.
   Guarda tu diseño como plantilla, añade las tarjetas a la hoja e imprime al 100 % (diez tarjetas por hoja A4).
+- **Tarjetas portátiles**: lápiz de una tarjeta › «Escribir el juego en la tarjeta» guarda el juego en la propia
+  tarjeta; funciona entonces en cualquier Recalbox que tenga el juego (MIFARE Classic, Ultralight, NTAG).
 - **Tarjetas especiales** (pestaña Tarjetas): juego al azar, tiempo extra, salir del juego, apagar la Recalbox.
 - **Tiempo de juego**: Ajustes › Tiempo de juego por partida, o por tarjeta con el lápiz. La Recalbox avisa 5 minutos y
   1 minuto antes del final y después sale del juego; una tarjeta de tiempo extra añade minutos, un número limitado de

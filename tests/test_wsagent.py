@@ -1120,6 +1120,30 @@ class CardsCommandsTest(AgentTestCase):
         with self.assertRaises(WsError):
             client.call("cards.template.save", template={"name": "gros", "blob": "x" * 70000})
 
+    def test_ecrire_le_jeu_dans_le_badge(self):
+        client = self.authenticated_client()
+        client.call("tags.add", uid="A1B2C3D4", system="snes", game="Mario.smc",
+                    path="/recalbox/share/roms/snes/Mario.smc")
+        recorded = {}
+
+        def service(agent, command, **extra):
+            recorded.update(command=command, **extra)
+            with open(os.path.join(self.home, "tag-write.json"), "w", encoding="utf-8") as handle:
+                json.dump({"state": "done", "bytes": 19}, handle)
+
+        with mock.patch.object(wsagent, "process_alive", return_value=True), \
+                mock.patch.object(wsagent.Agent, "_write_command", service):
+            data = client.call("tags.write", uid="A1:B2:C3:D4", timeout=15)
+        self.assertTrue(data["written"])
+        self.assertEqual(recorded["command"], "write_tag")
+        self.assertEqual(bytes.fromhex(recorded["data"]), b"RL1|snes|Mario.smc\x00")
+
+    def test_une_carte_speciale_ne_s_ecrit_pas(self):
+        client = self.authenticated_client()
+        self.agent._tags().put_entry("B1B2C3D4", {"kind": "action", "action": "quit"})
+        with self.assertRaises(WsError):
+            client.call("tags.write", uid="B1B2C3D4")
+
     def test_status_donne_l_adresse_du_telephone(self):
         client = self.authenticated_client()
         agent_info = client.call("status")["agent"]

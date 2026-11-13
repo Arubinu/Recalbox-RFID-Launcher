@@ -40,6 +40,8 @@ TOKEN_FILENAME = "token.txt"
 AGENT_COMMAND_FILENAME = "agent-command.json"
 #: Reader test result (written by the service, read by the agent).
 READER_TEST_FILENAME = "reader-test.json"
+#: Result of the writing of a game into a badge (portable cards).
+TAG_WRITE_FILENAME = "tag-write.json"
 
 #: Default port of the WebSocket agent.
 AGENT_PORT = 8765

@@ -17,7 +17,8 @@ Commands (JSON, one answer per `id`):
 * ``pair.request`` / ``pair.check`` / ``pair.cancel`` (pairing confirmed with the button);
 * ``auth`` (session secret), ``status``, ``version``, ``log``;
 * ``install`` (share folder or URL), ``upload.begin/chunk/end`` (ZIP);
-* ``tags.list/add/update/remove/export/import``;
+* ``tags.list/add/update/write/remove/export/import`` (``write``: the game
+  is written into the badge itself, portable card);
 * ``associate`` (selected game, game chosen in the page, special card, erase),
   ``scan`` (simulated badge);
 * ``games.systems/search``, ``media.image/logo`` (game library, card designer);
@@ -54,9 +55,10 @@ from .consts import (
     CONFIG_FILENAME,
     DB_FILENAME,
     READER_TEST_FILENAME,
+    TAG_WRITE_FILENAME,
     TOKEN_FILENAME,
 )
-from . import bootcfg
+from . import bootcfg, portable
 from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
@@ -1331,6 +1333,44 @@ class Agent:
                 }
             )
         return {"count": len(items), "tags": items}
+
+    def _cmd_tags_write(self, client, message):
+        """Writes the game of a badge into the badge itself (portable card).
+
+        The service owns the reader: it waits up to 15 s for this badge on the
+        reader, writes, reads back, and leaves its verdict in tag-write.json.
+        """
+        uid = normalize_uid(str(message.get("uid") or ""))
+        entry = self._tags().get(uid)
+        if entry is None:
+            raise ValueError("badge inconnu")
+        if entry.get("kind") == "action":
+            raise ValueError("une carte speciale ne s'ecrit pas dans le badge")
+        try:
+            data = portable.encode(entry["system"], entry.get("path") or entry["game"])
+        except portable.PortableError as exc:
+            raise ValueError(str(exc))
+        if not process_alive(read_pid(self.home)):
+            raise RuntimeError("le service RFID n'est pas demarre")
+        path = os.path.join(self.home, TAG_WRITE_FILENAME)
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        self._write_command("write_tag", uid=uid, data=data.hex())
+        deadline = time.time() + 20.0
+        while time.time() < deadline:
+            time.sleep(0.25)
+            try:
+                with open(path, "r", encoding="utf-8") as handle:
+                    result = json.load(handle)
+            except (OSError, ValueError):
+                continue
+            if result.get("state") == "done":
+                return {"written": True, "bytes": result.get("bytes", len(data))}
+            if result.get("state") == "error":
+                raise RuntimeError(str(result.get("message") or "ecriture impossible"))
+        raise RuntimeError("le service n'a pas repondu")
 
     def _cmd_tags_update(self, client, message):
         """Renames a badge, or changes its time limit / card parameters."""

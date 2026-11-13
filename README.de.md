@@ -137,6 +137,8 @@ Schritt-für-Schritt-Anleitung: [docs/INSTALLATION.md](docs/INSTALLATION.md) (au
 - **Karten drucken** (Tab Karten): Spiel und Vorlage wählen, quer oder hoch; ein Element der Karte antippen, um es zu
   verschieben, zu vergrößern oder zu drehen; ein gelber Streifen zeigt den Teil, der aus dem Schlitz ragt. Das Layout
   als Vorlage speichern, die Karten zum Druckbogen hinzufügen, dann mit 100 % drucken (zehn Karten pro A4-Blatt).
+- **Tragbare Karten**: Stift eines Badges › „Spiel in den Badge schreiben“ speichert das Spiel im Badge selbst;
+  er funktioniert dann auf jeder Recalbox mit diesem Spiel (MIFARE-Classic-, Ultralight-, NTAG-Badges).
 - **Sonderkarten** (Tab Badges): Zufallsspiel, Bonuszeit, Spiel beenden, Recalbox ausschalten.
 - **Spielzeit**: Einstellungen › Spielzeit pro Partie, oder pro Badge mit dem Stift. Die Recalbox warnt 5 und 1 Minute
   vor dem Ende und beendet dann das Spiel; eine Bonuskarte fügt Minuten hinzu, begrenzt oft pro Tag, Woche…

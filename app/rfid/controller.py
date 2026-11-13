@@ -10,7 +10,9 @@ Optional helpers (all may be None):
 * ``playtime`` -- time-limited games and bonus cards;
 * ``screen``   -- messages on the game screen (RetroArch);
 * ``light``    -- status light;
-* ``power``    -- function that turns the Recalbox off.
+* ``power``    -- function that turns the Recalbox off;
+* ``card_reader`` -- function returning the memory of the badge on the reader
+  (portable cards: the game is written in the badge).
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from .esbridge import (
     game_is_running,
     read_state,
 )
+from . import portable
 from .library import LibraryError, relative_to_system
 from .storage import KIND_ACTION, StorageError, pretty_uid
 
@@ -57,6 +60,7 @@ class Controller:
         screen=None,
         light=None,
         power=None,
+        card_reader=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -70,6 +74,7 @@ class Controller:
         self.screen = screen
         self.light = light
         self.power = power
+        self.card_reader = card_reader
 
         self.ignore_when_running = True
         self.arm_timeout_s = 10.0
@@ -218,6 +223,15 @@ class Controller:
             return "failed"
 
         if not entry:
+            entry = self._portable(uid)
+            if entry is not None and entry.get("missing"):
+                self.feedback.error()
+                self._flash("error")
+                self._log("info", "Badge %s : %s / %s n'est pas installe sur cette Recalbox"
+                          % (pretty_uid(uid), entry["system"], entry["game"]))
+                return "missing"
+
+        if not entry:
             self.feedback.error()
             self._flash("error")
             self._say("unknown")
@@ -245,6 +259,21 @@ class Controller:
         if is_action:
             return self._special(uid, entry)
         return self._launch(entry, uid)
+
+    def _portable(self, uid: str):
+        """Game written in the memory of an unknown badge (portable card)."""
+        if self.card_reader is None:
+            return None
+        try:
+            data = self.card_reader()
+        except Exception as exc:  # noqa: BLE001 - never blocking
+            self._log("debug", "Memoire du badge illisible : %s" % exc)
+            return None
+        entry = portable.entry_from(data)
+        if entry is not None and not entry.get("missing"):
+            self._log("info", "Badge %s : jeu ecrit dans le badge (%s / %s)"
+                      % (pretty_uid(uid), entry["system"], entry["game"]))
+        return entry
 
     # ------------------------------------------------------------------ interne
     def _bind(self, uid: str, target) -> str:

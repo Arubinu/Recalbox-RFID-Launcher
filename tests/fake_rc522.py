@@ -10,6 +10,7 @@ REG_COMMAND = 0x01
 REG_COM_IRQ = 0x04
 REG_DIV_IRQ = 0x05
 REG_ERROR = 0x06
+REG_STATUS2 = 0x08
 REG_FIFO_DATA = 0x09
 REG_FIFO_LEVEL = 0x0A
 REG_CONTROL = 0x0C
@@ -31,8 +32,18 @@ class FakeRc522Spi:
     backend = "fake"
 
     def __init__(self, uid=None, version: int = 0x92, bad_bcc: bool = False,
-                 wupa_only: bool = False, broken_crc: bool = False):
+                 wupa_only: bool = False, broken_crc: bool = False, card: str = "classic",
+                 key: bytes = b"\xff" * 6, pages: int = 16):
         self.uid = bytes(uid) if uid else None
+        #: Memory model: "classic" (MIFARE Classic 1K, key A) or "ultralight"
+        #: (4-byte pages, ``pages`` in total: 16 for an Ultralight, 45 for an NTAG213).
+        self.card = card
+        self.key = bytes(key)
+        self.pages = pages
+        self.memory = {}
+        self.status2 = 0
+        self.auth_sector = None
+        self.pending_block = None
         self.version = version
         #: Some clone badges return a wrong BCC: the driver must still read the
         #: UID (it recomputes the BCC for the selection).
@@ -103,6 +114,8 @@ class FakeRc522Spi:
             return bytes([self.version])
         if register == REG_COMMAND:
             return bytes([self.command])
+        if register == REG_STATUS2:
+            return bytes([self.status2])
         return bytes([self.registers.get(register, 0)] * count)
 
     def _write(self, register: int, value: int) -> None:
@@ -132,6 +145,9 @@ class FakeRc522Spi:
             if value == 0x03:  # CalcCRC
                 self._calculate_crc()
                 return
+            if value == 0x0E:  # MFAuthent
+                self._authenticate()
+                return
             self.command = value
             return
         if register == REG_CONTROL:
@@ -139,6 +155,11 @@ class FakeRc522Spi:
             return
         if register == REG_ERROR:
             self.error = value
+            return
+        if register == REG_STATUS2:
+            self.status2 = value
+            if not value & 0x08:
+                self.auth_sector = None
             return
         self.registers[register] = value
 
@@ -176,6 +197,76 @@ class FakeRc522Spi:
             self.crc = self.crc_a(bytes(self.fifo))
         self.div_irq |= 0x04
 
+    def _authenticate(self) -> None:
+        """MFAuthent: [0x60, block, key (6), uid (4)] in the FIFO."""
+        frame = bytes(self.fifo)
+        self.fifo.clear()
+        self.irq = IRQ_IDLE
+        ok = (self.uid is not None and self.card == "classic" and len(frame) == 12
+              and frame[0] == 0x60 and frame[2:8] == self.key and frame[8:12] == self.uid[-4:])
+        if ok:
+            self.status2 |= 0x08
+            self.auth_sector = frame[1] // 4
+        else:
+            self.status2 &= ~0x08
+            self.auth_sector = None
+
+    def _ack(self, ok: bool = True) -> None:
+        self._respond(bytes([0x0A if ok else 0x00]))
+        self.control = 4                    # 4 valid bits
+
+    def _memory_command(self, frame: bytes) -> bool:
+        """READ / WRITE of the badge memory; True when the frame was handled."""
+        if self.pending_block is not None:
+            block = self.pending_block
+            self.pending_block = None
+            if len(frame) == 18 and frame[16:18] == self.crc_a(frame[:16]):
+                self.memory[block] = frame[:16]
+                self._ack()
+            else:
+                self._ack(False)
+            return True
+        if len(frame) < 4 or frame[-2:] != self.crc_a(frame[:-2]):
+            return False
+        command, address = frame[0], frame[1]
+        if self.card == "classic":
+            authorized = self.auth_sector == address // 4
+            if command == 0x30 and len(frame) == 4:
+                if not authorized:
+                    return False
+                data = self.memory.get(address, bytes(16))
+                self._respond(data + self.crc_a(data))
+                return True
+            if command == 0xA0 and len(frame) == 4:
+                if not authorized or address % 4 == 3 or address == 0:
+                    self._ack(False)
+                    return True
+                self.pending_block = address
+                self._ack()
+                return True
+            return False
+        if command == 0x30 and len(frame) == 4:
+            if address >= self.pages:
+                self._ack(False)
+                return True
+            data = b"".join(self.memory.get(page, bytes(4)) for page in range(address, address + 4))
+            self._respond(data + self.crc_a(data))
+            return True
+        if command == 0xA2 and len(frame) == 8:
+            if address < 4 or address >= self.pages:
+                self._ack(False)
+                return True
+            self.memory[address] = frame[2:6]
+            self._ack()
+            return True
+        return False
+
+    def read_text(self) -> bytes:
+        """Test helper: user memory as written (Classic blocks or pages)."""
+        if self.card == "classic":
+            return b"".join(self.memory.get(block, bytes(16)) for block in (4, 5, 6, 8, 9, 10))
+        return b"".join(self.memory.get(page, bytes(4)) for page in range(4, self.pages))
+
     def _respond(self, payload: bytes) -> None:
         self.fifo = bytearray(payload)
         self.irq = IRQ_RX | IRQ_IDLE
@@ -201,6 +292,8 @@ class FakeRc522Spi:
             return
 
         uid = self.uid
+        if self._memory_command(frame):
+            return
         if frame[:1] == b"\x26" and tx_last_bits == 7:  # REQA
             if self.wupa_only:
                 self.irq = IRQ_TIMER

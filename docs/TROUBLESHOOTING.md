@@ -115,6 +115,8 @@ three possible causes apart:
 | the quota reset after a restart | without network, the Recalbox clock restarts in 1980: the uses are forgotten (the quota needs the network time) |
 | the game was quit but the time was not counted as over | quitting from the emulator menu ends the limited session too (the bonus card can resume it) |
 | random game: "no game found" | the console of the card has no game, or "only favourites" with no favourite |
+| "Write the game into the badge" fails | "badge which cannot keep data": a clone that only gives its identifier; "protected": a MIFARE Classic with a custom key; "too small": an Ultralight and a very long file name |
+| a portable card does nothing on another Recalbox | the game must be installed there with the same console folder and file name; the other Recalbox needs version 2.10.0 or later |
 
 ## 8. No message on the TV
 

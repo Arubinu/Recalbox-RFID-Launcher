@@ -128,6 +128,8 @@ Step by step guide: [docs/INSTALLATION.md](docs/INSTALLATION.md).
 - **Print the cards** (Cards tab): choose a game and a template, landscape or portrait; touch an element of the card to
   move, resize or rotate it; a yellow band shows the part sticking out of the slot. Save your layout as a template,
   add the cards to the sheet, then print at 100 % (ten cards per A4 page).
+- **Portable cards**: the pencil of a badge › "Write the game into the badge" stores the game in the badge
+  itself; it then works on any Recalbox that has the game (MIFARE Classic, Ultralight, NTAG badges).
 - **Special cards** (Badges tab): random game, bonus time, quit the game, turn off the Recalbox.
 - **Play time**: Settings › Play time per game, or per badge with the pencil. The Recalbox warns 5 and 1 minute before
   the end, then quits the game; a bonus card adds minutes, a limited number of times per day, week…

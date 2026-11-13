@@ -133,6 +133,8 @@ Guida passo passo: [docs/INSTALLATION.md](docs/INSTALLATION.md) (in inglese).
 - **Stampa le carte** (scheda Carte): scegli un gioco e un modello, orizzontale o verticale; tocca un elemento della
   carta per spostarlo, ingrandirlo o ruotarlo; una fascia gialla mostra la parte che sporge dalla fessura. Salva
   l'impaginazione come modello, aggiungi le carte al foglio, poi stampa al 100 % (dieci carte per foglio A4).
+- **Carte portatili**: matita di un badge › «Scrivi il gioco nel badge» salva il gioco nel badge stesso; funziona
+  poi su qualsiasi Recalbox che abbia il gioco (badge MIFARE Classic, Ultralight, NTAG).
 - **Carte speciali** (scheda Badge): gioco a caso, tempo bonus, esci dal gioco, spegni la Recalbox.
 - **Tempo di gioco**: Impostazioni › Tempo di gioco per partita, o per badge con la matita. La Recalbox avvisa 5 minuti
   e 1 minuto prima della fine, poi esce dal gioco; una carta bonus aggiunge minuti, un numero limitato di volte al

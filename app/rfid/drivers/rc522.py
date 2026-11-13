@@ -83,6 +83,31 @@ ERR_BUFFER_OVFL = 0x10
 #: SAK "cascade" bit: the UID continues at the next level.
 SAK_CASCADE = 0x04
 
+# ---------------------------------------------------------------------------
+# Badge memory (portable cards: the game is written in the badge)
+# ---------------------------------------------------------------------------
+CMD_MF_AUTHENT = 0x0E
+STATUS2_CRYPTO1_ON = 0x08
+PICC_AUTH_KEY_A = 0x60
+PICC_READ = 0x30
+PICC_WRITE_CLASSIC = 0xA0
+PICC_WRITE_PAGE = 0xA2
+
+#: Factory keys of MIFARE Classic cards (transport key first).
+DEFAULT_KEYS = (
+    bytes.fromhex("FFFFFFFFFFFF"),
+    bytes.fromhex("A0A1A2A3A4A5"),
+    bytes.fromhex("D3F7D3F7D3F7"),
+    bytes(6),
+)
+#: MIFARE Classic data blocks used: sectors 1 and 2 (block 0 holds the
+#: manufacturer data, every 4th block holds the keys).
+CLASSIC_BLOCKS = (4, 5, 6, 8, 9, 10)
+#: First user page of Ultralight / NTAG badges.
+FIRST_PAGE = 4
+#: Room used in the badge (Ultralight: 48 bytes, NTAG213 and Classic: more).
+MEMORY_BYTES = 96
+
 
 def crc_a_software(data) -> bytes:
     """CRC_A ISO/IEC 14443-3 (0x6363, polynomial 0x8408, least significant first).
@@ -484,6 +509,165 @@ class Rc522:
             return None
         return False
 
+    # ------------------------------------------------------- badge memory
+    def select_card(self):
+        """Selects the badge and keeps it selected: (uid, sak) or None.
+
+        Needed before touching its memory. Badges that never answer the
+        selection (some clones) cannot store anything: None.
+        """
+        for mode in (PICC_REQA, PICC_WUPA):
+            if self.request(mode) is None:
+                continue
+            first = self._anticollision(PICC_SEL_CL1)
+            if first is None:
+                continue
+            part = bytes(first[0:4])
+            for recompute, hardware in ((False, False), (True, False), (True, True)):
+                bcc = self._bcc(part) if recompute else bytes(first[4:5])
+                sak = self._select(PICC_SEL_CL1, part + bcc, crc_materiel=hardware)
+                if sak is None:
+                    continue
+                if not sak & SAK_CASCADE:
+                    return part, sak
+                second = self._anticollision(PICC_SEL_CL2)
+                if second is None:
+                    return None
+                part2 = bytes(second[0:4])
+                sak2 = self._select(PICC_SEL_CL2, part2 + self._bcc(part2), crc_materiel=hardware)
+                if sak2 is None or sak2 & SAK_CASCADE:
+                    return None
+                return bytes(first[1:4]) + part2, sak2
+        return None
+
+    def _command(self, data, timeout_s: float = 0.05):
+        """Transceive with the CRC_A appended (memory commands)."""
+        frame = bytes(data)
+        return self._transceive(frame + crc_a_software(frame), timeout_s=timeout_s)
+
+    @staticmethod
+    def _is_ack(result) -> bool:
+        """A 4-bit ACK (0xA): the badge accepted the command."""
+        if result is None:
+            return False
+        payload, _bits = result
+        return bool(payload) and (payload[0] & 0x0F) == 0x0A
+
+    def authenticate(self, block: int, key: bytes, uid: bytes) -> bool:
+        """MIFARE Classic authentication with key A (Crypto1 runs in the chip)."""
+        self._write(REG_COMMAND, CMD_IDLE)
+        self._write(REG_COM_IRQ, 0x7F)
+        self._write(REG_FIFO_LEVEL, 0x80)
+        self._write_many(REG_FIFO_DATA, bytes([PICC_AUTH_KEY_A, block]) + bytes(key) + bytes(uid[-4:]))
+        self._write(REG_COMMAND, CMD_MF_AUTHENT)
+        deadline = time.monotonic() + 0.05
+        while time.monotonic() < deadline:
+            irq = self._read(REG_COM_IRQ)
+            if irq & (IRQ_IDLE | IRQ_TIMER | IRQ_ERR):
+                break
+        return bool(self._read(REG_STATUS2) & STATUS2_CRYPTO1_ON)
+
+    def stop_crypto(self) -> None:
+        self._clear_bits(REG_STATUS2, STATUS2_CRYPTO1_ON)
+
+    def read_block(self, address: int):
+        """READ: 16 bytes (a Classic block, or 4 Ultralight pages), or None."""
+        result = self._command(bytes([PICC_READ, address]))
+        if result is None:
+            return None
+        payload, _bits = result
+        return bytes(payload[:16]) if len(payload) >= 16 else None
+
+    def write_classic(self, block: int, data: bytes) -> bool:
+        if not self._is_ack(self._command(bytes([PICC_WRITE_CLASSIC, block]))):
+            return False
+        return self._is_ack(self._command(bytes(data).ljust(16, b"\x00")[:16], timeout_s=0.1))
+
+    def write_page(self, page: int, data: bytes) -> bool:
+        return self._is_ack(self._command(bytes([PICC_WRITE_PAGE, page]) + bytes(data).ljust(4, b"\x00")[:4],
+                                          timeout_s=0.1))
+
+    def _classic_session(self, block: int, uid: bytes, sector_keys: dict) -> bool:
+        """Authenticates the sector of ``block`` (default keys tried in turn)."""
+        sector = block // 4
+        if sector in sector_keys:
+            return True
+        for key in DEFAULT_KEYS:
+            if self.authenticate(block, key, uid):
+                sector_keys[sector] = key
+                return True
+            # A failed authentication leaves the card in HALT: wake it up.
+            self.stop_crypto()
+            self.reset_field()
+            if self.select_card() is None:
+                return False
+            sector_keys.clear()
+        return False
+
+    def read_memory(self, length: int = MEMORY_BYTES):
+        """User memory of the badge (up to ``length`` bytes), or None."""
+        selected = self.select_card()
+        if selected is None:
+            return None
+        uid, sak = selected
+        data = bytearray()
+        try:
+            if sak & 0x08:                                    # MIFARE Classic
+                keys = {}
+                for block in CLASSIC_BLOCKS:
+                    if len(data) >= length:
+                        break
+                    if not self._classic_session(block, uid, keys):
+                        return bytes(data) or None
+                    chunk = self.read_block(block)
+                    if chunk is None:
+                        break
+                    data += chunk
+                    if 0 in chunk:
+                        break
+            else:                                             # Ultralight / NTAG
+                for page in range(FIRST_PAGE, FIRST_PAGE + length // 4, 4):
+                    chunk = self.read_block(page)
+                    if chunk is None:
+                        break
+                    data += chunk
+                    if 0 in chunk:
+                        break
+        finally:
+            self.stop_crypto()
+            self.reset_field()
+        return bytes(data[:length])
+
+    def write_memory(self, payload: bytes, expected_uid: bytes = None) -> None:
+        """Writes ``payload`` in the user memory; raises Rc522Error on failure."""
+        payload = bytes(payload)
+        if len(payload) > MEMORY_BYTES:
+            raise Rc522Error("donnees trop longues pour le badge (%d octets)" % len(payload))
+        selected = self.select_card()
+        if selected is None:
+            raise Rc522Error("badge absent, ou badge qui ne peut pas garder de donnees")
+        uid, sak = selected
+        if expected_uid is not None and bytes(uid) != bytes(expected_uid):
+            self.reset_field()
+            raise Rc522Error("ce n'est pas le bon badge (%s)" % uid.hex().upper())
+        try:
+            if sak & 0x08:
+                keys = {}
+                chunks = [payload[i:i + 16] for i in range(0, len(payload), 16)]
+                for block, chunk in zip(CLASSIC_BLOCKS, chunks):
+                    if not self._classic_session(block, uid, keys):
+                        raise Rc522Error("cle du badge inconnue : il est protege")
+                    if not self.write_classic(block, chunk):
+                        raise Rc522Error("ecriture refusee (bloc %d)" % block)
+            else:
+                for index in range(0, len(payload), 4):
+                    page = FIRST_PAGE + index // 4
+                    if not self.write_page(page, payload[index:index + 4]):
+                        raise Rc522Error("ecriture refusee (page %d) : badge trop petit ou verrouille" % page)
+        finally:
+            self.stop_crypto()
+            self.reset_field()
+
     def close(self) -> None:
         try:
             self.antenna_off()
@@ -581,6 +765,27 @@ class Rc522Reader:
         if self.log:
             self.log.info("Badge detecte : %s" % ":".join(uid[i:i + 2] for i in range(0, len(uid), 2)))
         return uid
+
+    def read_memory(self):
+        """User memory of the badge on the reader (bytes), or None."""
+        if not self._started:
+            return None
+        try:
+            return self.rc522.read_memory()
+        except (Rc522Error, OSError) as exc:
+            if self.log:
+                self.log.debug("Memoire du badge illisible : %s" % exc)
+            return None
+
+    def write_memory(self, payload: bytes, uid_hex: str = "") -> None:
+        """Writes in the badge on the reader; raises Rc522Error when it fails."""
+        if not self._started:
+            raise Rc522Error("lecteur indisponible")
+        expected = bytes.fromhex(uid_hex) if uid_hex else None
+        try:
+            self.rc522.write_memory(payload, expected)
+        except OSError as exc:
+            raise Rc522Error(str(exc))
 
     def close(self) -> None:
         try:

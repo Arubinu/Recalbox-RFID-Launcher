@@ -111,6 +111,26 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 The pencil of a badge changes its name, its time limit, or the parameters of a
 special card.
 
+## Portable cards
+
+A pairing lives in the Recalbox (`tags.json`): a badge paired here does nothing
+on a friend's Recalbox. The pencil of a game badge › **Write the game into the
+badge** stores the game in the chip of the badge itself; place the badge on the
+reader within 15 seconds. The page confirms once the game is written and read
+back.
+
+* Any Recalbox running this program then starts the game when the badge is
+  placed, even if the badge is not in its list, provided the same game is
+  installed (same console folder, same file name). Otherwise: two low beeps and
+  a line in the log.
+* The list of the Recalbox always comes first: a badge paired there keeps its
+  local game.
+* Compatible badges: **MIFARE Classic** (factory keys; sectors 1 and 2 are
+  used), **MIFARE Ultralight** and **NTAG** (from page 4). Some cheap clone
+  badges only give their identifier and cannot store anything: the page then
+  says so.
+* What is written: `RL1|<console>|<file>` (96 bytes at most), not an NDEF record.
+
 ## Play time
 
 * **Settings › Play time per game**: a limit for every game badge without its
