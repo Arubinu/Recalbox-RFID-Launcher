@@ -6,6 +6,14 @@
 startet, wie ein Steckmodul. Alles wird über eine einzige Webseite auf Ihrem Computer eingerichtet, ohne Installation
 dort und ohne Kommandozeile.
 
+## 💡 Die Idee
+
+Das Projekt entstand aus einem einfachen Bild: ein **Schlitz im Gehäuse der Konsole**, direkt dahinter der versteckte
+Leser, in den man **Karten wie Spielmodule einsteckt**. Karte hinein, das Spiel startet; mit der Einstellung **„Spiel
+beenden, wenn der Badge entfernt wird“** führt das Herausziehen der Karte zurück ins Recalbox-Menü, genau wie beim
+Herausnehmen eines Moduls. Jede Karte kann das Bild ihres Spiels tragen: ein Regal voller „Module“, das alle nutzen
+können, auch Kinder, ohne je durch die Menüs zu gehen.
+
 ## ✨ Funktionen
 
 - 🏷️ **Ein Badge = ein Spiel**: Das Spiel startet genau wie aus dem Recalbox-Menü (Ladebildschirm, Spielstände,

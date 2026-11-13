@@ -6,6 +6,14 @@
 une cartouche. Tout se règle depuis une seule page web ouverte sur votre ordinateur, sans rien y installer et sans
 ligne de commande.
 
+## 💡 L'idée
+
+Le projet est né d'une image simple : une **fente découpée dans le boîtier de la console**, avec le lecteur caché
+juste derrière, dans laquelle on **insère des cartes comme des cartouches de jeu**. On glisse une carte, son jeu
+démarre ; avec le réglage **« Quitter le jeu quand on retire le badge »**, retirer la carte ramène au menu de
+Recalbox, exactement comme on retire une cartouche. Chaque carte peut porter l'illustration de son jeu : une
+étagère de « cartouches » que tout le monde peut utiliser, enfants compris, sans jamais passer par les menus.
+
 ## ✨ Fonctionnalités
 
 - 🏷️ **Un badge = un jeu** : le jeu démarre exactement comme depuis le menu de Recalbox (écran de chargement,

@@ -6,6 +6,14 @@
 come una cartuccia. Tutto si configura da un'unica pagina web aperta sul computer, senza installarci nulla e senza
 riga di comando.
 
+## 💡 L'idea
+
+Il progetto è nato da un'immagine semplice: una **fessura ricavata nella scatola della console**, con il lettore
+nascosto subito dietro, in cui si **inseriscono le carte come cartucce di gioco**. Si infila una carta e il suo gioco
+parte; con l'impostazione **«Uscire dal gioco quando si toglie il badge»**, estrarre la carta riporta al menu di
+Recalbox, proprio come quando si toglie una cartuccia. Ogni carta può riportare l'illustrazione del suo gioco: uno
+scaffale di «cartucce» che chiunque può usare, bambini compresi, senza mai passare dai menu.
+
 ## ✨ Funzioni
 
 - 🏷️ **Un badge = un gioco**: il gioco parte esattamente come dal menu di Recalbox (schermata di caricamento,

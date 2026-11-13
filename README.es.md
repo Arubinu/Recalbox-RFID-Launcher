@@ -6,6 +6,14 @@
 arranca, como un cartucho. Todo se configura desde una sola página web abierta en tu ordenador, sin instalar nada en
 él y sin línea de comandos.
 
+## 💡 La idea
+
+El proyecto nació de una imagen sencilla: una **ranura en la caja de la consola**, con el lector escondido justo
+detrás, en la que se **insertan tarjetas como si fueran cartuchos de juego**. Se mete una tarjeta y su juego arranca;
+con el ajuste **«Salir del juego al retirar la tarjeta»**, sacar la tarjeta devuelve al menú de Recalbox, igual que
+al quitar un cartucho. Cada tarjeta puede llevar la ilustración de su juego: una estantería de «cartuchos» que
+cualquiera puede usar, niños incluidos, sin pasar nunca por los menús.
+
 ## ✨ Funciones
 
 - 🏷️ **Una tarjeta = un juego**: el juego arranca exactamente como desde el menú de Recalbox (pantalla de carga,

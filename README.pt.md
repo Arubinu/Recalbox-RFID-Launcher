@@ -6,6 +6,14 @@
 cartucho. Tudo se configura a partir de uma única página web aberta no computador, sem instalar nada nele e sem linha
 de comandos.
 
+## 💡 A ideia
+
+O projeto nasceu de uma imagem simples: uma **ranhura recortada na caixa da consola**, com o leitor escondido logo
+atrás, onde se **inserem cartões como se fossem cartuchos de jogo**. Introduz-se um cartão e o jogo arranca; com a
+definição **«Sair do jogo quando o tag é retirado»**, tirar o cartão volta ao menu do Recalbox, tal como ao retirar
+um cartucho. Cada cartão pode levar a ilustração do seu jogo: uma prateleira de «cartuchos» que qualquer pessoa pode
+usar, crianças incluídas, sem nunca passar pelos menus.
+
 ## ✨ Funcionalidades
 
 - 🏷️ **Um tag = um jogo**: o jogo arranca exatamente como a partir do menu do Recalbox (ecrã de carregamento,

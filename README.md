@@ -6,6 +6,14 @@
 a cartridge. Everything is set up from a single web page opened on your computer, with nothing to install on it and
 no command line.
 
+## 💡 The idea
+
+The project was born from a simple picture: a **slot cut into the console case**, with the reader hidden right
+behind it, into which you **insert cards like game cartridges**. Slide a card in and its game starts; with the
+**"Quit the game when the badge is removed"** setting, pulling the card out brings you back to the Recalbox menu,
+just like removing a cartridge. Each card can carry its game's artwork, for a shelf of "cartridges" that anyone can
+use, children included, without ever going through the menus.
+
 ## ✨ Features
 
 - 🏷️ **One badge = one game**: the game starts exactly as from the Recalbox menu (splash screen, saves, achievements)
