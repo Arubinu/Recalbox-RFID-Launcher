@@ -152,7 +152,7 @@ fi
 
 # 4. Files.
 if [ "$KEEP_DATA" = "1" ]; then
-    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/bootstrap" "$HOME_DIR/docs" "$HOME_DIR/web"
+    rm -rf "$HOME_DIR/app" "$HOME_DIR/userscript" "$HOME_DIR/bootstrap" "$HOME_DIR/docs" "$HOME_DIR/web" "$HOME_DIR/cache"
     rm -f "$HOME_DIR/rfidctl" "$HOME_DIR/install.sh" "$HOME_DIR/uninstall.sh" \
           "$HOME_DIR/VERSION" "$HOME_DIR"/README*.md "$HOME_DIR/CHANGELOG.md" \
           "$HOME_DIR/installer.html" "$HOME_DIR/rfid.pid" "$HOME_DIR/status.json"

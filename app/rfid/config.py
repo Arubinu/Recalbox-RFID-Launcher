@@ -112,6 +112,12 @@ port = 8765
 # 0 = only the page saved on a computer can connect.
 web = 1
 
+[cards]
+# Card designer: box art, screenshot, title screen and game logo downloaded
+# from the libretro thumbnail server (needs internet, no account).
+# 0 = only the pictures of the Recalbox.
+online_art = 1
+
 [update]
 # URL of the update ZIP file (see docs/UPDATING.md). Optional.
 url =

@@ -175,6 +175,16 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    the page fetches its scraped picture, the **logo** and the **drawing of its
    console** from the Recalbox theme, and the main colour of the logo. **My
    image** uses your own picture instead (any size: it is fitted to the card).
+   The Cards tab starts from the game selected on the Recalbox.
+   **Online pictures**: the Recalbox also looks the game up in the RetroArch
+   picture database (libretro thumbnails, no account). When found, the
+   **Source** list of the Picture element offers **Box art**, **Screenshot** and
+   **Title screen**, and the Logo element offers the **Game logo** besides the
+   console logo. Matching uses the file name (No-Intro names such as
+   "Tetris (World) (Rev 1)" work best), then the game name; homebrews are
+   rarely there. It needs internet on the Recalbox; only the console and the
+   game name are sent. The folder lists are cached for two weeks in
+   `cache/libretro`. Turn it off in Settings › Cards.
 2. **Choose a template**: Cartridge, Banner, Game box, Arcade, Minimal,
    Collection (with the console drawing), Picture only. **Landscape** or
    **Portrait**.

@@ -59,6 +59,7 @@ from .consts import (
     TOKEN_FILENAME,
 )
 from . import access, bootcfg, portable
+from .artwork import Artwork, ArtworkError
 from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
@@ -348,6 +349,7 @@ class Agent:
         self._store = TagStore(self.db_path, log)
         self._store_guard = threading.Lock()
         self.library = Library(log=log)
+        self.artwork = Artwork(os.path.join(self.home, "cache", "libretro"), log=log)
         self._templates_guard = threading.Lock()
         #: Connected clients (to log out the others when the password changes).
         self._clients = set()
@@ -400,6 +402,12 @@ class Agent:
     def unregister(self, client) -> None:
         with self._clients_guard:
             self._clients.discard(client)
+
+    def online_art_enabled(self) -> bool:
+        try:
+            return Config(self.config_path()).get_bool("cards", "online_art", True)
+        except Exception:  # noqa: BLE001 - unreadable file: keep the default
+            return True
 
     def web_enabled(self) -> bool:
         """Page for phones (and same-origin connections) allowed by the settings."""
@@ -1163,6 +1171,33 @@ class Agent:
         kind, data = found
         return {"found": True, "type": kind, "data": base64.b64encode(data).decode("ascii")}
 
+    def _cmd_media_online(self, client, message):
+        """Pictures of a game on the libretro server: kind -> name."""
+        if not self.online_art_enabled():
+            return {"enabled": False, "found": {}}
+        try:
+            found = self.artwork.available(str(message.get("system") or ""),
+                                           str(message.get("path") or ""),
+                                           str(message.get("name") or ""))
+        except ArtworkError as exc:
+            return {"enabled": True, "found": {}, "error": str(exc)}
+        return {"enabled": True, "found": found}
+
+    def _cmd_media_online_get(self, client, message):
+        """One libretro picture (base64)."""
+        if not self.online_art_enabled():
+            raise ValueError("images en ligne desactivees dans les reglages")
+        try:
+            found = self.artwork.picture(str(message.get("system") or ""),
+                                         str(message.get("kind") or ""),
+                                         str(message.get("name") or ""))
+        except ArtworkError as exc:
+            raise RuntimeError(str(exc))
+        if not found:
+            return {"found": False}
+        kind, data = found
+        return {"found": True, "type": kind, "data": base64.b64encode(data).decode("ascii")}
+
     def _cmd_media_logo(self, client, message):
         """Theme logo of a console (SVG text)."""
         try:
@@ -1581,6 +1616,9 @@ OPTIONS = (
     {"section": "agent", "key": "web", "type": "bool", "default": True,
      "label": "Page pour téléphones et tablettes",
      "help": "La Recalbox sert la page à l'adresse http://recalbox.local:8765. Désactivé : seule la page enregistrée sur un ordinateur peut se connecter (un téléphone connecté par cette adresse sera coupé)."},
+    {"section": "cards", "key": "online_art", "type": "bool", "default": True,
+     "label": "Images en ligne pour les cartes",
+     "help": "Pochette, capture, écran titre et logo du jeu téléchargés depuis la base d'images de RetroArch (libretro), sans compte. Il faut Internet sur la Recalbox ; seuls la console et le nom du jeu sont envoyés."},
     {"section": "led", "key": "type", "type": "choice", "choices": ["none", "rgb", "ws2812"],
      "default": "none", "label": "Voyant",
      "help": "Une LED qui montre ce que fait le lecteur : prêt, association, erreur, fin du temps de jeu."},

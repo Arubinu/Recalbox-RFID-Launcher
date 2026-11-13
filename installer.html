@@ -3303,6 +3303,7 @@ const OPTION_GROUPES = [
   ["rfid", "Lecteur de badges"],
   ["time", "Temps de jeu"],
   ["screen", "Messages à l'écran"],
+  ["cards", "Cartes"],
   ["led", "Voyant"],
   ["agent", "Connexion"],
   ["feedback", "Sons"],
@@ -4091,6 +4092,112 @@ async function consoleArtwork(system) {
   return result;
 }
 
+/* ---- online pictures: libretro thumbnails, fetched by the Recalbox ----
+   Looked up once per game; a picture is only downloaded when chosen. */
+const ONLINE_IMAGE_KINDS = ["boxart", "snap", "title"];
+function onlineKindLabel(kind) {
+  return { boxart: t("Pochette"), snap: t("Capture d'écran"), title: t("Écran titre") }[kind] || kind;
+}
+const onlineLookups = new Map();
+const onlinePictures = new Map();
+function onlineKey(game) { return game ? game.system + "|" + game.path : ""; }
+function onlineState() { return onlineLookups.get(onlineKey(design.game)) || null; }
+async function lookupOnline(game) {
+  const key = onlineKey(game);
+  if (!game || !agent.isOpen) return null;
+  if (onlineLookups.has(key)) return onlineLookups.get(key);
+  const entry = { status: "loading", found: {}, enabled: true, error: "" };
+  onlineLookups.set(key, entry);
+  try {
+    const data = await agent.send("media.online", { system: game.system, path: game.path, name: game.name }, 90000);
+    entry.enabled = data.enabled !== false;
+    entry.found = data.found || {};
+    entry.error = data.error || "";
+  } catch (error) {
+    entry.error = error.message;
+  }
+  entry.status = "done";
+  /* A failure is not remembered: the next choice of this game tries again. */
+  if (entry.error) onlineLookups.delete(key);
+  if (designReady && onlineKey(design.game) === key && ["image", "logo"].includes(design.selected)) renderControls();
+  return entry;
+}
+async function onlinePicture(game, kind) {
+  const entry = onlineLookups.get(onlineKey(game));
+  const name = entry && entry.found[kind];
+  if (!name) return null;
+  const key = game.system + "|" + kind + "|" + name;
+  if (onlinePictures.has(key)) return onlinePictures.get(key);
+  const data = await agent.send("media.online.get", { system: game.system, kind, name }, 60000);
+  if (!data.found) return null;
+  const image = await loadImage("data:" + data.type + ";base64," + data.data);
+  onlinePictures.set(key, image);
+  return image;
+}
+/* Short status under the source lists (searching, unavailable...). */
+function onlineNote(kinds) {
+  if (!design.game) return null;
+  const entry = onlineState();
+  let text = "";
+  if (!entry) text = "";
+  else if (entry.status === "loading") text = t("Recherche d'images en ligne…");
+  else if (!entry.enabled) text = t("Images en ligne désactivées (Réglages › Cartes).");
+  else if (entry.error) text = t("Images en ligne indisponibles : {error}", { error: entry.error });
+  else if (!kinds.some((kind) => entry.found[kind])) text = t("Pas d'image en ligne pour ce jeu (base d'images de RetroArch).");
+  return text ? ctlRow("", el("span", { className: "muted small", text })) : null;
+}
+async function setImageSource(source) {
+  const game = design.game;
+  if (!game) return;
+  if (source === "recalbox") { await loadGameImage(game); return; }
+  design.busy = source;
+  renderControls();
+  try {
+    const image = await onlinePicture(game, source);
+    if (!image) throw new Error(t("image introuvable"));
+    if (design.game === game) {
+      design.image = image;
+      design.imageSource = source;
+      design.imageLabel = "";
+      Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);
+    }
+  } catch (error) {
+    toast("err", t("Image en ligne indisponible : {error}", { error: error.message }));
+  }
+  design.busy = "";
+  renderSource();
+  afterDesignChange();
+}
+async function setLogoSource(source) {
+  const game = design.game;
+  if (!game) return;
+  design.busy = "logo";
+  renderControls();
+  try {
+    if (source === "game") {
+      const image = await onlinePicture(game, "logo");
+      if (!image) throw new Error(t("image introuvable"));
+      if (design.game === game) {
+        design.logo = image;
+        design.logoSource = "game";
+        /* A game logo is in colour: the template tint is for console logos. */
+        layerOf("logo").tint = "original";
+      }
+    } else {
+      const art = await consoleArtwork(game.system);
+      if (design.game === game) {
+        design.logo = art.logo;
+        design.logoSource = "console";
+        layerOf("logo").tint = (templateLayers(design.template, design.orientation).logo || {}).tint || "original";
+      }
+    }
+  } catch (error) {
+    toast("err", t("Image en ligne indisponible : {error}", { error: error.message }));
+  }
+  design.busy = "";
+  afterDesignChange();
+}
+
 /* ---- drawing ---- */
 function tinted(image, color, w, h, scale) {
   const canvas = document.createElement("canvas");
@@ -4308,6 +4415,8 @@ function redrawDesign() {
 }
 function resetLayers() {
   design.layers = templateLayers(design.template, design.orientation);
+  /* The template tint is meant for console logos, not a game logo in colour. */
+  if (design.logoSource === "game" && design.layers.logo) design.layers.logo.tint = "original";
 }
 function hitTest(x, y) {
   const order = ["title", "logo", "console", "image"];
@@ -4499,6 +4608,7 @@ function resetLayerButton(key) {
       const fresh = templateLayers(design.template, design.orientation)[key];
       const keepVisible = layerOf(key).visible;
       design.layers[key] = Object.assign(fresh, { visible: keepVisible });
+      if (key === "logo" && design.logoSource === "game") design.layers.logo.tint = "original";
       renderControls();
       redrawDesign();
     },
@@ -4530,10 +4640,23 @@ function renderControls() {
     const rotation = rotationControls("image");
     controlSyncers.push(rotation[0].querySelector("input")._sync);
     rows.push(...rotation);
+    if (design.game) {
+      const entry = onlineState();
+      const source = el("select", { attrs: { "aria-label": t("Source de l'image") } }, [
+        el("option", { text: t("Image de la Recalbox"), attrs: { value: "recalbox" } }),
+        ...ONLINE_IMAGE_KINDS.filter((kind) => entry && entry.found[kind]).map((kind) =>
+          el("option", { text: onlineKindLabel(kind), attrs: { value: kind } })),
+      ].concat(design.imageSource === "own" ? [el("option", { text: t("Mon image"), attrs: { value: "own" } })] : []));
+      source.value = design.busy && design.busy !== "logo" ? design.busy : (design.imageSource || "recalbox");
+      source.disabled = Boolean(design.busy);
+      source.addEventListener("change", () => { if (source.value !== "own") setImageSource(source.value); });
+      rows.push(ctlRow(t("Source"), source));
+      const note = onlineNote(ONLINE_IMAGE_KINDS);
+      if (note) rows.push(note);
+    }
     rows.push(ctlRow("", el("div", { className: "actions" }, [
       el("button", { className: "btn sm", text: t("Recadrer"), attrs: { type: "button" }, onclick: () => { Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image); renderControls(); redrawDesign(); } }),
       el("button", { className: "btn sm", text: t("Mon image…"), attrs: { type: "button" }, onclick: () => $("#card-file").click() }),
-      design.game ? el("button", { className: "btn sm", text: t("Image du jeu"), attrs: { type: "button" }, onclick: () => loadGameImage(design.game) }) : null,
     ])));
   } else if (key === "title") {
     const layer = layerOf("title");
@@ -4567,6 +4690,19 @@ function renderControls() {
         : t("Choisissez un jeu : le logo et le dessin de sa console viennent du thème de la Recalbox.") }));
     }
     rows.push(visibleControl(key));
+    if (key === "logo" && design.game) {
+      const entry = onlineState();
+      const source = el("select", { attrs: { "aria-label": t("Logo") } }, [
+        el("option", { text: t("Logo de la console"), attrs: { value: "console" } }),
+        entry && entry.found.logo ? el("option", { text: t("Logo du jeu"), attrs: { value: "game" } }) : null,
+      ].filter(Boolean));
+      source.value = design.logoSource === "game" && entry && entry.found.logo ? "game" : "console";
+      source.disabled = design.busy === "logo";
+      source.addEventListener("change", () => setLogoSource(source.value));
+      rows.push(ctlRow(t("Logo"), source));
+      const note = onlineNote(["logo"]);
+      if (note) rows.push(note);
+    }
     const [size, sizeValue] = track(rangeControl(key, "h", 2, key === "logo" ? 40 : 80, 0.1, (v) => Math.round(v) + " mm"));
     rows.push(ctlRow(t("Taille"), size, sizeValue));
     const rotation = rotationControls(key);
@@ -4708,6 +4844,7 @@ async function loadGameImage(game) {
   } catch (error) {
     design.image = null;
   }
+  design.imageSource = "recalbox";
   design.imageLabel = "";
   Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);
   renderSource();
@@ -4722,12 +4859,17 @@ async function designGame(game) {
   $("#card-source-sub").textContent = t("Chargement de l'image…");
   const art = await consoleArtwork(game.system);
   design.logo = art.logo;
+  if (design.logoSource === "game" && design.layers.logo) {
+    design.layers.logo.tint = (templateLayers(design.template, design.orientation).logo || {}).tint || "original";
+  }
+  design.logoSource = "console";
   design.consoleArt = art.console;
   design.autoAccent = accentFromSvg(art.svg) || fallbackAccent(game.system);
   design.accent = design.autoAccent;
   const saved = savedTemplates.find((item) => item.id === design.savedId);
   if (saved && saved.accent) design.accent = saved.accent;
   await loadGameImage(game);
+  lookupOnline(design.game);
 }
 async function designFromTag(tag) {
   setTab("cartes");
@@ -4802,6 +4944,7 @@ function designSnapshot() {
       orientation: design.orientation, template: design.template, savedId: design.savedId || "",
       layers: design.layers, accent: design.accent, rounded: design.rounded, title: design.title,
       imageLabel: design.imageLabel, game: design.game,
+      imageSource: design.imageSource || "", logoSource: design.logoSource || "",
     }),
     image: design.image, logo: design.logo, consoleArt: design.consoleArt, autoAccent: design.autoAccent,
   };
@@ -5683,6 +5826,7 @@ function wire() {
     const url = URL.createObjectURL(file);
     try {
       design.image = await loadImage(url);
+      design.imageSource = "own";
       design.imageLabel = file.name;
       if (!design.layers) resetLayers();
       Object.assign(design.layers.image, templateLayers(design.template, design.orientation).image);

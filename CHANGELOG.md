@@ -20,6 +20,15 @@ by `rfidctl version`.
 * **Print shop option**: bleed (2, 3 or 5 mm, edges stretched outwards), crop
   marks and a safe area line in the editor; eight cards per A4 page then. The
   downloaded PNG gets the bleed too.
+* **Online pictures for the cards** (`artwork.py`): box art, screenshot, title
+  screen and **game logo** from the libretro thumbnail server (RetroArch
+  database, no account), fetched by the Recalbox. Matched from the file name
+  (No-Intro), then the game name, preferring the plain release over
+  compilations and betas. Folder lists cached two weeks in `cache/libretro`;
+  a picture is only downloaded when chosen. Picture element: "Source" list;
+  Logo element: console logo or game logo (kept in its colours). Commands
+  `media.online` and `media.online.get`; setting `[cards] online_art` (on by
+  default, Settings › Cards).
 * **The Cards tab starts from the game selected on the Recalbox**, and a
   "Recalbox game" button brings it back after picking another one.
 * **Wiring diagram drawn by the page**: the 40-pin header with the used pins in
