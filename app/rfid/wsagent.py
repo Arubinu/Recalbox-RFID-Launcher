@@ -58,12 +58,13 @@ from .consts import (
     TAG_WRITE_FILENAME,
     TOKEN_FILENAME,
 )
-from . import access, bootcfg, portable
+from . import access, backup, bootcfg, frontend_lock, portable
 from .artwork import Artwork, ArtworkError
+from .frames import FrameError, FrameStore
 from .calibration import STEPS as CALIBRATION_STEPS
 from .config import Config
 from .daemon import process_alive, read_pid, read_status, recalbox_version, acquire_lock, release_lock
-from .esbridge import read_state, resolve_rom_path, selected_target, supports_start_command
+from .esbridge import emulator_pids, read_state, resolve_rom_path, selected_target, supports_start_command
 from .library import Library, LibraryError, relative_to_system
 from .storage import StorageError, TagStore, normalize_uid, pretty_uid
 
@@ -350,6 +351,7 @@ class Agent:
         self._store_guard = threading.Lock()
         self.library = Library(log=log)
         self.artwork = Artwork(os.path.join(self.home, "cache", "libretro"), log=log)
+        self.frames = FrameStore(self.home)
         self._templates_guard = threading.Lock()
         #: Connected clients (to log out the others when the password changes).
         self._clients = set()
@@ -1068,6 +1070,75 @@ class Agent:
         self.start_install(client, ["sh", installer, "--upgrade", "--no-restart", "--home", self.home])
         return {"started": True}
 
+    def _cmd_players_reset(self, client, message):
+        """Forgets the time played this week by a player ("" = guest)."""
+        uid = str(message.get("uid") or "")
+        if uid:
+            uid = normalize_uid(uid)
+        self._write_command("players_reset", uid=uid)
+        return {"requested": True}
+
+    # ---------------------------------------------------------- card frames
+    def _cmd_frames_list(self, client, message):
+        return {"frames": self.frames.list()}
+
+    def _cmd_frames_get(self, client, message):
+        found = self.frames.get(str(message.get("frame") or ""))
+        if not found:
+            return {"found": False}
+        kind, data = found
+        return {"found": True, "type": kind, "data": base64.b64encode(data).decode("ascii")}
+
+    def _cmd_frames_save(self, client, message):
+        """New frame: the picture comes with upload.begin / upload.chunk."""
+        if client.upload is None:
+            raise RuntimeError("aucun envoi en cours")
+        payload = bytes(client.upload)
+        client.upload = None
+        try:
+            frame = self.frames.save(message.get("meta"), payload)
+        except FrameError as exc:
+            raise ValueError(str(exc))
+        if self.log:
+            self.log.info("Cadre de carte ajoute : %s" % frame["name"])
+        return {"frame": frame}
+
+    def _cmd_frames_update(self, client, message):
+        changes = {key: message[key] for key in ("name", "systems", "window") if key in message}
+        try:
+            return {"frame": self.frames.update(str(message.get("frame") or ""), changes)}
+        except FrameError as exc:
+            raise ValueError(str(exc))
+
+    def _cmd_frames_delete(self, client, message):
+        try:
+            return {"deleted": self.frames.delete(str(message.get("frame") or ""))}
+        except FrameError as exc:
+            raise ValueError(str(exc))
+
+    def _cmd_backup_export(self, client, message):
+        """Full backup (badges, settings, templates, frames, players...)."""
+        data = backup.create(self.home)
+        name = time.strftime("recalbox-rfid-sauvegarde-%Y%m%d-%H%M.zip")
+        return {"name": name, "size": len(data), "data": base64.b64encode(data).decode("ascii")}
+
+    def _cmd_backup_restore(self, client, message):
+        """Restores the archive sent with upload.begin / upload.chunk."""
+        if client.upload is None:
+            raise RuntimeError("aucun envoi en cours")
+        payload = bytes(client.upload)
+        client.upload = None
+        try:
+            with self._templates_guard, self._store_guard:
+                result = backup.restore(self.home, payload)
+        except backup.BackupError as exc:
+            raise ValueError(str(exc))
+        if self.log:
+            self.log.info("Sauvegarde restauree (%d fichiers, copie dans %s)" % (len(result["files"]), result["copy"]))
+        # The service reads its files again (badges, players, play time...).
+        threading.Thread(target=self._restart_service, daemon=True).start()
+        return result
+
     def _installer_from_zip(self, client: _Client, payload: bytes) -> str:
         folder = tempfile.mkdtemp(prefix="rfid-update-")
         archive = os.path.join(folder, "update.zip")
@@ -1290,6 +1361,18 @@ class Agent:
             if option is None:
                 raise ValueError("option inconnue : %s" % cle)
             a_ecrire[cle] = validate_option(option, valeur)
+        # Menu lock: applied to recalbox.conf first (it may be refused while
+        # a game runs, and then nothing is saved).
+        frontend = None
+        if "players.lock_frontend" in a_ecrire and os.path.isfile(frontend_lock.RECALBOX_CONF):
+            wanted = str(a_ecrire["players.lock_frontend"]).lower() in ("1", "true", "yes", "on")
+            if wanted != frontend_lock.is_locked():
+                try:
+                    frontend = frontend_lock.apply(self.home, wanted, game_running=lambda: bool(emulator_pids()))
+                except frontend_lock.LockError as exc:
+                    raise ValueError(str(exc))
+                if self.log:
+                    self.log.info("Menu de la Recalbox %s" % ("verrouille" if wanted else "deverrouille"))
         modifiees = cfg.write_values(a_ecrire)
         applique = self._reload_service()
         if self.log:
@@ -1308,7 +1391,7 @@ class Agent:
                     self.log.info("Second bus SPI active dans %s" % ", ".join(outcome["changed"]))
             reboot = bootcfg.has_line(bootcfg.SPI1_OVERLAY)
         return {"saved": sorted(modifiees), "reloaded": applique, "reboot": reboot,
-                "boot_errors": boot_errors}
+                "boot_errors": boot_errors, "frontend": frontend}
 
     def _reload_service(self) -> bool:
         """Asks the service to read its configuration again (SIGHUP)."""
@@ -1616,6 +1699,24 @@ OPTIONS = (
     {"section": "agent", "key": "web", "type": "bool", "default": True,
      "label": "Page pour téléphones et tablettes",
      "help": "La Recalbox sert la page à l'adresse http://recalbox.local:8765. Désactivé : seule la page enregistrée sur un ordinateur peut se connecter (un téléphone connecté par cette adresse sera coupé)."},
+    {"section": "players", "key": "enabled", "type": "bool", "default": False,
+     "label": "Cartes joueurs",
+     "help": "Chaque personne pose sa carte joueur avant de jouer (une carte par partie) : son temps de jeu est compté. Pour un jeu lancé depuis le menu de la Recalbox, la carte joueur reste posée ; la retirer termine la partie."},
+    {"section": "players", "key": "require", "type": "bool", "default": False, "when": "players.enabled=1",
+     "label": "Bloquer les jeux sans carte joueur",
+     "help": "Un jeu lancé sans carte joueur, même depuis le menu de la Recalbox, est quitté aussitôt avec un message à l'écran."},
+    {"section": "players", "key": "block_exhausted", "type": "bool", "default": True, "when": "players.enabled=1",
+     "label": "Bloquer les jeux quand le temps est écoulé",
+     "help": "Une fois le temps d'un joueur (ou de l'invité) épuisé, ses jeux lancés depuis le menu sont quittés aussi. Les cartes de jeu sont toujours refusées."},
+    {"section": "players", "key": "guest_quota_min", "type": "number", "min": 0, "max": 10080, "default": 0, "when": "players.enabled=1",
+     "label": "Temps de jeu sans carte joueur (minutes)",
+     "help": "Pour les parties sans carte joueur (« invité »), par jour ou par semaine. 0 = pas de limite."},
+    {"section": "players", "key": "guest_period", "type": "choice", "choices": ["day", "week"], "default": "day", "when": "players.enabled=1",
+     "label": "Période du temps sans carte joueur",
+     "help": "Le compteur repart à zéro chaque jour à minuit, ou chaque lundi."},
+    {"section": "players", "key": "lock_frontend", "type": "bool", "default": False,
+     "label": "Verrouiller le menu de la Recalbox",
+     "help": "Les listes n'affichent que les jeux favoris, et le menu START est masqué (on ne peut plus changer les réglages depuis la TV). La Recalbox redémarre son menu (quelques secondes, pas de jeu en cours). Désactivé : les réglages d'avant reviennent."},
     {"section": "cards", "key": "online_art", "type": "bool", "default": True,
      "label": "Images en ligne pour les cartes",
      "help": "Pochette, capture, écran titre et logo du jeu téléchargés depuis la base d'images de RetroArch (libretro), sans compte. Il faut Internet sur la Recalbox ; seuls la console et le nom du jeu sont envoyés."},

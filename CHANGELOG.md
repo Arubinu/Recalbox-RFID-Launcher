@@ -4,6 +4,43 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.12.0]
+
+### Added
+
+* **Player cards** (`players.py`, all optional, Settings › Player cards): a
+  special card per person, with a play time per calendar day or week (0 = no
+  limit). One card per game: placed before a game card, it counts for the next
+  game started within 90 s, and the session closes when the game ends, so the
+  next person is never counted as the previous one. For a game started from
+  the Recalbox menu, the player card stays on the reader and removing it ends
+  the game. Games without a player card count for the "guest", with its own
+  optional time. Time saved per day in `players.json` (kept 60 days), shown
+  per player in the Badges tab with a reset button; welcome and "time used up"
+  messages on the game screen.
+* **Blocking options**: quit the games started without a player card (from the
+  menu too), and the games of a player whose time is used up. The service
+  quits such a game about two seconds after it starts, with a message.
+* **Menu lock** (option): favourite games only and no START menu
+  (`emulationstation.favoritesonly`, `emulationstation.menu` in
+  `recalbox.conf`); the previous values come back when it is turned off or
+  when the reader is uninstalled. Refused while a game runs (the menu
+  restarts).
+* **Card frames** (`frames.py`): import your own PNG / SVG / WEBP / JPEG card
+  design with a transparent window; the page finds the window (largest
+  transparent area not touching the edges), the game picture shows under it
+  and stays movable. A frame can be linked to consoles: it is picked for their
+  games. Stored in `frames/` on the Recalbox, downloadable to share.
+* **Full backup** in one ZIP (Settings › Backup): badges, settings, templates,
+  frames, players, play time and calibration; never the password. A restore
+  checks the whole archive first, keeps a copy of the replaced files in
+  `backups/` (last five) and restarts the service.
+
+### Fixed
+
+* The "Special card" label of the badge list took the style of the special
+  card buttons (padding, border) and was cut off.
+
 ## [2.11.0]
 
 ### Added

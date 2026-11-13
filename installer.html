@@ -576,8 +576,13 @@
   .tag-ico img { width: 38px; height: 38px; object-fit: cover; border-radius: 11px; display: block; }
   .tag-actions { display: flex; gap: 2px; align-items: center; }
   .chip.time { background: var(--warn-soft); color: var(--warn-text); }
-  .chip.special { background: var(--primary-soft); color: var(--primary-text); }
-  .specials { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .chip.chip-special { background: var(--primary-soft); color: var(--primary-text); }
+  .specials { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .quota-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 6px; max-width: 260px; }
+  .quota-bar span { display: block; height: 100%; background: var(--primary); }
+  .quota-bar.low span { background: var(--warn); }
+  .quota-bar.out span { background: var(--err); }
+  .notice-line { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
   .special {
     display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px; min-width: 0;
     border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); color: inherit; cursor: pointer;
@@ -617,6 +622,20 @@
   .source-box .grow { min-width: 0; }
   .source-box b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .source-box span { font-size: 12.5px; color: var(--muted); }
+  .frames { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .frame-item { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-2); min-width: 0; }
+  .frame-item canvas { width: 100%; height: auto; display: block; border-radius: 6px; }
+  .frame-item.portrait canvas { width: 62%; margin: 0 auto; }
+  .frame-head { display: flex; align-items: flex-start; gap: 8px; }
+  .frame-head .grow { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .frame-item b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .frame-systems { font-size: 12.5px; color: var(--muted); }
+  .frame-item .actions { align-items: stretch; }
+  .frame-item .actions .btn { flex: 1 1 auto; }
+  .frame-preview { display: block; width: 100%; height: auto; border-radius: 6px; margin-bottom: 4px; }
+  .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; max-height: 220px; overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+  .check-list label { display: flex; gap: 8px; align-items: center; font-size: 13.5px; min-width: 0; }
+  .check-list input { width: 16px; height: 16px; flex: 0 0 auto; accent-color: var(--primary); }
   .tpl-list { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
   .tpl {
     position: relative; flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; align-items: center;
@@ -691,6 +710,7 @@
     .icon-btn { width: 34px; }
     .tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
     .specials { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .specials > .special:last-child:nth-child(odd) { grid-column: 1 / -1; }
     .form-grid { grid-template-columns: 1fr; }
     .ctl { grid-template-columns: 1fr auto; }
     .ctl > span:first-child { grid-column: 1 / -1; }
@@ -1202,7 +1222,19 @@
               <button class="special" type="button" data-special="poweroff">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></span>
                 <b>Éteindre</b><span>Éteint proprement la Recalbox.</span></button>
+              <button class="special" type="button" data-special="player">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
+                <b>Carte joueur</b><span>Compte le temps de jeu d'une personne.</span></button>
             </div>
+          </section>
+
+          <section class="card" id="players-card" hidden>
+            <div class="card-head"><div class="grow">
+              <h2>Joueurs</h2>
+              <p>Temps de jeu de chaque personne, compté avec sa carte joueur (une carte par partie).</p>
+            </div></div>
+            <p class="notice-line" id="players-note" hidden></p>
+            <ul class="tags" id="players-list"></ul>
           </section>
         </section>
 
@@ -1268,6 +1300,20 @@
                   <button class="btn" type="button" id="card-save-tpl">Enregistrer comme modèle</button>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section class="card" id="frames-card">
+            <div class="card-head"><div class="grow">
+              <h2>Mes cadres <span class="muted" id="frames-count"></span></h2>
+              <p>Vos propres visuels de carte : une image au format carte (85,6 × 54 mm, PNG ou SVG) avec une zone transparente où se place l'image du jeu. Rattachez un cadre à des consoles : il est choisi d'office pour leurs jeux.</p>
+            </div>
+            <div class="actions"><button class="btn" type="button" id="frame-import">Importer un cadre…</button></div></div>
+            <input type="file" id="frame-file" accept=".png,.svg,.webp,.jpg,.jpeg,image/png,image/svg+xml,image/webp,image/jpeg" hidden>
+            <ul class="frames" id="frames-list"></ul>
+            <div class="empty" id="frames-empty">
+              <b>Aucun cadre pour l'instant</b>
+              <span>Importez une image avec une zone transparente : l'image du jeu apparaîtra dessous.</span>
             </div>
           </section>
 
@@ -1370,6 +1416,20 @@
                 <span class="option-help" id="access-help">Demandé après l'appui de 3 s sur le bouton : seuls ceux qui le connaissent peuvent changer les badges, le temps de jeu et les réglages. Les autres appareils devront se reconnecter.</span>
               </div>
               <div class="option-control row" id="access-actions" style="gap:6px"></div>
+            </div>
+          </section>
+          <section class="option-group" id="backup-group" style="margin-bottom:12px">
+            <h3>Sauvegarde</h3>
+            <div class="option">
+              <div class="option-text">
+                <span class="option-label">Tout sauvegarder dans un fichier</span>
+                <span class="option-help">Badges, réglages, modèles et cadres de cartes, joueurs et temps de jeu. Le mot de passe n'est jamais inclus. Utile avant de réinstaller Recalbox ou pour passer sur une autre console.</span>
+              </div>
+              <div class="option-control row" style="gap:6px">
+                <button class="btn sm" type="button" id="btn-backup">Télécharger</button>
+                <button class="btn sm" type="button" id="btn-restore">Restaurer…</button>
+                <input type="file" id="file-restore" accept=".zip,application/zip" hidden>
+              </div>
             </div>
           </section>
           <div id="options-body"></div>
@@ -1606,6 +1666,7 @@ const ICONS = {
   bonus: '<circle cx="12" cy="13" r="8"/><path d="M12 9.5v7M8.5 13h7"/><path d="M9.5 2.5h5"/>',
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
+  player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   link: '<path d="M12 5v14M5 12h14"/>',
   rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
   rotr: '<path d="M20 4v5h-5"/><path d="M18.5 15a7 7 0 1 1-1.6-7.3L20 9"/>',
@@ -2838,6 +2899,7 @@ function render() {
   $("#dot-materiel").hidden = !problem;
   renderHealthNotice(problem);
   renderCurrent();
+  renderPlayers();
   renderCurrentForCard();
   renderMaintenance();
   renderCalibrationButtons();
@@ -2860,6 +2922,73 @@ function renderHealthNotice(problem) {
   const actions = [button(t("Voir le matériel"), () => setTab("materiel"))];
   if (problem.action) actions.unshift(button(problem.action[0], problem.action[1], "primary"));
   box.replaceChildren(notice(problem.tone, problem.title, problem.text, actions));
+}
+
+/* ---------------------------------------------------------------- players */
+function playersEnabled() {
+  const status = serviceStatus().players;
+  return Boolean(status && status.players);
+}
+function formatDuration(seconds) {
+  const minutes = Math.max(0, Math.round((seconds || 0) / 60));
+  if (minutes < 60) return t("{n} min", { n: minutes });
+  return t("{h} h {m}", { h: Math.floor(minutes / 60), m: String(minutes % 60).padStart(2, "0") });
+}
+function playerRow(name, info, uid) {
+  const period = info.period === "week" ? t("cette semaine") : t("aujourd'hui");
+  const parts = [t("{d} joué {p}", { d: formatDuration(info.used_s), p: period })];
+  if (info.quota_min) parts.push(t("reste {d}", { d: formatDuration(info.remaining_s) }));
+  else parts.push(t("sans limite"));
+  if (info.playing) parts.push(t("en train de jouer"));
+  const meta = [el("span", { text: parts.join(" · ") })];
+  const children = [el("div", { className: "tag-name", text: name }), el("div", { className: "tag-meta" }, meta)];
+  if (info.quota_min) {
+    const ratio = Math.min(1, (info.used_s || 0) / (info.quota_min * 60));
+    const bar = el("div", { className: "quota-bar" + (ratio >= 1 ? " out" : ratio >= 0.8 ? " low" : "") }, [el("span", { attrs: { style: "width:" + Math.round(ratio * 100) + "%" } })]);
+    children.push(bar);
+  }
+  const reset = el("button", { className: "btn sm", text: t("Remettre à zéro"), attrs: { type: "button" },
+    onclick: () => resetPlayer(uid, name) });
+  reset.disabled = busy || !(info.used_s > 0);
+  return el("li", { className: "tag" }, [
+    el("span", { className: "tag-ico" }, [icon("player", 19)]),
+    el("div", { attrs: { style: "min-width:0" } }, children),
+    el("div", { className: "tag-actions" }, [reset]),
+  ]);
+}
+function renderPlayers() {
+  const card = $("#players-card");
+  const status = serviceStatus().players;
+  card.hidden = !(status && status.players);
+  if (card.hidden) return;
+  const rows = status.players.map((player) => playerRow(player.name, player, player.uid));
+  if (status.guest) {
+    rows.push(playerRow(t("Sans carte joueur (invité)"), {
+      period: status.guest.period, quota_min: status.guest.quota_min,
+      used_s: Math.max(0, status.guest.quota_min * 60 - status.guest.remaining_s),
+      remaining_s: status.guest.remaining_s,
+      playing: Boolean(status.current && status.current.uid === "guest"),
+    }, ""));
+  }
+  $("#players-list").replaceChildren(...rows);
+  const note = $("#players-note");
+  let text = "";
+  if (!status.players.length) text = t("Aucune carte joueur : créez-en une dans « Cartes spéciales ».");
+  else if (status.pending) text = t("Carte de {name} posée : elle compte pour la prochaine partie.", { name: status.pending });
+  note.hidden = !text;
+  note.textContent = text;
+}
+async function resetPlayer(uid, name) {
+  const ok = await ask({
+    title: t("Remettre à zéro le temps de {name} ?", { name }),
+    text: t("Le temps joué aujourd'hui et cette semaine est oublié."),
+    ok: t("Remettre à zéro"),
+  });
+  if (!ok) return;
+  if (await run(() => agent.send("players.reset", { uid }), "Remise à zéro impossible :")) {
+    toast("ok", t("Temps de {name} remis à zéro.", { name }));
+    setTimeout(refresh, 1200);
+  }
 }
 
 /* ------------------------------------------------------------ association */
@@ -2944,7 +3073,7 @@ function renderTags(before) {
     const special = tag.kind === "action";
     const label = tagTitle(tag);
     const meta = [
-      special ? el("span", { className: "chip special", text: t("Carte spéciale") }) : el("span", { className: "chip", text: systemName(tag.system) }),
+      special ? el("span", { className: "chip chip-special", text: t("Carte spéciale") }) : el("span", { className: "chip", text: systemName(tag.system) }),
       limitChip(tag),
       el("span", { text: uses ? (uses === 1 ? t("utilisé une fois") : t("utilisé {n} fois", { n: uses })) + (formatDate(tag.last_used) ? " · " + t("dernière fois le {d}", { d: formatDate(tag.last_used) }) : "") : t("jamais utilisé") }),
       el("span", { className: "mono", text: tag.pretty }),
@@ -3065,6 +3194,43 @@ function appendLog(line) {
   const panel = $("#install-log");
   panel.textContent = logLines.join("\n");
   panel.scrollTop = panel.scrollHeight;
+}
+
+/* ---- full backup ---- */
+function fromBase64(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+async function downloadBackup() {
+  const result = await run(() => agent.send("backup.export", {}, 120000), "Sauvegarde impossible :");
+  if (!result) return;
+  downloadBlob(result.name, fromBase64(result.data), "application/zip");
+  toast("ok", t("Sauvegarde enregistrée dans vos téléchargements."));
+}
+async function restoreBackup(file) {
+  const ok = await ask({
+    title: t("Restaurer cette sauvegarde ?"),
+    text: t("Les badges, réglages, modèles, cadres et joueurs actuels seront remplacés. Une copie des fichiers actuels est gardée sur la Recalbox (dossier backups)."),
+    ok: t("Restaurer"),
+  });
+  if (!ok) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const result = await run(async () => {
+    await agent.send("upload.begin", { size: bytes.byteLength });
+    const step = 32 * 1024;
+    for (let offset = 0; offset < bytes.byteLength; offset += step) {
+      await agent.send("upload.chunk", { data: toBase64(bytes.slice(offset, Math.min(offset + step, bytes.byteLength))) });
+    }
+    return agent.send("backup.restore", {}, 60000);
+  }, "Restauration impossible :");
+  if (!result) return;
+  toast("ok", t("Sauvegarde restaurée ({n} fichiers). Le service du lecteur redémarre.", { n: result.files.length }));
+  lastTagsJson = "";
+  refresh();
+  renderOptions(true);
+  loadSavedTemplates();
 }
 
 async function startInstall(force) {
@@ -3307,6 +3473,7 @@ const OPTION_GROUPES = [
   ["button", "Bouton du boîtier"],
   ["rfid", "Lecteur de badges"],
   ["time", "Temps de jeu"],
+  ["players", "Cartes joueurs"],
   ["screen", "Messages à l'écran"],
   ["cards", "Cartes"],
   ["led", "Voyant"],
@@ -3320,6 +3487,7 @@ const CHOIX_TEXTES = {
   DEBUG: "tout noter (diagnostic)", INFO: "normal", WARNING: "anomalies seulement", ERROR: "erreurs seulement",
   "led.type=none": "aucun voyant", "led.type=rgb": "LED RGB (3 couleurs)", "led.type=ws2812": "LED programmables (WS2812)",
   "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
+  "players.guest_period=day": "par jour", "players.guest_period=week": "par semaine",
 };
 let optionsData = null;
 let optionsPending = {};
@@ -3616,6 +3784,10 @@ function specialName(action, params) {
   if (action === "bonus") return t("Temps bonus +{n} min", { n: p.minutes || 10 });
   if (action === "quit") return t("Quitter le jeu");
   if (action === "poweroff") return t("Éteindre la Recalbox");
+  if (action === "player") {
+    if (!p.quota_min) return t("Carte joueur · sans limite");
+    return t("Carte joueur · {n} min par {p}", { n: p.quota_min, p: t(p.period === "week" ? "semaine" : "jour") });
+  }
   return action || "";
 }
 
@@ -3658,12 +3830,24 @@ async function specialFields(action, values) {
     const period = el("select", { attrs: { id: "f-period" } }, PERIODS.map(([hours, label]) => el("option", { text: t("par {p}", { p: t(label) }), attrs: { value: hours } })));
     period.value = String(p.period_h || 24);
     fields.push(formField(t("Période"), period, t("Le compteur repart à zéro après cette durée."), true));
+  } else if (action === "player") {
+    fields.push(formField(t("Temps de jeu (minutes)"), numberInput("f-quota", p.quota_min || 0, 0, 10080), t("0 = sans limite")));
+    const period = el("select", { attrs: { id: "f-player-period" } }, [
+      el("option", { text: t("par jour"), attrs: { value: "day" } }),
+      el("option", { text: t("par semaine"), attrs: { value: "week" } }),
+    ]);
+    period.value = p.period === "week" ? "week" : "day";
+    fields.push(formField(t("Période"), period, t("Le compteur repart à zéro chaque jour à minuit, ou chaque lundi.")));
+    if (!playersEnabled()) {
+      fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
+    }
   }
   return fields;
 }
 function readSpecialParams(action) {
   if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true" };
   if (action === "bonus") return { minutes: Number($("#f-minutes").value) || 10, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
+  if (action === "player") return { quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)), period: $("#f-player-period").value === "week" ? "week" : "day" };
   return {};
 }
 function readLimit() {
@@ -3677,6 +3861,7 @@ const SPECIAL_HELP = {
   bonus: "Pendant une partie limitée, ajoute du temps. Juste après la fin du temps (moins de 15 minutes), relance la partie avec ce temps en plus.",
   quit: "Quitte le jeu en cours et revient au menu de la Recalbox.",
   poweroff: "Éteint la Recalbox proprement, comme depuis son menu.",
+  player: "Une carte par personne : posée avant le jeu (ou laissée sur le lecteur pour un jeu lancé depuis le menu), elle compte son temps de jeu.",
 };
 
 /* One dialog for the special cards (creation) and for badge settings. */
@@ -3705,8 +3890,9 @@ function cardDialog(title, text, fields, okLabel) {
 
 async function createSpecial(action) {
   const fields = await specialFields(action, null);
-  const name = el("input", { attrs: { type: "text", id: "f-name", placeholder: specialName(action, {}), maxlength: 60 } });
-  fields.unshift(formField(t("Nom affiché"), name, "", true));
+  const name = el("input", { attrs: { type: "text", id: "f-name", placeholder: action === "player" ? t("Prénom") : specialName(action, {}), maxlength: 60 } });
+  if (action === "player") name.required = true;
+  fields.unshift(formField(action === "player" ? t("Prénom du joueur") : t("Nom affiché"), name, "", true));
   const ok = await cardDialog(specialName(action, {}), t(SPECIAL_HELP[action]), fields, t("Poser le badge"));
   if (!ok) return;
   const params = readSpecialParams(action);
@@ -4020,7 +4206,296 @@ const CARD_TEMPLATES = [
     over() {},
   },
 ];
-function templateById(id) { return CARD_TEMPLATES.find((tpl) => tpl.id === id) || CARD_TEMPLATES[0]; }
+function templateById(id) {
+  const builtIn = CARD_TEMPLATES.find((tpl) => tpl.id === id);
+  if (builtIn) return builtIn;
+  const meta = frameMeta(id);
+  return meta ? frameTemplate(meta) : CARD_TEMPLATES[0];
+}
+
+/* ---- card frames: the user's own pictures with a transparent window ----
+   The game picture is drawn first, the frame on top of it: the picture shows
+   through the transparent zone. A frame of the other orientation is turned a
+   quarter. Title, logo and console are hidden by default (the frame is the
+   whole design). */
+const FRAME_PREFIX = "frame:";
+let frameList = [];
+const frameImages = new Map();
+const frameLoads = new Map();
+function frameMeta(templateId) {
+  const id = String(templateId || "");
+  return id.startsWith(FRAME_PREFIX) ? frameList.find((meta) => FRAME_PREFIX + meta.id === id) || null : null;
+}
+function frameTurn(meta, W, H) {
+  const portrait = H > W;
+  if ((meta.orientation === "portrait") === portrait) return 0;
+  return portrait ? 90 : -90;
+}
+function frameTemplate(meta) {
+  return {
+    id: FRAME_PREFIX + meta.id, name: meta.name, frame: meta,
+    layout(W, H) {
+      const turn = frameTurn(meta, W, H);
+      const win = meta.window;
+      let window = { x: win.x, y: win.y, w: win.w, h: win.h, r: 0 };
+      if (turn === 90) window = { x: W - (win.y + win.h), y: win.x, w: win.h, h: win.w, r: 0 };
+      if (turn === -90) window = { x: win.y, y: H - (win.x + win.w), w: win.h, h: win.w, r: 0 };
+      return {
+        window,
+        title: { x: W / 2, y: Math.min(H - 5, window.y + window.h + 4), size: Math.min(W, H) * 0.08, maxw: W * 0.85, color: "paper", font: "sans", outline: true, visible: false, rotation: 0 },
+        logo: { x: W / 2, y: Math.min(W, H) * 0.12, h: Math.min(W, H) * 0.12, w: W * 0.45, tint: "paper", visible: false, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: turn, visible: true },
+      };
+    },
+    under(ctx, W, H) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); },
+    over(ctx, W, H) {
+      const image = frameImages.get(meta.id);
+      if (!image) {
+        loadFrameImage(meta).then(() => { redrawDesign(); scheduleTemplateThumbs(); renderFrames(); }).catch(() => {});
+        return;
+      }
+      const turn = frameTurn(meta, W, H);
+      ctx.save();
+      if (turn === 90) { ctx.translate(W, 0); ctx.rotate(Math.PI / 2); ctx.drawImage(image, 0, 0, H, W); }
+      else if (turn === -90) { ctx.translate(0, H); ctx.rotate(-Math.PI / 2); ctx.drawImage(image, 0, 0, H, W); }
+      else ctx.drawImage(image, 0, 0, W, H);
+      ctx.restore();
+    },
+  };
+}
+function loadFrameImage(meta) {
+  if (frameImages.has(meta.id)) return Promise.resolve(frameImages.get(meta.id));
+  if (frameLoads.has(meta.id)) return frameLoads.get(meta.id);
+  const load = (async () => {
+    const data = await agent.send("frames.get", { frame: meta.id }, 60000);
+    if (!data.found) throw new Error(t("image introuvable"));
+    const bytes = fromBase64(data.data);
+    const image = data.type === "image/svg+xml"
+      ? await svgImage(new TextDecoder().decode(bytes))
+      : await loadImage(URL.createObjectURL(new Blob([bytes], { type: data.type })));
+    frameImages.set(meta.id, image);
+    return image;
+  })();
+  frameLoads.set(meta.id, load);
+  load.finally(() => frameLoads.delete(meta.id)).catch(() => {});
+  return load;
+}
+async function loadFrames() {
+  if (!agent.isOpen) return;
+  try {
+    frameList = (await agent.send("frames.list", {}, 15000)).frames || [];
+  } catch (error) {
+    frameList = [];
+  }
+  renderFrames();
+  scheduleTemplateThumbs();
+  for (const meta of frameList) {
+    loadFrameImage(meta).then(() => { renderFrames(); scheduleTemplateThumbs(); redrawDesign(); }).catch(() => {});
+  }
+}
+function frameSystemsText(meta) {
+  return meta.systems && meta.systems.length ? meta.systems.map(systemName).join(", ") : t("Aucune console : à choisir à la main");
+}
+function renderFrames() {
+  const list = $("#frames-list");
+  if (!list) return;
+  $("#frames-count").textContent = frameList.length ? "(" + frameList.length + ")" : "";
+  $("#frames-empty").hidden = frameList.length > 0;
+  list.replaceChildren(...frameList.map((meta) => {
+    const canvas = document.createElement("canvas");
+    const id = FRAME_PREFIX + meta.id;
+    renderCard(canvas, thumbDesign({ template: id, orientation: meta.orientation, layers: templateLayers(id, meta.orientation) }), 5, false);
+    return el("li", { className: "frame-item" + (meta.orientation === "portrait" ? " portrait" : "") }, [
+      canvas,
+      el("div", { className: "frame-head" }, [
+        el("div", { className: "grow" }, [
+          el("b", { text: meta.name }),
+          el("span", { className: "frame-systems", text: frameSystemsText(meta) }),
+        ]),
+        el("button", { className: "icon-btn", title: t("Supprimer"), attrs: { type: "button", "aria-label": t("Supprimer le cadre « {name} »", { name: meta.name }) },
+          onclick: () => deleteFrame(meta) }, [icon("trash", 18)]),
+      ]),
+      el("div", { className: "actions" }, [
+        el("button", { className: "btn sm primary", text: t("Utiliser"), attrs: { type: "button" }, onclick: () => useFrame(meta) }),
+        el("button", { className: "btn sm", text: t("Modifier"), attrs: { type: "button" }, onclick: () => editFrame(meta) }),
+        el("button", { className: "btn sm", text: t("Télécharger"), attrs: { type: "button" }, onclick: () => downloadFrame(meta) }),
+      ]),
+    ]);
+  }));
+}
+function selectFrameTemplate(meta) {
+  design.savedId = "";
+  design.template = FRAME_PREFIX + meta.id;
+  if (design.orientation !== meta.orientation) {
+    design.orientation = meta.orientation;
+    setOrientationButtons();
+  }
+  resetLayers();
+  rememberDesign();
+}
+function useFrame(meta) {
+  selectFrameTemplate(meta);
+  afterDesignChange();
+  $("#card-stage").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+/* The transparent window: the largest transparent area that does not touch
+   the edges (rounded corners do), or else the largest one. */
+function detectFrameWindow(image) {
+  const iw = image.naturalWidth || image.width;
+  const ih = image.naturalHeight || image.height;
+  const scale = Math.min(1, 320 / Math.max(iw, ih));
+  const w = Math.max(8, Math.round(iw * scale));
+  const h = Math.max(8, Math.round(ih * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const seen = new Uint8Array(w * h);
+  let best = null;
+  for (let start = 0; start < w * h; start++) {
+    if (seen[start] || data[start * 4 + 3] >= 128) continue;
+    const stack = [start];
+    seen[start] = 1;
+    const area = { minX: w, minY: h, maxX: 0, maxY: 0, count: 0, edge: false };
+    while (stack.length) {
+      const point = stack.pop();
+      const x = point % w;
+      const y = (point - x) / w;
+      area.count++;
+      if (x < area.minX) area.minX = x;
+      if (x > area.maxX) area.maxX = x;
+      if (y < area.minY) area.minY = y;
+      if (y > area.maxY) area.maxY = y;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) area.edge = true;
+      for (const next of [x > 0 ? point - 1 : -1, x < w - 1 ? point + 1 : -1, y > 0 ? point - w : -1, y < h - 1 ? point + w : -1]) {
+        if (next >= 0 && !seen[next] && data[next * 4 + 3] < 128) { seen[next] = 1; stack.push(next); }
+      }
+    }
+    if (!best || (best.edge && !area.edge) || (best.edge === area.edge && area.count > best.count)) best = area;
+  }
+  if (!best || best.count < w * h * 0.02) return null;
+  const orientation = ih > iw ? "portrait" : "landscape";
+  const card = cardSize(orientation);
+  return {
+    orientation,
+    window: {
+      x: best.minX / w * card.w, y: best.minY / h * card.h,
+      w: (best.maxX - best.minX + 1) / w * card.w, h: (best.maxY - best.minY + 1) / h * card.h,
+    },
+    stretched: Math.abs((iw / ih) / (card.w / card.h) - 1) > 0.04,
+  };
+}
+function frameSystemsField(selected) {
+  const box = el("div", { className: "check-list", attrs: { role: "group", "aria-label": t("Consoles") } });
+  const systems = (systemsList || []).slice().sort((a, b) => systemName(a.id).localeCompare(systemName(b.id)));
+  for (const system of systems) {
+    const input = el("input", { attrs: { type: "checkbox", value: system.id } });
+    input.checked = selected.includes(system.id);
+    box.append(el("label", {}, [input, systemName(system.id)]));
+  }
+  if (!systems.length) box.append(el("span", { className: "muted small", text: t("Liste des consoles indisponible.") }));
+  return box;
+}
+function checkedSystems(box) {
+  return $$("input[type=checkbox]", box).filter((input) => input.checked).map((input) => input.value);
+}
+function frameNameField(value) {
+  const input = el("input", { attrs: { type: "text", id: "f-frame-name", maxlength: 60, required: "required" } });
+  input.value = value;
+  return input;
+}
+async function importFrame(file) {
+  let image;
+  try {
+    const isSvg = file.type === "image/svg+xml" || /\.svg$/i.test(file.name);
+    image = isSvg ? await svgImage(await file.text()) : await loadImage(URL.createObjectURL(file));
+  } catch (error) {
+    toast("err", t("Cette image ne peut pas être lue."));
+    return;
+  }
+  const found = detectFrameWindow(image);
+  if (!found) {
+    toast("err", t("Aucune zone transparente trouvée : le cadre doit laisser un trou pour l'image du jeu."), 7000);
+    return;
+  }
+  await loadSystems();
+  const preview = document.createElement("canvas");
+  const card = cardSize(found.orientation);
+  const px = 6;
+  preview.width = Math.round(card.w * px); preview.height = Math.round(card.h * px);
+  preview.className = "frame-preview";
+  const ctx = preview.getContext("2d");
+  ctx.scale(px, px);
+  ctx.fillStyle = "#c9d2ff"; ctx.fillRect(0, 0, card.w, card.h);
+  ctx.strokeStyle = "#5470f6"; ctx.lineWidth = 0.8;
+  for (let x = -card.h; x < card.w; x += 3) { ctx.beginPath(); ctx.moveTo(x, card.h); ctx.lineTo(x + card.h, 0); ctx.stroke(); }
+  ctx.drawImage(image, 0, 0, card.w, card.h);
+  ctx.setLineDash([1.2, 0.8]); ctx.strokeStyle = "#e03131"; ctx.lineWidth = 0.4;
+  ctx.strokeRect(found.window.x, found.window.y, found.window.w, found.window.h);
+  const name = frameNameField(file.name.replace(/\.[a-z0-9]+$/i, "").slice(0, 60));
+  const systems = frameSystemsField(design.game ? [design.game.system] : []);
+  const fields = [
+    el("div", { className: "field full" }, [
+      preview,
+      el("small", { text: t("Les rayures montrent où ira l'image du jeu (cadre rouge).") }),
+      found.stretched ? el("small", { text: t("L'image n'a pas tout à fait le format d'une carte : elle sera étirée.") }) : null,
+    ]),
+    el("label", { className: "field full" }, [el("span", { text: t("Nom du cadre") }), name]),
+    el("div", { className: "field full" }, [el("span", { text: t("Consoles (le cadre est choisi d'office pour leurs jeux)") }), systems]),
+  ];
+  const ok = await cardDialog(t("Importer un cadre"), "", fields, t("Enregistrer le cadre"));
+  if (!ok) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const meta = { name: name.value.trim() || file.name, systems: checkedSystems(systems), orientation: found.orientation, window: found.window };
+  const result = await run(async () => {
+    await agent.send("upload.begin", { size: bytes.byteLength });
+    const step = 32 * 1024;
+    for (let offset = 0; offset < bytes.byteLength; offset += step) {
+      await agent.send("upload.chunk", { data: toBase64(bytes.slice(offset, Math.min(offset + step, bytes.byteLength))) });
+    }
+    return agent.send("frames.save", { meta }, 60000);
+  }, "Enregistrement impossible :");
+  if (!result) return;
+  frameImages.set(result.frame.id, image);
+  toast("ok", t("Cadre « {name} » enregistré sur la Recalbox.", { name: result.frame.name }));
+  await loadFrames();
+  const saved = frameList.find((item) => item.id === result.frame.id);
+  if (saved) useFrame(saved);
+}
+async function editFrame(meta) {
+  await loadSystems();
+  const name = frameNameField(meta.name);
+  const systems = frameSystemsField(meta.systems || []);
+  const ok = await cardDialog(t("Modifier le cadre"), "", [
+    el("label", { className: "field full" }, [el("span", { text: t("Nom du cadre") }), name]),
+    el("div", { className: "field full" }, [el("span", { text: t("Consoles (le cadre est choisi d'office pour leurs jeux)") }), systems]),
+  ], t("Enregistrer"));
+  if (!ok) return;
+  const result = await run(() => agent.send("frames.update", { frame: meta.id, name: name.value.trim() || meta.name, systems: checkedSystems(systems) }), "Enregistrement impossible :");
+  if (result) await loadFrames();
+}
+async function downloadFrame(meta) {
+  const data = await run(() => agent.send("frames.get", { frame: meta.id }, 60000), "Téléchargement impossible :");
+  if (!data || !data.found) return;
+  const ext = { "image/svg+xml": ".svg", "image/webp": ".webp", "image/jpeg": ".jpg" }[data.type] || ".png";
+  downloadBlob(meta.name.replace(/[\\/:*?"<>|]+/g, "_") + ext, fromBase64(data.data), data.type);
+}
+async function deleteFrame(meta) {
+  const ok = await ask({ title: t("Supprimer ce cadre ?"), text: t("« {name} » sera retiré de la Recalbox.", { name: meta.name }), ok: t("Supprimer"), danger: true });
+  if (!ok) return;
+  const result = await run(() => agent.send("frames.delete", { frame: meta.id }), "Suppression impossible :");
+  if (!result) return;
+  frameImages.delete(meta.id);
+  if (design.template === FRAME_PREFIX + meta.id) {
+    design.template = CARD_TEMPLATES[0].id;
+    resetLayers();
+    rememberDesign();
+    afterDesignChange();
+  }
+  await loadFrames();
+}
 function templateLayers(id, orientation) {
   const { w, h } = cardSize(orientation);
   return JSON.parse(JSON.stringify(templateById(id).layout(w, h)));
@@ -4768,6 +5243,16 @@ function renderTemplateList() {
       onclick: () => { design.savedId = ""; design.template = tpl.id; resetLayers(); rememberDesign(); afterDesignChange(); },
     }, [canvas, t(tpl.name)]));
   }
+  for (const meta of frameList) {
+    const id = FRAME_PREFIX + meta.id;
+    const canvas = document.createElement("canvas");
+    renderCard(canvas, thumbDesign({ template: id, layers: templateLayers(id, design.orientation) }), thumbPx * 2, false);
+    canvas.style.width = (design.orientation === "portrait" ? 54 * thumbPx : 96) + "px";
+    items.push(el("button", {
+      className: "tpl", attrs: { type: "button", "aria-pressed": !design.savedId && design.template === id ? "true" : "false", title: frameSystemsText(meta) },
+      onclick: () => { selectFrameTemplate(meta); afterDesignChange(); },
+    }, [canvas, meta.name]));
+  }
   for (const saved of savedTemplates) {
     const canvas = document.createElement("canvas");
     renderCard(canvas, thumbDesign(savedDesign(saved)), thumbPx * 2, false);
@@ -4888,6 +5373,9 @@ async function designGame(game) {
   const art = await consoleArtwork(game.system);
   /* Another game was chosen meanwhile: this slower load must not win. */
   if (design.game !== chosen) return;
+  /* A frame made for this console is chosen for it. */
+  const ownFrame = frameList.find((meta) => (meta.systems || []).includes(game.system));
+  if (ownFrame && design.template !== FRAME_PREFIX + ownFrame.id) selectFrameTemplate(ownFrame);
   design.logo = art.logo;
   design.titleStyle = "text";
   design.titleLogo = null;
@@ -4953,6 +5441,7 @@ async function enterDesigner() {
     loadSystems();
   }
   await loadSavedTemplates();
+  await loadFrames();
   redrawDesign();
   /* Only if nothing was chosen while the templates were loading. */
   if (auto && !design.game && !design.image) { cardAutoDone = true; await designGame(auto); }
@@ -5771,6 +6260,13 @@ function wire() {
   $("#btn-associate").addEventListener("click", () => run(() => agent.send("associate", { mode: "associate" }), "Association impossible :").then(refresh));
   $("#btn-associate-delete").addEventListener("click", () => run(() => agent.send("associate", { mode: "delete" }), "Effacement impossible :").then(refresh));
   $("#tags-search").addEventListener("input", () => renderTags());
+  $("#btn-backup").addEventListener("click", downloadBackup);
+  $("#btn-restore").addEventListener("click", () => $("#file-restore").click());
+  $("#file-restore").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (file) restoreBackup(file);
+  });
   $("#btn-export").addEventListener("click", async () => {
     const payload = await run(() => agent.send("tags.export"));
     if (payload) { downloadBlob("badges-rfid.csv", payload.csv, "text/csv;charset=utf-8"); toast("ok", t("Liste enregistrée dans vos téléchargements.")); }
@@ -5854,6 +6350,12 @@ function wire() {
     else if (key === "y" || (key === "z" && event.shiftKey)) { event.preventDefault(); redoDesign(); }
   });
   $("#card-pick").addEventListener("click", () => pickGame(designGame));
+  $("#frame-import").addEventListener("click", () => $("#frame-file").click());
+  $("#frame-file").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (file) importFrame(file);
+  });
   $("#add-pick").addEventListener("click", () => pickGame((game) => setAddGame(game, true)));
   $("#card-current").addEventListener("click", () => { const game = recalboxGame(); if (game) designGame(game); });
   $("#card-own").addEventListener("click", () => $("#card-file").click());

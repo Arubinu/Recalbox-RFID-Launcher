@@ -40,7 +40,7 @@ ACTION_LAUNCH = "launch"   # starts the game (historical behaviour)
 ACTION_NONE = "none"       # confirmation beep and log, without starting anything
 
 #: Special cards that act even while a game is running.
-ACTIONS_DURING_GAME = ("quit", "bonus", "poweroff")
+ACTIONS_DURING_GAME = ("quit", "bonus", "poweroff", "player")
 
 
 class Controller:
@@ -61,6 +61,7 @@ class Controller:
         light=None,
         power=None,
         card_reader=None,
+        players=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -75,11 +76,24 @@ class Controller:
         self.light = light
         self.power = power
         self.card_reader = card_reader
+        self.players = players
 
         self.ignore_when_running = True
         self.arm_timeout_s = 10.0
         self.action = ACTION_LAUNCH
         self.default_limit_min = 0
+        self.players_enabled = False
+        self.require_player = False
+        self.block_exhausted = True
+        self.guest_quota_min = 0
+        self.guest_period = "day"
+        if cfg is not None:
+            self.players_enabled = cfg.get_bool("players", "enabled", False)
+            self.require_player = cfg.get_bool("players", "require", False)
+            self.block_exhausted = cfg.get_bool("players", "block_exhausted", True)
+            self.guest_quota_min = max(0, cfg.get_int("players", "guest_quota_min", 0))
+            period = cfg.get("players", "guest_period", "day").strip()
+            self.guest_period = "week" if period == "week" else "day"
         if cfg is not None:
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
@@ -260,7 +274,7 @@ class Controller:
 
         if is_action:
             return self._special(uid, entry)
-        return self._launch(entry, uid)
+        return self._launch_for_player(entry, uid)
 
     def _portable(self, uid: str):
         """Game written in the memory of an unknown badge (portable card)."""
@@ -344,6 +358,8 @@ class Controller:
         """Quits the running game (badge removed, quit card, time up)."""
         if self.playtime is not None:
             self.playtime.end(reason)
+        if self.players is not None:
+            self.players.finish()
         self.launched_uid = None
         if not self.launcher.stop_game():
             self._log("info", "Aucun jeu en cours a arreter")
@@ -379,7 +395,90 @@ class Controller:
             return self.default_limit_min
         return max(0, int(limit))
 
-    def _launch(self, entry, uid: str, touch: bool = True, minutes=None) -> str:
+    # ------------------------------------------------------------ players
+    @property
+    def counting_players(self) -> bool:
+        return self.players is not None and self.players_enabled
+
+    def player_left(self, uid: str, entry: dict):
+        """Seconds left to a player card (None = no limit)."""
+        params = entry.get("params") or {}
+        return self.players.remaining_s(uid, int(params.get("quota_min") or 0), params.get("period") or "day")
+
+    def guest_left(self):
+        return self.players.remaining_s("", self.guest_quota_min, self.guest_period)
+
+    def _refuse(self, key: str, message: str, **values) -> None:
+        self.feedback.error()
+        self._flash("error")
+        self._say(key, **values)
+        self._log("info", message)
+
+    def _launch_for_player(self, entry, uid: str, touch: bool = True) -> str:
+        """Starts a game card for the waiting player card (or the guest)."""
+        if not self.counting_players:
+            return self._launch(entry, uid, touch=touch)
+        pending = self.players.take_pending()
+        if pending is not None:
+            player = (pending["uid"], pending["entry"])
+            left = self.player_left(*player)
+            name = self.players.player_name(pending["entry"])
+            if left is not None and left <= 0:
+                self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
+                return "exhausted"
+        else:
+            if self.require_player:
+                self._refuse("player_needed", "Jeu refuse : posez d'abord une carte joueur")
+                return "player_needed"
+            player = ("", {})
+            left = self.guest_left()
+            if left is not None and left <= 0:
+                self._refuse("guest_exhausted", "Jeu refuse : plus de temps de jeu sans carte joueur")
+                return "exhausted"
+        minutes = None
+        if left is not None:
+            card = self.limit_for(entry)
+            minutes = left / 60.0 if not card else min(float(card), left / 60.0)
+        return self._launch(entry, uid, touch=touch, minutes=minutes, player=player)
+
+    def _player_card(self, uid: str, entry: dict) -> str:
+        """Player card: counts for the next game, or the game just started from the menu."""
+        if not self.counting_players:
+            self.feedback.error()
+            self._flash("error")
+            self._log("info", "Carte joueur : les cartes joueurs sont desactivees dans les reglages")
+            return "disabled"
+        name = self.players.player_name(entry)
+        left = self.player_left(uid, entry)
+        if left is not None and left <= 0:
+            self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
+            return "exhausted"
+        self._touch(uid)
+        current = self.players.current
+        if self.game_running() and (current is None or current["uid"] == "guest"):
+            # Game started from the menu without a card: it becomes this
+            # player's, and lasts while the card stays on the reader.
+            self.players.begin(uid, entry, via="reader")
+            if self.playtime is not None and left is not None and self.playtime.session is None:
+                self.playtime.start(uid, {"name": name}, left / 60.0)
+            self.feedback.ok()
+            self._flash("ok")
+            self._greet(name, left)
+            self._log("info", "Carte joueur %s : la partie en cours lui est comptee" % name)
+            return "player_game"
+        self.players.arm(uid, entry)
+        self.feedback.ok()
+        self._flash("ok")
+        self._log("info", "Carte joueur %s : pour la prochaine partie" % name)
+        return "player"
+
+    def _greet(self, name: str, left) -> None:
+        if left is None:
+            self._say("player_unlimited", name=name)
+        else:
+            self._say("player_hello", name=name, n=max(1, int(round(left / 60.0))))
+
+    def _launch(self, entry, uid: str, touch: bool = True, minutes=None, player=None) -> str:
         system = entry.get("system", "")
         # The frontend identifies a game by its FULL PATH, as it writes it itself
         # in /tmp/es_state.inf (e.g. /recalbox/share_init/roms/...). The file name
@@ -398,6 +497,9 @@ class Controller:
             self._flash("launch")
             if self.playtime is not None:
                 self.playtime.start(uid, entry, self.limit_for(entry) if minutes is None else minutes)
+            if self.counting_players:
+                who = player if player is not None else self.players.resume_player()
+                self.players.begin(who[0], who[1], via="card")
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"
@@ -434,6 +536,8 @@ class Controller:
             return self._random(uid, entry, params)
         if action == "bonus":
             return self._bonus(uid, params)
+        if action == "player":
+            return self._player_card(uid, entry)
         self.feedback.error()
         return "unknown"
 
@@ -467,7 +571,7 @@ class Controller:
         }
         self._log("info", "Jeu au hasard : %s (%s)" % (game["name"], game["system"]))
         self._touch(uid)
-        return self._launch(chosen, uid, touch=False)
+        return self._launch_for_player(chosen, uid, touch=False)
 
     def _bonus(self, uid: str, params: dict) -> str:
         if self.playtime is None:

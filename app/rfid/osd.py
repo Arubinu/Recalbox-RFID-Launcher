@@ -21,6 +21,30 @@ RECALBOX_CONF = "/recalbox/share/system/recalbox.conf"
 
 #: Messages shown on the TV, in the Recalbox interface language.
 MESSAGES = {
+    "player_hello": {
+        "fr": "{name} : {n} min de jeu", "en": "{name}: {n} min of play",
+        "de": "{name}: {n} Min. Spielzeit", "es": "{name}: {n} min de juego",
+        "it": "{name}: {n} min di gioco", "pt": "{name}: {n} min de jogo"},
+    "player_unlimited": {
+        "fr": "Bon jeu, {name} !", "en": "Have fun, {name}!",
+        "de": "Viel Spaß, {name}!", "es": "¡Buen juego, {name}!",
+        "it": "Buon divertimento, {name}!", "pt": "Bom jogo, {name}!"},
+    "player_needed": {
+        "fr": "Pose ta carte joueur pour jouer", "en": "Place your player card to play",
+        "de": "Leg deine Spielerkarte auf, um zu spielen", "es": "Pon tu tarjeta de jugador para jugar",
+        "it": "Appoggia la tua carta giocatore per giocare", "pt": "Pousa o teu cartão de jogador para jogar"},
+    "player_exhausted": {
+        "fr": "{name} : plus de temps de jeu pour le moment", "en": "{name}: no play time left for now",
+        "de": "{name}: im Moment keine Spielzeit mehr", "es": "{name}: no queda tiempo de juego por ahora",
+        "it": "{name}: niente più tempo di gioco per ora", "pt": "{name}: sem tempo de jogo por agora"},
+    "guest_exhausted": {
+        "fr": "Plus de temps de jeu sans carte joueur", "en": "No play time left without a player card",
+        "de": "Ohne Spielerkarte keine Spielzeit mehr", "es": "No queda tiempo de juego sin tarjeta de jugador",
+        "it": "Niente più tempo di gioco senza carta giocatore", "pt": "Sem tempo de jogo sem cartão de jogador"},
+    "player_left": {
+        "fr": "Carte joueur retirée : fin de la partie", "en": "Player card removed: game over",
+        "de": "Spielerkarte entfernt: Spielende", "es": "Tarjeta de jugador retirada: fin de la partida",
+        "it": "Carta giocatore tolta: fine della partita", "pt": "Cartão de jogador retirado: fim do jogo"},
     "warn300": {
         "fr": "Plus que 5 minutes de jeu", "en": "5 minutes of play left",
         "de": "Noch 5 Minuten Spielzeit", "es": "Quedan 5 minutos de juego",

@@ -166,6 +166,44 @@ The uses are kept in `playtime.json` (they survive a restart). Without a
 battery, the Recalbox clock may restart in 1980 until the network gives the
 time: the quota then starts again from zero.
 
+## Player cards
+
+Optional (**Settings › Player cards**, off by default). Each person gets a
+**player card** (Badges › Special cards › Player card): a first name and a play
+time per **day** or per **week** (0 = no limit). The counter restarts at
+midnight, or on Monday.
+
+**One card per game**, so that the next person is never counted as the
+previous one:
+
+* **With a game card**: place the player card, then the game card within 90
+  seconds. The game counts for that player and lasts at most the time left.
+  When the game ends, the player card is used up: the next game needs a player
+  card again.
+* **With a game started from the Recalbox menu**: leave the player card on the
+  reader. The game counts for that player; **removing the card ends the game**.
+* **Without a player card**: the game counts for the "guest", with its own
+  optional time (Settings › Player cards).
+
+The Badges tab shows, per player, the time played and left, with a **Reset**
+button. Messages on the game screen: welcome with the time left, "no play time
+left", "player card removed". The time is saved per day in `players.json`
+(kept 60 days).
+
+Options:
+
+* **Block games without a player card**: a game started without one, even from
+  the menu, is quit about two seconds after it starts, with a message on the
+  screen (Recalbox itself cannot refuse to start a game).
+* **Block games when the time is up** (on by default): the games started from
+  the menu by a player (or the guest) with no time left are quit too. Game
+  cards are always refused in that case.
+* **Lock the Recalbox menu**: the lists only show the **favourite** games (mark
+  the allowed games as favourites) and the **START menu is hidden**, so the
+  lock cannot be removed from the TV. The menu restarts for a few seconds;
+  refused while a game runs. Turned off (or the reader uninstalled), the
+  previous settings of `recalbox.conf` come back exactly.
+
 ## Printing the cards
 
 Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
@@ -213,6 +251,23 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
 
 **Undo / redo**: the arrows above the card, or Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z).
 One step per gesture, up to 80 steps.
+
+### Your own frames
+
+**Cards › My frames › Import a frame**: a card-sized picture (85.6 × 54 mm,
+PNG, SVG, WEBP or JPEG; landscape or portrait) with a **transparent area**
+where the game picture goes.
+
+* The page finds the window by itself (the largest transparent area that does
+  not touch the edges: transparent rounded corners do not count) and shows it
+  striped before saving.
+* Tick the **consoles** the frame is meant for: choosing one of their games
+  picks the frame. A frame also appears among the templates.
+* The game picture shows under the frame and stays movable and zoomable;
+  title, logo and console are hidden by default (turn them on if needed).
+* Frames are stored on the Recalbox (`frames/`), found on every device.
+  **Download** gives the original picture back, to share it: whoever imports
+  it gets the same window.
 
 ## Status light and on-screen messages
 
@@ -317,10 +372,13 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 
 ## Backup and restore
 
-* **Backup**: "Save the list" in the page (CSV), or copy
-  `tags.json`, `config.ini`, `card-templates.json` and `playtime.json` from
-  `\\RECALBOX\share\system\rfid`.
-* **Restore**: "Restore a list", or copy the files back.
+* **Full backup**: Settings › Backup › **Download** gives one ZIP file with the
+  badges, settings, card templates and frames, players, play time and reader
+  calibration. The page password is never included.
+* **Restore**: Settings › Backup › **Restore…**. The whole file is checked
+  first (known files only, readable content); the files it replaces are kept
+  in `backups/` (the last five), then the reader service restarts.
+* **Badges only**: "Save the list" / "Restore a list" in the Badges tab (CSV).
 * At every save, the previous `tags.json` is kept as `tags.json.bak`.
 
 ## Log

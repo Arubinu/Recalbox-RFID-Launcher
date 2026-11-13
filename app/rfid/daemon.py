@@ -39,6 +39,7 @@ from .led import StatusLight, build_light
 from .library import Library
 from .osd import ScreenMessages
 from .playtime import PlayTimer
+from .players import Players
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -207,6 +208,11 @@ class Service:
         self._status_written = 0.0
         self.library = None
         self.playtime = None
+        self.players = None
+        self._next_player_check = 0.0
+        self._players_gone = 0
+        #: A game refused (no player card, time used up) is being quit.
+        self._refusing = False
         self.screen = None
         self.light = None
         self._expire_at = None
@@ -253,6 +259,7 @@ class Service:
         )
         self.library = Library(log=self.log)
         self.playtime = PlayTimer(self.home, log=self.log)
+        self.players = Players(self.home, log=self.log)
         self._build_extras()
         self._build_controller()
         return True
@@ -276,6 +283,7 @@ class Service:
             self.store, self.launcher, self.feedback, self.cfg, self.log,
             library=self.library, playtime=self.playtime, screen=self.screen,
             light=self.light, power=self._power_off, card_reader=self._read_card_memory,
+            players=self.players,
         )
 
     def _read_card_memory(self):
@@ -385,6 +393,7 @@ class Service:
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
                 self._playtime_step()
+                self._players_step()
                 self._light_step()
                 self._watch_frontend()
 
@@ -518,6 +527,99 @@ class Service:
                 self.controller.launched_uid = None
                 self.log.info("Jeu limite quitte depuis son menu")
 
+    # ---------------------------------------------------------------- players
+    def _active_player(self):
+        """(uid, entry) when the badge lying on the reader is a player card."""
+        uid = self._active_uid
+        if not uid or self.store is None:
+            return None
+        try:
+            entry = self.store.get(uid)
+        except Exception:  # noqa: BLE001 - unreadable list
+            return None
+        if entry and entry.get("kind") == "action" and entry.get("action") == "player":
+            return uid, entry
+        return None
+
+    def _refuse_game(self, key: str, message: str, **values) -> None:
+        """A game started from the menu is not allowed: message, then quit."""
+        self._refusing = True
+        if self.screen is not None:
+            self.screen.say(key, **values)
+        self.feedback.error()
+        if self.light is not None:
+            self.light.flash("error")
+        self.log.info(message)
+        self._expire_at = time.monotonic() + self.EXPIRE_NOTICE_S
+
+    def _limit_menu_game(self, uid: str, name: str, left) -> None:
+        if left is not None and self.playtime is not None and self.playtime.session is None:
+            self.playtime.start(uid, {"name": name}, left / 60.0)
+
+    def _menu_game(self) -> None:
+        """A game nobody started with a card: launched from the Recalbox menu."""
+        controller = self.controller
+        players = self.players
+        # A player card placed earlier and lifted does not count: for a menu
+        # game, the card stays on the reader.
+        players.pending = None
+        holder = self._active_player()
+        if holder is not None:
+            uid, entry = holder
+            name = players.player_name(entry)
+            left = controller.player_left(uid, entry)
+            if left is not None and left <= 0 and controller.block_exhausted:
+                self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
+                return
+            players.begin(uid, entry, via="reader")
+            self._limit_menu_game(uid, name, left)
+            if self.screen is not None:
+                if left is None:
+                    self.screen.say("player_unlimited", name=name)
+                else:
+                    self.screen.say("player_hello", name=name, n=max(1, int(round(left / 60.0))))
+            self.log.info("Jeu lance depuis le menu : compte pour %s" % name)
+            return
+        if controller.require_player:
+            self._refuse_game("player_needed", "Jeu du menu refuse : aucune carte joueur posee")
+            return
+        left = controller.guest_left()
+        if left is not None and left <= 0 and controller.block_exhausted:
+            self._refuse_game("guest_exhausted", "Jeu du menu refuse : plus de temps sans carte joueur")
+            return
+        players.begin("", {}, via="menu")
+        self._limit_menu_game("", "", left)
+        self.log.info("Jeu lance depuis le menu : compte pour l'invite")
+
+    def _players_step(self) -> None:
+        """Counts the time of the player, and watches the games started from the menu."""
+        players = getattr(self, "players", None)
+        controller = self.controller
+        if players is None or controller is None or not getattr(controller, "counting_players", False):
+            return
+        players.tick()
+        now = time.monotonic()
+        if now < self._next_player_check:
+            return
+        self._next_player_check = now + 2.0
+        try:
+            running = bool(controller.game_running())
+        except Exception:  # noqa: BLE001 - never blocking
+            return
+        current = players.current
+        if not running:
+            self._refusing = False
+            if current is not None and now - current["since"] > 20.0:
+                self._players_gone += 1
+                if self._players_gone >= 2:
+                    self._players_gone = 0
+                    players.finish()
+                    self.log.info("Fin de partie : temps de jeu enregistre")
+            return
+        self._players_gone = 0
+        if current is None and not self._refusing:
+            self._menu_game()
+
     # ---------------------------------------------------------- status light
     def _light_step(self) -> None:
         """Pairing message on the game screen and colour of the light."""
@@ -613,6 +715,14 @@ class Service:
         self._absent_since = None
         self._absent_hits = 0
         self._launched_uid = None
+        players = getattr(self, "players", None)
+        current = players.current if players is not None else None
+        if current is not None and current.get("via") == "reader" and current.get("uid") == badge:
+            self._stop_pending = (badge, time.monotonic() + self.STOP_WAIT_S)
+            if self.screen is not None:
+                self.screen.say("player_left")
+            self.log.info("Carte joueur %s retiree : fin de la partie" % badge)
+            return
         if not (self._stop_on_remove and lance and badge):
             return
         # The emulator may still be starting: let the service notice it in
@@ -774,6 +884,10 @@ class Service:
             self._start_reader_test(float(payload.get("seconds") or 5))
         elif command == "write_tag":
             self._start_tag_write(payload)
+        elif command == "players_reset":
+            if self.players is not None:
+                self.players.reset(str(payload.get("uid") or ""))
+                self._write_status(force=True)
         elif command == "simulate_scan":
             uid = str(payload.get("uid") or "")
             if uid:
@@ -1390,6 +1504,41 @@ class Service:
         release_lock(lock)
 
     # ------------------------------------------------------------------ statut
+    def _player_cards(self) -> list:
+        cards = []
+        if self.store is None:
+            return cards
+        try:
+            items = self.store.items()
+        except Exception:  # noqa: BLE001
+            return cards
+        for uid, entry in items:
+            if entry.get("kind") == "action" and entry.get("action") == "player":
+                cards.append((uid, entry))
+        return cards
+
+    def _players_status(self) -> dict:
+        if getattr(self, "players", None) is None or self.controller is None                 or not getattr(self.controller, "counting_players", False):
+            return {}
+        status = self.players.status(self._player_cards())
+        controller = self.controller
+        if controller.guest_quota_min:
+            left = controller.guest_left()
+            status["guest"] = {"quota_min": controller.guest_quota_min, "period": controller.guest_period,
+                               "remaining_s": int(left or 0)}
+        return status
+
+    def _players_signature(self):
+        players = getattr(self, "players", None)
+        if players is None:
+            return None
+        current = players.current
+        return (
+            current["uid"] if current else "",
+            bool(players.pending),
+            int(players.used_s(current["uid"]) // 60) if current else 0,
+        )
+
     def _write_status(self, force: bool = False) -> None:
         """Writes status.json (only when useful: spares the SD card)."""
         controller_status = self.controller.status() if self.controller else {}
@@ -1402,6 +1551,7 @@ class Service:
             bool(self.button and getattr(self.button, "available", False)),
             self.store.count() if self.store else 0,
             int((self.playtime.remaining_s() or 0) // 15) if self.playtime else 0,
+            self._players_signature(),
         )
         now = time.time()
         if not force and signature == self._status_signature and (now - self._status_written) < 30:
@@ -1427,6 +1577,7 @@ class Service:
             ),
             "controller": controller_status,
             "playtime": self.playtime.status() if self.playtime else {},
+            "players": self._players_status(),
             "light": getattr(getattr(self.light, "output", None), "name", "none"),
         }
         write_json_atomic(status_path(self.home), payload)

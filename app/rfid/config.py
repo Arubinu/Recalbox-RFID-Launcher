@@ -112,6 +112,23 @@ port = 8765
 # 0 = only the page saved on a computer can connect.
 web = 1
 
+[players]
+# Player cards: each person places their card before playing; the time
+# played is counted per player (quota per day or week, set on the card).
+enabled = 0
+# Quit the games started without a player card (from the menu too).
+require = 0
+# Quit the games of a player whose time is used up, even when started from
+# the Recalbox menu.
+block_exhausted = 1
+# Play time without a player card, per period (minutes, 0 = no limit).
+guest_quota_min = 0
+# day or week
+guest_period = day
+# Locks the Recalbox menu: favourite games only, no START menu (the page
+# applies it to recalbox.conf and restarts the menu).
+lock_frontend = 0
+
 [cards]
 # Card designer: box art, screenshot, title screen and game logo downloaded
 # from the libretro thumbnail server (needs internet, no account).

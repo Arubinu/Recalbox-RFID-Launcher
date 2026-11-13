@@ -50,7 +50,10 @@ KIND_ACTION = "action"
 #:   quit     = quits the running game
 #:   bonus    = extra play time for a time-limited game
 #:   poweroff = turns the Recalbox off
-ACTIONS = ("random", "quit", "bonus", "poweroff")
+ACTIONS = ("random", "quit", "bonus", "poweroff", "player")
+
+#: Play time periods of a player card.
+PLAYER_PERIODS = ("day", "week")
 
 
 def clean_limit(value):
@@ -89,6 +92,18 @@ def clean_params(action: str, params) -> dict:
         if not 1 <= period_h <= 24 * 31:
             raise StorageError("periode : 1 heure a 31 jours")
         return {"minutes": minutes, "uses": uses, "period_h": period_h}
+    if action == "player":
+        # Play time allowed to this person per day or week (0 = no limit).
+        try:
+            quota = int(float(params.get("quota_min") or 0))
+        except (TypeError, ValueError):
+            raise StorageError("parametres de la carte joueur invalides")
+        if not 0 <= quota <= 24 * 60 * 7:
+            raise StorageError("temps du joueur : 0 a 10080 minutes (0 = illimite)")
+        period = str(params.get("period") or "day")
+        if period not in PLAYER_PERIODS:
+            raise StorageError("periode du joueur : jour ou semaine")
+        return {"quota_min": quota, "period": period}
     return {}
 
 

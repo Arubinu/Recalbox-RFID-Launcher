@@ -103,6 +103,15 @@ for legacy in $LEGACY_USERSCRIPTS; do
     fi
 done
 
+# Menu locked by the player cards option: the previous settings come back.
+if [ -f "$HOME_DIR/frontend-lock.json" ] && [ -d "$HOME_DIR/app" ]; then
+    if (cd "$HOME_DIR/app" && python3 -c "from rfid import frontend_lock; frontend_lock.apply('$HOME_DIR', False, restart=False)") 2>/dev/null; then
+        say "  menu de la Recalbox deverrouille (au prochain demarrage)"
+    else
+        warn "impossible de deverrouiller le menu : remettez emulationstation.menu=default et emulationstation.favoritesonly=0 dans recalbox.conf"
+    fi
+fi
+
 # 3. SPI (optional).
 # Removes from $1 the lines added at install time. The old full backup is
 # never restored: it would wipe the settings changed since then.
