@@ -718,8 +718,10 @@
         <!-- Copie depuis le navigateur (Edge, Chrome) -->
         <div id="copy-browser" class="stack">
           <ol class="howto">
-            <li><b>Cliquez sur « Choisir le dossier de la Recalbox ».</b></li>
-            <li><b>Dans la fenêtre qui s'ouvre, tapez cette adresse dans la barre du haut, puis Entrée :</b>
+            <li><b>Cliquez sur « Choisir le dossier de la Recalbox ».</b>
+              <span>La page copie l'adresse de la Recalbox pour vous.</span></li>
+            <li><b>Dans la fenêtre qui s'ouvre, cliquez dans la barre du haut, faites Ctrl+V puis Entrée.</b>
+              <span>L'adresse collée est celle-ci :</span>
               <div class="copy-field"><code id="share-path">\\RECALBOX\share</code>
                 <button class="btn sm" type="button" id="btn-copy-path">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
@@ -728,7 +730,7 @@
               </div>
             </li>
             <li><b>Cliquez sur « Sélectionner le dossier », puis acceptez la modification des fichiers.</b>
-              <span>La page copie alors tout ce qu'il faut, en quelques secondes.</span></li>
+              <span>La page copie alors tout ce qu'il faut, en quelques secondes. Elle retient ce dossier : la prochaine fois, aucune fenêtre ne s'ouvrira.</span></li>
           </ol>
           <div class="row">
             <button class="btn primary lg" type="button" id="btn-copy">
@@ -2185,16 +2187,77 @@ async function writeFile(directory, path, bytes) {
   await stream.close();
 }
 
+/* Dossier du partage retenu entre deux visites (IndexedDB garde le droit
+   d'acces au dossier choisi ; le navigateur ne permet pas de pre-remplir la
+   fenetre de selection avec une adresse reseau). */
+const SHARE_DB = "recalbox-rfid";
+const SHARE_STORE = "handles";
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("IndexedDB")); return; }
+    const request = indexedDB.open(SHARE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(SHARE_STORE)) request.result.createObjectStore(SHARE_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB"));
+  });
+}
+async function idbCall(mode, action) {
+  const database = await idbOpen();
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = database.transaction(SHARE_STORE, mode);
+      const request = action(transaction.objectStore(SHARE_STORE));
+      transaction.oncomplete = () => resolve(request.result);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } finally {
+    database.close();
+  }
+}
+async function rememberShare(handle) {
+  try { await idbCall("readwrite", (s) => s.put(handle, "share")); } catch (error) { /* navigation privee */ }
+}
+/* Dossier deja choisi et toujours autorise (le clic courant suffit a le
+   reautoriser) ; sinon null et l'on passe par la fenetre de selection. */
+async function savedShare() {
+  let handle = null;
+  try { handle = await idbCall("readonly", (s) => s.get("share")); } catch (error) { return null; }
+  if (!handle || typeof handle.queryPermission !== "function") return null;
+  try {
+    if ((await handle.queryPermission({ mode: "readwrite" })) === "granted") return handle;
+    if ((await handle.requestPermission({ mode: "readwrite" })) === "granted") return handle;
+  } catch (error) { /* dossier disparu ou Recalbox eteinte */ }
+  return null;
+}
+
 async function copyPayload() {
   const result = $("#copy-result");
   const showResult = (node) => { result.hidden = false; result.replaceChildren(node); };
-  let root;
-  try {
-    root = await window.showDirectoryPicker({ mode: "readwrite", id: "recalbox-share" });
-  } catch (error) {
-    if (error && error.name === "AbortError") return;
-    showResult(notice("err", t("Le dossier n'a pas pu être ouvert"), errorText(error)));
-    return;
+  let root = await savedShare();
+  if (root) {
+    /* Le partage retenu doit encore repondre (Recalbox allumee). */
+    try { await root.getDirectoryHandle("userscripts", { create: true }); } catch (error) { root = null; }
+  }
+  if (root) {
+    toast("info", t("Dossier de la Recalbox déjà connu : copie directe."));
+  } else {
+    /* L'adresse est mise dans le presse-papiers : il ne reste qu'a la coller. */
+    const copied = await copyText("\\\\RECALBOX\\share");
+    if (copied) toast("info", t("Adresse copiée : dans la fenêtre, cliquez dans la barre du haut, Ctrl+V puis Entrée."), 9000);
+    try {
+      root = await window.showDirectoryPicker({ mode: "readwrite", id: "recalbox-share" });
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      /* Le clic a ete consomme par la demande d'autorisation : il en faut un autre. */
+      if (error && (error.name === "SecurityError" || error.name === "NotAllowedError")) {
+        showResult(notice("info", t("Cliquez de nouveau sur « Choisir le dossier de la Recalbox »."), ""));
+        return;
+      }
+      showResult(notice("err", t("Le dossier n'a pas pu être ouvert"), errorText(error)));
+      return;
+    }
   }
   let looksLikeShare = true;
   try { await root.getDirectoryHandle("roms"); } catch (error) { looksLikeShare = false; }
@@ -2236,6 +2299,7 @@ async function copyPayload() {
     bar.classList.add("ok");
     $("#copy-progress-text").textContent = t("{n} fichiers copiés.", { n: total });
     wizard.copied = true;
+    if (looksLikeShare) await rememberShare(root);
     $("#btn-step2-next").disabled = false;
     showResult(notice("ok", t("Copie terminée"), t("Le programme est sur la Recalbox. Passez à l'étape suivante pour le lancer.")));
     $("#btn-step2-next").focus();
