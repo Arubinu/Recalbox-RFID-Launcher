@@ -83,6 +83,11 @@
 
   /* Animated theme switch (View Transitions); fallback: immediate. */
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  /* The new theme starts as an empty circle: without this, its first frame
+     shows in full before the script starts the animation (the flash). */
+  :root.theme-switching::view-transition-new(root) { clip-path: circle(0px at var(--theme-x, 100%) var(--theme-y, 0px)); }
+  /* No colour transitions of buttons and fields while the theme changes. */
+  :root.theme-switching *, :root.theme-switching *::before, :root.theme-switching *::after { transition: none !important; }
   :root:not([data-theme="light"]) .icon-sun { display: none; }
   :root[data-theme="light"] .icon-moon { display: none; }
 
@@ -5567,11 +5572,17 @@ function toggleTheme(event) {
   let y = 40;
   if (event && (event.clientX || event.clientY)) { x = event.clientX; y = event.clientY; }
   const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-  document.startViewTransition(() => applyTheme(next, true)).ready.then(() => {
-    document.documentElement.animate(
+  const root = document.documentElement;
+  root.style.setProperty("--theme-x", x + "px");
+  root.style.setProperty("--theme-y", y + "px");
+  root.classList.add("theme-switching");
+  const transition = document.startViewTransition(() => applyTheme(next, true));
+  transition.ready.then(() => {
+    root.animate(
       { clipPath: ["circle(0px at " + x + "px " + y + "px)", "circle(" + radius + "px at " + x + "px " + y + "px)"] },
-      { duration: 460, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" });
+      { duration: 460, easing: "ease-in-out", fill: "both", pseudoElement: "::view-transition-new(root)" });
   }).catch(() => { /* already applied */ });
+  transition.finished.catch(() => {}).then(() => root.classList.remove("theme-switching"));
 }
 /* Click: toggle. Long press (0.7 s): back to the computer's setting. */
 function longPress(node, onClick, onLong) {
