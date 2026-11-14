@@ -55,6 +55,8 @@ by `rfidctl version`.
   a crossfade (the time going down changes without animation).
 * **Reader screen, the game placed**: its picture is shown without a frame
   behind it.
+* **Player card placed again**: when no game runs, the card of the active
+  player placed again makes them no longer active (message on the screen).
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 

@@ -253,6 +253,8 @@ Options:
 * **Change player during a game** (on by default): a player card placed during another
   player's game takes it over (the time counts for the new player from then
   on, and the screen says so); otherwise the card is for the next game.
+* Placing the card of the active player again (no game running) makes them
+  no longer active.
 * **Keep the player active until their time is up**: after a game, the
   player stays active; the next game cards count for them without placing
   their card again. They stop being active when their time is used up, when

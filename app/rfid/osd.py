@@ -107,6 +107,10 @@ MESSAGES = {
         "fr": "{name} : ce jeu n'est pas autorisé", "en": "{name}: this game is not allowed",
         "de": "{name}: dieses Spiel ist nicht erlaubt", "es": "{name}: este juego no está permitido",
         "it": "{name}: questo gioco non è consentito", "pt": "{name}: este jogo não é permitido"},
+    "player_off": {
+        "fr": "{name} n'est plus le joueur actif", "en": "{name} is no longer the active player",
+        "de": "{name} ist nicht mehr der aktive Spieler", "es": "{name} ya no es el jugador activo",
+        "it": "{name} non è più il giocatore attivo", "pt": "{name} já não é o jogador ativo"},
     "player_low": {
         "fr": "{name} : plus que {t} de jeu", "en": "{name}: only {t} of play left",
         "de": "{name}: nur noch {t} Spielzeit", "es": "{name}: solo quedan {t} de juego",

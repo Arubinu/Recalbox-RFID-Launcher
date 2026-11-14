@@ -604,6 +604,19 @@ class Controller:
             self._log("info", "Carte joueur : les cartes joueurs sont desactivees dans les reglages")
             return "disabled"
         name = self.players.player_name(entry)
+        if not self.game_running():
+            active = self._active_player()
+            if active is not None and active[0] == uid:
+                # The card of the active player placed again: no longer active.
+                self.players.pending = None
+                if self.players.kept is not None and self.players.kept["uid"] == uid:
+                    self.players.kept = None
+                self._touch(uid)
+                self.feedback.ok()
+                self._flash("ok")
+                self._say("player_off", name=name)
+                self._log("info", "Carte joueur %s reposee : plus de joueur actif" % name)
+                return "player_off"
         rule = None if self.unlocked else self.player_rule(uid, entry)
         if rule is not None:
             self._refuse(rule[0], "Carte joueur %s : %s" % (name, rule[0]), **rule[1])
