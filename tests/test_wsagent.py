@@ -164,6 +164,13 @@ class FakeProcess:
 
 class AgentTestCase(unittest.TestCase):
     def setUp(self):
+        # The tests play the service with their own PID (written in rfid.pid);
+        # on Linux the real check reads /proc/<pid>/cmdline, which is not ours.
+        alive = wsagent.process_alive
+        patcher = mock.patch.object(wsagent, "process_alive",
+                                    side_effect=lambda pid: pid == os.getpid() or alive(pid))
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.tmp = tempfile.mkdtemp(prefix="rfid-agent-")
         self.home = os.path.join(self.tmp, "home")
         self.share = os.path.join(self.tmp, "share")
