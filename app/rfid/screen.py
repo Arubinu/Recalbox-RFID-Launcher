@@ -525,11 +525,13 @@ class Painter:
         self.scene(surface, index, previous, progress)
         self.top(surface, index, players, now)
 
-    def avatar(self, uid, version, size: int):
-        """The player's picture cut in a disc (None: show the initial)."""
+    def avatar(self, uid, version, size: int, ring: int, accent):
+        """The player's picture in a disc with a ring of the accent colour,
+        ``size`` px wide (None: show the initial). Drawn 4 times larger then
+        shrunk, the ring and the picture in one image: always concentric."""
         if not uid or not self.home:
             return None
-        key = (uid, version, size)
+        key = (uid, version, size, ring, tuple(accent))
         if key not in self._avatars:
             pg = self.pg
             picture = None
@@ -538,12 +540,17 @@ class Painter:
                 image = self._fast(pg.image.load(avatar_path(self.home, uid)))
                 side = min(image.get_width(), image.get_height())
                 square = image.subsurface(((image.get_width() - side) // 2, (image.get_height() - side) // 2, side, side))
-                big = pg.Surface((size * 2, size * 2), pg.SRCALPHA)  # a JPEG has no alpha
-                big.blit(pg.transform.smoothscale(square, (size * 2, size * 2)), (0, 0))
-                mask = pg.Surface((size * 2, size * 2), pg.SRCALPHA)
-                pg.draw.circle(mask, (255, 255, 255, 255), (size, size), size)
-                big.blit(mask, (0, 0), special_flags=pg.BLEND_RGBA_MIN)
-                picture = pg.transform.smoothscale(big, (size, size))  # smooth edge
+                big_size = size * 4
+                inner = big_size - ring * 8
+                disc = pg.Surface((big_size, big_size), pg.SRCALPHA)
+                pg.draw.circle(disc, tuple(accent) + (255,), (big_size / 2.0, big_size / 2.0), big_size / 2.0)
+                photo = pg.Surface((inner, inner), pg.SRCALPHA)  # a JPEG has no alpha
+                photo.blit(pg.transform.smoothscale(square, (inner, inner)), (0, 0))
+                mask = pg.Surface((inner, inner), pg.SRCALPHA)
+                pg.draw.circle(mask, (255, 255, 255, 255), (inner / 2.0, inner / 2.0), inner / 2.0)
+                photo.blit(mask, (0, 0), special_flags=pg.BLEND_RGBA_MIN)
+                disc.blit(photo, (ring * 4, ring * 4))
+                picture = pg.transform.smoothscale(disc, (size, size))
             except Exception:  # noqa: BLE001 - missing or unreadable: the initial
                 picture = None
             self._avatars = {k: v for k, v in self._avatars.items() if k[0] != uid}
@@ -561,11 +568,11 @@ class Painter:
         pg.draw.rect(chip, (255, 255, 255, 18), chip.get_rect(), border_radius=chip.get_height() // 2)
         surface.blit(chip, (x, top - int(u * 0.8)))
         centre = (x + int(u * 0.8) + size // 2, top + size // 2)
-        pg.draw.circle(surface, accent, centre, size // 2)
-        picture = self.avatar(player.get("uid"), player.get("avatar"), size - int(u * 0.5))
+        picture = self.avatar(player.get("uid"), player.get("avatar"), size, max(1, int(round(u * 0.25))), accent)
         if picture is not None:
-            surface.blit(picture, (centre[0] - picture.get_width() // 2, centre[1] - picture.get_height() // 2))
+            surface.blit(picture, (x + int(u * 0.8), top))
         else:
+            pg.draw.circle(surface, accent, centre, size // 2)
             initial = self.font("Exo2-Bold.ttf", u * 4.2).render((player["name"][:1] or "?").upper(), True, TEXT)
             surface.blit(initial, (centre[0] - initial.get_width() // 2, centre[1] - initial.get_height() // 2))
         tx = x + int(u * 0.8) + size + int(u * 2)
