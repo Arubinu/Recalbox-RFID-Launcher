@@ -4,6 +4,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.15.0]
+
+### Added
+
+* **Reader screen** (Settings › TV display, off by default): instead of the
+  Recalbox interface, the TV shows the reader's own screen: the consoles
+  that have games (artwork and logos of the Recalbox theme, number of games,
+  maker and year, a band of logos that scrolls by itself), the clock, "Place
+  a card to play" and the active player. The games start with the cards only,
+  with the very command the Recalbox interface would run (core and settings
+  of the console or the game, controllers in the order chosen in Recalbox);
+  the screen comes back when the game ends. Drawn by the graphics chip
+  (about 45 frames per second on a Pi 3). The "Unlock" card brings the
+  Recalbox interface back, and placed again returns to the reader screen.
+  Turning the option off, stopping or uninstalling the service, or three
+  crashes of the screen in a row always bring the Recalbox interface back.
+  At boot the service starts before the Recalbox interface: it waits for it
+  (up to 2 minutes) and stops it before showing its screen; if the interface
+  comes back and takes the display, it is stopped again (not counted as a
+  crash), and a crashed screen restarts after 2 s. The display can stay busy
+  for a while at boot (even the Recalbox interface fails to start then): the
+  screen waits for it, up to a minute.
+* **Turn off the hotkey that quits the games** (with the reader screen and
+  "Quit the game when the badge is removed" only): the controller hotkey and
+  the RetroArch menu no longer quit the game; only removing the badge does.
+  Written in `retroarchcustom.cfg.overrides.cfg` during the game only, between
+  markers, the user's own lines kept.
+* **Player avatars**: Badges › Players, click the round icon of a player to
+  import a picture (cut to a square and shrunk to 256 px in the browser,
+  JPEG). It replaces the initial on the reader screen. Stored in
+  `avatars/<card>.jpg`, removed with the card, saved in the full backup. New
+  agent commands `players.avatar_get`, `players.avatar_set`,
+  `players.avatar_delete`.
+* **Launch check**: when a game is started from the Recalbox interface, its
+  command is compared, 25 s later and at low priority, with the one the
+  reader screen would run; the result is logged, kept in
+  `command-check.json` (last 20 games) and shown in the Hardware tab
+  (`command_check` in the status).
+
+### Changed
+
+* The reader screen shows the player's **time** with their name: the time
+  left with a bar when the card has a limit, otherwise the time played today
+  (or this week), also between two games when the player card is waiting on
+  the reader, and the guest's time left when the guest has a limit.
+
 ## [2.14.0]
 
 ### Added

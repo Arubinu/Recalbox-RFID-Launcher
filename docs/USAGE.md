@@ -213,7 +213,10 @@ previous one:
   optional time (Settings › Player cards).
 
 The Badges tab shows, per player, the time played and left, with a **Reset**
-button, and the **Statistics**: for each player, the time played per day and
+button. Click the round icon of a player to give them an **avatar** (any
+picture: the page cuts a square from its centre and shrinks it); it replaces
+the initial on the reader screen, and the bin button removes it. And the
+**Statistics**: for each player, the time played per day and
 their most played games over 7, 30 or 60 days (hover a bar for the day's
 time). **Export (CSV)** gives every line kept (day, player, console, game,
 minutes), to open in a spreadsheet. A reset only clears the time limit
@@ -248,6 +251,38 @@ Options:
   refused during a game (two low beeps). While it is open, a yellow notice in
   the Badges tab reminds you to lock it again. Changing the lock option in the
   settings takes over from the card.
+
+## Reader screen
+
+Optional (**Settings › TV display › reader screen**; the Recalbox interface
+by default). The TV no longer shows the Recalbox interface but the reader's
+own screen:
+
+* the consoles that have games, one after the other (artwork and logo of the
+  Recalbox theme, number of games, maker, year), and a band with every logo;
+* the clock, "Place a card to play";
+* the active player, with their avatar (or initial), their name and their
+  time: the time left with a bar when the card has a limit, otherwise the
+  time played today (or this week).
+
+Games start **with the cards only**, with the same command the Recalbox
+interface would run (core, ratio and resolution of the console or the game,
+controllers in the order chosen in Recalbox). When the game ends, the screen
+comes back. The switch takes a few seconds.
+
+* The **Unlock card** shows the Recalbox interface (every game, the START
+  menu) for as long as needed; placed again, the reader screen comes back.
+* **Turn off the hotkey that quits the games**: the controller hotkey and the
+  RetroArch menu no longer quit the game, only removing the badge does. It
+  applies only with "Quit the game when the badge is removed", otherwise the
+  game could not be quit.
+* The Recalbox interface always comes back when the option is turned off,
+  when the service stops or is uninstalled, or if the reader screen crashes
+  three times in a row.
+* **Launch check**: each game started from the Recalbox interface is
+  compared with the command the reader screen would run. The Hardware tab
+  shows "launch matches", or the options that differ (a warning only when the
+  reader screen is on).
 
 ## Printing the cards
 
@@ -410,6 +445,8 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[launch] stop_on_remove` | `0` | quit the game when the badge is removed |
 | `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
+| `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface |
+| `[display] no_quit_hotkey` | `0` | reader screen: the hotkey no longer quits the games (needs `stop_on_remove`) |
 | `[screen] retroarch_port` | `55355` | RetroArch network command port |
 | `[led] type` | `none` | `none`, `rgb` or `ws2812` |
 | `[led] pin_red` / `pin_green` / `pin_blue` | `22` / `23` / `24` | RGB LED pins (BCM) |
@@ -423,8 +460,8 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 ## Backup and restore
 
 * **Full backup**: Settings › Backup › **Download** gives one ZIP file with the
-  badges, settings, card templates and frames, players, play time, statistics
-  and reader calibration. The page password is never included. The ZIP also
+  badges, settings, card templates and frames, players and their avatars,
+  play time, statistics and reader calibration. The page password is never included. The ZIP also
   holds `statistics.csv` (the same table as the statistics export), readable
   as is; it is not needed to restore.
 * **Restore**: Settings › Backup › **Restore…**. The whole file is checked

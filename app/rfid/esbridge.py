@@ -428,6 +428,9 @@ class EsLauncher:
         self.quit_command = quit_retroarch
         #: Restart of a RetroArch game in place (replaced in the tests).
         self.reset_command = reset_retroarch
+        #: Reader mode (reader_mode.ReaderMode): the games are started by the
+        #: service itself while Recalbox's interface is stopped.
+        self.reader = None
 
     @staticmethod
     def build_payload(system: str, game: str) -> bytes:
@@ -515,7 +518,10 @@ class EsLauncher:
         return False
 
     def start_game(self, system: str, game: str) -> bool:
-        """Sends the command; True if the datagram left."""
+        """Sends the command; True if the datagram left (or the game started, in reader mode)."""
+        reader = self.reader
+        if reader is not None and reader.wanted:
+            return reader.launch(system, resolve_rom_path(system, game))
         try:
             payload = self.build_payload(system, game)
         except ValueError as exc:

@@ -255,6 +255,7 @@ class Players:
             "players": result,
             "current": None if current is None else {"uid": current["uid"], "name": self.player_name(current["entry"]) if current["uid"] != GUEST else "", "via": current["via"]},
             "pending": None if self.pending is None or self.clock() > self.pending["until"] else self.player_name(self.pending["entry"]),
+            "pending_uid": None if self.pending is None or self.clock() > self.pending["until"] else self.pending["uid"],
         }
 
     def reset(self, uid: str) -> None:

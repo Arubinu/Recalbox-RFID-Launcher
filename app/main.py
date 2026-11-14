@@ -589,6 +589,13 @@ def cmd_agent(options) -> int:
     return agent.serve_forever()
 
 
+def cmd_screen(options) -> int:
+    """Ecran du lecteur (a la place de l'interface de Recalbox)."""
+    from rfid import screen
+
+    return screen.run(options.home)
+
+
 def cmd_simulate(options) -> int:
     from rfid.controller import Controller
     from rfid.drivers.fake import FakeButton, FakeReader
@@ -714,6 +721,7 @@ COMMANDS = {
     "frontend": cmd_frontend,
     "self-update": cmd_self_update,
     "agent": cmd_agent,
+    "screen": cmd_screen,
     "pair": cmd_pair,
     "simulate": cmd_simulate,
 }

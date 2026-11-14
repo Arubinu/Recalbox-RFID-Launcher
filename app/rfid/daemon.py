@@ -43,7 +43,8 @@ from .osd import ScreenMessages
 from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
-from . import frontend_lock
+from .reader_mode import ReaderMode
+from . import avatars, es_command, frontend_lock
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -229,6 +230,8 @@ class Service:
         self._es_state_mtime = None
         self._next_es_check = 0.0
         self.saver = None
+        #: Reader screen in place of Recalbox's interface (option).
+        self.reader_mode = None
         #: Menu lock watchdog: since when the Recalbox interface is missing.
         self._frontend_missing_since = None
         self._next_frontend_check = 0.0
@@ -276,6 +279,9 @@ class Service:
             self.log,
         )
         self.library = Library(log=self.log)
+        self.reader_mode = ReaderMode(self.home, self.log)
+        self.launcher.reader = self.reader_mode
+        self._configure_reader_mode()
         self.playtime = PlayTimer(self.home, log=self.log)
         self.players = Players(self.home, log=self.log)
         self._build_extras()
@@ -423,6 +429,7 @@ class Service:
                 self._players_step()
                 self._light_step()
                 self._lock_watchdog()
+                self._reader_step()
                 self._watch_frontend()
 
                 try:
@@ -514,6 +521,8 @@ class Service:
         playing = game_is_running(state)
         started = playing and getattr(self, "_es_playing", None) is False
         self._es_playing = playing
+        if started:
+            self._check_command_later()
         controller = self.controller
         if not started or self.saver is None or controller is None:
             return
@@ -526,6 +535,37 @@ class Service:
         path = str((state or {}).get("GamePath") or "")
         expected = os.path.splitext(os.path.basename(path))[0] if path else ""
         self.saver.resume_later(expected, owner=controller.save_owner)
+
+    #: The interface's command is read once the game has settled.
+    COMMAND_CHECK_DELAY_S = 25.0
+
+    def _check_command_later(self) -> None:
+        """A game started by Recalbox's interface: its command is compared with
+        the one the reader screen would run (diagnostic shown by the page)."""
+        reader_mode = getattr(self, "reader_mode", None)
+        if reader_mode is not None and reader_mode.state != "recalbox":
+            return  # our own launch
+
+        def work():
+            time.sleep(self.COMMAND_CHECK_DELAY_S)
+            try:
+                actual = es_command.running_command()
+                if not actual:
+                    return
+                result = es_command.check(actual)
+                es_command.record(self.home, result)
+                if result.get("same"):
+                    self.log.info("Commande de lancement identique a celle de Recalbox (%s)" % result["game"])
+                else:
+                    self.log.warning("Commande de lancement differente de celle de Recalbox (%s) : %s" % (
+                        result["game"], result.get("error") or ", ".join(
+                            "%s %s au lieu de %s" % (d["option"], d["reader"], d["recalbox"])
+                            for d in result["differences"])))
+                self._write_status(force=True)
+            except Exception as exc:  # noqa: BLE001 - a check never disturbs the game
+                self.log.warning("Verification de la commande impossible : %s" % exc)
+
+        threading.Thread(target=work, name="command-check", daemon=True).start()
 
     # ------------------------------------------------------------- play time
     #: Time given to read "play time is over" before the game is quit.
@@ -877,6 +917,23 @@ class Service:
         self._forget_latch()
         self.controller.on_button("short")
 
+    # ------------------------------------------------------- reader mode
+    def _configure_reader_mode(self) -> None:
+        reader = getattr(self, "reader_mode", None)
+        if reader is None:
+            return
+        wanted = self.cfg.get("display", "mode", "recalbox").strip().lower() == "reader"
+        if frontend_lock.is_unlocked(self.home):
+            wanted = False  # the "unlock" card shows Recalbox's interface
+        no_hotkey = (self.cfg.get_bool("display", "no_quit_hotkey", False)
+                     and self.cfg.get_bool("launch", "stop_on_remove", False))
+        reader.configure(wanted, no_hotkey)
+
+    def _reader_step(self) -> None:
+        reader = getattr(self, "reader_mode", None)
+        if reader is not None:
+            reader.step()
+
     # ------------------------------------------------------ lock watchdog
     #: The Recalbox interface missing this long while the menu is locked:
     #: the lock is undone (a locked menu with nothing to show does not start).
@@ -887,7 +944,9 @@ class Service:
         if now < self._next_frontend_check:
             return
         self._next_frontend_check = now + 10.0
+        reader = getattr(self, "reader_mode", None)
         if (self._unlock_busy or not frontend_lock.lock_active(self.home)
+                or (reader is not None and reader.state != "recalbox")
                 or frontend_lock.frontend_running()
                 or (self.controller is not None and self.controller.game_running())):
             self._frontend_missing_since = None
@@ -927,6 +986,24 @@ class Service:
                 self.light.flash("error")
             self.log.info("Carte deverrouiller : quittez d'abord le jeu en cours")
             return "refused"
+        if self.cfg.get("display", "mode", "recalbox").strip().lower() == "reader":
+            # Reader mode: the card shows Recalbox's interface, then the reader screen again.
+            if frontend_lock.is_unlocked(self.home):
+                frontend_lock.forget_unlock(self.home)
+                self.log.info("Carte deverrouiller : retour a l'ecran du lecteur")
+            else:
+                try:
+                    with open(os.path.join(self.home, frontend_lock.UNLOCK_FILENAME), "w", encoding="utf-8") as handle:
+                        json.dump({"since": int(time.time())}, handle)
+                except OSError as exc:
+                    self.log.warning("Carte deverrouiller : %s" % exc)
+                    return "failed"
+                self.log.info("Carte deverrouiller : interface de Recalbox (tous les jeux)")
+            self.feedback.ok()
+            if self.light is not None:
+                self.light.flash("ok")
+            self._configure_reader_mode()
+            return "unlock"
         if (not frontend_lock.is_unlocked(self.home) and not frontend_lock.lock_active(self.home)
                 and not frontend_lock.is_locked()):
             self.feedback.error()
@@ -1685,6 +1762,12 @@ class Service:
 
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")
+        reader_mode = getattr(self, "reader_mode", None)
+        if reader_mode is not None:
+            try:
+                reader_mode.shutdown()  # Recalbox's interface comes back
+            except Exception as exc:  # noqa: BLE001
+                self.log.warning("Retour a l'interface de Recalbox impossible : %s" % exc)
         if self.reader is not None:
             try:
                 self.reader.close()
@@ -1725,6 +1808,9 @@ class Service:
         if getattr(self, "players", None) is None or self.controller is None                 or not getattr(self.controller, "counting_players", False):
             return {}
         status = self.players.status(self._player_cards())
+        stored = avatars.versions(self.home)
+        for row in status.get("players") or []:
+            row["avatar"] = stored.get(str(row.get("uid") or "").upper(), 0)
         controller = self.controller
         if controller.guest_quota_min:
             left = controller.guest_left()
@@ -1741,7 +1827,15 @@ class Service:
             current["uid"] if current else "",
             bool(players.pending),
             int(players.used_s(current["uid"]) // 60) if current else 0,
+            self._avatars_stamp(),
         )
+
+    def _avatars_stamp(self) -> int:
+        """Changes when an avatar is added, replaced or removed (one stat)."""
+        try:
+            return int(os.stat(os.path.join(self.home, avatars.AVATARS_DIR)).st_mtime_ns)
+        except OSError:
+            return 0
 
     def _write_status(self, force: bool = False) -> None:
         """Writes status.json (only when useful: spares the SD card)."""
@@ -1784,6 +1878,8 @@ class Service:
             "playtime": self.playtime.status() if self.playtime else {},
             "players": self._players_status(),
             "menu_unlocked": frontend_lock.is_unlocked(self.home),
+            "command_check": es_command.summary(self.home),
+            "display_mode": (self.cfg.get("display", "mode", "recalbox") if self.cfg else "recalbox").strip().lower(),
             "light": getattr(getattr(self.light, "output", None), "name", "none"),
         }
         write_json_atomic(status_path(self.home), payload)
@@ -1832,6 +1928,7 @@ class Service:
                     self._build_controller()
                     if previous is not None:
                         self.controller.launched_uid = previous.launched_uid
+                self._configure_reader_mode()
                 self.log.info(
                     "Configuration rechargee (%d badge(s))" % (self.store.count() if self.store else 0)
                 )
