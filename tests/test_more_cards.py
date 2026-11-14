@@ -112,6 +112,25 @@ class CardsTest(unittest.TestCase):
         self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
         self.assertEqual(self.players.current["uid"], "1EA00001")
 
+    def test_carte_reposee_desactive_le_joueur(self):
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player")
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player_off")
+        self.assertIsNone(self.players.pending)
+        self.assertEqual(self.screen.said[-1], ("player_off", {"name": "Lea"}))
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player", "reposee encore : de nouveau active")
+
+    def test_carte_reposee_joueur_garde(self):
+        self.controller = self.make(self.CONFIG + "keep_active = 1\n")
+        self.play_as_lea()
+        self.controller.stop_game("quit")
+        self.assertEqual(self.players.kept["uid"], "1EA00001")
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player_off")
+        self.assertIsNone(self.players.kept)
+
+    def test_carte_reposee_pendant_sa_partie(self):
+        self.play_as_lea()
+        self.assertNotEqual(self.controller.on_badge("1EA00001"), "player_off", "jamais pendant une partie")
+
     def test_pause_sans_jeu(self):
         self.assertEqual(self.controller.on_badge("0A000001"), "nothing")
         self.launcher.running = True
