@@ -603,6 +603,7 @@
   .quota-bar.low span { background: var(--warn); }
   .quota-bar.out span { background: var(--err); }
   .notice-line { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
+  .notice-line.warn-line { color: var(--warn-text); background: var(--warn-soft); border-radius: var(--r-sm); padding: 8px 12px; }
   .special {
     display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px; min-width: 0;
     border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface-2); color: inherit; cursor: pointer;
@@ -1229,6 +1230,7 @@
               <h2>Cartes spéciales</h2>
               <p>Des badges qui ne lancent pas un jeu précis. Choisissez, réglez, puis posez le badge.</p>
             </div></div>
+            <p class="notice-line warn-line" id="unlock-note" hidden>Menu de la Recalbox ouvert par la carte « Déverrouiller » : tous les jeux sont visibles et aucun n'est bloqué. Reposez la carte pour le verrouiller à nouveau.</p>
             <div class="specials">
               <button class="special" type="button" data-special="random">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/></svg></span>
@@ -1245,6 +1247,9 @@
               <button class="special" type="button" data-special="player">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
                 <b>Carte joueur</b><span>Compte le temps de jeu d'une personne.</span></button>
+              <button class="special" type="button" data-special="unlock">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/></svg></span>
+                <b>Déverrouiller</b><span>Ouvre tous les jeux du menu verrouillé, puis le referme.</span></button>
             </div>
           </section>
 
@@ -1702,6 +1707,7 @@ const ICONS = {
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
   player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  unlock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/>',
   link: '<path d="M12 5v14M5 12h14"/>',
   rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
   rotr: '<path d="M20 4v5h-5"/><path d="M18.5 15a7 7 0 1 1-1.6-7.3L20 9"/>',
@@ -2992,6 +2998,7 @@ function playerRow(name, info, uid) {
   ]);
 }
 function renderPlayers() {
+  $("#unlock-note").hidden = !serviceStatus().menu_unlocked;
   const card = $("#players-card");
   const status = serviceStatus().players;
   card.hidden = !(status && status.players);
@@ -3940,6 +3947,7 @@ function specialName(action, params) {
   if (action === "bonus") return t("Temps bonus +{n} min", { n: p.minutes || 10 });
   if (action === "quit") return t("Quitter le jeu");
   if (action === "poweroff") return t("Éteindre la Recalbox");
+  if (action === "unlock") return t("Déverrouiller le menu");
   if (action === "player") {
     if (!p.quota_min) return t("Carte joueur · sans limite");
     return t("Carte joueur · {n} min par {p}", { n: p.quota_min, p: t(p.period === "week" ? "semaine" : "jour") });
@@ -4017,6 +4025,7 @@ const SPECIAL_HELP = {
   bonus: "Pendant une partie limitée, ajoute du temps. Juste après la fin du temps (moins de 15 minutes), relance la partie avec ce temps en plus.",
   quit: "Quitte le jeu en cours et revient au menu de la Recalbox.",
   poweroff: "Éteint la Recalbox proprement, comme depuis son menu.",
+  unlock: "Avec l'option « Verrouiller le menu de la Recalbox » : posée une fois, tous les jeux et le menu START reviennent, et aucun jeu n'est bloqué ; posée encore, tout est verrouillé comme avant. L'interface de la Recalbox redémarre quelques secondes à chaque fois (pas pendant une partie).",
   player: "Une carte par personne : posée avant le jeu (ou laissée sur le lecteur pour un jeu lancé depuis le menu), elle compte son temps de jeu.",
 };
 

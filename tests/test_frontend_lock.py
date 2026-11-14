@@ -79,6 +79,36 @@ class FrontendLockTest(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertFalse(lock.is_locked(self.conf))
 
+    def toggle(self, **extra):
+        return lock.toggle_unlock(self.home, conf=self.conf, run=self.calls.append, **extra)
+
+    def test_carte_deverrouiller_aller_retour(self):
+        self.apply(True)
+        locked = self.text()
+        self.assertEqual(self.toggle(), "unlocked")
+        self.assertEqual(self.text(), CONF, "tous les jeux et le menu START comme avant")
+        self.assertTrue(lock.is_unlocked(self.home))
+        self.assertEqual(self.toggle(), "locked")
+        self.assertEqual(self.text(), locked, "verrouille a nouveau")
+        self.assertFalse(lock.is_unlocked(self.home))
+        self.apply(False)
+        self.assertEqual(self.text(), CONF, "l'option desactivee remet toujours le fichier d'origine")
+
+    def test_carte_sans_verrouillage(self):
+        with self.assertRaises(lock.LockError):
+            self.toggle()
+        self.assertEqual(self.calls, [])
+        self.assertFalse(lock.is_unlocked(self.home))
+
+    def test_carte_refusee_pendant_un_jeu(self):
+        self.apply(True)
+        self.calls.clear()
+        with self.assertRaises(lock.LockError):
+            self.toggle(game_running=lambda: True)
+        self.assertEqual(self.calls, [])
+        self.assertTrue(lock.is_locked(self.conf))
+        self.assertFalse(lock.is_unlocked(self.home))
+
     def test_rien_a_defaire(self):
         self.assertEqual(self.apply(False), {"changed": False})
         self.assertEqual(self.calls, [])

@@ -21,6 +21,13 @@ by `rfidctl version`.
   <game>.state` and comes back at their next start (loaded through a
   temporary slot 999, removed right after). A player without a save of the
   game starts it new; the guest keeps the shared "auto" save.
+* **"Unlock" special card**: with the menu lock option, placed once it
+  opens the locked menu (the values of `recalbox.conf` from before the lock
+  come back) and suspends the game blocking (player card required, time used
+  up; the time is still counted); placed again it locks everything as before.
+  The frontend restarts in the background (refused during a game); state kept
+  in `frontend-unlocked.json`, shown in the Badges tab (`menu_unlocked` in the
+  status); changing the option in the settings takes over.
 * **Statistics per player** (Badges tab): time played per day (bars) and the
   most played games of each player over 7, 30 or 60 days, and a CSV export
   (one line per day, player and game). The time per game is kept in

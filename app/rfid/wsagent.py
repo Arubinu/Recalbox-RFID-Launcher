@@ -1386,6 +1386,8 @@ class Agent:
                     raise ValueError(str(exc))
                 if self.log:
                     self.log.info("Menu de la Recalbox %s" % ("verrouille" if wanted else "deverrouille"))
+            # The settings decide again: a card unlock no longer applies.
+            frontend_lock.forget_unlock(self.home)
         modifiees = cfg.write_values(a_ecrire)
         applique = self._reload_service()
         if self.log:
@@ -1732,7 +1734,7 @@ OPTIONS = (
      "help": "Le compteur repart à zéro chaque jour à minuit, ou chaque lundi."},
     {"section": "players", "key": "lock_frontend", "type": "bool", "default": False,
      "label": "Verrouiller le menu de la Recalbox",
-     "help": "Les listes n'affichent que les jeux favoris, et le menu START est masqué (on ne peut plus changer les réglages depuis la TV). La Recalbox redémarre son menu (quelques secondes, pas de jeu en cours). Désactivé : les réglages d'avant reviennent."},
+     "help": "Les listes n'affichent que les jeux favoris, et le menu START est masqué (on ne peut plus changer les réglages depuis la TV). La Recalbox redémarre son menu (quelques secondes, pas de jeu en cours). Désactivé : les réglages d'avant reviennent. La carte spéciale « Déverrouiller » l'ouvre le temps qu'il faut."},
     {"section": "cards", "key": "online_art", "type": "bool", "default": True,
      "label": "Images en ligne pour les cartes",
      "help": "Pochette, capture, écran titre et logo du jeu téléchargés depuis la base d'images de RetroArch (libretro), sans compte. Il faut Internet sur la Recalbox ; seuls la console et le nom du jeu sont envoyés."},

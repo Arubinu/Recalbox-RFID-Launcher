@@ -19,10 +19,13 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 
 RECALBOX_CONF = "/recalbox/share/system/recalbox.conf"
 ES_SERVICE = "/etc/init.d/S31emulationstation"
 LOCK_FILENAME = "frontend-lock.json"
+#: Written while the "unlock" card has opened the menu (the option stays on).
+UNLOCK_FILENAME = "frontend-unlocked.json"
 LOCKED = {"emulationstation.menu": "none", "emulationstation.favoritesonly": "1"}
 #: Values put back when no copy was kept (Recalbox defaults).
 DEFAULTS = {"emulationstation.menu": "default", "emulationstation.favoritesonly": "0"}
@@ -140,6 +143,37 @@ def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_ru
     if not enabled:
         _forget(home)
     return {"changed": True}
+
+
+def is_unlocked(home: str) -> bool:
+    """True while the "unlock" card has opened the locked menu."""
+    return os.path.isfile(os.path.join(home, UNLOCK_FILENAME))
+
+
+def forget_unlock(home: str) -> None:
+    """The option changed in the settings: the card state no longer applies."""
+    try:
+        os.remove(os.path.join(home, UNLOCK_FILENAME))
+    except OSError:
+        pass
+
+
+def toggle_unlock(home: str, conf: str = RECALBOX_CONF, run=None, game_running=None) -> str:
+    """The "unlock" card: opens the locked menu, or locks it again.
+
+    Returns "unlocked" or "locked". LockError when the menu is not locked by
+    the option, or while a game runs (the frontend must restart).
+    """
+    if is_unlocked(home):
+        apply(home, True, conf=conf, run=run, game_running=game_running)
+        forget_unlock(home)
+        return "locked"
+    if not is_locked(conf):
+        raise LockError("le menu de la Recalbox n'est pas verrouille (option dans Reglages)")
+    apply(home, False, conf=conf, run=run, game_running=game_running)
+    with open(os.path.join(home, UNLOCK_FILENAME), "w", encoding="utf-8") as handle:
+        json.dump({"since": int(time.time())}, handle)
+    return "unlocked"
 
 
 def _forget(home: str) -> None:

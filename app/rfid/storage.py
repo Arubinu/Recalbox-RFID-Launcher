@@ -50,7 +50,9 @@ KIND_ACTION = "action"
 #:   quit     = quits the running game
 #:   bonus    = extra play time for a time-limited game
 #:   poweroff = turns the Recalbox off
-ACTIONS = ("random", "quit", "bonus", "poweroff", "player")
+#:   player   = player card (time counted per person)
+#:   unlock   = opens the locked Recalbox menu, and locks it again
+ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock")
 
 #: Play time periods of a player card.
 PLAYER_PERIODS = ("day", "week")

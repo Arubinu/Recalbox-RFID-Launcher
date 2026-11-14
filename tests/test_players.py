@@ -163,6 +163,28 @@ class PlayerCardsTest(unittest.TestCase):
         self.assertEqual(self.players.current["uid"], "1EA00001", "la nouvelle partie reste a Lea")
         self.assertEqual(self.controller.new_game("1EA00001"), "no_card", "pas une carte de jeu")
 
+    def test_deverrouille_rien_n_est_bloque(self):
+        free = [False]
+        controller = Controller(self.store, self.launcher, self.feedback,
+                                self.make("[players]\nenabled = 1\nrequire = 1\n").cfg, None,
+                                state_provider=lambda: dict(IDLE), clock=self.clock,
+                                playtime=self.playtime, screen=self.screen, players=self.players,
+                                unlocked=lambda: free[0])
+        self.assertEqual(controller.on_badge("6A0E0001"), "player_needed")
+        free[0] = True
+        self.assertEqual(controller.on_badge("6A0E0001"), "launched", "deverrouille : pas de carte joueur exigee")
+        self.assertEqual(self.players.current["uid"], GUEST, "le temps reste compte")
+
+    def test_carte_deverrouiller(self):
+        self.store.put_entry("0FE00001", {"kind": "action", "action": "unlock", "name": "Parents"})
+        calls = []
+        controller = Controller(self.store, self.launcher, self.feedback, self.config, None,
+                                state_provider=lambda: dict(IDLE), clock=self.clock,
+                                players=self.players, unlock=lambda: calls.append(1) or "unlock")
+        self.assertEqual(controller.on_badge("0FE00001"), "unlock")
+        self.assertEqual(calls, [1])
+        self.assertEqual(self.store.get("0FE00001")["params"], {})
+
     def test_parametres_de_la_carte(self):
         with self.assertRaises(StorageError):
             self.store.put_entry("1EA00009", {"kind": "action", "action": "player", "params": {"period": "year"}})

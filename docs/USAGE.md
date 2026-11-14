@@ -142,6 +142,8 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 | **Bonus time** | adds minutes to a time-limited game (see below), a limited number of times per period |
 | **Quit the game** | quits the running game, back to the menu |
 | **Turn off** | turns the Recalbox off cleanly |
+| **Player card** | counts the play time of one person (see "Player cards") |
+| **Unlock** | with the menu lock: opens every game, then locks again (see "Player cards") |
 
 The pencil of a badge changes its name, its time limit, or the parameters of a
 special card.
@@ -232,6 +234,14 @@ Options:
   lock cannot be removed from the TV. The menu restarts for a few seconds;
   refused while a game runs. Turned off (or the reader uninstalled), the
   previous settings of `recalbox.conf` come back exactly.
+* **Unlock card** (Special cards › Unlock), for the parents: placed once, the
+  locked menu opens (every game and the START menu come back, as before the
+  lock) and **no game is blocked** (no player card needed, no time limit; the
+  time is still counted). Placed again, everything is locked as before. The
+  Recalbox interface restarts for a few seconds each time; the card is
+  refused during a game (two low beeps). While it is open, a yellow notice in
+  the Badges tab reminds you to lock it again. Changing the lock option in the
+  settings takes over from the card.
 
 ## Printing the cards
 

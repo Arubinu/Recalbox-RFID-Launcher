@@ -64,6 +64,8 @@ class Controller:
         card_reader=None,
         players=None,
         saver=None,
+        unlock=None,
+        unlocked=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -81,6 +83,9 @@ class Controller:
         self.players = players
         #: Saves the game before quitting it (savegame.GameSaver).
         self.saver = saver
+        #: "unlock" card: callable doing the switch; unlocked(): is it open.
+        self.unlock = unlock
+        self._unlocked = unlocked
 
         self.ignore_when_running = True
         self.save_on_quit = False
@@ -432,6 +437,14 @@ class Controller:
 
     # ------------------------------------------------------------ players
     @property
+    def unlocked(self) -> bool:
+        """The "unlock" card opened the menu: no game is blocked."""
+        try:
+            return bool(self._unlocked and self._unlocked())
+        except Exception:  # noqa: BLE001 - unreadable state: keep the rules
+            return False
+
+    @property
     def counting_players(self) -> bool:
         return self.players is not None and self.players_enabled
 
@@ -479,19 +492,22 @@ class Controller:
         pending = self.players.take_pending()
         if player is not None and player[0]:
             pending = {"uid": player[0], "entry": player[1]}
+        free = self.unlocked
         if pending is not None:
             player = (pending["uid"], pending["entry"])
             left = self.player_left(*player)
             name = self.players.player_name(pending["entry"])
+            if free:
+                left = None
             if left is not None and left <= 0:
                 self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
                 return "exhausted"
         else:
-            if self.require_player:
+            if self.require_player and not free:
                 self._refuse("player_needed", "Jeu refuse : posez d'abord une carte joueur")
                 return "player_needed"
             player = ("", {})
-            left = self.guest_left()
+            left = None if free else self.guest_left()
             if left is not None and left <= 0:
                 self._refuse("guest_exhausted", "Jeu refuse : plus de temps de jeu sans carte joueur")
                 return "exhausted"
@@ -599,6 +615,13 @@ class Controller:
             return self._bonus(uid, params)
         if action == "player":
             return self._player_card(uid, entry)
+        if action == "unlock":
+            if self.unlock is None:
+                self.feedback.error()
+                self._flash("error")
+                return "failed"
+            self._touch(uid)
+            return self.unlock()
         self.feedback.error()
         return "unknown"
 

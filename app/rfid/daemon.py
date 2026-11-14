@@ -7,6 +7,7 @@ import os
 import signal
 import sys
 import tempfile
+import threading
 import time
 
 from . import __version__
@@ -42,6 +43,7 @@ from .osd import ScreenMessages
 from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
+from . import frontend_lock
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -301,6 +303,8 @@ class Service:
             library=self.library, playtime=self.playtime, screen=self.screen,
             light=self.light, power=self._power_off, card_reader=self._read_card_memory,
             players=self.players, saver=self.saver,
+            unlock=self._unlock_card,
+            unlocked=lambda: frontend_lock.is_unlocked(self.home),
         )
 
     def _read_card_memory(self):
@@ -605,7 +609,7 @@ class Service:
         if holder is not None:
             uid, entry = holder
             name = players.player_name(entry)
-            left = controller.player_left(uid, entry)
+            left = None if controller.unlocked else controller.player_left(uid, entry)
             if left is not None and left <= 0 and controller.block_exhausted:
                 self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
                 return
@@ -618,10 +622,11 @@ class Service:
                     self.screen.say("player_hello", name=name, n=max(1, int(round(left / 60.0))))
             self.log.info("Jeu lance depuis le menu : compte pour %s" % name)
             return
-        if controller.require_player:
+        free = controller.unlocked
+        if controller.require_player and not free:
             self._refuse_game("player_needed", "Jeu du menu refuse : aucune carte joueur posee")
             return
-        left = controller.guest_left()
+        left = None if free else controller.guest_left()
         if left is not None and left <= 0 and controller.block_exhausted:
             self._refuse_game("guest_exhausted", "Jeu du menu refuse : plus de temps sans carte joueur")
             return
@@ -865,6 +870,41 @@ class Service:
             return
         self._forget_latch()
         self.controller.on_button("short")
+
+    # ----------------------------------------------------------- unlock card
+    def _unlock_card(self) -> str:
+        """The "unlock" card: opens the locked menu, or locks it again.
+
+        The frontend restarts (a few seconds): done in the background, the
+        reader keeps working. Refused while a game runs.
+        """
+        if self.controller is not None and self.controller.game_running():
+            self.feedback.error()
+            if self.light is not None:
+                self.light.flash("error")
+            self.log.info("Carte deverrouiller : quittez d'abord le jeu en cours")
+            return "refused"
+        if not frontend_lock.is_unlocked(self.home) and not frontend_lock.is_locked():
+            self.feedback.error()
+            if self.light is not None:
+                self.light.flash("error")
+            self.log.info("Carte deverrouiller : le menu n'est pas verrouille (option dans Reglages)")
+            return "not_locked"
+        self.feedback.ok()
+        if self.light is not None:
+            self.light.flash("ok")
+
+        def work():
+            try:
+                result = frontend_lock.toggle_unlock(self.home, game_running=self.controller.game_running)
+            except Exception as exc:  # noqa: BLE001 - never stops the service
+                self.log.warning("Carte deverrouiller : %s" % exc)
+                return
+            self.log.info("Carte deverrouiller : menu de la Recalbox %s"
+                          % ("ouvert (tous les jeux)" if result == "unlocked" else "verrouille a nouveau"))
+
+        threading.Thread(target=work, name="rfid-unlock", daemon=True).start()
+        return "unlock"
 
     # --------------------------------------------------------------- new game
     #: Time given to the frontend to come back to its menu before a launch.
@@ -1669,6 +1709,7 @@ class Service:
             self.store.count() if self.store else 0,
             int((self.playtime.remaining_s() or 0) // 15) if self.playtime else 0,
             self._players_signature(),
+            frontend_lock.is_unlocked(self.home),
         )
         now = time.time()
         if not force and signature == self._status_signature and (now - self._status_written) < 30:
@@ -1695,6 +1736,7 @@ class Service:
             "controller": controller_status,
             "playtime": self.playtime.status() if self.playtime else {},
             "players": self._players_status(),
+            "menu_unlocked": frontend_lock.is_unlocked(self.home),
             "light": getattr(getattr(self.light, "output", None), "name", "none"),
         }
         write_json_atomic(status_path(self.home), payload)
