@@ -102,11 +102,12 @@ class CardsTest(unittest.TestCase):
         self.controller.on_badge("1EA00001")
         self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
         self.launcher.reader = Waiting()
+        before = len(self.screen.said)
         self.assertTrue(self.controller.stop_game("removed"))
         self.assertIsNone(self.players.current)
         self.assertEqual(self.players.pending["uid"], "1EA00001", "Lea reste la joueuse de la prochaine partie")
         self.assertEqual(self.saver.saved, [], "rien a sauvegarder")
-        self.assertEqual(self.screen.said[-1], ("player_next", {"name": "Lea"}))
+        self.assertEqual(len(self.screen.said), before, "pas de message a chaque retrait")
         self.launcher.reader = None
         self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
         self.assertEqual(self.players.current["uid"], "1EA00001")

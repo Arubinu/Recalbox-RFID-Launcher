@@ -40,6 +40,8 @@ PATHS = {
 #: Seconds a console stays in the spotlight, and length of the change.
 HOLD_S = 7.0
 FADE_S = 0.9
+#: The chosen logo of the band lights up over this time, once the band has stopped.
+HIGHLIGHT_S = 0.35
 
 TEXTS = {
     "hint": {"fr": "Pose une carte pour jouer", "en": "Place a card to play", "de": "Leg eine Karte auf, um zu spielen",
@@ -415,6 +417,7 @@ class Painter:
         self.home = None          # where the player avatars are (avatars/<UID>.jpg)
         self._avatars = {}
         self.cache_covers = {}
+        self._shapes = {}
 
     # ---- resources
     def font(self, name: str, size: float):
@@ -451,12 +454,42 @@ class Painter:
                 return path
         return ""
 
+    #: Shapes are drawn this many times larger, then shrunk: smooth edges.
+    SUPERSAMPLE = 4
+
+    def shape(self, width: int, height: int, colour, radius: int = 0, line: int = 0, ellipse: bool = False):
+        """A rounded rectangle, a frame, a disc or an ellipse with smooth
+        edges (pygame draws them without anti-aliasing)."""
+        width, height = max(1, int(width)), max(1, int(height))
+        colour = tuple(colour)
+        rgba = colour if len(colour) == 4 else colour + (255,)
+        key = (width, height, rgba, int(radius), int(line), ellipse)
+        cached = self._shapes.get(key)
+        if cached is not None:
+            return cached
+        pg, k = self.pg, self.SUPERSAMPLE
+        big = pg.Surface((width * k, height * k), pg.SRCALPHA)
+        big.fill(rgba[:3] + (0,))  # transparent of the same colour: no dark fringe once shrunk
+        if ellipse:
+            pg.draw.ellipse(big, rgba, big.get_rect(), int(line) * k)
+        else:
+            pg.draw.rect(big, rgba, big.get_rect(), width=int(line) * k,
+                         border_radius=min(int(radius) * k, height * k // 2, width * k // 2))
+        image = pg.transform.smoothscale(big, (width, height))
+        if len(self._shapes) > 400:
+            self._shapes.clear()
+        self._shapes[key] = image
+        return image
+
+    def draw_shape(self, surface, rect, colour, radius: int = 0, line: int = 0, ellipse: bool = False):
+        x, y, width, height = (int(value) for value in rect)
+        surface.blit(self.shape(width, height, colour, radius, line, ellipse), (x, y))
+
     def plate(self, image, pad_x: int, pad_y: int):
         """A logo on a light rounded plate: every logo stays readable in its own colours."""
         pg = self.pg
         width, height = image.get_width() + 2 * pad_x, image.get_height() + 2 * pad_y
-        plate = pg.Surface((width, height), pg.SRCALPHA)
-        pg.draw.rect(plate, PLATE, plate.get_rect(), border_radius=min(height // 2, int(self.u * 1.6)))
+        plate = self.shape(width, height, PLATE, min(height // 2, int(self.u * 1.6))).copy()
         plate.blit(image, (pad_x, pad_y))
         return plate
 
@@ -508,8 +541,7 @@ class Painter:
             if scale < 1.0:
                 art = pg.transform.smoothscale(art, (int(art.get_width() * scale), int(art.get_height() * scale)))
             cx, bottom = int(art_cx), int(art_bottom)
-            shadow = pg.Surface((int(art.get_width() * 0.9), int(u * 5)), pg.SRCALPHA)
-            pg.draw.ellipse(shadow, (0, 0, 0, 110), shadow.get_rect())
+            shadow = self.shape(int(art.get_width() * 0.9), int(u * 5), (0, 0, 0, 110), ellipse=True)
             frame.blit(shadow, (cx - shadow.get_width() // 2, bottom - shadow.get_height() // 2))
             frame.blit(art, (cx - art.get_width() // 2, bottom - art.get_height()))
         # Logo, name, number of games (on the right; centred under the drawing
@@ -525,8 +557,7 @@ class Painter:
             if scale < 1.0:
                 logo = pg.transform.smoothscale(logo, (int(logo.get_width() * scale), int(logo.get_height() * scale)))
             logo = self.plate(logo, int(u * 3), int(u * 2))
-            shade = pg.Surface((logo.get_width(), logo.get_height()), pg.SRCALPHA)
-            pg.draw.rect(shade, (0, 0, 0, 90), shade.get_rect(), border_radius=int(u * 1.6))
+            shade = self.shape(logo.get_width(), logo.get_height(), (0, 0, 0, 90), int(u * 1.6))
             frame.blit(shade, (left(logo.get_width()) + int(u * 0.6), y + int(u * 0.9)))
             frame.blit(logo, (left(logo.get_width()), y))
             y += logo.get_height() + int(u * 3)
@@ -546,8 +577,8 @@ class Painter:
         frame.blit(number, (nx, y))
         frame.blit(label, (nx + number.get_width() + int(u * 2), y + number.get_height() - label.get_height() - int(u * 2.2)))
         bar_x = (w - int(u * 9)) // 2 if portrait else nx
-        pg.draw.rect(frame, accent, (bar_x, y + number.get_height() + int(u * 0.5), int(u * 9), int(u * 0.7)),
-                     border_radius=int(u * 0.35))
+        self.draw_shape(frame, (bar_x, y + number.get_height() + int(u * 0.5), int(u * 9), int(u * 0.7)), accent,
+                        int(u * 0.35))
         try:
             frame = frame.convert()  # same format as the screen: much faster to show
         except Exception:  # noqa: BLE001 - no display (tests)
@@ -654,15 +685,15 @@ class Painter:
         if offset > 0:
             surface.blit(self.strip_dim, (offset - loop, strip_y))
         centre, width = self.strip_centres[index]
-        alpha = ease(max(0.0, progress - 0.7) / 0.3) if changing else 1.0
+        alpha = 0.0 if changing else 1.0  # lit once the band has stopped
         if alpha > 0:
             bright = self.strip.subsurface((int(centre - width / 2), 0, int(width), self.strip.get_height()))
             if alpha < 1.0:
                 bright = bright.copy()
                 bright.set_alpha(int(255 * alpha))
             surface.blit(bright, (int(w / 2 - width / 2), strip_y))
-            self.pg.draw.rect(surface, accent, (int(w / 2 - width / 2), strip_y + self.strip.get_height() + int(u * 1.2),
-                                                int(width), int(u * 0.6)), border_radius=int(u * 0.3))
+            self.draw_shape(surface, (int(w / 2 - width / 2), strip_y + self.strip.get_height() + int(u * 1.2),
+                                                int(width), int(u * 0.6)), accent, int(u * 0.3))
         surface.blit(self.fade_left, (0, self.band_y))
         surface.blit(self.fade_right, (w - self.fade_right.get_width(), self.band_y))
 
@@ -684,9 +715,9 @@ class Painter:
         clock = self._clock[1]
         surface.blit(clock, (w - margin - clock.get_width(), margin - int(u * 1)))
         icon = pg.Rect(margin, margin + int(u * 0.6), int(u * 5.4), int(u * 3.6))
-        pg.draw.rect(surface, accent, icon, width=max(2, int(u * 0.45)), border_radius=int(u * 0.7))
-        pg.draw.rect(surface, accent, (icon.x + int(u * 0.9), icon.y + int(u * 0.9), int(u * 1.6), int(u * 1.2)),
-                     border_radius=int(u * 0.25))
+        self.draw_shape(surface, icon, accent, int(u * 0.7), max(2, int(u * 0.45)))
+        self.draw_shape(surface, (icon.x + int(u * 0.9), icon.y + int(u * 0.9), int(u * 1.6), int(u * 1.2)), accent,
+                     int(u * 0.25))
         if hint:
             pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(now * 2.2))
             image = self.hint_image()
@@ -799,8 +830,7 @@ class Painter:
                    first.get_height(), (second.get_height() + int(u * 1)) if second is not None else 0]
         y = (h - sum(heights)) // 2
         if image is not None:
-            shadow = pg.Surface((image.get_width() + int(u * 2), image.get_height() + int(u * 2)), pg.SRCALPHA)
-            pg.draw.rect(shadow, (0, 0, 0, 120), shadow.get_rect(), border_radius=int(u * 1.5))
+            shadow = self.shape(image.get_width() + int(u * 2), image.get_height() + int(u * 2), (0, 0, 0, 120), int(u * 1.5))
             frame.blit(shadow, ((w - shadow.get_width()) // 2 + int(u * 0.6), y + int(u * 0.6)))
             frame.blit(image, ((w - image.get_width()) // 2, y))
             y += image.get_height() + int(u * 4)
@@ -822,8 +852,8 @@ class Painter:
         top = int(u * (30 if self.portrait else 19))
         title = self.font("Exo2-Bold.ttf", u * 6).render(text("player_games", self.language, name=name), True, TEXT)
         frame.blit(title, ((w - title.get_width()) // 2, top))
-        pg.draw.rect(frame, accent, ((w - int(u * 9)) // 2, top + title.get_height() + int(u * 0.6), int(u * 9), int(u * 0.7)),
-                     border_radius=int(u * 0.35))
+        self.draw_shape(frame, ((w - int(u * 9)) // 2, top + title.get_height() + int(u * 0.6), int(u * 9), int(u * 0.7)),
+                        accent, int(u * 0.35))
         area_top = top + title.get_height() + int(u * 5)
         area_bottom = self.band_y - int(u * 3) if self.strip is not None else int(h * 0.82)
         if not games:
@@ -848,8 +878,7 @@ class Painter:
             if image is not None:
                 frame.blit(image, (x + (cell_w - image.get_width()) // 2, y + picture_h - image.get_height()))
             else:
-                box = pg.Surface((cell_w, picture_h), pg.SRCALPHA)
-                pg.draw.rect(box, (255, 255, 255, 18), box.get_rect(), border_radius=int(u * 1.5))
+                box = self.shape(cell_w, picture_h, (255, 255, 255, 18), int(u * 1.5))
                 frame.blit(box, (x, y))
             label = name_font.render(game["name"], True, TEXT)
             if label.get_width() > cell_w:
@@ -871,10 +900,9 @@ class Painter:
         width = min(self.w - int(u * 8), label.get_width() + pad_x * 2 + mark * 2)
         height = label.get_height() + pad_y * 2
         image = pg.Surface((width, height), pg.SRCALPHA)
-        pg.draw.rect(image, (12, 14, 20, 225), image.get_rect(), border_radius=height // 2)
-        pg.draw.rect(image, tuple(accent) + (255,), image.get_rect(), width=max(2, int(u * 0.3)),
-                     border_radius=height // 2)
-        pg.draw.circle(image, tuple(accent), (pad_x, height // 2), mark)
+        image.blit(self.shape(width, height, (12, 14, 20, 225), height // 2), (0, 0))
+        image.blit(self.shape(width, height, tuple(accent), height // 2, max(2, int(u * 0.3))), (0, 0))
+        image.blit(self.shape(mark * 2, mark * 2, tuple(accent), ellipse=True), (pad_x - mark, height // 2 - mark))
         image.blit(label, (pad_x + mark * 2, pad_y), (0, 0, width - pad_x * 2 - mark * 2, label.get_height()))
         return image
 
@@ -888,15 +916,14 @@ class Painter:
         size = int(u * 7)
         width = size + int(u * 2) + max(name.get_width(), detail.get_width(), int(u * 16)) + int(u * 3)
         x = right - width
-        chip = pg.Surface((width, size + int(u * 1.6)), pg.SRCALPHA)
-        pg.draw.rect(chip, (255, 255, 255, 18), chip.get_rect(), border_radius=chip.get_height() // 2)
+        chip = self.shape(width, size + int(u * 1.6), (255, 255, 255, 18), (size + int(u * 1.6)) // 2)
         surface.blit(chip, (x, top - int(u * 0.8)))
         centre = (x + int(u * 0.8) + size // 2, top + size // 2)
         picture = self.avatar(player.get("uid"), player.get("avatar"), size, max(1, int(round(u * 0.25))), accent)
         if picture is not None:
             surface.blit(picture, (x + int(u * 0.8), top))
         else:
-            pg.draw.circle(surface, accent, centre, size // 2)
+            self.draw_shape(surface, (centre[0] - size // 2, centre[1] - size // 2, size, size), accent, ellipse=True)
             initial = self.font("Exo2-Bold.ttf", u * 4.2).render((player["name"][:1] or "?").upper(), True, TEXT)
             surface.blit(initial, (centre[0] - initial.get_width() // 2, centre[1] - initial.get_height() // 2))
         tx = x + int(u * 0.8) + size + int(u * 2)
@@ -906,10 +933,10 @@ class Painter:
         if player.get("ratio") is not None:
             bar_w = max(name.get_width(), detail.get_width(), int(u * 16))
             bar_y = detail_y + detail.get_height() - int(u * 0.1)
-            pg.draw.rect(surface, (255, 255, 255, 40), (tx, bar_y, bar_w, int(u * 0.6)), border_radius=int(u * 0.3))
+            self.draw_shape(surface, (tx, bar_y, bar_w, int(u * 0.6)), (255, 255, 255, 40), int(u * 0.3))
             colour = accent if player["ratio"] > 0.2 else (234, 165, 59)
-            pg.draw.rect(surface, colour, (tx, bar_y, max(int(u * 0.6), int(bar_w * player["ratio"])), int(u * 0.6)),
-                         border_radius=int(u * 0.3))
+            self.draw_shape(surface, (tx, bar_y, max(int(u * 0.6), int(bar_w * player["ratio"])), int(u * 0.6)), colour,
+                         int(u * 0.3))
 
 
 def ease(value: float) -> float:
@@ -1041,7 +1068,7 @@ class GpuScreen:
             texture.blend_mode = 1
             self.plates.append((x, image.get_width(), texture))
 
-    def draw(self, index: int, previous, progress: float, players: dict, now: float) -> None:
+    def draw(self, index: int, previous, progress: float, players: dict, now: float, highlight: float = 1.0) -> None:
         pg, painter, renderer = self.pg, self.painter, self.renderer
         w, h, u = painter.w, painter.h, painter.u
         if self.static is None:
@@ -1079,7 +1106,7 @@ class GpuScreen:
         offset = w / 2.0 - centre_now
         loop = strip_w + painter.gap
         centre, width = painter.strip_centres[index]
-        alpha = ease(max(0.0, progress - 0.7) / 0.3) if changing else 1.0
+        alpha = 0.0 if changing else highlight  # lit once the band has stopped
         if self.page is not None:
             alpha = 0.0  # the player's page: no console is chosen
         for shift in (-loop, 0, loop):
@@ -1093,8 +1120,9 @@ class GpuScreen:
             texture = self.plates[index][2]
             texture.alpha = int(255 * alpha)
             texture.draw(dstrect=(int(w / 2 - width / 2), strip_y, int(width), strip_h))
-            renderer.draw_color = accent + (int(255 * alpha),)
-            renderer.fill_rect((int(w / 2 - width / 2), strip_y + strip_h + int(u * 1.2), int(width), int(u * 0.6)))
+            bar = self.bar_texture(int(width), int(u * 0.6), accent, int(u * 0.3))
+            bar.alpha = int(255 * alpha)
+            bar.draw(dstrect=(int(w / 2 - width / 2), strip_y + strip_h + int(u * 1.2), int(width), int(u * 0.6)))
         static["left"].draw(dstrect=(0, band_y, painter.fade_left.get_width(), band_h))
         static["right"].draw(dstrect=(w - painter.fade_right.get_width(), band_y, painter.fade_right.get_width(), band_h))
         # Top: drawn on a transparent surface when it changes (minute, player, console).
@@ -1133,6 +1161,14 @@ class GpuScreen:
             self.canvas.draw(dstrect=((sw - w) // 2, (sh - h) // 2, w, h), angle=self.angle)
         renderer.present()
 
+    def bar_texture(self, width: int, height: int, colour, radius: int):
+        key = (width, height, tuple(colour), radius)
+        if getattr(self, "_bar", None) is None or self._bar[0] != key:
+            texture = self.texture(self.painter.shape(width, height, colour, radius))
+            texture.blend_mode = 1
+            self._bar = (key, texture)
+        return self._bar[1]
+
     def set_page(self, key, builder) -> None:
         """The player's page (``key`` None: the consoles again)."""
         if key is None:
@@ -1168,6 +1204,7 @@ class Screen:
 
     def run(self) -> int:
         os.environ.setdefault("SDL_VIDEODRIVER", "kmsdrm")
+        os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "1")  # smooth when the page is turned (vertical screen)
         os.environ["SDL_AUDIODRIVER"] = "dummy"
         os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
         import pygame
@@ -1405,7 +1442,9 @@ def _run_gpu(self, pygame, conf) -> int:
             if not painter.cached(nxt) and (thread is None or not thread.is_alive()):
                 worker["thread"] = threading.Thread(target=prepare, args=(nxt,), daemon=True)
                 worker["thread"].start()
-        gpu.draw(index, previous, progress, players, time.time())  # waits for the screen (vsync)
+        # The chosen logo lights up once the band has stopped moving.
+        highlight = ease((now - changed - FADE_S) / HIGHLIGHT_S) if previous is None and now - changed < FADE_S + HIGHLIGHT_S else (0.0 if previous is not None else 1.0)
+        gpu.draw(index, previous, progress, players, time.time(), highlight)  # waits for the screen (vsync)
         if debug:
             frames += 1
             slowest = max(slowest, time.monotonic() - started)
@@ -1415,6 +1454,7 @@ def _run_gpu(self, pygame, conf) -> int:
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
     gpu.toast = gpu.page = gpu.launch = None
+    gpu._bar = None
     gpu.canvas = None
     # Textures first, then the renderer and the window: freed in another
     # order, SDL crashes while quitting.
