@@ -140,7 +140,8 @@ class ReaderModeTest(unittest.TestCase):
         self.state = os.path.join(self.home, "es_state.inf")
         self.mode = reader_mode.ReaderMode(self.home, None, run=self.fake_run, running=self.running, popen=self.popen,
                                            clock=self.clock, sleep=self.clock.advance, python="python3",
-                                           hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0)
+                                           hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0,
+                                           target_path=os.path.join(self.home, "last-target.json"))
         patcher = mock.patch.object(es_command, "build", side_effect=lambda system, rom: ["python", "launcher", "-rom", rom])
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -208,6 +209,21 @@ class ReaderModeTest(unittest.TestCase):
         self.assertFalse(self.frontend["up"])
         self.assertEqual(self.mode.state, "screen")
         self.assertIn("screen", self.processes[0].argv)
+
+    def test_plus_de_jeu_selectionne(self):
+        """The game left selected in Recalbox's list is not paired by the button on the reader screen."""
+        from rfid import esbridge
+        target = os.path.join(self.home, "last-target.json")
+        with open(self.state, "w", encoding="utf-8") as handle:
+            handle.write("Action=gamelistbrowsing\nSystemId=gb\nGame=Tuff\nGamePath=/roms/gb/Tuff.gb\nState=selected\n")
+        esbridge.remember_target(esbridge.Target(system="gb", game="Tuff.gb", name="Tuff", path="/roms/gb/Tuff.gb"), target)
+        self.enter()
+        self.assertIsNone(esbridge.current_target(esbridge.read_state(self.state)))
+        self.assertIsNone(esbridge.last_target(target))
+        self.mode.launch("gb", "/roms/gb/Tuff.gb")
+        self.processes[1].code = 0
+        self.mode.step()
+        self.assertIsNone(esbridge.current_target(esbridge.read_state(self.state)), "rien apres la partie non plus")
 
     def test_lancement_puis_retour_a_l_ecran(self):
         self.enter()
