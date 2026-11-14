@@ -1,8 +1,8 @@
 # Publishing on GitHub
 
 Everything is ready in `.github/workflows/pages.yml`. It runs **on a `v*` tag only**: it runs the tests, builds
-the single-file installer, publishes it on GitHub Pages and attaches it, with the update archive, to the GitHub
-release of the tag. Pushing to `main` runs nothing (the online page changes with the releases only); the
+the single-file installer, publishes it on GitHub Pages and attaches it, with the update archive, to a **draft**
+GitHub release of the tag: write its notes, then publish it. Pushing to `main` runs nothing (the online page changes with the releases only); the
 **Run workflow** button of the Actions tab runs it by hand.
 
 ## One-time setup
