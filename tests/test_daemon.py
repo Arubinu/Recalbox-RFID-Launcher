@@ -627,5 +627,68 @@ class ServiceExtrasTest(unittest.TestCase):
         self.service.light.set_state.assert_called_with("pairing")
 
 
+class LockWatchdogTest(unittest.TestCase):
+    """A locked menu whose Recalbox interface does not come back is unlocked."""
+
+    def setUp(self):
+        from unittest import mock
+
+        from rfid import daemon as _daemon
+
+        self.mock = mock
+        self.daemon = _daemon
+        self.service = _daemon.Service.__new__(_daemon.Service)
+        self.service.home = tempfile.mkdtemp(prefix="rfid-watchdog-")
+        self.service.log = mock.Mock()
+        self.service.controller = mock.Mock()
+        self.service.controller.game_running.return_value = False
+        self.service._frontend_missing_since = None
+        self.service._next_frontend_check = 0.0
+        self.service._unlock_busy = False
+        self.now = [1000.0]
+        self.patches = [
+            mock.patch.object(_daemon.time, "monotonic", side_effect=lambda: self.now[0]),
+            mock.patch.object(_daemon.frontend_lock, "lock_active", return_value=True),
+            mock.patch.object(_daemon.frontend_lock, "frontend_running", return_value=False),
+            mock.patch.object(_daemon.threading, "Thread"),
+        ]
+        for patch in self.patches:
+            patch.start()
+        self.thread = _daemon.threading.Thread
+
+    def tearDown(self):
+        for patch in self.patches:
+            patch.stop()
+        shutil.rmtree(self.service.home, ignore_errors=True)
+
+    def tick(self, seconds):
+        self.now[0] += seconds
+        self.service._lock_watchdog()
+
+    def test_deverrouillage_de_secours(self):
+        self.tick(0)
+        self.tick(60)
+        self.thread.assert_not_called()
+        self.tick(61)
+        self.thread.assert_called_once()
+        self.assertTrue(self.service._unlock_busy)
+
+    def test_rien_pendant_une_partie_ou_une_bascule(self):
+        self.service.controller.game_running.return_value = True
+        for _ in range(20):
+            self.tick(20)
+        self.service.controller.game_running.return_value = False
+        self.service._unlock_busy = True
+        for _ in range(20):
+            self.tick(20)
+        self.thread.assert_not_called()
+
+    def test_rien_sans_verrouillage(self):
+        with self.mock.patch.object(self.daemon.frontend_lock, "lock_active", return_value=False):
+            for _ in range(20):
+                self.tick(20)
+        self.thread.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

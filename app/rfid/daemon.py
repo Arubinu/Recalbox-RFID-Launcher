@@ -229,6 +229,11 @@ class Service:
         self._es_state_mtime = None
         self._next_es_check = 0.0
         self.saver = None
+        #: Menu lock watchdog: since when the Recalbox interface is missing.
+        self._frontend_missing_since = None
+        self._next_frontend_check = 0.0
+        #: The "unlock" card is switching the menu (the interface restarts).
+        self._unlock_busy = False
         #: New game asked by a button double press: {"uid", "player", "at", "tries"}.
         self._new_game = None
         #: The next game start is not resumed (a new game was asked).
@@ -417,6 +422,7 @@ class Service:
                 self._new_game_step()
                 self._players_step()
                 self._light_step()
+                self._lock_watchdog()
                 self._watch_frontend()
 
                 try:
@@ -871,6 +877,43 @@ class Service:
         self._forget_latch()
         self.controller.on_button("short")
 
+    # ------------------------------------------------------ lock watchdog
+    #: The Recalbox interface missing this long while the menu is locked:
+    #: the lock is undone (a locked menu with nothing to show does not start).
+    FRONTEND_MISSING_S = 120.0
+
+    def _lock_watchdog(self) -> None:
+        now = time.monotonic()
+        if now < self._next_frontend_check:
+            return
+        self._next_frontend_check = now + 10.0
+        if (self._unlock_busy or not frontend_lock.lock_active(self.home)
+                or frontend_lock.frontend_running()
+                or (self.controller is not None and self.controller.game_running())):
+            self._frontend_missing_since = None
+            return
+        if self._frontend_missing_since is None:
+            self._frontend_missing_since = now
+            return
+        if now - self._frontend_missing_since < self.FRONTEND_MISSING_S:
+            return
+        self._frontend_missing_since = None
+        self.log.warning("Menu verrouille et interface de la Recalbox absente depuis 2 min : deverrouillage de secours")
+        self._unlock_busy = True
+
+        def work():
+            try:
+                frontend_lock.apply(self.home, False)
+                frontend_lock.forget_unlock(self.home)
+                Config(os.path.join(self.home, "config.ini")).write_values({"players.lock_frontend": "0"})
+                self.log.warning("Menu de la Recalbox deverrouille et relance (option desactivee)")
+            except Exception as exc:  # noqa: BLE001 - never stops the service
+                self.log.warning("Deverrouillage de secours impossible : %s" % exc)
+            finally:
+                self._unlock_busy = False
+
+        threading.Thread(target=work, name="rfid-lock-rescue", daemon=True).start()
+
     # ----------------------------------------------------------- unlock card
     def _unlock_card(self) -> str:
         """The "unlock" card: opens the locked menu, or locks it again.
@@ -896,11 +939,14 @@ class Service:
             self.light.flash("ok")
 
         def work():
+            self._unlock_busy = True
             try:
                 result = frontend_lock.toggle_unlock(self.home, game_running=self.controller.game_running)
             except Exception as exc:  # noqa: BLE001 - never stops the service
                 self.log.warning("Carte deverrouiller : %s" % exc)
                 return
+            finally:
+                self._unlock_busy = False
             self.log.info("Carte deverrouiller : menu de la Recalbox %s"
                           % ("ouvert (tous les jeux)" if result == "unlocked" else "verrouille a nouveau"))
 

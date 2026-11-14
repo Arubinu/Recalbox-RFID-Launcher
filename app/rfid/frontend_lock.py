@@ -38,6 +38,9 @@ LOCKED = {
     "emulationstation.favoritesonly": "1",
     "emulationstation.collection.ports": "0",
     "emulationstation.collection.challenges": "0",
+    # The favourites can no longer be changed with the Y button: without any
+    # favourite, Recalbox would have no system to show and would not start.
+    "frontend.enableeditfavorites": "0",
 }
 #: Values put back when no copy was kept (Recalbox defaults).
 DEFAULTS = {
@@ -45,6 +48,7 @@ DEFAULTS = {
     "emulationstation.favoritesonly": "0",
     "emulationstation.collection.ports": "1",
     "emulationstation.collection.challenges": "1",
+    "frontend.enableeditfavorites": "1",
 }
 
 

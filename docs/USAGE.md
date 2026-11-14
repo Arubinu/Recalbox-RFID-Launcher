@@ -234,7 +234,10 @@ Options:
   lock cannot be removed from the TV. The **Ports** and **Recalbox
   Challenges** systems are hidden too. At least one game must be a favourite
   (Y button on a game, in Recalbox): without any, Recalbox ignores "favourites
-  only" and shows every game, so the page refuses to lock. The menu restarts for a few seconds;
+  only" and shows every game, so the page refuses to lock. While locked, the
+  favourites can no longer be changed with the Y button. Safety net: if the
+  Recalbox interface stays missing for 2 minutes while locked, the reader
+  unlocks the menu by itself and turns the option off. The menu restarts for a few seconds;
   refused while a game runs. Turned off (or the reader uninstalled), the
   previous settings of `recalbox.conf` come back exactly.
 * **Unlock card** (Special cards › Unlock), for the parents: placed once, the

@@ -66,7 +66,8 @@ class FrontendLockTest(unittest.TestCase):
         values = lock.read_values(self.text(), lock.LOCKED)
         self.assertEqual(values, {"emulationstation.menu": "bartop", "emulationstation.favoritesonly": "1",
                                   "emulationstation.collection.ports": None,
-                                  "emulationstation.collection.challenges": None})
+                                  "emulationstation.collection.challenges": None,
+                                  "frontend.enableeditfavorites": None})
 
     def test_refuse_pendant_un_jeu(self):
         with self.assertRaises(lock.LockError):

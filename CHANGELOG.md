@@ -45,6 +45,12 @@ by `rfidctl version`.
   now refuses to lock until a game is a favourite, and the lock is undone
   from the reader's own copy (`frontend-lock.json`) even when Recalbox
   changed a value.
+* **Menu lock with no favourite left: Recalbox did not start** (nothing to
+  show once the ports and challenges are hidden). The lock now also blocks
+  the editing of the favourites (`frontend.enableeditfavorites=0`, the Y
+  button), and a watchdog of the service undoes the lock by itself when the
+  Recalbox interface stays missing for 2 minutes while locked (not during a
+  game nor a card switch), then turns the option off.
 * **Menu lock could leave a black screen**: the Recalbox init script waits
   only 20 s for its interface to quit, and the interface may take longer
   (it waits for the sound); the new start was then ignored and nothing came
