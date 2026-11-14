@@ -40,6 +40,8 @@ PATHS = {
 #: Seconds a console stays in the spotlight, and length of the change.
 HOLD_S = 7.0
 FADE_S = 0.9
+#: The chosen logo of the band lights up over this time, once the band has stopped.
+HIGHLIGHT_S = 0.35
 
 TEXTS = {
     "hint": {"fr": "Pose une carte pour jouer", "en": "Place a card to play", "de": "Leg eine Karte auf, um zu spielen",
@@ -683,7 +685,7 @@ class Painter:
         if offset > 0:
             surface.blit(self.strip_dim, (offset - loop, strip_y))
         centre, width = self.strip_centres[index]
-        alpha = ease(max(0.0, progress - 0.7) / 0.3) if changing else 1.0
+        alpha = 0.0 if changing else 1.0  # lit once the band has stopped
         if alpha > 0:
             bright = self.strip.subsurface((int(centre - width / 2), 0, int(width), self.strip.get_height()))
             if alpha < 1.0:
@@ -1066,7 +1068,7 @@ class GpuScreen:
             texture.blend_mode = 1
             self.plates.append((x, image.get_width(), texture))
 
-    def draw(self, index: int, previous, progress: float, players: dict, now: float) -> None:
+    def draw(self, index: int, previous, progress: float, players: dict, now: float, highlight: float = 1.0) -> None:
         pg, painter, renderer = self.pg, self.painter, self.renderer
         w, h, u = painter.w, painter.h, painter.u
         if self.static is None:
@@ -1104,7 +1106,7 @@ class GpuScreen:
         offset = w / 2.0 - centre_now
         loop = strip_w + painter.gap
         centre, width = painter.strip_centres[index]
-        alpha = ease(max(0.0, progress - 0.7) / 0.3) if changing else 1.0
+        alpha = 0.0 if changing else highlight  # lit once the band has stopped
         if self.page is not None:
             alpha = 0.0  # the player's page: no console is chosen
         for shift in (-loop, 0, loop):
@@ -1440,7 +1442,9 @@ def _run_gpu(self, pygame, conf) -> int:
             if not painter.cached(nxt) and (thread is None or not thread.is_alive()):
                 worker["thread"] = threading.Thread(target=prepare, args=(nxt,), daemon=True)
                 worker["thread"].start()
-        gpu.draw(index, previous, progress, players, time.time())  # waits for the screen (vsync)
+        # The chosen logo lights up once the band has stopped moving.
+        highlight = ease((now - changed - FADE_S) / HIGHLIGHT_S) if previous is None and now - changed < FADE_S + HIGHLIGHT_S else (0.0 if previous is not None else 1.0)
+        gpu.draw(index, previous, progress, players, time.time(), highlight)  # waits for the screen (vsync)
         if debug:
             frames += 1
             slowest = max(slowest, time.monotonic() - started)

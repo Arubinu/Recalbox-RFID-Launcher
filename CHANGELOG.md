@@ -46,6 +46,8 @@ by `rfidctl version`.
 * **Reader screen, smooth edges**: rounded corners, circles, bars and frames
   are drawn four times larger then shrunk (anti-aliasing), and the turned page
   of a vertical screen is smoothed.
+* **Reader screen, band of logos**: the chosen logo lights up once the band
+  has stopped moving (before, it appeared during the movement).
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 
