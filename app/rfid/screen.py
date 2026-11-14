@@ -55,6 +55,19 @@ TEXTS = {
     "played_week": {"fr": "{t} jouées cette semaine", "en": "{t} played this week", "de": "diese Woche {t} gespielt",
                     "es": "{t} jugados esta semana", "it": "{t} giocati questa settimana", "pt": "{t} jogados esta semana"},
     "guest": {"fr": "Invité", "en": "Guest", "de": "Gast", "es": "Invitado", "it": "Ospite", "pt": "Convidado"},
+    "launching": {"fr": "Lancement…", "en": "Starting…", "de": "Wird gestartet…", "es": "Iniciando…",
+                  "it": "Avvio…", "pt": "A iniciar…"},
+    "press": {"fr": "Appuie sur un bouton de la manette pour jouer", "en": "Press a controller button to play",
+              "de": "Drück eine Taste am Controller, um zu spielen", "es": "Pulsa un botón del mando para jugar",
+              "it": "Premi un tasto del controller per giocare", "pt": "Carrega num botão do comando para jogar"},
+    "cancel_hint": {"fr": "Retire la carte pour annuler", "en": "Remove the card to cancel",
+                    "de": "Karte entfernen zum Abbrechen", "es": "Retira la tarjeta para cancelar",
+                    "it": "Togli la carta per annullare", "pt": "Retira o cartão para cancelar"},
+    "player_games": {"fr": "Les jeux de {name}", "en": "{name}'s games", "de": "Die Spiele von {name}",
+                     "es": "Los juegos de {name}", "it": "I giochi di {name}", "pt": "Os jogos de {name}"},
+    "no_games": {"fr": "Pas encore de jeu joué : pose une carte !", "en": "No game played yet: place a card!",
+                 "de": "Noch kein Spiel gespielt: leg eine Karte auf!", "es": "Aún no hay juegos: ¡pon una tarjeta!",
+                 "it": "Ancora nessun gioco: appoggia una carta!", "pt": "Ainda sem jogos: pousa um cartão!"},
     "next": {"fr": "prochaine partie", "en": "next game", "de": "nächstes Spiel", "es": "próxima partida",
              "it": "prossima partita", "pt": "próximo jogo"},
     "consoles": {"fr": "{n} consoles", "en": "{n} consoles", "de": "{n} Konsolen", "es": "{n} consolas",
@@ -182,13 +195,130 @@ def player_info(players: dict, language: str):
     return None
 
 
+LAUNCH_FILE = "/tmp/rfid-screen-launch.json"
+ANSWER_FILE = "/tmp/rfid-screen-answer.json"
+
+
+class Watcher:
+    """A JSON file written by the service, read when it changes (one stat per call)."""
+
+    def __init__(self, path: str, wall=None, max_age: float = 8.0):
+        self.path = path
+        self.wall = wall or time.time
+        self.max_age = max_age
+        self.stamp = None
+
+    def poll(self):
+        try:
+            stamp = os.stat(self.path).st_mtime_ns
+        except OSError:
+            return None
+        if stamp == self.stamp:
+            return None
+        self.stamp = stamp
+        try:
+            with open(self.path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict) or abs(self.wall() - float(data.get("at") or 0)) > self.max_age:
+            return None
+        return data
+
+
+def answer_go(path: str = ANSWER_FILE) -> None:
+    """A controller button: the game shown may start."""
+    temporary = path + ".tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"answer": "go", "at": time.time()}, handle)
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
+_IMAGES = {}
+
+
+def find_image(system: str, name: str, roms_dirs=ROMS_DIRS) -> str:
+    """Scraped picture of a game known by its name (gamelist.xml), or ""."""
+    if system not in _IMAGES:
+        found = {}
+        try:
+            from xml.etree import ElementTree
+        except ImportError:  # pragma: no cover
+            ElementTree = None
+        for base in roms_dirs if ElementTree is not None else ():
+            folder = os.path.join(base, system)
+            try:
+                root = ElementTree.parse(os.path.join(folder, "gamelist.xml")).getroot()
+            except Exception:  # noqa: BLE001 - no list here
+                continue
+            for node in root.iter("game"):
+                picture = (node.findtext("thumbnail") or node.findtext("image") or "").strip()
+                if not picture:
+                    continue
+                full = os.path.normpath(os.path.join(folder, picture))
+                path = (node.findtext("path") or "").strip()
+                for key in ((node.findtext("name") or "").strip(), os.path.splitext(os.path.basename(path))[0]):
+                    if key and key not in found:
+                        found[key] = full
+        _IMAGES[system] = found
+    path = _IMAGES[system].get(name, "")
+    return path if path and os.path.isfile(path) else ""
+
+
+def player_games(home: str, uid: str, limit: int = 6, days: int = 30) -> list:
+    """The games of a player, last played first: [{"system", "name", "seconds", "image"}]."""
+    from .players import read_file
+
+    _usage, games = read_file(os.path.join(home, "players.json"))
+    first = time.strftime("%Y-%m-%d", time.localtime(time.time() - days * 86400))
+    table = {}
+    for day, played in (games.get(uid) or {}).items():
+        if day < first:
+            continue
+        for key, seconds in played.items():
+            entry = table.setdefault(key, {"seconds": 0.0, "last": ""})
+            entry["seconds"] += seconds
+            entry["last"] = max(entry["last"], day)
+    ordered = sorted(table.items(), key=lambda item: (item[1]["last"], item[1]["seconds"]), reverse=True)
+    result = []
+    for key, entry in ordered[:limit]:
+        system, name = key.split("|", 1)
+        result.append({"system": system, "name": name, "seconds": entry["seconds"], "image": find_image(system, name)})
+    return result
+
+
+#: A game shown for the controller stays readable this long after it was written.
+CONFIRM_MAX_AGE_S = 30.0
+
+
+def open_pads(pygame) -> list:
+    """The controllers, to read their buttons (game started with the controller)."""
+    try:
+        pygame.joystick.init()
+        return [pygame.joystick.Joystick(number) for number in range(pygame.joystick.get_count())]
+    except Exception:  # noqa: BLE001 - no controller support: the card only
+        return []
+
+
+def wants(home: str, key: str, default: bool = False) -> bool:
+    try:
+        from .config import Config
+
+        return Config(os.path.join(home, "config.ini")).get_bool("display", key, default)
+    except Exception:  # noqa: BLE001
+        return default
+
+
 class Messages:
     """Watches the message file of the service (cheap: one stat per call)."""
 
     def __init__(self, path: str = MESSAGE_FILE, wall=None):
         self.path = path
         self.wall = wall or time.time
-        self.stamp = self._stamp()  # the message present at start is old
+        self.stamp = None  # a recent message (age check) is shown even at start
 
     def _stamp(self):
         try:
@@ -284,6 +414,7 @@ class Painter:
         self.gap = 0
         self.home = None          # where the player avatars are (avatars/<UID>.jpg)
         self._avatars = {}
+        self.cache_covers = {}
 
     # ---- resources
     def font(self, name: str, size: float):
@@ -618,6 +749,120 @@ class Painter:
             self._avatars[key] = picture
         return self._avatars[key]
 
+    def cover(self, path: str, max_w: int, max_h: int):
+        """A game picture fitted in a box (None when missing)."""
+        key = ("cover", path, max_w, max_h)
+        if key not in self.cache_covers:
+            image = None
+            try:
+                image = self._fast(self.pg.image.load(path)) if path else None
+                if image is not None:
+                    scale = min(max_w / image.get_width(), max_h / image.get_height())
+                    image = self.pg.transform.smoothscale(image, (max(1, int(image.get_width() * scale)),
+                                                                  max(1, int(image.get_height() * scale))))
+            except Exception:  # noqa: BLE001 - unreadable: a plain box
+                image = None
+            if len(self.cache_covers) > 24:
+                self.cache_covers.clear()
+            self.cache_covers[key] = image
+        return self.cache_covers[key]
+
+    def backdrop(self, accent):
+        pg, w, h = self.pg, self.w, self.h
+        frame = pg.Surface((w, h))
+        frame.fill(BACKGROUND)
+        halo = self.glow(accent, int(min(w, h) * 0.7))
+        frame.blit(halo, (w // 2 - halo.get_width() // 2, int(h * 0.42) - halo.get_height() // 2))
+        return frame
+
+    def console_accent(self, system: str):
+        for number, console in enumerate(self.consoles):
+            if console["id"] == system:
+                return self.hero(number)["accent"]
+        return DEFAULT_ACCENT
+
+    def launch_page(self, info: dict, waiting: bool):
+        """The game placed on the reader, before it starts."""
+        pg, u, w, h = self.pg, self.u, self.w, self.h
+        accent = self.console_accent(info.get("system", ""))
+        frame = self.backdrop(accent)
+        box_w, box_h = (int(w * 0.7), int(h * 0.42)) if self.portrait else (int(w * 0.36), int(h * 0.62))
+        image = self.cover(info.get("image") or "", box_w, box_h)
+        title = self.font("Exo2-Bold.ttf", u * 6.5).render(info.get("name") or "", True, TEXT)
+        if title.get_width() > w * 0.9:
+            title = pg.transform.smoothscale(title, (int(w * 0.9), int(title.get_height() * w * 0.9 / title.get_width())))
+        console = self.font("OpenSans-CondLight.ttf", u * 3.8).render(
+            next((c["name"] for c in self.consoles if c["id"] == info.get("system")), info.get("system", "")), True, MUTED)
+        first = self.font("Raleway-SemiBold.ttf", u * 4).render(text("press" if waiting else "launching", self.language), True, accent if waiting else TEXT)
+        second = self.font("Raleway-SemiBold.ttf", u * 2.8).render(text("cancel_hint", self.language), True, MUTED) if waiting else None
+        heights = [image.get_height() + int(u * 4) if image is not None else 0, title.get_height(), console.get_height() + int(u * 3),
+                   first.get_height(), (second.get_height() + int(u * 1)) if second is not None else 0]
+        y = (h - sum(heights)) // 2
+        if image is not None:
+            shadow = pg.Surface((image.get_width() + int(u * 2), image.get_height() + int(u * 2)), pg.SRCALPHA)
+            pg.draw.rect(shadow, (0, 0, 0, 120), shadow.get_rect(), border_radius=int(u * 1.5))
+            frame.blit(shadow, ((w - shadow.get_width()) // 2 + int(u * 0.6), y + int(u * 0.6)))
+            frame.blit(image, ((w - image.get_width()) // 2, y))
+            y += image.get_height() + int(u * 4)
+        for line, gap in ((title, 0), (console, int(u * 3)), (first, int(u * 1)), (second, 0)):
+            if line is None:
+                continue
+            frame.blit(line, ((w - line.get_width()) // 2, y))
+            y += line.get_height() + gap
+        try:
+            frame = frame.convert()
+        except Exception:  # noqa: BLE001
+            pass
+        return frame
+
+    def player_page(self, name: str, games: list, accent):
+        """The active player's last games, in place of the consoles."""
+        pg, u, w, h = self.pg, self.u, self.w, self.h
+        frame = self.backdrop(accent)
+        top = int(u * (30 if self.portrait else 19))
+        title = self.font("Exo2-Bold.ttf", u * 6).render(text("player_games", self.language, name=name), True, TEXT)
+        frame.blit(title, ((w - title.get_width()) // 2, top))
+        pg.draw.rect(frame, accent, ((w - int(u * 9)) // 2, top + title.get_height() + int(u * 0.6), int(u * 9), int(u * 0.7)),
+                     border_radius=int(u * 0.35))
+        area_top = top + title.get_height() + int(u * 5)
+        area_bottom = self.band_y - int(u * 3) if self.strip is not None else int(h * 0.82)
+        if not games:
+            line = self.font("Raleway-SemiBold.ttf", u * 3.6).render(text("no_games", self.language), True, MUTED)
+            frame.blit(line, ((w - line.get_width()) // 2, (area_top + area_bottom - line.get_height()) // 2))
+            return frame
+        columns = min(len(games), 3 if self.portrait else 5)
+        rows = (len(games) + columns - 1) // columns
+        gap = int(u * 3)
+        cell_w = (int(w * 0.92) - gap * (columns - 1)) // columns
+        label_h = int(u * 7.5)
+        cell_h = max(int(u * 10), (area_bottom - area_top - gap * (rows - 1)) // rows)
+        picture_h = cell_h - label_h
+        left0 = (w - (cell_w * columns + gap * (columns - 1))) // 2
+        name_font = self.font("Exo2-SemiBoldCondensed.otf", u * 3.1)
+        time_font = self.font("OpenSans-CondLight.ttf", u * 2.6)
+        for number, game in enumerate(games[:columns * rows]):
+            row, column = divmod(number, columns)
+            x = left0 + column * (cell_w + gap)
+            y = area_top + row * (cell_h + gap)
+            image = self.cover(game.get("image") or "", cell_w, picture_h)
+            if image is not None:
+                frame.blit(image, (x + (cell_w - image.get_width()) // 2, y + picture_h - image.get_height()))
+            else:
+                box = pg.Surface((cell_w, picture_h), pg.SRCALPHA)
+                pg.draw.rect(box, (255, 255, 255, 18), box.get_rect(), border_radius=int(u * 1.5))
+                frame.blit(box, (x, y))
+            label = name_font.render(game["name"], True, TEXT)
+            if label.get_width() > cell_w:
+                label = label.subsurface((0, 0, cell_w, label.get_height()))
+            frame.blit(label, (x + (cell_w - label.get_width()) // 2, y + picture_h + int(u * 1)))
+            played = time_font.render(duration(game.get("seconds")), True, MUTED)
+            frame.blit(played, (x + (cell_w - played.get_width()) // 2, y + picture_h + int(u * 1) + label.get_height()))
+        try:
+            frame = frame.convert()
+        except Exception:  # noqa: BLE001
+            pass
+        return frame
+
     def toast_image(self, message: str, accent):
         """A message of the service, in a dark pill with an accent mark."""
         pg, u = self.pg, self.u
@@ -673,13 +918,30 @@ def ease(value: float) -> float:
 
 
 # ------------------------------------------------------------------ screen
-def screen_size(conf: dict):
-    """The resolution chosen for Recalbox's interface (``es.videomode``), or
-    (0, 0): the screen's own resolution (``global.videomode`` is the games')."""
-    match = re.match(r"^(\d{3,4})x(\d{3,4})$", conf.get("es.videomode", ""))
-    if match:
-        return int(match.group(1)), int(match.group(2))
+def screen_size(conf: dict, native: bool = False):
+    """The resolution of the reader screen, or (0, 0): the screen's own.
+
+    By default the one of Recalbox's interface (``es.videomode``, else
+    ``global.videomode`` as Recalbox does): the TV keeps the same mode between
+    the reader screen, the interface and the games (no black flash, no TV
+    losing the picture). ``native``: the screen's own resolution (sharper,
+    the TV changes mode at each game)."""
+    keys = ("es.videomode",) if native else ("es.videomode", "global.videomode")
+    for key in keys:
+        match = re.match(r"^(\d{3,4})x(\d{3,4})$", conf.get(key, ""))
+        if match:
+            return int(match.group(1)), int(match.group(2))
     return 0, 0
+
+
+def wants_native(home: str) -> bool:
+    """Option ``[display] resolution = native``."""
+    try:
+        from .config import Config
+
+        return Config(os.path.join(home, "config.ini")).get("display", "resolution", "recalbox").strip().lower() == "native"
+    except Exception:  # noqa: BLE001 - unreadable settings: the default
+        return False
 
 
 BOOT_CONF = "/boot/recalbox-boot.conf"
@@ -747,6 +1009,8 @@ class GpuScreen:
         self.top_texture = None
         self.hint_texture = None
         self.toast = None  # (texture, started)
+        self.page = None   # (key, texture): the player's games, in place of the consoles
+        self.launch = None  # (texture, started): the game placed, before it starts
 
     def texture(self, surface):
         return self.Texture.from_surface(self.renderer, surface)
@@ -788,7 +1052,10 @@ class GpuScreen:
             renderer.target = self.canvas
         renderer.draw_color = BACKGROUND + (255,)
         renderer.clear()
-        if changing:
+        if self.page is not None:
+            self.page[1].draw(dstrect=full)
+            changing = False
+        elif changing:
             first = progress < 0.5
             self.hero(previous if first else index).draw(dstrect=full)
             depth = ease(progress * 2) if first else 1 - ease((progress - 0.5) * 2)
@@ -852,6 +1119,10 @@ class GpuScreen:
             else:
                 texture.alpha = int(255 * alpha)
                 texture.draw(dstrect=(position[0], position[1], texture.width, texture.height))
+        if self.launch is not None:
+            texture, started = self.launch
+            texture.alpha = int(255 * ease(min(1.0, (time.monotonic() - started) / 0.35)))
+            texture.draw(dstrect=full)
         if self.canvas is not None:
             renderer.target = None
             renderer.draw_color = BACKGROUND + (255,)
@@ -859,6 +1130,23 @@ class GpuScreen:
             sw, sh = self.screen
             self.canvas.draw(dstrect=((sw - w) // 2, (sh - h) // 2, w, h), angle=self.angle)
         renderer.present()
+
+    def set_page(self, key, builder) -> None:
+        """The player's page (``key`` None: the consoles again)."""
+        if key is None:
+            self.page = None
+        elif self.page is None or self.page[0] != key:
+            texture = self.texture(builder())
+            self.page = (key, texture)
+
+    def show_launch(self, info, waiting: bool) -> None:
+        if info is None:
+            self.launch = None
+            return
+        texture = self.texture(self.painter.launch_page(info, waiting))
+        texture.blend_mode = 1
+        started = self.launch[1] if self.launch is not None else time.monotonic()
+        self.launch = (texture, started)
 
     def show_toast(self, message: str, index: int) -> None:
         painter = self.painter
@@ -905,7 +1193,7 @@ class Screen:
             except Exception as exc:  # noqa: BLE001 - drawn by the processor instead
                 print("graphics chip not available (%s): software drawing" % exc, flush=True)
         try:
-            display = pygame.display.set_mode(screen_size(conf), pygame.FULLSCREEN)
+            display = pygame.display.set_mode(screen_size(conf, wants_native(self.home)), pygame.FULLSCREEN)
         except pygame.error:
             display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         pygame.mouse.set_visible(False)
@@ -946,16 +1234,33 @@ class Screen:
         frames, slowest, counted = 0, 0.0, time.monotonic()
         players, players_at = {}, 0.0
         messages, messages_at, toast = Messages(), 0.0, None
+        launches, launch_page, waiting = Watcher(LAUNCH_FILE, max_age=CONFIRM_MAX_AGE_S), None, False
+        pads = open_pads(pygame)
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
         painter.compose(surface, index, None, 1.0, players, time.time())
         flip()
         while self.running:
             started = time.monotonic()
-            for _event in pygame.event.get():
-                pass
+            for event in pygame.event.get():
+                if event.type == pygame.JOYBUTTONDOWN and waiting:
+                    answer_go()
+                    waiting = False
             now = time.monotonic()
             if now - players_at >= 1.0:
                 players, players_at = read_players(self.home), now
+            launch = launches.poll()
+            if launch is not None:
+                waiting = bool(launch.get("confirm")) and not launch.get("cancel")
+                launch_page = None if launch.get("cancel") else painter.launch_page(launch, waiting)
+                if launch_page is None:
+                    painter.scene(surface, index, None, 1.0)
+                    painter.top(surface, index, players, time.time())
+                    flip()
+            if launch_page is not None:
+                surface.blit(launch_page, (0, 0))
+                flip()
+                time.sleep(0.05)
+                continue
             if now - messages_at >= 0.25:
                 messages_at = now
                 message = messages.poll()
@@ -1018,7 +1323,7 @@ def _consoles():
 def _run_gpu(self, pygame, conf) -> int:
     from pygame._sdl2.video import Renderer, Window
 
-    size = screen_size(conf)
+    size = screen_size(conf, wants_native(self.home))
     if not size[0]:
         size = native_size(pygame)
     window = Window("Recalbox RFID", size=size, fullscreen=True)
@@ -1047,14 +1352,38 @@ def _run_gpu(self, pygame, conf) -> int:
     frames, slowest, counted = 0, 0.0, time.monotonic()
     players, players_at = {}, 0.0
     messages, messages_at = Messages(), 0.0
+    launches = Watcher(LAUNCH_FILE, max_age=CONFIRM_MAX_AGE_S)
+    shown = {"launch": None, "waiting": False}
+    show_player = wants(self.home, "player_games")
+    pads = open_pads(pygame)
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
-        for _event in pygame.event.get():
-            pass
+        for event in pygame.event.get():
+            if event.type == getattr(pygame, "JOYDEVICEADDED", -1):
+                pads = open_pads(pygame)
+            elif event.type == pygame.JOYBUTTONDOWN and shown["waiting"]:
+                answer_go()
+                shown["waiting"] = False
+                gpu.show_launch(shown["launch"], False)
         now = time.monotonic()
         if now - players_at >= 1.0:
             players, players_at = read_players(self.home), now
+            info = player_info(players, self.language) if show_player else None
+            if info and info.get("uid"):
+                games = player_games(self.home, info["uid"])
+                key = (info["uid"], json.dumps(games, sort_keys=True))
+                gpu.set_page(key, lambda: painter.player_page(info["name"], games, painter.hero(index)["accent"]))
+            else:
+                gpu.set_page(None, None)
+        launch = launches.poll()
+        if launch is not None:
+            if launch.get("cancel"):
+                shown.update(launch=None, waiting=False)
+                gpu.show_launch(None, False)
+            else:
+                shown.update(launch=launch, waiting=bool(launch.get("confirm")))
+                gpu.show_launch(launch, shown["waiting"])
         if now - messages_at >= 0.25:
             messages_at = now
             message = messages.poll()
@@ -1062,7 +1391,7 @@ def _run_gpu(self, pygame, conf) -> int:
                 gpu.show_toast(message, index)
                 players_at = 0.0  # the message often comes with a new player state
         following = (index + 1) % len(consoles)
-        if now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
+        if gpu.page is None and now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
             previous, index, changed = index, following, now
             painter.shown = index
             gpu.hero(index)  # sent to the chip before the change starts
@@ -1083,7 +1412,7 @@ def _run_gpu(self, pygame, conf) -> int:
                 frames, slowest, counted = 0, 0.0, time.monotonic()
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
-    gpu.toast = None
+    gpu.toast = gpu.page = gpu.launch = None
     gpu.canvas = None
     # Textures first, then the renderer and the window: freed in another
     # order, SDL crashes while quitting.

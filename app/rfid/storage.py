@@ -56,7 +56,8 @@ KIND_ACTION = "action"
 #:   save     = saves the game now (resumed at the next start)
 #:   sound    = mutes the Recalbox, or brings the sound back
 #:   time     = shows the time left to the active player
-ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock", "pause", "save", "sound", "time")
+#:   reward   = more play time for a player, today or this week
+ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock", "pause", "save", "sound", "time", "reward")
 
 #: Games of a "collection" card (a random game among a chosen list).
 MAX_COLLECTION = 200
@@ -78,6 +79,36 @@ def clean_limit(value):
     return minutes
 
 
+def _clock_time(value) -> str:
+    """"HH:MM" (24 h), or "" when empty."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        hours, minutes = (int(part) for part in text.split(":", 1))
+    except (TypeError, ValueError):
+        raise StorageError("heure invalide : %r (HH:MM attendu)" % (value,))
+    if not (0 <= hours <= 24 and 0 <= minutes <= 59) or (hours == 24 and minutes):
+        raise StorageError("heure invalide : %r" % (value,))
+    return "%02d:%02d" % (hours, minutes)
+
+
+def _games_list(items, limit: int = 200) -> list:
+    """[{"system", "path", "name"}] of a list sent by the page (bad items skipped)."""
+    games = []
+    for item in list(items or [])[:limit]:
+        if not isinstance(item, dict):
+            continue
+        game_system = str(item.get("system") or "").strip()
+        game_path = str(item.get("path") or "").strip()
+        if not game_system or "/" in game_system or not (game_path.startswith("/") or os.path.isabs(game_path)):
+            continue
+        name = str(item.get("name") or "").strip()[:120]
+        games.append({"system": game_system, "path": game_path,
+                      "name": name or os.path.splitext(os.path.basename(game_path))[0]})
+    return games
+
+
 def clean_params(action: str, params) -> dict:
     """Checks the parameters of a special card and returns a clean copy."""
     params = dict(params or {})
@@ -86,17 +117,7 @@ def clean_params(action: str, params) -> dict:
         if "/" in system:
             raise StorageError("console invalide")
         result = {"system": system, "favorites": bool(params.get("favorites"))}
-        games = []
-        for item in list(params.get("games") or [])[:MAX_COLLECTION]:
-            if not isinstance(item, dict):
-                continue
-            game_system = str(item.get("system") or "").strip()
-            game_path = str(item.get("path") or "").strip()
-            if not game_system or "/" in game_system or not (game_path.startswith("/") or os.path.isabs(game_path)):
-                continue
-            name = str(item.get("name") or "").strip()[:120]
-            games.append({"system": game_system, "path": game_path,
-                          "name": name or os.path.splitext(os.path.basename(game_path))[0]})
+        games = _games_list(params.get("games"), MAX_COLLECTION)
         if games:
             result["games"] = games
         return result
@@ -126,7 +147,44 @@ def clean_params(action: str, params) -> dict:
         period = str(params.get("period") or "day")
         if period not in PLAYER_PERIODS:
             raise StorageError("periode du joueur : jour ou semaine")
-        return {"quota_min": quota, "period": period}
+        result = {"quota_min": quota, "period": period}
+        # Time slots: the days (0 = Monday) and the hours the player may play.
+        days = sorted({int(day) for day in (params.get("days") or []) if str(day).isdigit() and 0 <= int(day) <= 6})
+        if days and len(days) < 7:
+            result["days"] = days
+        start, end = _clock_time(params.get("from")), _clock_time(params.get("to"))
+        if start or end:
+            start, end = start or "00:00", end or "24:00"
+            if start >= end:
+                raise StorageError("plage horaire : l'heure de fin doit suivre l'heure de debut")
+            result["from"], result["to"] = start, end
+        # Allowed games: some consoles and/or some games (nothing = every game).
+        systems = sorted({str(name).strip() for name in (params.get("systems") or [])
+                          if str(name).strip() and "/" not in str(name)})
+        games = _games_list(params.get("games"))
+        if systems:
+            result["systems"] = systems
+        if games:
+            result["games"] = games
+        return result
+    if action == "reward":
+        try:
+            minutes = int(float(params.get("minutes") or 15))
+            uses_raw = params.get("uses")
+            uses = int(float(uses_raw if uses_raw not in (None, "") else 1))
+            period_h = int(float(params.get("period_h") or 24))
+        except (TypeError, ValueError):
+            raise StorageError("parametres de la carte recompense invalides")
+        if not 1 <= minutes <= 600:
+            raise StorageError("recompense : 1 a 600 minutes")
+        if not 0 <= uses <= 50:
+            raise StorageError("nombre d'utilisations : 0 a 50 (0 = illimite)")
+        if not 1 <= period_h <= 24 * 31:
+            raise StorageError("periode : 1 heure a 31 jours")
+        player = str(params.get("player") or "").strip().upper()
+        if player and any(char not in "0123456789ABCDEF" for char in player):
+            raise StorageError("joueur invalide")
+        return {"player": player, "minutes": minutes, "uses": uses, "period_h": period_h}
     return {}
 
 

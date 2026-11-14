@@ -4,6 +4,40 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.18.0]
+
+### Added
+
+* **Time slots per player**: days and hours a player card may play (for
+  example not after 20:00, or the weekend only). Outside them, the card and
+  its games are refused with a message; a game ends at the end of the slot
+  (warned 5 and 1 minutes before, like the time limit).
+* **Allowed games per player**: consoles and/or games a player card may
+  start; any other game card is refused with a message (also the games
+  started from the Recalbox menu, with the blocking option).
+* **Reward card**: more play time for a player (the card's player, or the
+  active one), for the current day or week, a number of times per period;
+  the running game of that player lasts longer too. Kept in `players.json`
+  (`extra`).
+* **Short time toasts**: "only 4 min of play left" when a player card is
+  placed, or after a game for a kept player, with 5 minutes or less left.
+* **Week summary** in the statistics: each player's last 7 days against the
+  7 days before, and their favourite game.
+* **Reader screen**:
+  - **resolution option**: like Recalbox (default: the interface and games'
+    resolution, the TV never changes mode) or the screen's own;
+  - **the game is shown before it starts** (box art, name; on by default);
+  - **start the game with the controller** (option): the game shown starts
+    when a controller button is pressed; removing the card or two minutes
+    without an answer cancel it; the play time counts from the start only;
+  - **the active player's games** (option): their last games with box art,
+    in place of the consoles.
+
+### Changed
+
+* A message written just before the reader screen starts (game refused...)
+  is shown too.
+
 ## [2.17.0]
 
 ### Added

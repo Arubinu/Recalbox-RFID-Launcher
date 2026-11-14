@@ -237,6 +237,16 @@ Options:
 * **Block games without a player card**: a game started without one, even from
   the menu, is quit about two seconds after it starts, with a message on the
   screen (Recalbox itself cannot refuse to start a game).
+* **Time slots** (on the player card): the days and hours the player may
+  play. Outside them the card and its games are refused, with a message;
+  a game ends at the end of the slot, warned 5 and 1 minutes before.
+* **Allowed games** (on the player card): consoles and/or games. Any other
+  game card is refused, with a message.
+* **Reward card** (Special cards › Reward): more minutes for a player (a
+  chosen one, or the active one) for today or this week, a number of times
+  per period. Their running game lasts longer too.
+* With 5 minutes or less left, a message says so when the player card is
+  placed (and after a game, for a player kept active).
 * **Time reset**: the hour at which the day's counters restart (midnight by
   default; a game played before it counts for the day before), and the day
   the weekly counters restart (Monday by default).
@@ -285,6 +295,19 @@ is set), and laid out vertically when the screen is turned in Recalbox
 * the active player, with their avatar (or initial), their name and their
   time: the time left with a bar when the card has a limit, otherwise the
   time played today (or this week).
+
+Options of the reader screen (Settings › TV display):
+
+* **Resolution**: like Recalbox (default; the interface and the games use the
+  same one, so the TV never changes mode) or the screen's own (sharper, but
+  some TVs lose the picture for a few seconds at each game).
+* **Show the game before starting it** (on by default): its box art and name
+  for two seconds.
+* **Start the game with the controller**: the game shown starts only when a
+  controller button is pressed; removing the card (or two minutes) cancels.
+  The play time counts from the start only.
+* **Show the active player's games**: their last games, with box art, in
+  place of the consoles.
 
 The messages that appear at the bottom of a game (player card needed, no
 time left, bonus...) appear at the top of the reader screen too, when no
@@ -474,6 +497,9 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[players] switch_on_card` | `0` | a player card placed during a game takes it over |
 | `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
 | `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface (drawn at the screen's resolution, vertical when Recalbox's screen is rotated) |
+| `[display] resolution` | `recalbox` | `native` = the screen's own resolution |
+| `[display] show_game` / `confirm_with_pad` | `1` / `0` | game shown before it starts / started with a controller button |
+| `[display] player_games` | `0` | the active player's games in place of the consoles |
 | `[display] no_quit_hotkey` | `0` | reader screen: the hotkey no longer quits the games (needs `stop_on_remove`) |
 | `[screen] retroarch_port` | `55355` | RetroArch network command port |
 | `[led] type` | `none` | `none`, `rgb` or `ws2812` |

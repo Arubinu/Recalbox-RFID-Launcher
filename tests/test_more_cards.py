@@ -154,6 +154,81 @@ class CardsTest(unittest.TestCase):
         self.assertTrue(self.launcher.calls[-1][1].endswith("Zelda.sfc"))
 
 
+class PlayerRulesTest(CardsTest):
+    """Time slots, allowed games and reward cards of the player cards."""
+
+    def player(self, uid, **params):
+        base = {"quota_min": 30, "period": "day"}
+        base.update(params)
+        self.store.put_entry(uid, {"kind": "action", "action": "player", "name": "Zoe", "params": base})
+
+    def test_hors_plage_horaire(self):
+        hour = time.localtime().tm_hour
+        start, end = ("%02d:00" % ((hour + 2) % 24), "%02d:00" % ((hour + 3) % 24))
+        if start >= end:
+            start, end = "%02d:00" % ((hour + 1) % 24), "%02d:59" % ((hour + 1) % 24)
+        self.player("2E000001", **{"from": start, "to": end})
+        self.assertEqual(self.controller.on_badge("2E000001"), "player_schedule")
+        self.assertEqual(self.screen.said[-1][0], "player_schedule")
+
+    def test_jour_interdit(self):
+        today = time.localtime().tm_wday
+        self.player("2E000002", days=[(today + 1) % 7])
+        self.assertEqual(self.controller.on_badge("2E000002"), "player_schedule")
+
+    def test_plage_limite_la_partie(self):
+        self.player("2E000003", **{"from": "00:00", "to": "24:00"})
+        self.assertEqual(self.controller.on_badge("2E000003"), "player")
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
+
+    def test_jeux_autorises(self):
+        self.player("2E000004", systems=["nes"])
+        self.controller.on_badge("2E000004")
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "player_not_allowed", "Mario est sur snes")
+        self.assertIsNotNone(self.players.pending, "la carte joueur attend encore un jeu autorise")
+        self.player("2E000005", systems=["snes"])
+        self.controller.on_badge("2E000005")
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
+
+    def test_recompense(self):
+        self.store.put_entry("4E000001", {"kind": "action", "action": "reward",
+                                          "params": {"player": "1EA00001", "minutes": 20, "uses": 1}})
+        before = self.controller.player_left("1EA00001", self.store.get("1EA00001"))
+        self.assertEqual(self.controller.on_badge("4E000001"), "reward")
+        after = self.controller.player_left("1EA00001", self.store.get("1EA00001"))
+        self.assertAlmostEqual(after - before, 20 * 60, delta=1)
+        self.assertEqual(self.screen.said[-1], ("reward", {"n": 20, "name": "Lea"}))
+        self.assertEqual(self.controller.on_badge("4E000001"), "exhausted", "une fois par periode")
+        reloaded = Players(self.directory, wall=self.wall, clock=self.clock)
+        self.assertAlmostEqual(reloaded.extra_s("1EA00001"), 20 * 60, delta=1, msg="gardee dans players.json")
+
+    def test_recompense_au_joueur_actif(self):
+        self.store.put_entry("4E000002", {"kind": "action", "action": "reward", "params": {"minutes": 10, "uses": 0}})
+        self.assertEqual(self.controller.on_badge("4E000002"), "player_needed")
+        self.play_as_lea()
+        left = self.playtime.remaining_s()
+        self.assertEqual(self.controller.on_badge("4E000002"), "reward")
+        self.assertAlmostEqual(self.playtime.remaining_s() - left, 600, delta=1, msg="la partie dure plus longtemps")
+
+    def test_toast_temps_bientot_fini(self):
+        self.controller.on_badge("1EA00001")
+        self.controller.on_badge("6A0E0001")
+        self.clock.advance(27 * 60)
+        self.controller.stop_game("quit")
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player")
+        self.assertEqual(self.screen.said[-1][0], "player_low")
+
+    def test_parametres_nettoyes(self):
+        params = clean_params("player", {"quota_min": 10, "days": [5, 6, "x", 9], "from": "9:00", "to": "20:30",
+                                         "systems": ["snes", "a/b"], "games": [{"system": "nes", "path": "/r/a.nes"}]})
+        self.assertEqual((params["days"], params["from"], params["to"], params["systems"]),
+                         ([5, 6], "09:00", "20:30", ["snes"]))
+        self.assertNotIn("days", clean_params("player", {"days": list(range(7))}), "tous les jours = pas de limite")
+        with self.assertRaises(StorageError):
+            clean_params("player", {"from": "20:00", "to": "08:00"})
+        self.assertEqual(clean_params("reward", {"player": "1ea00001", "minutes": "30"})["player"], "1EA00001")
+
+
 class CollectionParamsTest(unittest.TestCase):
     def test_liste_nettoyee(self):
         params = clean_params("random", {"games": [{"system": "snes", "path": "/roms/snes/a.sfc"},

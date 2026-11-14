@@ -44,6 +44,14 @@ HOTKEY_LINES = (
 #: The screen crashing this many times within CRASH_WINDOW_S: back to Recalbox.
 MAX_CRASHES = 3
 CRASH_WINDOW_S = 120.0
+#: The game shown by the reader screen before it starts, and the answer of
+#: the controller (in /tmp: RAM).
+LAUNCH_FILE = "/tmp/rfid-screen-launch.json"
+ANSWER_FILE = "/tmp/rfid-screen-answer.json"
+#: How long the game is shown before it starts (option "show the game").
+PREVIEW_S = 2.0
+#: A game waiting for the controller is given up after this.
+CONFIRM_TIMEOUT_S = 120.0
 #: Time between a crash of the screen and its restart.
 RESTART_DELAY_S = 2.0
 #: The system started less than this ago: Recalbox's interface may still be
@@ -118,6 +126,41 @@ def write_state(system: str, rom: str, name: str, playing: bool, path: str = ES_
         pass
 
 
+def game_image(system: str, rom: str) -> str:
+    """The scraped picture of a game (gamelist.xml), or ""."""
+    meta = es_command.game_meta(system, rom)
+    for key in ("thumbnail", "image"):
+        value = meta.get(key) or ""
+        if value:
+            path = os.path.normpath(os.path.join(os.path.dirname(rom), value))
+            if os.path.isfile(path):
+                return path
+    return ""
+
+
+def write_json(path: str, data: dict) -> None:
+    import json
+
+    temporary = path + ".tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False)
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
+def read_json(path: str):
+    import json
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
 def write_no_selection(path: str = ES_STATE_FILE) -> None:
     """``/tmp/es_state.inf`` with no game selected: on the reader screen, the
     game left selected in Recalbox's list must not be paired or started by
@@ -148,6 +191,17 @@ class ReaderMode:
                  age=None, pids=None, kill=None, target_path: str = None):
         self.home = home
         self.target_path = target_path
+        #: Options: show the game before it starts; wait for the controller.
+        self.preview = False
+        self.confirm = False
+        self.launch_path = LAUNCH_FILE
+        self.answer_path = ANSWER_FILE
+        #: Game shown on the screen, waiting for the controller.
+        self.pending = None
+        #: Called when a game waits (time paused), starts, or is given up.
+        self.on_wait = None
+        self.on_go = None
+        self.on_cancel = None
         self._age = age or (frontend_age if running is None else (lambda: None))
         self._pids = pids or (frontend_pids if running is None else (lambda: []))
         self._kill = kill or os.kill
@@ -329,19 +383,64 @@ class ReaderMode:
 
     # ---------------------------------------------------------------- games
     def launch(self, system: str, rom: str, name: str = "") -> bool:
-        """Starts a game in place of the screen. False when not in the mode."""
-        if self.state != "screen" or not self.wanted:
+        """Starts a game in place of the screen. False when not in the mode.
+
+        Options: the game is shown on the screen first, and with ``confirm``
+        it starts only when a controller button is pressed."""
+        if self.state != "screen" or not self.wanted or self.pending is not None:
             return False
         try:
             argv = es_command.build(system, rom)
         except es_command.CommandError as exc:
             self._info("Lancement impossible : %s" % exc)
             return False
+        name = name or os.path.splitext(os.path.basename(rom))[0]
+        if self.preview or self.confirm:
+            write_json(self.launch_path, {"system": system, "rom": rom, "name": name, "image": game_image(system, rom),
+                                          "confirm": bool(self.confirm), "at": time.time()})
+        if self.confirm:
+            self.pending = {"argv": argv, "system": system, "rom": rom, "name": name, "since": time.time(),
+                            "deadline": self._clock() + CONFIRM_TIMEOUT_S}
+            self._info("Mode lecteur : %s attend un bouton de la manette" % name)
+            if self.on_wait is not None:
+                self.on_wait()
+            return True
+        if self.preview:
+            self._sleep(PREVIEW_S)  # the game is shown, then started
+        return self._start(argv, system, rom, name)
+
+    def cancel_pending(self, reason: str = "") -> bool:
+        """The game waiting for the controller is given up (card removed...)."""
+        if self.pending is None:
+            return False
+        name = self.pending["name"]
+        self.pending = None
+        write_json(self.launch_path, {"cancel": True, "at": time.time()})
+        self._info("Mode lecteur : lancement de %s annule%s" % (name, (" (%s)" % reason) if reason else ""))
+        return True
+
+    def _confirm_step(self) -> None:
+        pending = self.pending
+        answer = read_json(self.answer_path)
+        if answer and answer.get("answer") == "go" and float(answer.get("at") or 0) >= pending["since"]:
+            self.pending = None
+            if self.on_go is not None:
+                self.on_go()
+            self._start(pending["argv"], pending["system"], pending["rom"], pending["name"])
+            return
+        if self._clock() >= pending["deadline"]:
+            self.cancel_pending("pas de reponse")
+            if self.on_cancel is not None:
+                self.on_cancel()
+
+    def _start(self, argv, system: str, rom: str, name: str) -> bool:
+        if self.preview or self.confirm:
+            write_json(self.launch_path, {"cancel": True, "at": time.time()})  # not shown again after the game
         self.state = "game"
         self.stop_screen()
         if self.no_quit_hotkey:
             set_hotkey_block(True, self.hotkey_path)
-        self.game_info = (system, rom, name or os.path.splitext(os.path.basename(rom))[0])
+        self.game_info = (system, rom, name)
         write_state(system, rom, self.game_info[2], True, self.state_path)
         try:
             self.game = self._popen(argv, env=es_command.launch_env(), stdout=subprocess.DEVNULL,
@@ -381,6 +480,8 @@ class ReaderMode:
 
     def step(self) -> None:
         """To call often: a game that ended, a screen that crashed."""
+        if self.pending is not None:
+            self._confirm_step()
         if self.state == "game" and self.game is not None and self.game.poll() is not None:
             self._info("Mode lecteur : fin du jeu, retour a l'ecran du lecteur")
             self._game_over()

@@ -459,7 +459,11 @@ class EsLauncher:
         return b"START|" + os.fsencode(system) + b"|" + os.fsencode(game)
 
     def game_running(self, rom_path: str = "") -> bool:
-        """True if an emulator is running (whatever the frontend state)."""
+        """True if an emulator is running (whatever the frontend state), or a
+        game waits for the controller on the reader screen."""
+        reader = self.reader
+        if reader is not None and getattr(reader, "pending", None) is not None:
+            return True
         return bool(emulator_pids(rom_path))
 
     def stop_game(self, rom_path: str = "", timeout_s: float = 8.0, proc_dir: str = PROC_DIR,
@@ -474,11 +478,16 @@ class EsLauncher:
            launcher, which then returns by itself;
         3. what still runs is killed (SIGKILL).
 
+        A game waiting for the controller (reader screen) is given up.
+
         Terminating the launcher at the same time as the emulator gave the
         screen and the sound back to the menu while the emulator still held
         them: on a Raspberry Pi 3, that froze the sound driver, then the
         whole console.
         """
+        reader = self.reader
+        if reader is not None and getattr(reader, "pending", None) is not None:
+            return reader.cancel_pending("carte retiree")
         if not emulator_pids(rom_path, proc_dir):
             return False
         asked = False
