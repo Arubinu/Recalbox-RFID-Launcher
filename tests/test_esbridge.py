@@ -222,10 +222,11 @@ class EmulatorProcessTest(unittest.TestCase):
 
 
 class StopGameTest(unittest.TestCase):
-    """Stopping the game: SIGTERM, then SIGKILL if the emulator resists."""
+    """Stopping the game: RetroArch quit, else SIGTERM to the emulator, then SIGKILL."""
 
     def setUp(self):
         self.launcher = EsLauncher("127.0.0.1", 1337)
+        self.launcher.quit_command = lambda: False
         self.signaux = []
         self.patch_kill = mock.patch.object(esbridge, "_kill", side_effect=self.noter)
         self.patch_kill.start()
@@ -233,12 +234,22 @@ class StopGameTest(unittest.TestCase):
         self.patch_sleep = mock.patch.object(esbridge.time, "sleep")
         self.patch_sleep.start()
         self.addCleanup(self.patch_sleep.stop)
+        self.proc = tempfile.mkdtemp(prefix="rfid-proc-")
+        self.addCleanup(shutil.rmtree, self.proc, True)
 
     def noter(self, pid, sig):
         self.signaux.append((pid, sig))
 
+    def ajouter(self, pid, ligne, parent=1):
+        dossier = os.path.join(self.proc, str(pid))
+        os.makedirs(dossier)
+        with open(os.path.join(dossier, "cmdline"), "wb") as handle:
+            handle.write(ligne.encode("utf-8").replace(b" ", b"\x00"))
+        with open(os.path.join(dossier, "stat"), "w", encoding="utf-8") as handle:
+            handle.write("%d (%s) S %d 0 0" % (pid, ligne.split()[0][-15:], parent))
+
     def test_arret_propre(self):
-        with mock.patch.object(esbridge, "emulator_pids", side_effect=[[11, 22], [], []]):
+        with mock.patch.object(esbridge, "emulator_pids", side_effect=[[11, 22], [11, 22], [], []]):
             self.assertTrue(self.launcher.stop_game())
         self.assertEqual(self.signaux, [(11, esbridge.SIG_TERM), (22, esbridge.SIG_TERM)])
 
@@ -251,6 +262,27 @@ class StopGameTest(unittest.TestCase):
         with mock.patch.object(esbridge, "emulator_pids", return_value=[33]):
             self.assertTrue(self.launcher.stop_game(timeout_s=0.0))
         self.assertEqual(self.signaux, [(33, esbridge.SIG_TERM), (33, esbridge.SIG_KILL)])
+
+    def test_retroarch_quitte_sans_signal(self):
+        self.launcher.quit_command = lambda: True
+        with mock.patch.object(esbridge, "emulator_pids", side_effect=[[11, 22], []]):
+            self.assertTrue(self.launcher.stop_game())
+        self.assertEqual(self.signaux, [], "RetroArch libere l'ecran et le son lui-meme")
+
+    def test_jamais_le_lanceur_pendant_son_emulateur(self):
+        self.ajouter(100, "/usr/bin/python /usr/bin/emulatorlauncher.pyc -rom jeu.gb")
+        self.ajouter(101, "/usr/bin/retroarch -L gambatte.so jeu.gb", parent=100)
+        with mock.patch.object(EsLauncher, "_wait_gone", return_value=True):
+            self.assertTrue(self.launcher.stop_game(proc_dir=self.proc))
+        self.assertEqual(self.signaux, [(101, esbridge.SIG_TERM)])
+
+    def test_emulateur_autonome_enfant_du_lanceur(self):
+        self.ajouter(200, "/usr/bin/python /usr/bin/emulatorlauncher.pyc -rom jeu.iso")
+        self.ajouter(201, "/usr/bin/autre-emu jeu.iso", parent=200)
+        self.ajouter(202, "/usr/bin/sans-rapport", parent=1)
+        with mock.patch.object(EsLauncher, "_wait_gone", return_value=True):
+            self.assertTrue(self.launcher.stop_game(proc_dir=self.proc))
+        self.assertEqual(self.signaux, [(201, esbridge.SIG_TERM)])
 
 
 class PayloadTest(unittest.TestCase):

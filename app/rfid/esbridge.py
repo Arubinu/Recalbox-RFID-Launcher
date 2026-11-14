@@ -328,6 +328,71 @@ def emulator_pids(rom_path: str = "", proc_dir: str = PROC_DIR):
     return pids
 
 
+#: Recalbox's launcher: it waits for the emulator, then gives the screen and
+#: the sound back to the menu. It is never signalled while its emulator runs.
+LAUNCHERS = ("emulatorlauncher",)
+
+#: RetroArch network commands (enabled by Recalbox).
+RETROARCH_PORT = 55355
+
+
+def _is_launcher(pid, proc_dir: str = PROC_DIR) -> bool:
+    return any(name.split(".")[0] in LAUNCHERS for name in _programmes(_cmdline(str(pid), proc_dir)))
+
+
+def _parent(pid, proc_dir: str = PROC_DIR) -> int:
+    try:
+        with open(os.path.join(proc_dir, str(pid), "stat"), "r", encoding="utf-8", errors="replace") as handle:
+            data = handle.read()
+        return int(data.rsplit(")", 1)[1].split()[1])
+    except (OSError, IndexError, ValueError):
+        return 0
+
+
+def _children(parents, proc_dir: str = PROC_DIR) -> list:
+    """Processes started by ``parents`` (the emulator of a launcher)."""
+    wanted = set(int(pid) for pid in parents)
+    found = []
+    try:
+        entries = os.listdir(proc_dir)
+    except OSError:
+        return found
+    for entry in entries:
+        if entry.isdigit() and int(entry) not in wanted and _parent(entry, proc_dir) in wanted:
+            found.append(int(entry))
+    return found
+
+
+def quit_retroarch(port: int = RETROARCH_PORT, host: str = "127.0.0.1", sleep=time.sleep) -> bool:
+    """Asks RetroArch to quit, like its hotkey. True if a RetroArch game answered.
+
+    Twice when needed: Recalbox may ask for a second press to quit.
+    """
+    def ask(command: bytes, wait: float):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.settimeout(wait)
+            sock.connect((host, int(port)))
+            sock.send(command)
+            return sock.recv(512).decode("utf-8", "replace") if wait > 0 else ""
+        except OSError:
+            return None
+        finally:
+            sock.close()
+
+    def running() -> bool:
+        reply = ask(b"GET_STATUS", 0.6) or ""
+        return " PLAYING " in reply or " PAUSED " in reply
+
+    if not running():
+        return False
+    ask(b"QUIT", 0)
+    sleep(1.0)
+    if running():
+        ask(b"QUIT", 0)
+    return True
+
+
 def _kill(pid: int, sig: int) -> None:
     """Signal sending point (replaced in the tests)."""
     os.kill(pid, sig)
@@ -340,6 +405,8 @@ class EsLauncher:
         self.host = host
         self.port = int(port)
         self.log = log
+        #: Clean exit of a RetroArch game (replaced in the tests).
+        self.quit_command = quit_retroarch
 
     @staticmethod
     def build_payload(system: str, game: str) -> bytes:
@@ -363,28 +430,51 @@ class EsLauncher:
         """True if an emulator is running (whatever the frontend state)."""
         return bool(emulator_pids(rom_path))
 
-    def stop_game(self, rom_path: str = "", timeout_s: float = 8.0, proc_dir: str = PROC_DIR) -> bool:
-        """Stops the running game (SIGTERM, then SIGKILL if needed).
+    def stop_game(self, rom_path: str = "", timeout_s: float = 8.0, proc_dir: str = PROC_DIR,
+                  graceful_s: float = 6.0) -> bool:
+        """Stops the running game, the way its own menu would.
 
-        The frontend offers no network command to quit a game: the emulator
-        process is terminated, and EmulationStation goes back to the menu as after
-        a normal exit.
+        The frontend offers no network command to quit a game. In order:
+
+        1. a RetroArch game is asked to quit (network command, like its
+           hotkey): it frees the screen and the sound itself;
+        2. otherwise the emulator is terminated (SIGTERM) -- never Recalbox's
+           launcher, which then returns by itself;
+        3. what still runs is killed (SIGKILL).
+
+        Terminating the launcher at the same time as the emulator gave the
+        screen and the sound back to the menu while the emulator still held
+        them: on a Raspberry Pi 3, that froze the sound driver, then the
+        whole console.
         """
-        cibles = emulator_pids(rom_path, proc_dir)
-        if not cibles:
+        if not emulator_pids(rom_path, proc_dir):
             return False
-        for pid in cibles:
+        asked = False
+        if self.quit_command is not None:
+            try:
+                asked = bool(self.quit_command())
+            except Exception:  # noqa: BLE001 - the signals below still work
+                asked = False
+        if asked and self._wait_gone(rom_path, proc_dir, graceful_s):
+            if self.log:
+                self.log.info("Jeu RetroArch quitte proprement")
+            return True
+        cibles = emulator_pids(rom_path, proc_dir)
+        launchers = [pid for pid in cibles if _is_launcher(pid, proc_dir)]
+        emulators = [pid for pid in cibles if pid not in launchers]
+        # A stand-alone emulator missing from the list: the launcher's child.
+        for pid in _children(launchers, proc_dir):
+            if pid not in emulators:
+                emulators.append(pid)
+        for pid in emulators or launchers:
             try:
                 _kill(pid, SIG_TERM)
             except OSError:
                 continue
-        echeance = time.monotonic() + timeout_s
-        while time.monotonic() < echeance:
-            if not emulator_pids(rom_path, proc_dir):
-                if self.log:
-                    self.log.info("Emulateur arrete (%d processus)" % len(cibles))
-                return True
-            time.sleep(0.2)
+        if self._wait_gone(rom_path, proc_dir, timeout_s):
+            if self.log:
+                self.log.info("Emulateur arrete (%d processus)" % len(emulators or launchers))
+            return True
         for pid in emulator_pids(rom_path, proc_dir):
             try:
                 _kill(pid, SIG_KILL)
@@ -393,6 +483,15 @@ class EsLauncher:
         if self.log:
             self.log.warning("Emulateur force a s'arreter (SIGKILL)")
         return True
+
+    @staticmethod
+    def _wait_gone(rom_path: str, proc_dir: str, timeout_s: float) -> bool:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            if not emulator_pids(rom_path, proc_dir):
+                return True
+            time.sleep(0.2)
+        return False
 
     def start_game(self, system: str, game: str) -> bool:
         """Sends the command; True if the datagram left."""

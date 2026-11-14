@@ -89,6 +89,8 @@ class GameSaverTest(unittest.TestCase):
                          {"core": "Gambatte", "name": "Tuff"})
         self.assertEqual(parse_status("GET_STATUS PLAYING Genesis Plus GX,Sonic, The Hedgehog (USA),crc32=1"),
                          {"core": "Genesis Plus GX", "name": "Sonic, The Hedgehog (USA)"})
+        self.assertEqual(parse_status("GET_STATUS PAUSED Gambatte,Tuff,crc32=e9140a3b"),
+                         {"core": "Gambatte", "name": "Tuff"}, "menu de RetroArch ouvert")
         self.assertIsNone(parse_status("GET_STATUS CONTENTLESS"))
         self.assertIsNone(parse_status(None))
 

@@ -43,9 +43,12 @@ _STATUS = re.compile(r"^GET_STATUS\s+(\w+)\s+([^,]*),(.*?)(?:,crc32=\w+)?\s*$")
 
 
 def parse_status(reply: str):
-    """{"core", "name"} of a GET_STATUS reply while a game runs, else None."""
+    """{"core", "name"} of a GET_STATUS reply while a game runs, else None.
+
+    A game is PLAYING, or PAUSED while RetroArch's own menu is open.
+    """
     match = _STATUS.match((reply or "").strip())
-    if not match or match.group(1) != "PLAYING":
+    if not match or match.group(1) not in ("PLAYING", "PAUSED"):
         return None
     name = match.group(3).strip()
     if not name:

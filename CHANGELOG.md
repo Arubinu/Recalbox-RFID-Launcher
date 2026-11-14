@@ -26,6 +26,16 @@ by `rfidctl version`.
 
 ### Fixed
 
+* **Quitting a game could freeze a Raspberry Pi 3** (black screen, no
+  network): the reader terminated Recalbox's launcher at the same time as the
+  emulator, so the menu took the screen and the sound back while the emulator
+  still held them, and the sound driver locked up. A RetroArch game is now
+  asked to quit through its network command (`QUIT`, like its hotkey; twice
+  when Recalbox asks for a second press); otherwise only the emulator is
+  terminated, never the launcher while its emulator runs; SIGKILL stays the
+  last resort.
+* Save before quitting: a game whose RetroArch menu was open (`PAUSED`) was
+  not saved.
 * Cards: the console logo and drawing stayed missing for a console whose
   first lookup failed (page not connected yet): a failed lookup is no longer
   kept.
