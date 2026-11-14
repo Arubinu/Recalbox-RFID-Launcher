@@ -118,13 +118,36 @@ def write_state(system: str, rom: str, name: str, playing: bool, path: str = ES_
         pass
 
 
+def write_no_selection(path: str = ES_STATE_FILE) -> None:
+    """``/tmp/es_state.inf`` with no game selected: on the reader screen, the
+    game left selected in Recalbox's list must not be paired or started by
+    the button."""
+    lines = ["Version=2.0", "Action=endgame", "ActionData=", "System=", "SystemId=", "Game=",
+             "GamePath=", "IsFolder=0", "State=selected"]
+    temporary = path + ".rfid-tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines))
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
+def clear_selection(path: str = ES_STATE_FILE, target_path: str = None) -> None:
+    from .esbridge import forget_target
+
+    write_no_selection(path)
+    forget_target(target_path)
+
+
 class ReaderMode:
     """Switches between Recalbox's interface and the reader screen, starts the games."""
 
     def __init__(self, home: str, log, run=None, running=None, popen=None, clock=None, sleep=None,
                  python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE, uptime=None,
-                 age=None, pids=None, kill=None):
+                 age=None, pids=None, kill=None, target_path: str = None):
         self.home = home
+        self.target_path = target_path
         self._age = age or (frontend_age if running is None else (lambda: None))
         self._pids = pids or (frontend_pids if running is None else (lambda: []))
         self._kill = kill or os.kill
@@ -260,6 +283,7 @@ class ReaderMode:
             self.state = "recalbox"
             self.start_frontend()
             return
+        clear_selection(self.state_path, self.target_path)
         self.start_screen()
         self.state = "screen"
         self._info("Mode lecteur : l'ecran du lecteur remplace l'interface de Recalbox")
@@ -346,7 +370,10 @@ class ReaderMode:
         self.game = None
         set_hotkey_block(False, self.hotkey_path)
         if self.game_info is not None:
+            # The end of the game is written as Recalbox does, then nothing is
+            # selected any more (no list on the reader screen).
             write_state(self.game_info[0], self.game_info[1], self.game_info[2], False, self.state_path)
+            clear_selection(self.state_path, self.target_path)
         self.game_info = None
         if self.wanted:
             self.start_screen()

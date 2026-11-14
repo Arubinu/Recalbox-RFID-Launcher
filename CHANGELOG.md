@@ -34,6 +34,10 @@ by `rfidctl version`.
 
 ### Fixed
 
+* **Reader screen, no game selected**: the game left selected in the
+  Recalbox list (or the last one played) stayed in `/tmp/es_state.inf` and in
+  the remembered target, so the button could pair it. On entering the reader
+  screen and after each game, nothing is selected any more.
 * **Reader screen, Recalbox interface left running**: while it starts, the
   interface's main process is named "Main", so it was not seen; stopped in
   the middle of its start (service restarted by an update, boot), it takes

@@ -209,6 +209,14 @@ def remember_target(target, path: str = None) -> None:
         pass
 
 
+def forget_target(path: str = None) -> None:
+    """No game is selected any more (reader screen): the last one is forgotten."""
+    try:
+        os.remove(path or last_target_path())
+    except OSError:
+        pass
+
+
 def last_target(path: str = None):
     import json
 
