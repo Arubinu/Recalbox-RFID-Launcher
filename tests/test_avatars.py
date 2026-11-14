@@ -151,5 +151,38 @@ class ToastTest(unittest.TestCase):
         self.assertEqual(screen.toast_alpha(screen.TOAST_S), 0.0)
 
 
+class PlayerPageTest(unittest.TestCase):
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="rfid-page-")
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def test_jeux_du_joueur(self):
+        import json
+        import time as clock
+        today = clock.strftime("%Y-%m-%d")
+        old = clock.strftime("%Y-%m-%d", clock.localtime(clock.time() - 90 * 86400))
+        with open(os.path.join(self.home, "players.json"), "w", encoding="utf-8") as handle:
+            json.dump({"usage": {}, "games": {"A1": {today: {"gb|Tuff": 600, "snes|Mario": 60}, old: {"nes|Vieux": 900}}}}, handle)
+        roms = os.path.join(self.home, "roms", "gb", "media")
+        os.makedirs(roms)
+        open(os.path.join(roms, "tuff.png"), "w").close()
+        with open(os.path.join(self.home, "roms", "gb", "gamelist.xml"), "w", encoding="utf-8") as handle:
+            handle.write("<gameList><game><path>./Tuff.gb</path><name>Tuff</name><image>./media/tuff.png</image></game></gameList>")
+        screen._IMAGES.clear()
+        self.assertTrue(screen.find_image("gb", "Tuff", roms_dirs=[os.path.join(self.home, "roms")]).endswith("tuff.png"))
+        screen._IMAGES.clear()
+        games = screen.player_games(self.home, "A1")
+        self.assertEqual([game["name"] for game in games], ["Tuff", "Mario"], "le plus joue d'abord, pas les vieux")
+
+    def test_fichier_surveille(self):
+        path = os.path.join(self.home, "launch.json")
+        watcher = screen.Watcher(path, wall=lambda: 100.0, max_age=30)
+        self.assertIsNone(watcher.poll())
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write('{"name": "Tuff", "at": 90}')
+        self.assertEqual(watcher.poll()["name"], "Tuff")
+        self.assertIsNone(watcher.poll(), "lu une seule fois")
+
+
 if __name__ == "__main__":
     unittest.main()

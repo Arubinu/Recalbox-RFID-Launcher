@@ -54,6 +54,40 @@ def period_days(period: str, now: float, reset_hour: int = 0, week_start: int = 
     return [(today - datetime.timedelta(days=offset)).isoformat() for offset in range(count)]
 
 
+def _minutes(clock: str) -> int:
+    hours, minutes = clock.split(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def schedule_left(params: dict, now: float):
+    """Time slots of a player card: None (no slot), 0 (not now) or the
+    seconds left in the current slot."""
+    params = params or {}
+    days = params.get("days")
+    start, end = params.get("from"), params.get("to")
+    if not days and not start:
+        return None
+    moment = time.localtime(now)
+    if days and moment.tm_wday not in days:
+        return 0.0
+    current = moment.tm_hour * 60 + moment.tm_min + moment.tm_sec / 60.0
+    first, last = (_minutes(start), _minutes(end)) if start else (0, 24 * 60)
+    if not first <= current < last:
+        return 0.0
+    return (last - current) * 60.0
+
+
+def game_allowed(params: dict, system: str, path: str = "") -> bool:
+    """The game is among the player's allowed games (all when none is set)."""
+    params = params or {}
+    systems, games = params.get("systems") or [], params.get("games") or []
+    if not systems and not games:
+        return True
+    if system in systems:
+        return True
+    return bool(path) and any(game.get("path") == path for game in games)
+
+
 def game_key(game) -> str:
     """"system|name" of a game ("" when unknown)."""
     if not isinstance(game, dict):
@@ -116,6 +150,8 @@ class Players:
         self.log = log
         self._lock = threading.Lock()
         self.usage, self.games = self._load()
+        #: Play time given by reward cards: {uid: {"d:<day>" or "w:<first day>": minutes}}.
+        self.extra = self._load_extra()
         #: Player card placed, waiting for its game: {"uid", "entry", "until"}.
         self.pending = None
         #: Game being counted: {"uid", "entry", "via", "since", "saved_at"}.
@@ -141,6 +177,35 @@ class Players:
             return {}, {}
         return read_file(path)
 
+    def _load_extra(self) -> dict:
+        path = self._path()
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle).get("extra") or {}
+        except (OSError, ValueError, AttributeError, TypeError):
+            return {}
+        extra = {}
+        for uid, keys in data.items() if isinstance(data, dict) else ():
+            if isinstance(keys, dict):
+                extra[str(uid)] = {str(key): float(value) for key, value in keys.items()
+                                   if isinstance(value, (int, float)) and value > 0}
+        return extra
+
+    def _period_key(self, period: str) -> str:
+        days = period_days(period, self.wall(), self.reset_hour, self.week_start)
+        return ("w:" + days[-1]) if period == "week" else ("d:" + days[0])
+
+    def add_extra(self, uid: str, minutes: float, period: str = "day") -> None:
+        """A reward card: more play time for this player in the current period."""
+        with self._lock:
+            table = self.extra.setdefault(uid or GUEST, {})
+            key = self._period_key(period)
+            table[key] = table.get(key, 0.0) + float(minutes)
+            self._save()
+
+    def extra_s(self, uid: str, period: str = "day") -> float:
+        return self.extra.get(uid or GUEST, {}).get(self._period_key(period), 0.0) * 60.0
+
     def _save(self) -> None:
         path = self._path()
         if not path:
@@ -154,7 +219,11 @@ class Players:
         temporary = path + ".tmp"
         try:
             with open(temporary, "w", encoding="utf-8") as handle:
-                json.dump({"usage": self.usage, "games": self.games}, handle)
+                limit_extra = _day_key(self.wall() - 14 * 86400)
+                extra = {uid: {key: value for key, value in keys.items() if key[2:] >= limit_extra}
+                         for uid, keys in self.extra.items()}
+                json.dump({"usage": self.usage, "games": self.games,
+                           "extra": {uid: keys for uid, keys in extra.items() if keys}}, handle)
             os.replace(temporary, path)
         except OSError as exc:
             if self.log:
@@ -186,7 +255,7 @@ class Players:
         """Seconds left (None = no limit)."""
         if not quota_min or quota_min <= 0:
             return None
-        return max(0.0, quota_min * 60.0 - self.used_s(uid, period))
+        return max(0.0, quota_min * 60.0 + self.extra_s(uid, period) - self.used_s(uid, period))
 
     def checkpoint(self) -> None:
         """Adds the time played since the last checkpoint to today's count."""

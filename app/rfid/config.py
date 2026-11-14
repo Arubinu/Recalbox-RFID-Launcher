@@ -61,6 +61,15 @@ mode = recalbox
 # Reader screen: the quit hotkey and the RetroArch menu are turned off during
 # the games (only with stop_on_remove: removing the card quits the game)
 no_quit_hotkey = 0
+# Reader screen resolution: "recalbox" = the one of Recalbox's interface and
+# games (no mode change, no black flash), "native" = the screen's own (sharper)
+resolution = recalbox
+# Reader screen: the game is shown (picture, name) before it starts
+show_game = 1
+# Reader screen: the game shown starts only when a controller button is pressed
+confirm_with_pad = 0
+# Reader screen: when a player is active, their own games instead of the consoles
+player_games = 0
 
 [launch]
 # The Recalbox frontend listens for the "START|system|game" command on this UDP port

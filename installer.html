@@ -576,6 +576,20 @@
   .tag-ico img { width: 38px; height: 38px; object-fit: cover; border-radius: 11px; display: block; }
   .tag-actions { display: flex; gap: 2px; align-items: center; }
   .coll { display: flex; flex-direction: column; gap: 8px; }
+  .week { margin: 0 0 14px; overflow-x: auto; }
+  .week h3 { font-size: 14px; margin: 0 0 8px; }
+  .week table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .week th, .week td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+  .week thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+  .week td.trend.up { color: var(--warn-text); }
+  .week td.trend.down { color: var(--ok-text); }
+  .week td.best { white-space: normal; min-width: 120px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-toggle { border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip-toggle[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+  .checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; max-height: 200px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .checklist label { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; }
+  .checklist label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .coll-results { display: flex; flex-wrap: wrap; gap: 6px; }
   .coll-results .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .coll-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; max-height: 220px; overflow: auto; }
@@ -583,7 +597,7 @@
   .coll-list li:first-child { border-top: 0; }
   .coll-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .avatar-btn { border: 1px dashed var(--line); cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
-  .avatar-btn:hover, .avatar-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .avatar-btn:hover, .avatar-btn:focus-visible { border-color: var(--primary); color: var(--primary-text); }
   .avatar-btn.has { border-style: solid; }
   .avatar-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
   .chip.time { background: var(--warn-soft); color: var(--warn-text); }
@@ -1270,6 +1284,9 @@
               <button class="special" type="button" data-special="sound">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span>
                 <b>Son</b><span>Coupe le son de la Recalbox, puis le remet.</span></button>
+              <button class="special" type="button" data-special="reward">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></span>
+                <b>Récompense</b><span>Du temps de jeu en plus pour un joueur.</span></button>
               <button class="special" type="button" data-special="time">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9.5 2.5h5"/></svg></span>
                 <b>Temps restant</b><span>Affiche le temps de jeu qui reste au joueur.</span></button>
@@ -1730,6 +1747,7 @@ const ICONS = {
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
   player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  reward: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   pause: '<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
   save: '<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/>',
   sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
@@ -3255,7 +3273,54 @@ function renderStats() {
       el("ul", { className: "stats-games" }, list),
     ]);
   });
-  body.replaceChildren(...blocks);
+  body.replaceChildren(weekSummary(rows), ...blocks);
+}
+/* The week: the last 7 days of each player, compared with the 7 days before. */
+function weekSummary(rows) {
+  const days = statsDays(14);
+  const split = days[7];
+  const players = new Map();
+  for (const row of rows) {
+    if (row.date < days[0]) continue;
+    if (!players.has(row.uid)) players.set(row.uid, { now: 0, before: 0, games: new Map() });
+    const entry = players.get(row.uid);
+    if (row.date >= split) {
+      entry.now += row.seconds;
+      const key = row.system + "|" + row.game;
+      entry.games.set(key, (entry.games.get(key) || 0) + row.seconds);
+    } else {
+      entry.before += row.seconds;
+    }
+  }
+  const lines = [...players.entries()].filter(([, entry]) => entry.now || entry.before)
+    .sort((a, b) => b[1].now - a[1].now).map(([uid, entry]) => {
+      let trend = t("nouveau");
+      let tone = "";
+      if (entry.before) {
+        const change = Math.round((entry.now - entry.before) / entry.before * 100);
+        trend = (change > 0 ? "+" : "") + change + " %";
+        tone = change > 10 ? "up" : change < -10 ? "down" : "";
+      } else if (!entry.now) {
+        trend = "";
+      }
+      const best = [...entry.games.entries()].sort((a, b) => b[1] - a[1])[0];
+      return el("tr", {}, [
+        el("th", { text: statsPlayerName(uid), attrs: { scope: "row" } }),
+        el("td", { text: formatDuration(entry.now) }),
+        el("td", { text: entry.before ? formatDuration(entry.before) : "—" }),
+        el("td", { className: "trend " + tone, text: trend }),
+        el("td", { className: "best", text: best ? best[0].split("|")[1] : "—" }),
+      ]);
+    });
+  if (!lines.length) return el("span");
+  return el("div", { className: "week" }, [
+    el("h3", { text: t("Bilan de la semaine") }),
+    el("table", {}, [
+      el("thead", {}, [el("tr", {}, [t("Joueur"), t("7 derniers jours"), t("7 jours d'avant"), t("Évolution"), t("Jeu préféré")]
+        .map((label) => el("th", { text: label, attrs: { scope: "col" } })))]),
+      el("tbody", {}, lines),
+    ]),
+  ]);
 }
 /* Every row kept on the Recalbox (60 days), one line per day, player and game. */
 function exportStats() {
@@ -3785,6 +3850,7 @@ const CHOIX_TEXTES = {
   "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
   "players.guest_period=day": "par jour", "players.guest_period=week": "par semaine",
   "display.mode=recalbox": "interface de Recalbox", "display.mode=reader": "écran du lecteur",
+  "display.resolution=recalbox": "comme Recalbox", "display.resolution=native": "celle de l'écran",
   "players.week_start=monday": "lundi", "players.week_start=tuesday": "mardi", "players.week_start=wednesday": "mercredi",
   "players.week_start=thursday": "jeudi", "players.week_start=friday": "vendredi", "players.week_start=saturday": "samedi",
   "players.week_start=sunday": "dimanche",
@@ -4091,6 +4157,7 @@ function specialName(action, params) {
   if (action === "save") return t("Sauvegarder la partie");
   if (action === "sound") return t("Son coupé / remis");
   if (action === "time") return t("Temps restant");
+  if (action === "reward") return t("Récompense +{n} min", { n: p.minutes || 15 });
   if (action === "player") {
     if (!p.quota_min) return t("Carte joueur · sans limite");
     return t("Carte joueur · {n} min par {p}", { n: p.quota_min, p: t(p.period === "week" ? "semaine" : "jour") });
@@ -4146,15 +4213,50 @@ async function specialFields(action, values) {
     ]);
     period.value = p.period === "week" ? "week" : "day";
     fields.push(formField(t("Période"), period, t("Le compteur repart à zéro chaque jour, ou chaque semaine, à l'heure et au jour choisis dans Réglages › Cartes joueurs.")));
+    const days = p.days && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6];
+    const dayNames = [t("lun."), t("mar."), t("mer."), t("jeu."), t("ven."), t("sam."), t("dim.")];
+    const dayBox = el("div", { className: "chips", attrs: { id: "f-days" } }, dayNames.map((label, index) => {
+      const chip = el("button", { className: "chip-toggle", text: label, attrs: { type: "button", "data-day": index, "aria-pressed": days.includes(index) ? "true" : "false" } });
+      chip.addEventListener("click", () => chip.setAttribute("aria-pressed", chip.getAttribute("aria-pressed") === "true" ? "false" : "true"));
+      return chip;
+    }));
+    fields.push(formField(t("Jours où il peut jouer"), dayBox, "", true));
+    const from = el("input", { attrs: { type: "time", id: "f-from" } });
+    const to = el("input", { attrs: { type: "time", id: "f-to" } });
+    from.value = p.from || "";
+    to.value = p.to && p.to !== "24:00" ? p.to : (p.from ? "23:59" : "");
+    fields.push(formField(t("À partir de"), from, t("Vide : toute la journée.")));
+    fields.push(formField(t("Jusqu'à"), to, t("À l'heure de fin, la partie se termine (prévenue 5 et 1 minutes avant).")));
+    await loadSystems();
+    const allowed = new Set(p.systems || []);
+    const systemsBox = el("div", { className: "checklist", attrs: { id: "f-systems" } }, (systemsList || []).map((system) => {
+      const box = el("input", { attrs: { type: "checkbox", value: system.id } });
+      box.checked = allowed.has(system.id);
+      return el("label", {}, [box, el("span", { text: systemName(system.id) })]);
+    }));
+    fields.push(formField(t("Consoles autorisées (facultatif)"), systemsBox, t("Aucune cochée et aucun jeu choisi : tous les jeux sont autorisés."), true));
+    fields.push(collectionField(p.games || [], null, t("Jeux autorisés en plus (facultatif)"),
+      t("Ces jeux sont autorisés même si leur console n'est pas cochée. Une carte de jeu non autorisée est refusée, avec un message à l'écran.")));
     if (!playersEnabled()) {
       fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
     }
+  } else if (action === "reward") {
+    const who = el("select", { attrs: { id: "f-reward-player" } }, [el("option", { text: t("Le joueur actif"), attrs: { value: "" } })]
+      .concat(tags.filter((tag) => tag.kind === "action" && tag.action === "player")
+        .map((tag) => el("option", { text: tag.name || tag.uid, attrs: { value: tag.uid } }))));
+    who.value = p.player || "";
+    fields.push(formField(t("Pour"), who, t("Le joueur actif : celui qui joue ou dont la carte est posée."), true));
+    fields.push(formField(t("Minutes en plus"), numberInput("f-minutes", p.minutes || 15, 1, 600), t("Ajoutées au temps du jour (ou de la semaine) du joueur.")));
+    fields.push(formField(t("Utilisations"), numberInput("f-uses", p.uses === undefined ? 1 : p.uses, 0, 50), t("0 = sans limite")));
+    const period = el("select", { attrs: { id: "f-period" } }, PERIODS.map(([hours, label]) => el("option", { text: t("par {p}", { p: t(label) }), attrs: { value: hours } })));
+    period.value = String(p.period_h || 24);
+    fields.push(formField(t("Période"), period, t("Le compteur repart à zéro après cette durée."), true));
   }
   return fields;
 }
 /* A collection: the random card picks among these games only. */
 let collectionGames = [];
-function collectionField(games, systemSelect) {
+function collectionField(games, systemSelect, label, help) {
   collectionGames = games.map((game) => ({ system: game.system, path: game.path, name: game.name }));
   const chosen = el("ul", { className: "coll-list" });
   const results = el("div", { className: "coll-results" });
@@ -4176,7 +4278,7 @@ function collectionField(games, systemSelect) {
       const ticket = ++asked;
       if (query.length < 2) { results.replaceChildren(); return; }
       let found = [];
-      try { found = (await agent.send("games.search", { query, system: systemSelect.value, limit: 8 }, 20000)).games || []; }
+      try { found = (await agent.send("games.search", { query, system: systemSelect ? systemSelect.value : "", limit: 8 }, 20000)).games || []; }
       catch (error) { found = []; }
       if (ticket !== asked) return;
       results.replaceChildren(...found.map((game) => el("button", {
@@ -4189,13 +4291,23 @@ function collectionField(games, systemSelect) {
     }, 300);
   });
   draw();
-  return formField(t("Collection (facultatif)"), el("div", { className: "coll" }, [search, results, chosen]),
-    t("Avec des jeux dans la liste, la carte tire au sort parmi eux seulement (la console et les favoris ne comptent plus)."), true);
+  return formField(t(label || "Collection (facultatif)"), el("div", { className: "coll" }, [search, results, chosen]),
+    t(help || "Avec des jeux dans la liste, la carte tire au sort parmi eux seulement (la console et les favoris ne comptent plus)."), true);
 }
 function readSpecialParams(action) {
   if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true", games: collectionGames.slice() };
   if (action === "bonus") return { minutes: Number($("#f-minutes").value) || 10, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
-  if (action === "player") return { quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)), period: $("#f-player-period").value === "week" ? "week" : "day" };
+  if (action === "player") {
+    const days = $$("#f-days [data-day]").filter((chip) => chip.getAttribute("aria-pressed") === "true").map((chip) => Number(chip.dataset.day));
+    return {
+      quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)),
+      period: $("#f-player-period").value === "week" ? "week" : "day",
+      days, from: $("#f-from").value, to: $("#f-to").value,
+      systems: $$("#f-systems input:checked").map((box) => box.value),
+      games: collectionGames.slice(),
+    };
+  }
+  if (action === "reward") return { player: $("#f-reward-player").value, minutes: Number($("#f-minutes").value) || 15, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
   return {};
 }
 function readLimit() {
@@ -4214,6 +4326,7 @@ const SPECIAL_HELP = {
   pause: "Pendant une partie (jeux RetroArch) : posée une fois, le jeu et le temps de jeu se mettent en pause ; posée encore, tout repart. Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte (sinon retirer la carte de jeu pour poser celle-ci quitte la partie).",
   save: "Pendant une partie (jeux RetroArch) : sauvegarde la partie tout de suite, au même endroit que la sauvegarde avant de quitter (elle est reprise au prochain lancement). Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte.",
   sound: "Coupe le son de la Recalbox (jeux et menus) ; posée encore, le son revient. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
+  reward: "Ajoute du temps de jeu à un joueur pour aujourd'hui (ou cette semaine, selon sa carte), par exemple quand les devoirs sont faits. Pendant sa partie, elle dure aussi plus longtemps.",
   time: "Affiche à l'écran le temps de jeu qui reste au joueur actif (ou à l'invité). Le bip confirme seulement que la carte est lue. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
 };
 

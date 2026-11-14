@@ -658,6 +658,13 @@ class Service:
         if holder is not None:
             uid, entry = holder
             name = players.player_name(entry)
+            game = controller.running_game() or {}
+            state = read_state() or {}
+            rule = None if controller.unlocked else controller.player_rule(
+                uid, entry, game={"system": game.get("system", ""), "path": str(state.get("GamePath") or "")})
+            if rule is not None and controller.block_exhausted:
+                self._refuse_game(rule[0], "Jeu du menu refuse pour %s (%s)" % (name, rule[0]), **rule[1])
+                return
             left = None if controller.unlocked else controller.player_left(uid, entry)
             if left is not None and left <= 0 and controller.block_exhausted:
                 self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
@@ -938,7 +945,31 @@ class Service:
             wanted = False  # the "unlock" card shows Recalbox's interface
         no_hotkey = (self.cfg.get_bool("display", "no_quit_hotkey", False)
                      and self.cfg.get_bool("launch", "stop_on_remove", False))
+        reader.preview = self.cfg.get_bool("display", "show_game", True)
+        reader.confirm = self.cfg.get_bool("display", "confirm_with_pad", False)
+        reader.on_wait = self._game_waits
+        reader.on_go = self._game_goes
+        reader.on_cancel = self._game_given_up
         reader.configure(wanted, no_hotkey)
+
+    # A game shown on the reader screen waits for the controller: its time
+    # is not counted until it really starts.
+    def _game_waits(self) -> None:
+        controller = self.controller
+        if controller is None:
+            return
+        if controller.playtime is not None:
+            controller.playtime.pause()
+        if controller.players is not None:
+            controller.players.pause()
+
+    def _game_goes(self) -> None:
+        if self.controller is not None:
+            self.controller.resume_time()
+
+    def _game_given_up(self) -> None:
+        if self.controller is not None:
+            self.controller.stop_game("refused")
 
     def _reader_step(self) -> None:
         reader = getattr(self, "reader_mode", None)

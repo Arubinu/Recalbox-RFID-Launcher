@@ -99,6 +99,25 @@ MESSAGES = {
         "fr": "{name} joue la prochaine partie", "en": "{name} plays the next game",
         "de": "{name} spielt das nächste Spiel", "es": "{name} juega la próxima partida",
         "it": "{name} gioca la prossima partita", "pt": "{name} joga o próximo jogo"},
+    "player_schedule": {
+        "fr": "{name} : pas de jeu à cette heure-ci{when}", "en": "{name}: no games at this time{when}",
+        "de": "{name}: zu dieser Zeit kein Spiel{when}", "es": "{name}: no se juega a esta hora{when}",
+        "it": "{name}: niente giochi a quest'ora{when}", "pt": "{name}: não se joga a esta hora{when}"},
+    "player_not_allowed": {
+        "fr": "{name} : ce jeu n'est pas autorisé", "en": "{name}: this game is not allowed",
+        "de": "{name}: dieses Spiel ist nicht erlaubt", "es": "{name}: este juego no está permitido",
+        "it": "{name}: questo gioco non è consentito", "pt": "{name}: este jogo não é permitido"},
+    "player_low": {
+        "fr": "{name} : plus que {t} de jeu", "en": "{name}: only {t} of play left",
+        "de": "{name}: nur noch {t} Spielzeit", "es": "{name}: solo quedan {t} de juego",
+        "it": "{name}: restano solo {t} di gioco", "pt": "{name}: só faltam {t} de jogo"},
+    "reward": {
+        "fr": "+{n} min pour {name} !", "en": "+{n} min for {name}!", "de": "+{n} Min. für {name}!",
+        "es": "¡+{n} min para {name}!", "it": "+{n} min per {name}!", "pt": "+{n} min para {name}!"},
+    "reward_used": {
+        "fr": "Carte récompense déjà utilisée", "en": "Reward card already used",
+        "de": "Belohnungskarte schon benutzt", "es": "Tarjeta de recompensa ya usada",
+        "it": "Carta premio già usata", "pt": "Cartão de recompensa já usado"},
     "warn300": {
         "fr": "Plus que 5 minutes de jeu", "en": "5 minutes of play left",
         "de": "Noch 5 Minuten Spielzeit", "es": "Quedan 5 minutos de juego",

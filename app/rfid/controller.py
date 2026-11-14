@@ -417,6 +417,12 @@ class Controller:
             self.playtime.end(reason)
         if self.players is not None:
             self.players.finish()
+            kept = self.players.kept if self.players.keep else None
+            if kept is not None and reason not in ("new", "refused"):
+                try:
+                    self._low_time(self.players.player_name(kept["entry"]), self.player_left(kept["uid"], kept["entry"]))
+                except Exception:  # noqa: BLE001 - a toast never blocks quitting
+                    pass
         self.launched_uid = None
         if not self.launcher.stop_game():
             self._log("info", "Aucun jeu en cours a arreter")
@@ -466,9 +472,38 @@ class Controller:
         return self.players is not None and self.players_enabled
 
     def player_left(self, uid: str, entry: dict):
-        """Seconds left to a player card (None = no limit)."""
+        """Seconds left to a player card (None = no limit): its time, and the
+        end of its time slot."""
+        from .players import schedule_left
+
         params = entry.get("params") or {}
-        return self.players.remaining_s(uid, int(params.get("quota_min") or 0), params.get("period") or "day")
+        left = self.players.remaining_s(uid, int(params.get("quota_min") or 0), params.get("period") or "day")
+        slot = schedule_left(params, time.time())
+        if slot is not None:
+            left = slot if left is None else min(left, slot)
+        return left
+
+    def player_rule(self, uid: str, entry: dict, game=None):
+        """Why this player cannot play now (or this game): (key, values) or None."""
+        from .players import game_allowed, schedule_left
+
+        params = entry.get("params") or {}
+        name = self.players.player_name(entry)
+        if schedule_left(params, time.time()) == 0:
+            when = ""
+            if params.get("from"):
+                when = " (%s - %s)" % (params["from"], params["to"])
+            return "player_schedule", {"name": name, "when": when}
+        if game is not None and not game_allowed(params, game.get("system", ""), game.get("path", "")):
+            return "player_not_allowed", {"name": name}
+        return None
+
+    def _low_time(self, name: str, left) -> None:
+        """Toast when a player is nearly out of time (between two games too)."""
+        from .screen import duration
+
+        if left is not None and 0 < left <= 300:
+            self._say("player_low", name=name, t=duration(left))
 
     def guest_left(self):
         return self.players.remaining_s("", self.guest_quota_min, self.guest_period)
@@ -512,8 +547,15 @@ class Controller:
         free = self.unlocked
         if pending is not None:
             player = (pending["uid"], pending["entry"])
-            left = self.player_left(*player)
             name = self.players.player_name(pending["entry"])
+            rule = None if free else self.player_rule(*player, game={"system": entry.get("system", ""),
+                                                                      "path": entry.get("path", "")})
+            if rule is not None:
+                if pending.get("until") is not None and not pending.get("kept"):
+                    self.players.pending = pending  # still waiting: another game may be allowed
+                self._refuse(rule[0], "Jeu refuse pour %s (%s)" % (name, rule[0]), **rule[1])
+                return rule[0]
+            left = self.player_left(*player)
             if free:
                 left = None
             if left is not None and left <= 0:
@@ -544,6 +586,10 @@ class Controller:
             self._log("info", "Carte joueur : les cartes joueurs sont desactivees dans les reglages")
             return "disabled"
         name = self.players.player_name(entry)
+        rule = None if self.unlocked else self.player_rule(uid, entry)
+        if rule is not None:
+            self._refuse(rule[0], "Carte joueur %s : %s" % (name, rule[0]), **rule[1])
+            return rule[0]
         left = self.player_left(uid, entry)
         if left is not None and left <= 0:
             self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
@@ -577,7 +623,10 @@ class Controller:
         self.players.arm(uid, entry)
         self.feedback.ok()
         self._flash("ok")
-        self._say("player_next", name=name)
+        if left is not None and 0 < left <= 300:
+            self._low_time(name, left)
+        else:
+            self._say("player_next", name=name)
         self._log("info", "Carte joueur %s : pour la prochaine partie" % name)
         return "player"
 
@@ -656,6 +705,8 @@ class Controller:
             return self._sound_card(uid)
         if action == "time":
             return self._time_card(uid)
+        if action == "reward":
+            return self._reward_card(uid, params)
         if action == "unlock":
             if self.unlock is None:
                 self.feedback.error()
@@ -780,6 +831,61 @@ class Controller:
             self._say("time_left", name=name, t=duration(left))
         self._log("info", "Carte temps : %s, %s" % (name, "sans limite" if left is None else "%d s" % left))
         return "time"
+
+    def _active_player(self):
+        """(uid, entry) of the active player: playing, card placed, or kept."""
+        players = self.players
+        current = players.current
+        if current is not None and current["uid"] != "guest":
+            return current["uid"], current["entry"]
+        if players.pending is not None and self.clock() <= players.pending["until"]:
+            return players.pending["uid"], players.pending["entry"]
+        if players.keep and players.kept is not None:
+            return players.kept["uid"], players.kept["entry"]
+        return None
+
+    def _reward_card(self, uid: str, params: dict) -> str:
+        """More play time for a player (the card's player, or the active one)."""
+        if not self.counting_players:
+            self.feedback.error()
+            self._flash("error")
+            return "disabled"
+        target = None
+        wanted = params.get("player") or ""
+        if wanted:
+            try:
+                entry = self.store.get(wanted)
+            except StorageError:
+                entry = None
+            if entry and entry.get("action") == "player":
+                target = (wanted, entry)
+        else:
+            target = self._active_player()
+        if target is None:
+            self._refuse("player_needed", "Carte recompense : aucun joueur actif")
+            return "player_needed"
+        if self.playtime is not None:
+            left_uses = self.playtime.bonus_left(uid, params)
+            if left_uses is not None and left_uses <= 0:
+                self._refuse("reward_used", "Carte recompense : deja utilisee pour cette periode")
+                return "exhausted"
+        player_params = target[1].get("params") or {}
+        minutes = int(params.get("minutes") or 15)
+        self.players.add_extra(target[0], minutes, player_params.get("period") or "day")
+        if self.playtime is not None:
+            self.playtime._use(uid)
+            current = self.players.current
+            session = self.playtime.session
+            if session is not None and current is not None and current["uid"] == target[0]:
+                session["deadline"] += minutes * 60.0  # the running game lasts longer too
+                session["minutes"] += minutes
+        name = self.players.player_name(target[1])
+        self._touch(uid)
+        self.feedback.ok()
+        self._flash("bonus")
+        self._say("reward", n=minutes, name=name)
+        self._log("info", "Carte recompense : +%d min pour %s" % (minutes, name))
+        return "reward"
 
     def _touch(self, uid: str) -> None:
         try:

@@ -210,6 +210,63 @@ class ReaderModeTest(unittest.TestCase):
         self.assertEqual(self.mode.state, "screen")
         self.assertIn("screen", self.processes[0].argv)
 
+
+    def files(self):
+        self.mode.launch_path = os.path.join(self.home, "launch.json")
+        self.mode.answer_path = os.path.join(self.home, "answer.json")
+
+    def test_jeu_montre_puis_lance(self):
+        self.files()
+        self.mode.preview = True
+        self.enter()
+        start = self.clock()
+        self.assertTrue(self.mode.launch("gb", "/roms/gb/Tuff.gb", "Tuff"))
+        self.assertGreaterEqual(self.clock() - start, reader_mode.PREVIEW_S, "le jeu est montre d'abord")
+        self.assertEqual(self.mode.state, "game")
+        self.assertTrue(reader_mode.read_json(self.mode.launch_path).get("cancel"), "plus montre apres la partie")
+
+    def test_lance_par_la_manette(self):
+        self.files()
+        self.mode.confirm = True
+        events = []
+        self.mode.on_wait = lambda: events.append("wait")
+        self.mode.on_go = lambda: events.append("go")
+        self.enter()
+        self.assertTrue(self.mode.launch("gb", "/roms/gb/Tuff.gb", "Tuff"))
+        shown = reader_mode.read_json(self.mode.launch_path)
+        self.assertEqual((shown["name"], shown["confirm"]), ("Tuff", True))
+        self.assertEqual(self.mode.state, "screen", "pas encore lance")
+        self.mode.step()
+        self.assertEqual(self.mode.state, "screen")
+        reader_mode.write_json(self.mode.answer_path, {"answer": "go", "at": reader_mode.time.time() + 1})
+        self.mode.step()
+        self.assertEqual(self.mode.state, "game")
+        self.assertEqual(events, ["wait", "go"])
+
+    def test_carte_retiree_annule(self):
+        self.files()
+        self.mode.confirm = True
+        launcher = EsLauncher("127.0.0.1", 1)
+        launcher.reader = self.mode
+        self.enter()
+        self.mode.launch("gb", "/roms/gb/Tuff.gb", "Tuff")
+        self.assertTrue(launcher.game_running(), "le jeu en attente compte comme lance")
+        self.assertTrue(launcher.stop_game())
+        self.assertIsNone(self.mode.pending)
+        self.assertTrue(reader_mode.read_json(self.mode.launch_path).get("cancel"))
+
+    def test_sans_reponse_abandon(self):
+        self.files()
+        self.mode.confirm = True
+        given_up = []
+        self.mode.on_cancel = lambda: given_up.append(1)
+        self.enter()
+        self.mode.launch("gb", "/roms/gb/Tuff.gb", "Tuff")
+        self.clock.advance(reader_mode.CONFIRM_TIMEOUT_S + 1)
+        self.mode.step()
+        self.assertIsNone(self.mode.pending)
+        self.assertEqual(given_up, [1])
+
     def test_plus_de_jeu_selectionne(self):
         """The game left selected in Recalbox's list is not paired by the button on the reader screen."""
         from rfid import esbridge
