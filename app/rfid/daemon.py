@@ -873,7 +873,12 @@ class Service:
 
     def _start_new_game(self) -> bool:
         """Button double press with a game card on the reader: the game starts
-        again from the beginning (the running one is quit without saving)."""
+        again from the beginning, for the same player.
+
+        A RetroArch game is restarted in place (RESET, like the reset button of
+        a console: instant, the session and the player go on). Otherwise the
+        running game is quit without saving and started again.
+        """
         uid = self._active_uid
         controller = self.controller
         if not uid or controller is None or controller.game_card(uid) is None:
@@ -884,6 +889,14 @@ class Service:
         if current is not None and current.get("uid") not in ("", "guest"):
             player = (current["uid"], current["entry"])
         running = controller.game_running()
+        if running and self._reset_in_place():
+            self.feedback.ok()
+            if self.light is not None:
+                self.light.flash("ok")
+            if getattr(self, "screen", None) is not None:
+                self.screen.say("new_game")
+            self.log.info("Double appui : la partie recommence au debut (RetroArch)")
+            return True
         if running:
             controller.stop_game("new")
         self._skip_resume = True
@@ -894,6 +907,16 @@ class Service:
             self.light.flash("ok")
         self.log.info("Double appui : nouvelle partie pour le badge %s" % uid)
         return True
+
+    def _reset_in_place(self) -> bool:
+        """RetroArch game: restarted at once, the emulator keeps running."""
+        reset = getattr(getattr(self, "launcher", None), "reset_command", None)
+        if reset is None:
+            return False
+        try:
+            return bool(reset())
+        except Exception:  # noqa: BLE001 - the quit and relaunch still works
+            return False
 
     def _new_game_step(self) -> None:
         """Starts the new game once the frontend is back to its menu."""

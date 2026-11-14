@@ -45,6 +45,9 @@ MESSAGES = {
         "fr": "Carte joueur retirée : fin de la partie", "en": "Player card removed: game over",
         "de": "Spielerkarte entfernt: Spielende", "es": "Tarjeta de jugador retirada: fin de la partida",
         "it": "Carta giocatore tolta: fine della partita", "pt": "Cartão de jogador retirado: fim do jogo"},
+    "new_game": {
+        "fr": "Nouvelle partie", "en": "New game", "de": "Neues Spiel",
+        "es": "Nueva partida", "it": "Nuova partita", "pt": "Novo jogo"},
     "game_resumed": {
         "fr": "Partie reprise là où elle s'était arrêtée", "en": "Game resumed where it stopped",
         "de": "Spiel dort fortgesetzt, wo es aufgehört hat", "es": "Partida reanudada donde se quedó",

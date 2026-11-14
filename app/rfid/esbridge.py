@@ -393,6 +393,25 @@ def quit_retroarch(port: int = RETROARCH_PORT, host: str = "127.0.0.1", sleep=ti
     return True
 
 
+def reset_retroarch(port: int = RETROARCH_PORT, host: str = "127.0.0.1") -> bool:
+    """Restarts the RetroArch game in place (like the reset button of a
+    console): the emulator keeps running. True if a RetroArch game answered."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.settimeout(0.6)
+        sock.connect((host, int(port)))
+        sock.send(b"GET_STATUS")
+        reply = sock.recv(512).decode("utf-8", "replace")
+        if " PLAYING " not in reply and " PAUSED " not in reply:
+            return False
+        sock.send(b"RESET")
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+
 def _kill(pid: int, sig: int) -> None:
     """Signal sending point (replaced in the tests)."""
     os.kill(pid, sig)
@@ -407,6 +426,8 @@ class EsLauncher:
         self.log = log
         #: Clean exit of a RetroArch game (replaced in the tests).
         self.quit_command = quit_retroarch
+        #: Restart of a RetroArch game in place (replaced in the tests).
+        self.reset_command = reset_retroarch
 
     @staticmethod
     def build_payload(system: str, game: str) -> bytes:

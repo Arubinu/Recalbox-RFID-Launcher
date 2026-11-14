@@ -60,6 +60,32 @@ class BackupTest(unittest.TestCase):
         self.assertNotIn("access.json", names, "le mot de passe ne doit jamais sortir")
         self.assertEqual(manifest["format"], backup.FORMAT)
 
+    def test_statistiques_lisibles(self):
+        from rfid.storage import TagStore
+
+        os.remove(os.path.join(self.home, "tags.json"))
+        store = TagStore(os.path.join(self.home, "tags.json"))
+        store.load()
+        store.put_entry("1EA00001", {"kind": "action", "action": "player", "name": "Léa",
+                                     "params": {"quota_min": 0, "period": "day"}})
+        write(os.path.join(self.home, "players.json"), json.dumps({"usage": {}, "games": {
+            "1EA00001": {"2026-11-14": {"gb|Retroid": 66}},
+            "guest": {"2026-11-13": {"gb|Jeu; spécial": 30}}}}))
+        data = backup.create(self.home)
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            text = archive.read(backup.STATS_CSV).decode("utf-8-sig")
+        self.assertEqual(text.splitlines(), [
+            "date;player;console;game;minutes;seconds",
+            "2026-11-14;Léa;gb;Retroid;1,1;66",
+            '2026-11-13;guest;gb;"Jeu; spécial";0,5;30',
+        ])
+        self.assertNotIn(backup.STATS_CSV, backup.read(data), "jamais restaure : les donnees sont dans players.json")
+        self.assertIn("players.json", backup.read(data))
+
+    def test_pas_de_statistiques_sans_partie(self):
+        with zipfile.ZipFile(io.BytesIO(backup.create(self.home))) as archive:
+            self.assertNotIn(backup.STATS_CSV, archive.namelist())
+
     def test_aller_retour(self):
         data = backup.create(self.home)
         write(os.path.join(self.home, "tags.json"), '{"tags": {}}')

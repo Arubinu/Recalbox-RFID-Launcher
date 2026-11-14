@@ -109,6 +109,9 @@ class ReleaseGestureTest(unittest.TestCase):
         self.service._new_game = None
         self.service._skip_resume = False
         self.service._launched_uid = None
+        self.service.screen = None
+        self.service.launcher = _mock.Mock()
+        self.service.launcher.reset_command = lambda: False  # not a RetroArch game
 
     def test_double_appui_nouvelle_partie(self):
         self.prepare_double()
@@ -128,6 +131,20 @@ class ReleaseGestureTest(unittest.TestCase):
         self.service.controller.game_running.return_value = True
         self.service._new_game_step()
         self.assertIsNone(self.service._new_game, "partie relancee")
+
+    def test_double_appui_retroarch_recommence_sur_place(self):
+        from unittest import mock as _mock
+
+        self.prepare_double()
+        resets = []
+        self.service.launcher.reset_command = lambda: resets.append(1) or True
+        self.service.screen = _mock.Mock()
+        self.service._handle_gesture("double")
+        self.assertEqual(resets, [1])
+        self.service.controller.stop_game.assert_not_called()
+        self.assertIsNone(self.service._new_game, "ni quitte ni relance")
+        self.assertFalse(self.service._skip_resume)
+        self.service.screen.say.assert_called_once_with("new_game")
 
     def test_double_appui_sans_carte_de_jeu(self):
         self.prepare_double(card=False)

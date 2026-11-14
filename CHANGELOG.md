@@ -9,10 +9,13 @@ by `rfidctl version`.
 ### Added
 
 * **New game with a button double press**: with a game card on the reader,
-  two quick presses quit the running game without saving it and start it
-  again from the beginning, for the same player; the saved game is not
-  resumed this time (it stays until the next save). A single short press
-  still pairs a badge; it now waits 0.4 s for a possible second press.
+  two quick presses start the game again from the beginning, for the same
+  player. A RetroArch game is restarted in place (network command `RESET`,
+  like the reset button of a console: instant, the emulator keeps running,
+  "New game" on the screen); a stand-alone emulator is quit without saving
+  and started again, without resuming the saved game (it stays until the
+  next save). A single short press still pairs a badge; it now waits 0.4 s
+  for a possible second press.
 * **One save per player** (with "Save the game before quitting" and the
   player cards): each player's game goes to `player-saves/<card>/<console>/
   <game>.state` and comes back at their next start (loaded through a
@@ -22,7 +25,8 @@ by `rfidctl version`.
   most played games of each player over 7, 30 or 60 days, and a CSV export
   (one line per day, player and game). The time per game is kept in
   `players.json` (`games`), never cleared by a reset of the quota; new agent
-  command `players.stats`.
+  command `players.stats`. The full backup also holds `statistics.csv`, the
+  same table (never restored: the data comes back with `players.json`).
 
 ## [2.13.0]
 

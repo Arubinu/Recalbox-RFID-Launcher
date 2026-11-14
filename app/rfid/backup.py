@@ -39,6 +39,9 @@ FILES = {
 FOLDERS = {
     "frames": (".png", ".svg", ".json", ".webp", ".jpg", ".jpeg"),
 }
+#: Readable copy of the statistics (players.json holds the data): written in
+#: the archive, never restored.
+STATS_CSV = "statistics.csv"
 BACKUPS_DIR = "backups"
 KEEP_BACKUPS = 5
 MAX_FILE_BYTES = 16 * 1024 * 1024
@@ -77,6 +80,9 @@ def create(home: str, now=None) -> bytes:
             for name in _folder_files(home, folder):
                 archive.write(os.path.join(home, folder, name), folder + "/" + name)
                 contents.append(folder + "/" + name)
+        stats = statistics_csv(home)
+        if stats:
+            archive.writestr(STATS_CSV, stats)
         archive.writestr(MANIFEST, json.dumps({
             "format": FORMAT,
             "app_version": __version__,
@@ -84,6 +90,35 @@ def create(home: str, now=None) -> bytes:
             "files": contents,
         }, indent=2))
     return buffer.getvalue()
+
+
+def statistics_csv(home: str) -> str:
+    """Time played per day, player and game, as in the page export ("" if none)."""
+    from .players import stats_rows
+    from .storage import TagStore
+
+    rows = stats_rows(home)
+    if not rows:
+        return ""
+    names = {"guest": "guest"}
+    try:
+        store = TagStore(os.path.join(home, "tags.json"))
+        store.load()
+        for uid, entry in store.items():
+            names[uid] = entry.get("name") or uid
+    except Exception:  # noqa: BLE001 - names are a convenience only
+        pass
+
+    def quote(value) -> str:
+        text = str(value)
+        return '"%s"' % text.replace('"', '""') if any(c in text for c in ';"\r\n') else text
+
+    lines = ["date;player;console;game;minutes;seconds"]
+    for row in rows:
+        lines.append(";".join(quote(value) for value in (
+            row["date"], names.get(row["uid"], row["uid"]), row["system"], row["game"],
+            ("%.1f" % (row["seconds"] / 60.0)).replace(".", ","), row["seconds"])))
+    return "\ufeff" + "\r\n".join(lines) + "\r\n"
 
 
 def _check_entry(name: str, data: bytes) -> None:
@@ -127,7 +162,7 @@ def read(data: bytes) -> dict:
         total = 0
         for info in archive.infolist():
             name = info.filename
-            if name == MANIFEST or name.endswith("/"):
+            if name in (MANIFEST, STATS_CSV) or name.endswith("/"):
                 continue
             if name in FILES:
                 pass

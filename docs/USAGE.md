@@ -108,9 +108,15 @@ the game and the Recalbox goes back to its menu, like pulling a cartridge out.
 This is the setting of the "slot in the case" idea.
 
 **New game**: with a game card on the reader, **press the button twice
-quickly**. The running game is quit without being saved and starts again from
-the beginning, for the same player. The saved game is not resumed this time;
-it is replaced at the next save. (A single short press still pairs a badge.)
+quickly**. The game starts again from the beginning, for the same player:
+
+* a RetroArch game (most consoles) is **reset on the spot**, like the reset
+  button of a console: instant, the emulator keeps running, "New game" shows
+  on the screen;
+* another emulator is quit without saving and started again; the saved game
+  is not resumed this time (it is replaced at the next save).
+
+A single short press still pairs a badge.
 
 With **"Save the game before quitting"** (Settings, off by default), every
 game the reader quits (badge removed, time up, "Quit" card, player card
@@ -401,8 +407,10 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 ## Backup and restore
 
 * **Full backup**: Settings › Backup › **Download** gives one ZIP file with the
-  badges, settings, card templates and frames, players, play time and reader
-  calibration. The page password is never included.
+  badges, settings, card templates and frames, players, play time, statistics
+  and reader calibration. The page password is never included. The ZIP also
+  holds `statistics.csv` (the same table as the statistics export), readable
+  as is; it is not needed to restore.
 * **Restore**: Settings › Backup › **Restore…**. The whole file is checked
   first (known files only, readable content); the files it replaces are kept
   in `backups/` (the last five), then the reader service restarts.
