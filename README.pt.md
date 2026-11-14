@@ -83,7 +83,7 @@ O programa ativa o pull-up interno do Raspberry Pi: sem resistência. Detalhes: 
       pode reiniciar uma vez sozinho para ativar o leitor.
    4. **Autorizar**: mantenha o botão da caixa premido durante 3 segundos. Abre-se a gestão dos tags.
 
-> **Versão online**: <https://arubinu.github.io/recalbox-games-rf-launcher/> permite fazer os passos 1 e 2. Os
+> **Versão online**: <https://arubinu.github.io/Recalbox-RFID-Launcher/> permite fazer os passos 1 e 2. Os
 > navegadores proíbem uma página `https://` de falar com um dispositivo da sua rede: a página online propõe
 > transferir-se para o resto, e a página guardada no computador faz tudo.
 

@@ -83,7 +83,7 @@ El programa activa el pull-up interno de la Raspberry Pi: sin resistencia. Detal
       puede reiniciarse una vez sola para activar el lector.
    4. **Autorizar**: mantén pulsado el botón de la caja 3 segundos. Se abre la gestión de tarjetas.
 
-> **Versión en línea**: <https://arubinu.github.io/recalbox-games-rf-launcher/> permite hacer los pasos 1 y 2. Los
+> **Versión en línea**: <https://arubinu.github.io/Recalbox-RFID-Launcher/> permite hacer los pasos 1 y 2. Los
 > navegadores impiden que una página `https://` hable con un dispositivo de tu red: la página en línea propone
 > descargarse para el resto, y la página guardada en tu ordenador lo hace todo.
 

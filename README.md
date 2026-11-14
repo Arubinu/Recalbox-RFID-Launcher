@@ -80,7 +80,7 @@ The Raspberry Pi internal pull-up is enabled by the program: no resistor. Detail
       Recalbox may reboot once on its own to enable the reader.
    4. **Authorize**: hold the box button for 3 seconds. Badge management opens.
 
-> **Online version**: <https://arubinu.github.io/recalbox-games-rf-launcher/> lets you go through steps 1 and 2.
+> **Online version**: <https://arubinu.github.io/Recalbox-RFID-Launcher/> lets you go through steps 1 and 2.
 > Browsers forbid an `https://` page to talk to a device on your network, so the online page offers to download itself
 > for the rest: the page saved on your computer does everything.
 
