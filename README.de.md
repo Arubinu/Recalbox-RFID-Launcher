@@ -84,7 +84,7 @@ Der interne Pull-up des Raspberry Pi wird vom Programm aktiviert: kein Widerstan
       weiter; die Recalbox startet eventuell einmal von selbst neu, um den Leser zu aktivieren.
    4. **Freigeben**: Halten Sie die Gehäusetaste 3 Sekunden gedrückt. Die Badge-Verwaltung öffnet sich.
 
-> **Online-Version**: <https://arubinu.github.io/recalbox-games-rf-launcher/> erlaubt die Schritte 1 und 2. Browser
+> **Online-Version**: <https://arubinu.github.io/Recalbox-RFID-Launcher/> erlaubt die Schritte 1 und 2. Browser
 > verbieten einer `https://`-Seite, mit einem Gerät in Ihrem Netzwerk zu sprechen: Die Online-Seite bietet daher an,
 > sich für den Rest herunterzuladen, und die auf Ihrem Computer gespeicherte Seite erledigt alles.
 

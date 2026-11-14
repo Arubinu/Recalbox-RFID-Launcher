@@ -84,7 +84,7 @@ Le pull-up interne du Raspberry Pi est activé par le programme : aucune résist
       la Recalbox peut redémarrer une fois toute seule pour activer le lecteur.
    4. **Autoriser** : gardez le bouton du boîtier appuyé 3 secondes. La gestion des badges s'ouvre.
 
-> **Version en ligne** : <https://arubinu.github.io/recalbox-games-rf-launcher/> permet de faire les étapes 1 et 2.
+> **Version en ligne** : <https://arubinu.github.io/Recalbox-RFID-Launcher/> permet de faire les étapes 1 et 2.
 > Les navigateurs interdisent à une page `https://` de parler à un appareil de votre réseau : la page en ligne propose
 > donc de se télécharger pour la suite, et la page enregistrée sur votre ordinateur fait tout.
 
