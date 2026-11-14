@@ -3833,7 +3833,8 @@ async function enregistrerOptions() {
     if (valeur !== option.value) values[option.full] = valeur;
   }
   if (!Object.keys(values).length) return;
-  const data = await run(() => agent.send("config.set", { values }), "Enregistrement impossible :");
+  /* Locking the menu waits for the Recalbox interface to really stop and start again. */
+  const data = await run(() => agent.send("config.set", { values }, 150000), "Enregistrement impossible :");
   if (!data) return;
   optionsPending = {};
   optionsMessage = data.reloaded ? "Enregistré et appliqué" : "Enregistré (le service est arrêté)";

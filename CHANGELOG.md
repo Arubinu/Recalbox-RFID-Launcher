@@ -45,6 +45,12 @@ by `rfidctl version`.
   now refuses to lock until a game is a favourite, and the lock is undone
   from the reader's own copy (`frontend-lock.json`) even when Recalbox
   changed a value.
+* **Menu lock could leave a black screen**: the Recalbox init script waits
+  only 20 s for its interface to quit, and the interface may take longer
+  (it waits for the sound); the new start was then ignored and nothing came
+  back. The reader now waits until the interface is really gone (up to 90 s),
+  writes `recalbox.conf` over the settings it saved while quitting, then
+  checks that it starts again (asked a second time otherwise).
 
 ## [2.13.0]
 

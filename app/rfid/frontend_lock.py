@@ -48,8 +48,43 @@ DEFAULTS = {
 }
 
 
+#: The frontend may take long to quit (it waits for the sound): its init
+#: script gives up after 20 s, while the file must only change once it is gone.
+STOP_TIMEOUT_S = 90.0
+START_TIMEOUT_S = 30.0
+#: Process name of the frontend and of its starter (cut to 15 characters).
+ES_COMM = "emulationstatio"
+
+
 class LockError(Exception):
     pass
+
+
+def frontend_running(proc_dir: str = "/proc") -> bool:
+    """True while the frontend (or its starter) runs."""
+    try:
+        entries = os.listdir(proc_dir)
+    except OSError:
+        return False
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        try:
+            with open(os.path.join(proc_dir, entry, "comm"), "r", encoding="utf-8", errors="replace") as handle:
+                if handle.read().strip() == ES_COMM:
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def _wait_for(check, wanted: bool, timeout_s: float, sleep=time.sleep, clock=time.monotonic) -> bool:
+    deadline = clock() + timeout_s
+    while clock() < deadline:
+        if bool(check()) == wanted:
+            return True
+        sleep(0.5)
+    return bool(check()) == wanted
 
 
 def read_values(text: str, keys) -> dict:
@@ -107,14 +142,19 @@ def is_locked(conf: str = RECALBOX_CONF) -> bool:
 
 
 def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_running=None,
-          restart: bool = True) -> dict:
+          restart: bool = True, running=None, sleep=None, clock=None) -> dict:
     """Locks or unlocks the menu. Returns {"changed": bool}.
 
     restart=False only edits the file: used by the uninstaller, which may
     itself run from the menu. Recalbox notices the change of recalbox.conf and
     offers to restart its menu.
     """
+    if running is None and run is None:
+        # The real frontend is watched only when the real commands are used.
+        running = frontend_running
     run = run or (lambda args: subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60))
+    sleep = sleep or time.sleep
+    clock = clock or time.monotonic
     try:
         with open(conf, "r", encoding="utf-8") as handle:
             text = handle.read()
@@ -150,6 +190,17 @@ def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_ru
             json.dump(current, handle)
     if restart:
         run([ES_SERVICE, "stop"])
+        # Written only once the frontend is gone: it saves recalbox.conf
+        # while quitting, and a start asked while it still runs is ignored.
+        if running is not None and not _wait_for(running, False, STOP_TIMEOUT_S, sleep, clock):
+            run([ES_SERVICE, "start"])
+            raise LockError("le menu de la Recalbox ne s'arrete pas : reessayez dans un moment")
+        # The settings it saved while quitting are the ones to change.
+        try:
+            with open(conf, "r", encoding="utf-8") as handle:
+                text = handle.read()
+        except OSError:
+            pass
     try:
         temporary = conf + ".rfid-tmp"
         with open(temporary, "w", encoding="utf-8") as handle:
@@ -158,6 +209,8 @@ def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_ru
     finally:
         if restart:
             run([ES_SERVICE, "start"])
+            if running is not None and not _wait_for(running, True, START_TIMEOUT_S, sleep, clock):
+                run([ES_SERVICE, "start"])
     if not enabled:
         _forget(home)
     return {"changed": True}

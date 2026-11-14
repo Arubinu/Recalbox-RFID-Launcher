@@ -146,6 +146,50 @@ class FrontendLockTest(unittest.TestCase):
         self.assertIsNone(values["emulationstation.favoritesonly"])
         self.assertEqual(values["emulationstation.collection.ports"], "1", "valeur par defaut de Recalbox")
 
+    def make_frontend(self, quits_after, starts=True):
+        """Fake frontend: runs until ``quits_after`` checks after the stop."""
+        state = {"up": True, "checks": 0, "starts": 0}
+
+        def run(args):
+            self.calls.append(args)
+            if args[1] == "start":
+                state["starts"] += 1
+                state["up"] = starts or state["starts"] > 1
+
+        def running():
+            if state["up"] and self.calls and self.calls[-1][1] == "stop":
+                state["checks"] += 1
+                if state["checks"] > quits_after:
+                    # Recalbox saves its settings while quitting.
+                    with open(self.conf, "a", encoding="utf-8") as handle:
+                        handle.write("system.saved.on.quit=1\n")
+                    state["up"] = False
+            return state["up"]
+
+        clock = support.FakeClock()
+        return state, dict(run=run, running=running, sleep=clock.advance, clock=clock)
+
+    def test_attend_l_arret_reel_du_menu(self):
+        state, fake = self.make_frontend(quits_after=40)  # 20 s: longer than the init script waits
+        self.assertEqual(lock.apply(self.home, True, conf=self.conf, **fake), {"changed": True})
+        self.assertIn("system.saved.on.quit=1", self.text(), "ecrit apres l'enregistrement du menu")
+        self.assertTrue(lock.is_locked(self.conf))
+        self.assertEqual([call[1] for call in self.calls], ["stop", "start"])
+        self.assertTrue(state["up"])
+
+    def test_relance_si_le_menu_ne_repart_pas(self):
+        state, fake = self.make_frontend(quits_after=2, starts=False)
+        lock.apply(self.home, True, conf=self.conf, **fake)
+        self.assertEqual([call[1] for call in self.calls], ["stop", "start", "start"])
+        self.assertTrue(state["up"])
+
+    def test_menu_qui_ne_s_arrete_pas(self):
+        _state, fake = self.make_frontend(quits_after=10 ** 6)
+        with self.assertRaises(lock.LockError):
+            lock.apply(self.home, True, conf=self.conf, **fake)
+        self.assertEqual(self.text(), CONF, "rien n'est ecrit")
+        self.assertEqual([call[1] for call in self.calls], ["stop", "start"])
+
     def test_rien_a_defaire(self):
         self.assertEqual(self.apply(False), {"changed": False})
         self.assertEqual(self.calls, [])
