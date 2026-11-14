@@ -43,6 +43,9 @@ by `rfidctl version`.
   (silently), and nothing is saved or counted.
 * **Reader screen, the player's games**: the band no longer highlights a
   console while that page is shown.
+* **Reader screen, smooth edges**: rounded corners, circles, bars and frames
+  are drawn four times larger then shrunk (anti-aliasing), and the turned page
+  of a vertical screen is smoothed.
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 

@@ -184,5 +184,24 @@ class PlayerPageTest(unittest.TestCase):
         self.assertIsNone(watcher.poll(), "lu une seule fois")
 
 
+class SmoothShapesTest(unittest.TestCase):
+    """Shapes are drawn larger then shrunk: their edges are partly transparent."""
+
+    def test_bords_adoucis(self):
+        try:
+            import pygame
+        except ImportError:
+            self.skipTest("pygame absent")
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        pygame.display.init()
+        self.addCleanup(pygame.display.quit)
+        painter = screen.Painter(pygame, 1280, 720, [{"id": "", "name": "x", "count": 0}], "fr")
+        disc = painter.shape(40, 40, (200, 30, 30), ellipse=True)
+        alphas = {disc.get_at((x, 4))[3] for x in range(0, 12)}
+        self.assertTrue(any(0 < alpha < 255 for alpha in alphas), "un bord en degrade, pas en escalier")
+        self.assertEqual(disc.get_at((20, 20))[3], 255)
+        self.assertIs(painter.shape(40, 40, (200, 30, 30), ellipse=True), disc, "garde en cache")
+
+
 if __name__ == "__main__":
     unittest.main()
