@@ -32,6 +32,16 @@ by `rfidctl version`.
 
 * **Save the game before quitting** is now on by default (new installs).
 
+### Fixed
+
+* **Reader screen, Recalbox interface left running**: while it starts, the
+  interface's main process is named "Main", so it was not seen; stopped in
+  the middle of its start (service restarted by an update, boot), it takes
+  about 40 s to quit and keeps the display, and an update could leave the TV
+  on the text screen of Recalbox. It is now recognised by its program, only
+  stopped once it has run for 25 s, and forced to quit if it is still there
+  after the usual wait.
+
 ## [2.16.0]
 
 ### Added

@@ -196,5 +196,31 @@ class FrontendLockTest(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+class FrontendDetectionTest(unittest.TestCase):
+    """Recalbox's interface renames its main process ("Main") while it starts."""
+
+    def test_reconnue_par_son_programme(self):
+        import shutil
+        import tempfile
+        from rfid import frontend_lock as lock
+        proc = tempfile.mkdtemp(prefix="rfid-proc-")
+        self.addCleanup(shutil.rmtree, proc, True)
+
+        def process(pid, comm, argv):
+            os.makedirs(os.path.join(proc, str(pid)))
+            with open(os.path.join(proc, str(pid), "comm"), "w") as handle:
+                handle.write(comm + "\n")
+            with open(os.path.join(proc, str(pid), "cmdline"), "wb") as handle:
+                handle.write(b"\0".join(part.encode() for part in argv) + b"\0")
+
+        process(10, "python3", ["python3", "main.py", "daemon"])
+        self.assertFalse(lock.frontend_running(proc))
+        process(1196, "Main", ["/usr/bin/emulationstation"])
+        self.assertEqual(lock.frontend_pids(proc), [1196])
+        process(1180, "emulationstation", ["/bin/bash", "/usr/bin/emulationstation-starter"])
+        self.assertEqual(sorted(lock.frontend_pids(proc)), [1180, 1196])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,7 @@ import time
 
 from . import es_command
 from .consts import ES_STATE_FILE
-from .frontend_lock import ES_SERVICE, START_TIMEOUT_S, STOP_TIMEOUT_S, frontend_running
+from .frontend_lock import ES_SERVICE, START_TIMEOUT_S, STOP_TIMEOUT_S, frontend_age, frontend_pids, frontend_running
 
 #: RetroArch reads this file last: the quit hotkey and the menu are turned
 #: off here while a game started by the reader runs (option).
@@ -50,6 +50,9 @@ RESTART_DELAY_S = 2.0
 #: about to start (the service starts before it); it is waited for.
 BOOT_WINDOW_S = 240.0
 BOOT_WAIT_S = 120.0
+#: Recalbox's interface stopped while it starts hangs for a long time and
+#: keeps the screen: it is stopped once it has run at least this long.
+SETTLE_S = 25.0
 
 
 def system_uptime() -> float:
@@ -119,8 +122,12 @@ class ReaderMode:
     """Switches between Recalbox's interface and the reader screen, starts the games."""
 
     def __init__(self, home: str, log, run=None, running=None, popen=None, clock=None, sleep=None,
-                 python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE, uptime=None):
+                 python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE, uptime=None,
+                 age=None, pids=None, kill=None):
         self.home = home
+        self._age = age or (frontend_age if running is None else (lambda: None))
+        self._pids = pids or (frontend_pids if running is None else (lambda: []))
+        self._kill = kill or os.kill
         self._uptime = uptime or system_uptime
         self._restart_at = None
         self.log = log
@@ -198,16 +205,38 @@ class ReaderMode:
                 return
             self._sleep(1.0)
 
+    def _wait_settled(self) -> None:
+        """Lets Recalbox's interface finish starting before stopping it."""
+        deadline = self._clock() + SETTLE_S + 5
+        while self._clock() < deadline:
+            age = self._age()
+            if age is None or age >= SETTLE_S:
+                return
+            self._sleep(1.0)
+
     def stop_frontend(self) -> bool:
         self._wait_boot_frontend()
         if not self._running():
             return True
+        self._wait_settled()
         self._run([ES_SERVICE, "stop"])
         deadline = self._clock() + STOP_TIMEOUT_S
         while self._clock() < deadline:
             if not self._running():
                 return True
             self._sleep(0.5)
+        # Still there (stuck): forced to quit, it would keep the screen.
+        for sig in (signal.SIGTERM, getattr(signal, "SIGKILL", 9)):
+            for pid in self._pids():
+                try:
+                    self._kill(pid, sig)
+                except OSError:
+                    pass
+            for _ in range(10):
+                if not self._running():
+                    self._info("Interface de Recalbox bloquee : arretee de force")
+                    return True
+                self._sleep(0.5)
         return not self._running()
 
     def start_frontend(self) -> None:

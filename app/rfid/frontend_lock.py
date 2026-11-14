@@ -64,22 +64,58 @@ class LockError(Exception):
     pass
 
 
-def frontend_running(proc_dir: str = "/proc") -> bool:
-    """True while the frontend (or its starter) runs."""
+#: Programs of Recalbox's interface. Its main process renames itself
+#: ("Main") while it starts: it is recognised by its program, not its name.
+ES_PROGRAMS = ("emulationstation", "emulationstation-starter")
+
+
+def frontend_pids(proc_dir: str = "/proc") -> list:
+    """PIDs of the frontend and of its starter."""
+    found = []
     try:
         entries = os.listdir(proc_dir)
     except OSError:
-        return False
+        return found
     for entry in entries:
         if not entry.isdigit():
             continue
         try:
             with open(os.path.join(proc_dir, entry, "comm"), "r", encoding="utf-8", errors="replace") as handle:
                 if handle.read().strip() == ES_COMM:
-                    return True
+                    found.append(int(entry))
+                    continue
+            with open(os.path.join(proc_dir, entry, "cmdline"), "rb") as handle:
+                argv = [part.decode("utf-8", "replace") for part in handle.read().split(b"\0") if part]
         except OSError:
             continue
-    return False
+        # The starter is a bash script: /bin/bash /usr/bin/emulationstation-starter
+        if any(os.path.basename(part) in ES_PROGRAMS for part in argv[:2]):
+            found.append(int(entry))
+    return found
+
+
+def frontend_running(proc_dir: str = "/proc") -> bool:
+    """True while the frontend (or its starter) runs."""
+    return bool(frontend_pids(proc_dir))
+
+
+def frontend_age(proc_dir: str = "/proc"):
+    """Seconds since the youngest frontend process started (None: not running)."""
+    try:
+        with open(os.path.join(proc_dir, "uptime"), "r") as handle:
+            uptime = float(handle.read().split()[0])
+        ticks = float(os.sysconf("SC_CLK_TCK"))
+    except (OSError, ValueError, IndexError, AttributeError):
+        return None
+    ages = []
+    for pid in frontend_pids(proc_dir):
+        try:
+            with open(os.path.join(proc_dir, str(pid), "stat"), "r", encoding="utf-8", errors="replace") as handle:
+                fields = handle.read().rsplit(")", 1)[1].split()
+            ages.append(uptime - float(fields[19]) / ticks)
+        except (OSError, ValueError, IndexError):
+            continue
+    return min(ages) if ages else None
 
 
 def _wait_for(check, wanted: bool, timeout_s: float, sleep=time.sleep, clock=time.monotonic) -> bool:
