@@ -94,6 +94,23 @@ class CardsTest(unittest.TestCase):
         self.assertIn("paused", self.said())
         self.assertIn("resumed", self.said())
 
+    def test_jeu_montre_puis_retire_le_joueur_reste(self):
+        """Start with the controller: a game shown then given up never started."""
+        class Waiting:
+            pending = {"name": "Mario"}
+
+        self.controller.on_badge("1EA00001")
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
+        self.launcher.reader = Waiting()
+        self.assertTrue(self.controller.stop_game("removed"))
+        self.assertIsNone(self.players.current)
+        self.assertEqual(self.players.pending["uid"], "1EA00001", "Lea reste la joueuse de la prochaine partie")
+        self.assertEqual(self.saver.saved, [], "rien a sauvegarder")
+        self.assertEqual(self.screen.said[-1], ("player_next", {"name": "Lea"}))
+        self.launcher.reader = None
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
+        self.assertEqual(self.players.current["uid"], "1EA00001")
+
     def test_pause_sans_jeu(self):
         self.assertEqual(self.controller.on_badge("0A000001"), "nothing")
         self.launcher.running = True

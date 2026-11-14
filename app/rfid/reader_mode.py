@@ -429,9 +429,9 @@ class ReaderMode:
             self._start(pending["argv"], pending["system"], pending["rom"], pending["name"])
             return
         if self._clock() >= pending["deadline"]:
-            self.cancel_pending("pas de reponse")
             if self.on_cancel is not None:
-                self.on_cancel()
+                self.on_cancel()  # the controller gives the game up (and its player stays active)
+            self.cancel_pending("pas de reponse")
 
     def _start(self, argv, system: str, rom: str, name: str) -> bool:
         if self.preview or self.confirm:

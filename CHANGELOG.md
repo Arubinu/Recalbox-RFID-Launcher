@@ -38,6 +38,11 @@ by `rfidctl version`.
 ### Changed
 
 * **Change player during a game** is now on by default (new installs).
+* **Start with the controller**: a game shown then given up (card removed,
+  no answer) never started: its player stays the one of the next game, and
+  nothing is saved or counted.
+* **Reader screen, the player's games**: the band no longer highlights a
+  console while that page is shown.
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 
