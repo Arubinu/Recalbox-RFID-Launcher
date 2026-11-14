@@ -66,8 +66,6 @@ no_quit_hotkey = 0
 resolution = recalbox
 # Reader screen: the game is shown (picture, name) before it starts
 show_game = 1
-# Reader screen: the game shown starts only when a controller button is pressed
-confirm_with_pad = 0
 # Reader screen: when a player is active, their own games instead of the consoles
 player_games = 0
 
@@ -83,8 +81,10 @@ stop_on_remove = 0
 # it at the next launch of the game (0 = no)
 save_on_quit = 1
 # Action when an already registered badge is scanned:
-#   launch = starts the game (historical behaviour)
-#   none   = starts nothing: confirmation beep and log only
+#   launch  = starts the game (historical behaviour)
+#   confirm = reader screen: the game is shown and starts with a controller
+#             button (Recalbox's interface: started at once)
+#   none    = starts nothing: confirmation beep and log only
 # (The Recalbox frontend only accepts the START command: there is no official
 #  command to "open the game page" without starting it.)
 action = launch

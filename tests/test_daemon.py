@@ -690,5 +690,36 @@ class LockWatchdogTest(unittest.TestCase):
         self.thread.assert_not_called()
 
 
+class ReaderOptionsTest(unittest.TestCase):
+    """The badge action "confirm" makes the reader screen wait for the controller."""
+
+    def configure(self, text):
+        from unittest import mock
+
+        from rfid import daemon as _daemon
+        from rfid.config import Config
+
+        home = tempfile.mkdtemp(prefix="rfid-options-")
+        self.addCleanup(shutil.rmtree, home, True)
+        path = os.path.join(home, "config.ini")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        service = _daemon.Service.__new__(_daemon.Service)
+        service.home = home
+        service.cfg = Config(path)
+        service.controller = None
+        service.reader_mode = mock.Mock()
+        service._configure_reader_mode()
+        return service.reader_mode
+
+    def test_lancer_avec_la_manette(self):
+        reader = self.configure("[display]\nmode = reader\n[launch]\naction = confirm\n")
+        self.assertTrue(reader.confirm)
+        self.assertTrue(reader.preview, "le jeu est montre par defaut")
+        reader = self.configure("[display]\nmode = reader\nshow_game = 0\n[launch]\naction = launch\n")
+        self.assertFalse(reader.confirm)
+        self.assertFalse(reader.preview)
+
+
 if __name__ == "__main__":
     unittest.main()

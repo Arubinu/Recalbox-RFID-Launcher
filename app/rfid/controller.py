@@ -41,6 +41,7 @@ MODE_DELETE = "delete"
 # Action to perform when an already registered badge is scanned.
 ACTION_LAUNCH = "launch"   # starts the game (historical behaviour)
 ACTION_NONE = "none"       # confirmation beep and log, without starting anything
+ACTION_CONFIRM = "confirm"  # reader screen: the game is shown, a controller button starts it
 
 #: Special cards that act even while a game is running.
 ACTIONS_DURING_GAME = ("quit", "bonus", "poweroff", "player")

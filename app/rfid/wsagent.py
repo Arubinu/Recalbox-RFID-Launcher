@@ -1727,9 +1727,9 @@ class Agent:
 #: "when" ("section.key=value" or "!=") shows a setting only when it matters.
 OPTIONS = (
     {"section": "launch", "key": "action", "type": "choice",
-     "choices": ["launch", "none"], "default": "launch",
+     "choices": ["launch", "confirm", "none"], "default": "launch",
      "label": "Quand on pose un badge associé",
-     "help": "Lancer le jeu, ou seulement biper (pratique pour vérifier ses badges sans lancer de partie)."},
+     "help": "Lancer le jeu ; le montrer et attendre un bouton de la manette (avec l'écran du lecteur : retirer la carte ou attendre deux minutes annule, et le temps de jeu ne compte qu'au lancement ; avec l'interface de Recalbox, le jeu se lance directement) ; ou seulement biper (pratique pour vérifier ses badges sans lancer de partie)."},
     {"section": "launch", "key": "ignore_when_game_running", "type": "bool", "default": True,
      "label": "Ne pas interrompre une partie en cours",
      "help": "Un badge posé pendant une partie ne lance pas d'autre jeu."},
@@ -1746,9 +1746,6 @@ OPTIONS = (
     {"section": "display", "key": "show_game", "type": "bool", "default": True, "when": "display.mode=reader",
      "label": "Montrer le jeu avant de le lancer",
      "help": "Quand une carte de jeu est posée, l'écran du lecteur montre sa jaquette et son nom pendant deux secondes, puis le jeu démarre."},
-    {"section": "display", "key": "confirm_with_pad", "type": "bool", "default": False, "when": "display.mode=reader",
-     "label": "Lancer le jeu avec la manette",
-     "help": "Le jeu posé est montré à l'écran et ne démarre qu'à l'appui sur un bouton de la manette. Retirer la carte (ou attendre deux minutes) annule. Le temps de jeu ne compte qu'à partir du lancement."},
     {"section": "display", "key": "player_games", "type": "bool", "default": False, "when": "display.mode=reader",
      "label": "Montrer les jeux du joueur actif",
      "help": "Quand un joueur est actif, l'écran du lecteur montre ses derniers jeux joués avec leurs jaquettes, à la place des consoles."},

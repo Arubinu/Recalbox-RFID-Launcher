@@ -946,7 +946,7 @@ class Service:
         no_hotkey = (self.cfg.get_bool("display", "no_quit_hotkey", False)
                      and self.cfg.get_bool("launch", "stop_on_remove", False))
         reader.preview = self.cfg.get_bool("display", "show_game", True)
-        reader.confirm = self.cfg.get_bool("display", "confirm_with_pad", False)
+        reader.confirm = self.cfg.get("launch", "action", "launch").strip().lower() == "confirm"
         reader.on_wait = self._game_waits
         reader.on_go = self._game_goes
         reader.on_cancel = self._game_given_up
