@@ -54,6 +54,14 @@ hold_press_s = 3
 # Debounce (milliseconds)
 debounce_ms = 40
 
+[display]
+# What the TV shows: "recalbox" = Recalbox's interface, "reader" = the reader
+# screen (consoles, active player); games then start with the cards only
+mode = recalbox
+# Reader screen: the quit hotkey and the RetroArch menu are turned off during
+# the games (only with stop_on_remove: removing the card quits the game)
+no_quit_hotkey = 0
+
 [launch]
 # The Recalbox frontend listens for the "START|system|game" command on this UDP port
 udp_host = 127.0.0.1

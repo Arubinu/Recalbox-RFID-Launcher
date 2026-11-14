@@ -23,6 +23,7 @@
   "Adresse copiée.": "Indirizzo copiato.",
   "Adresse d'un fichier ZIP": "Indirizzo di un file ZIP",
   "Adresse de la Recalbox :": "Indirizzo della Recalbox:",
+  "Affichage sur la TV": "Schermo della TV",
   "Afficher": "Mostra",
   "Aide": "Aiuto",
   "Ajout impossible :": "Aggiunta non riuscita:",
@@ -214,6 +215,7 @@
   "Déjà en version {v} : rien à installer.": "Già alla versione {v}: niente da installare.",
   "Délai avant de relancer le même badge (secondes)": "Attesa prima che lo stesso badge riparta (secondi)",
   "Démarrer": "Avvia",
+  "Désactiver le raccourci pour quitter les jeux": "Disattivare la scorciatoia per uscire dai giochi",
   "Détail du journal": "Dettaglio del log",
   "Détails techniques": "Dettagli tecnici",
   "Déverrouiller": "Sblocca",
@@ -379,6 +381,7 @@
   "Le programme est sur la Recalbox. Passez à l'étape suivante pour le lancer.": "Il programma è sulla Recalbox. Passa al passo successivo per avviarlo.",
   "Le programme est à jour.": "Il programma è aggiornato.",
   "Le programme qui surveille le lecteur et le bouton. Il démarre tout seul avec la Recalbox.": "Il programma che controlla lettore e pulsante. Si avvia da solo con la Recalbox.",
+  "Le raccourci de la manette et le menu de RetroArch ne quittent plus le jeu : seul le retrait du badge le quitte. Ne s'applique que si « Quitter le jeu quand on retire le badge » est activé (sinon on ne pourrait plus quitter), et seulement avec l'écran du lecteur.": "La scorciatoia del controller e il menu di RetroArch non escono più dal gioco: solo togliere il badge lo fa. Vale solo se «Uscire dal gioco quando si toglie il badge» è attivo (altrimenti non si potrebbe uscire), e solo con la schermata del lettore.",
   "Le réglage automatique (onglet Matériel) choisit la meilleure valeur. Pris en compte au redémarrage du service.": "La regolazione automatica (scheda Hardware) sceglie il valore migliore. Applicato al riavvio del servizio.",
   "Le réglage n'a pas abouti": "Regolazione non riuscita",
   "Le service du lecteur est arrêté.": "Il servizio del lettore è fermo.",
@@ -758,6 +761,7 @@
   "https://exemple.fr/recalbox-rfid.zip": "https://esempio.it/recalbox-rfid.zip",
   "image illisible": "immagine illeggibile",
   "image introuvable": "immagine non trovata",
+  "interface de Recalbox": "interfaccia di Recalbox",
   "jamais utilisé": "mai usato",
   "jeu sélectionné sur la Recalbox": "gioco selezionato sulla Recalbox",
   "jour": "giorno",
@@ -800,6 +804,7 @@
   "À droite": "A destra",
   "À gauche": "A sinistra",
   "Ça ne marche pas ? Utiliser l'installateur Windows": "Non funziona? Usa il programma di installazione Windows",
+  "Écran du lecteur : à la place de l'interface de Recalbox, la TV montre les consoles et le joueur actif, et les jeux se lancent seulement avec les cartes. La carte « Déverrouiller » rend l'interface de Recalbox le temps qu'il faut. Le changement prend quelques secondes.": "Schermata del lettore: al posto dell'interfaccia di Recalbox, la TV mostra le console e il giocatore attivo, e i giochi partono solo con le carte. La carta «Sblocca» riporta l'interfaccia di Recalbox per il tempo necessario. Il cambio richiede qualche secondo.",
   "Écran titre": "Schermata del titolo",
   "Écrire le jeu dans le badge": "Scrivi il gioco nel badge",
   "Écrit le jeu dans la puce du badge : il marchera sur n'importe quelle Recalbox qui a ce jeu. Badges MIFARE Classic, Ultralight ou NTAG.": "Scrive il gioco nel chip del badge: funzionerà su qualsiasi Recalbox che abbia questo gioco. Badge MIFARE Classic, Ultralight o NTAG.",
@@ -814,5 +819,6 @@
   "Éteint proprement la Recalbox.": "Spegne la Recalbox in modo pulito.",
   "Étroite": "Stretto",
   "Évite qu'un badge posé deux fois de suite lance deux fois le jeu.": "Evita che un badge appoggiato due volte di seguito avvii il gioco due volte.",
-  "écran de veille de la Recalbox": "salvaschermo della Recalbox"
+  "écran de veille de la Recalbox": "salvaschermo della Recalbox",
+  "écran du lecteur": "schermata del lettore"
 }

@@ -23,6 +23,7 @@
   "Adresse copiée.": "Endereço copiado.",
   "Adresse d'un fichier ZIP": "Endereço de um ficheiro ZIP",
   "Adresse de la Recalbox :": "Endereço do Recalbox:",
+  "Affichage sur la TV": "Ecrã da TV",
   "Afficher": "Mostrar",
   "Aide": "Ajuda",
   "Ajout impossible :": "Não foi possível adicionar:",
@@ -214,6 +215,7 @@
   "Déjà en version {v} : rien à installer.": "Já na versão {v}: nada a instalar.",
   "Délai avant de relancer le même badge (secondes)": "Atraso antes de o mesmo tag voltar a iniciar (segundos)",
   "Démarrer": "Iniciar",
+  "Désactiver le raccourci pour quitter les jeux": "Desativar o atalho para sair dos jogos",
   "Détail du journal": "Detalhe do registo",
   "Détails techniques": "Detalhes técnicos",
   "Déverrouiller": "Desbloquear",
@@ -379,6 +381,7 @@
   "Le programme est sur la Recalbox. Passez à l'étape suivante pour le lancer.": "O programa está no Recalbox. Passe ao passo seguinte para o executar.",
   "Le programme est à jour.": "O programa está atualizado.",
   "Le programme qui surveille le lecteur et le bouton. Il démarre tout seul avec la Recalbox.": "O programa que vigia o leitor e o botão. Arranca sozinho com o Recalbox.",
+  "Le raccourci de la manette et le menu de RetroArch ne quittent plus le jeu : seul le retrait du badge le quitte. Ne s'applique que si « Quitter le jeu quand on retire le badge » est activé (sinon on ne pourrait plus quitter), et seulement avec l'écran du lecteur.": "O atalho do comando e o menu do RetroArch já não saem do jogo: só retirar a tag o faz. Só se aplica se «Sair do jogo ao retirar a tag» estiver ativado (senão não seria possível sair), e só com o ecrã do leitor.",
   "Le réglage automatique (onglet Matériel) choisit la meilleure valeur. Pris en compte au redémarrage du service.": "O ajuste automático (separador Hardware) escolhe o melhor valor. Aplicado ao reiniciar o serviço.",
   "Le réglage n'a pas abouti": "O ajuste falhou",
   "Le service du lecteur est arrêté.": "O serviço do leitor está parado.",
@@ -758,6 +761,7 @@
   "https://exemple.fr/recalbox-rfid.zip": "https://exemplo.pt/recalbox-rfid.zip",
   "image illisible": "imagem ilegível",
   "image introuvable": "imagem não encontrada",
+  "interface de Recalbox": "interface da Recalbox",
   "jamais utilisé": "nunca usado",
   "jeu sélectionné sur la Recalbox": "jogo selecionado na Recalbox",
   "jour": "dia",
@@ -800,6 +804,7 @@
   "À droite": "À direita",
   "À gauche": "À esquerda",
   "Ça ne marche pas ? Utiliser l'installateur Windows": "Não funciona? Use o instalador do Windows",
+  "Écran du lecteur : à la place de l'interface de Recalbox, la TV montre les consoles et le joueur actif, et les jeux se lancent seulement avec les cartes. La carte « Déverrouiller » rend l'interface de Recalbox le temps qu'il faut. Le changement prend quelques secondes.": "Ecrã do leitor: em vez da interface da Recalbox, a TV mostra as consolas e o jogador ativo, e os jogos só arrancam com os cartões. O cartão «Desbloquear» devolve a interface da Recalbox durante o tempo necessário. A mudança demora alguns segundos.",
   "Écran titre": "Ecrã de título",
   "Écrire le jeu dans le badge": "Escrever o jogo no tag",
   "Écrit le jeu dans la puce du badge : il marchera sur n'importe quelle Recalbox qui a ce jeu. Badges MIFARE Classic, Ultralight ou NTAG.": "Escreve o jogo no chip do tag: funcionará em qualquer Recalbox que tenha este jogo. Tags MIFARE Classic, Ultralight ou NTAG.",
@@ -814,5 +819,6 @@
   "Éteint proprement la Recalbox.": "Desliga o Recalbox corretamente.",
   "Étroite": "Estreita",
   "Évite qu'un badge posé deux fois de suite lance deux fois le jeu.": "Evita que um tag colocado duas vezes seguidas inicie o jogo duas vezes.",
-  "écran de veille de la Recalbox": "proteção de ecrã do Recalbox"
+  "écran de veille de la Recalbox": "proteção de ecrã do Recalbox",
+  "écran du lecteur": "ecrã do leitor"
 }

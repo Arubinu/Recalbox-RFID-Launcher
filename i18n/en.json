@@ -23,6 +23,7 @@
   "Adresse copiée.": "Address copied.",
   "Adresse d'un fichier ZIP": "Address of a ZIP file",
   "Adresse de la Recalbox :": "Recalbox address:",
+  "Affichage sur la TV": "TV display",
   "Afficher": "Show",
   "Aide": "Help",
   "Ajout impossible :": "Could not add:",
@@ -214,6 +215,7 @@
   "Déjà en version {v} : rien à installer.": "Already on version {v}: nothing to install.",
   "Délai avant de relancer le même badge (secondes)": "Delay before the same badge starts again (seconds)",
   "Démarrer": "Start",
+  "Désactiver le raccourci pour quitter les jeux": "Turn off the hotkey that quits the games",
   "Détail du journal": "Log detail",
   "Détails techniques": "Technical details",
   "Déverrouiller": "Unlock",
@@ -379,6 +381,7 @@
   "Le programme est sur la Recalbox. Passez à l'étape suivante pour le lancer.": "The program is on the Recalbox. Go to the next step to run it.",
   "Le programme est à jour.": "The program is up to date.",
   "Le programme qui surveille le lecteur et le bouton. Il démarre tout seul avec la Recalbox.": "The program that watches the reader and the button. It starts by itself with the Recalbox.",
+  "Le raccourci de la manette et le menu de RetroArch ne quittent plus le jeu : seul le retrait du badge le quitte. Ne s'applique que si « Quitter le jeu quand on retire le badge » est activé (sinon on ne pourrait plus quitter), et seulement avec l'écran du lecteur.": "The controller hotkey and the RetroArch menu no longer quit the game: only removing the badge does. Applies only when “Quit the game when the badge is removed” is on (otherwise the game could not be quit), and only with the reader screen.",
   "Le réglage automatique (onglet Matériel) choisit la meilleure valeur. Pris en compte au redémarrage du service.": "The automatic tuning (Hardware tab) picks the best value. Applied when the service restarts.",
   "Le réglage n'a pas abouti": "Tuning failed",
   "Le service du lecteur est arrêté.": "The reader service is stopped.",
@@ -758,6 +761,7 @@
   "https://exemple.fr/recalbox-rfid.zip": "https://example.com/recalbox-rfid.zip",
   "image illisible": "unreadable image",
   "image introuvable": "picture not found",
+  "interface de Recalbox": "Recalbox interface",
   "jamais utilisé": "never used",
   "jeu sélectionné sur la Recalbox": "game selected on the Recalbox",
   "jour": "day",
@@ -800,6 +804,7 @@
   "À droite": "On the right",
   "À gauche": "On the left",
   "Ça ne marche pas ? Utiliser l'installateur Windows": "Not working? Use the Windows installer",
+  "Écran du lecteur : à la place de l'interface de Recalbox, la TV montre les consoles et le joueur actif, et les jeux se lancent seulement avec les cartes. La carte « Déverrouiller » rend l'interface de Recalbox le temps qu'il faut. Le changement prend quelques secondes.": "Reader screen: instead of the Recalbox interface, the TV shows the consoles and the active player, and games start with the cards only. The “Unlock” card brings the Recalbox interface back for as long as needed. The switch takes a few seconds.",
   "Écran titre": "Title screen",
   "Écrire le jeu dans le badge": "Write the game into the badge",
   "Écrit le jeu dans la puce du badge : il marchera sur n'importe quelle Recalbox qui a ce jeu. Badges MIFARE Classic, Ultralight ou NTAG.": "Writes the game into the chip of the badge: it will work on any Recalbox that has this game. MIFARE Classic, Ultralight or NTAG badges.",
@@ -814,5 +819,6 @@
   "Éteint proprement la Recalbox.": "Turns the Recalbox off cleanly.",
   "Étroite": "Narrow",
   "Évite qu'un badge posé deux fois de suite lance deux fois le jeu.": "Prevents a badge placed twice in a row from starting the game twice.",
-  "écran de veille de la Recalbox": "Recalbox screensaver"
+  "écran de veille de la Recalbox": "Recalbox screensaver",
+  "écran du lecteur": "reader screen"
 }
