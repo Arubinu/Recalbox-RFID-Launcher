@@ -48,6 +48,8 @@ by `rfidctl version`.
   of a vertical screen is smoothed.
 * **Reader screen, band of logos**: the chosen logo lights up once the band
   has stopped moving (before, it appeared during the movement).
+* **Reader screen, console logos**: a very light blurred shadow of their own
+  shape, so that their white parts show on the white plates.
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 

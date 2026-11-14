@@ -490,8 +490,31 @@ class Painter:
         pg = self.pg
         width, height = image.get_width() + 2 * pad_x, image.get_height() + 2 * pad_y
         plate = self.shape(width, height, PLATE, min(height // 2, int(self.u * 1.6))).copy()
+        shadow = self.logo_shadow(image)
+        if shadow is not None:
+            spread = (shadow.get_width() - image.get_width()) // 2
+            plate.blit(shadow, (pad_x - spread, pad_y - spread + max(1, int(self.u * 0.12))))
         plate.blit(image, (pad_x, pad_y))
         return plate
+
+    #: Darkness of the veil of shadow under the logos (0-255).
+    LOGO_SHADOW = 110
+
+    def logo_shadow(self, image):
+        """A very light blurred shadow of a logo's own shape: its white parts
+        stay visible on the white plate."""
+        pg = self.pg
+        try:
+            spread = max(2, int(self.u * 0.35))
+            width, height = image.get_width() + 2 * spread, image.get_height() + 2 * spread
+            silhouette = pg.Surface((width, height), pg.SRCALPHA)
+            silhouette.blit(image, (spread, spread))
+            silhouette.fill((0, 0, 0, 255), special_flags=pg.BLEND_RGBA_MIN)          # black, its own alpha
+            silhouette.fill((255, 255, 255, self.LOGO_SHADOW), special_flags=pg.BLEND_RGBA_MULT)
+            small = pg.transform.smoothscale(silhouette, (max(1, width // 3), max(1, height // 3)))
+            return pg.transform.smoothscale(small, (width, height))           # blurred
+        except Exception:  # noqa: BLE001 - no shadow rather than no logo
+            return None
 
     def glow(self, colour, radius: int):
         """A soft round glow (small, then enlarged smoothly)."""
