@@ -13,6 +13,16 @@ archive to a GitHub release.
 4. The first run of the **Build and publish** workflow publishes the page at
    `https://<account>.github.io/<repository>/`.
 
+## Repository page
+
+* **About › Description**: One badge, one game: place an RFID card on a reader plugged into your Recalbox
+  (Raspberry Pi + RC522) and the game starts, like a cartridge. Player cards with play time limits, printable
+  cards, its own TV screen, all set up from a single web page. No dependency, 6 languages.
+* **About › Website**: `https://<account>.github.io/<repository>/`
+* **About › Topics**: `recalbox` `retrogaming` `raspberry-pi` `rfid` `rc522` `nfc` `emulationstation` `retroarch`
+  `emulation` `game-launcher` `parental-controls` `kids` `cartridge` `python` `gpio`
+* **Settings › General › Social preview**: upload `docs/images/social-preview.png` (1280×640).
+
 ## Releasing a version
 
 1. Bump the version everywhere (`VERSION`, `app/rfid/__init__.py`, `install.sh`, `README.md`, a `## [x.y.z]` entry in
