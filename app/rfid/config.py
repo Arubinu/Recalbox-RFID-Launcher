@@ -154,7 +154,7 @@ week_start = monday
 keep_active = 0
 # A player card placed during another player's game takes the game over: the
 # time counts for the new player from then on (0 = it is for the next game).
-switch_on_card = 0
+switch_on_card = 1
 # Locks the Recalbox menu: favourite games only, no START menu (the page
 # applies it to recalbox.conf and restarts the menu).
 lock_frontend = 0

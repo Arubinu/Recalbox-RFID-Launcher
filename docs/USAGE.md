@@ -250,7 +250,7 @@ Options:
 * **Time reset**: the hour at which the day's counters restart (midnight by
   default; a game played before it counts for the day before), and the day
   the weekly counters restart (Monday by default).
-* **Change player during a game**: a player card placed during another
+* **Change player during a game** (on by default): a player card placed during another
   player's game takes it over (the time counts for the new player from then
   on, and the screen says so); otherwise the card is for the next game.
 * **Keep the player active until their time is up**: after a game, the
@@ -495,7 +495,7 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
 | `[players] reset_hour` / `week_start` | `0` / `monday` | when the play time counters restart |
-| `[players] switch_on_card` | `0` | a player card placed during a game takes it over |
+| `[players] switch_on_card` | `1` | a player card placed during a game takes it over |
 | `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
 | `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface (drawn at the screen's resolution, vertical when Recalbox's screen is rotated) |
 | `[display] resolution` | `recalbox` | `native` = the screen's own resolution |

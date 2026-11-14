@@ -1790,7 +1790,7 @@ OPTIONS = (
     {"section": "players", "key": "keep_active", "type": "bool", "default": False, "when": "players.enabled=1",
      "label": "Garder le joueur actif jusqu'à la fin de son temps",
      "help": "Après une partie, le joueur reste actif : les cartes de jeu suivantes comptent pour lui sans reposer sa carte joueur. Il cesse d'être actif quand son temps est écoulé, quand une autre carte joueur est posée, ou avec la carte « Déverrouiller ». Un redémarrage de la Recalbox l'oublie aussi."},
-    {"section": "players", "key": "switch_on_card", "type": "bool", "default": False, "when": "players.enabled=1",
+    {"section": "players", "key": "switch_on_card", "type": "bool", "default": True, "when": "players.enabled=1",
      "label": "Changer de joueur en cours de partie",
      "help": "Une carte joueur posée pendant la partie d'un autre joueur reprend cette partie : le temps compte pour le nouveau joueur à partir de là, et un message le dit à l'écran. Sinon, la carte compte pour la partie suivante. Attention : si les jeux se quittent au retrait de la carte, retirer la carte de jeu quitte la partie."},
     {"section": "players", "key": "block_exhausted", "type": "bool", "default": True, "when": "players.enabled=1",

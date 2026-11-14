@@ -37,6 +37,7 @@ by `rfidctl version`.
 
 ### Changed
 
+* **Change player during a game** is now on by default (new installs).
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 

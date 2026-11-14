@@ -112,7 +112,7 @@ class Controller:
             self.guest_quota_min = max(0, cfg.get_int("players", "guest_quota_min", 0))
             period = cfg.get("players", "guest_period", "day").strip()
             self.guest_period = "week" if period == "week" else "day"
-            self.switch_player = cfg.get_bool("players", "switch_on_card", False)
+            self.switch_player = cfg.get_bool("players", "switch_on_card", True)
             if self.players is not None:
                 from .players import WEEK_DAYS
                 self.players.reset_hour = min(23, max(0, cfg.get_int("players", "reset_hour", 0)))
