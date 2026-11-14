@@ -255,6 +255,16 @@ class Library:
         result.sort(key=lambda item: item["name"].lower())
         return result
 
+    def has_favorites(self) -> bool:
+        """True when at least one game of the Recalbox is a favourite."""
+        for item in self.systems():
+            try:
+                if any(game["favorite"] for game in self.games(item["id"])):
+                    return True
+            except LibraryError:
+                continue
+        return False
+
     def game_info(self, system: str, path: str):
         """One game of the list (same fields as games()), or None."""
         path = str(path or "").replace("\\", "/")

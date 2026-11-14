@@ -843,6 +843,31 @@ class ConfigCommandTest(AgentTestCase):
         self.assertFalse(cfg.get_bool("feedback", "sound", True))
         self.assertIn("arm_timeout_s = 12", self.lire())
 
+    def test_verrouillage_refuse_sans_favori(self):
+        from unittest import mock
+
+        from rfid import frontend_lock
+
+        conf = os.path.join(os.path.dirname(self.config_path), "recalbox.conf")
+        with open(conf, "w", encoding="utf-8") as handle:
+            handle.write("emulationstation.menu=default\n")
+        client = self.authenticated_client()
+        library = mock.Mock()
+        library.has_favorites.return_value = False
+        self.agent.library = library
+        with mock.patch.object(frontend_lock, "RECALBOX_CONF", conf), \
+                mock.patch.object(frontend_lock, "is_locked", return_value=False), \
+                mock.patch.object(frontend_lock, "apply") as apply:
+            with self.assertRaises(WsError) as raised:
+                client.call("config.set", values={"players.lock_frontend": "1"})
+            self.assertIn("favori", str(raised.exception))
+            apply.assert_not_called()
+            library.has_favorites.return_value = True
+            apply.return_value = {"changed": True}
+            client.call("config.set", values={"players.lock_frontend": "1"})
+            apply.assert_called_once()
+        self.assertTrue(Config(self.config_path).get_bool("players", "lock_frontend", False))
+
     def test_option_inconnue_refusee(self):
         client = self.authenticated_client()
         with self.assertRaises(WsError):

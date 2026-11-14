@@ -231,7 +231,10 @@ Options:
   cards are always refused in that case.
 * **Lock the Recalbox menu**: the lists only show the **favourite** games (mark
   the allowed games as favourites) and the **START menu is hidden**, so the
-  lock cannot be removed from the TV. The menu restarts for a few seconds;
+  lock cannot be removed from the TV. The **Ports** and **Recalbox
+  Challenges** systems are hidden too. At least one game must be a favourite
+  (Y button on a game, in Recalbox): without any, Recalbox ignores "favourites
+  only" and shows every game, so the page refuses to lock. The menu restarts for a few seconds;
   refused while a game runs. Turned off (or the reader uninstalled), the
   previous settings of `recalbox.conf` come back exactly.
 * **Unlock card** (Special cards › Unlock), for the parents: placed once, the

@@ -1079,6 +1079,12 @@ class Agent:
         self._write_command("players_reset", uid=uid)
         return {"requested": True}
 
+    def _has_favorites(self) -> bool:
+        try:
+            return self.library.has_favorites()
+        except Exception:  # noqa: BLE001 - frontend unreachable: let Recalbox decide
+            return True
+
     def _cmd_players_stats(self, client, message):
         """Time played per day, player and game (last 60 days), for the statistics."""
         return {"rows": players_module.stats_rows(self.home), "keep_days": players_module.KEEP_DAYS}
@@ -1379,7 +1385,11 @@ class Agent:
         frontend = None
         if "players.lock_frontend" in a_ecrire and os.path.isfile(frontend_lock.RECALBOX_CONF):
             wanted = str(a_ecrire["players.lock_frontend"]).lower() in ("1", "true", "yes", "on")
-            if wanted != frontend_lock.is_locked():
+            active = frontend_lock.lock_active(self.home) or frontend_lock.is_locked()
+            if wanted and not active and not self._has_favorites():
+                raise ValueError("mettez d'abord au moins un jeu en favori dans Recalbox (bouton Y sur un jeu) : "
+                                 "sans favori, Recalbox ignore « favoris seulement » et affiche tous les jeux")
+            if wanted != active:
                 try:
                     frontend = frontend_lock.apply(self.home, wanted, game_running=lambda: bool(emulator_pids()))
                 except frontend_lock.LockError as exc:
@@ -1734,7 +1744,7 @@ OPTIONS = (
      "help": "Le compteur repart à zéro chaque jour à minuit, ou chaque lundi."},
     {"section": "players", "key": "lock_frontend", "type": "bool", "default": False,
      "label": "Verrouiller le menu de la Recalbox",
-     "help": "Les listes n'affichent que les jeux favoris, et le menu START est masqué (on ne peut plus changer les réglages depuis la TV). La Recalbox redémarre son menu (quelques secondes, pas de jeu en cours). Désactivé : les réglages d'avant reviennent. La carte spéciale « Déverrouiller » l'ouvre le temps qu'il faut."},
+     "help": "Les listes n'affichent que les jeux favoris, et le menu START est masqué (on ne peut plus changer les réglages depuis la TV). La Recalbox redémarre son menu (quelques secondes, pas de jeu en cours). Désactivé : les réglages d'avant reviennent. La carte spéciale « Déverrouiller » l'ouvre le temps qu'il faut. Les portages et Recalbox Challenges sont masqués aussi. Il faut au moins un jeu en favori (touche Y sur un jeu, dans Recalbox) : sans favori, Recalbox affiche tous les jeux."},
     {"section": "cards", "key": "online_art", "type": "bool", "default": True,
      "label": "Images en ligne pour les cartes",
      "help": "Pochette, capture, écran titre et logo du jeu téléchargés depuis la base d'images de RetroArch (libretro), sans compte. Il faut Internet sur la Recalbox ; seuls la console et le nom du jeu sont envoyés."},

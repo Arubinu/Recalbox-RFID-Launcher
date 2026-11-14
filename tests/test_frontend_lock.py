@@ -64,7 +64,9 @@ class FrontendLockTest(unittest.TestCase):
         self.apply(True)
         self.apply(False)
         values = lock.read_values(self.text(), lock.LOCKED)
-        self.assertEqual(values, {"emulationstation.menu": "bartop", "emulationstation.favoritesonly": "1"})
+        self.assertEqual(values, {"emulationstation.menu": "bartop", "emulationstation.favoritesonly": "1",
+                                  "emulationstation.collection.ports": None,
+                                  "emulationstation.collection.challenges": None})
 
     def test_refuse_pendant_un_jeu(self):
         with self.assertRaises(lock.LockError):
@@ -108,6 +110,41 @@ class FrontendLockTest(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertTrue(lock.is_locked(self.conf))
         self.assertFalse(lock.is_unlocked(self.home))
+
+    def test_portages_et_challenges_masques(self):
+        self.apply(True)
+        values = lock.read_values(self.text(), lock.LOCKED)
+        self.assertEqual(values["emulationstation.collection.ports"], "0")
+        self.assertEqual(values["emulationstation.collection.challenges"], "0")
+        self.apply(False)
+        self.assertEqual(self.text(), CONF)
+
+    def recalbox_turns_favourites_off(self):
+        """What Recalbox does when no game is a favourite."""
+        text = self.text().replace("\nemulationstation.favoritesonly=1", "\nemulationstation.favoritesonly=0")
+        with open(self.conf, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+    def test_favoris_annules_par_recalbox(self):
+        self.apply(True)
+        self.recalbox_turns_favourites_off()
+        self.assertFalse(lock.is_locked(self.conf))
+        self.assertTrue(lock.lock_active(self.home), "le lecteur a verrouille : il faut pouvoir defaire")
+        self.assertEqual(self.toggle(), "unlocked")
+        self.assertEqual(self.toggle(), "locked")
+        self.recalbox_turns_favourites_off()
+        self.assertEqual(self.apply(False), {"changed": True})
+        self.assertEqual(self.text(), CONF, "tout revient, meme la ligne ajoutee par Recalbox")
+
+    def test_ancienne_copie_a_deux_cles(self):
+        self.apply(True)
+        with open(os.path.join(self.home, lock.LOCK_FILENAME), "w", encoding="utf-8") as handle:
+            handle.write('{"emulationstation.menu": "default", "emulationstation.favoritesonly": null}')
+        self.apply(False)
+        values = lock.read_values(self.text(), lock.LOCKED)
+        self.assertEqual(values["emulationstation.menu"], "default")
+        self.assertIsNone(values["emulationstation.favoritesonly"])
+        self.assertEqual(values["emulationstation.collection.ports"], "1", "valeur par defaut de Recalbox")
 
     def test_rien_a_defaire(self):
         self.assertEqual(self.apply(False), {"changed": False})

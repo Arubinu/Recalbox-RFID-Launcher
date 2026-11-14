@@ -35,6 +35,17 @@ by `rfidctl version`.
   command `players.stats`. The full backup also holds `statistics.csv`, the
   same table (never restored: the data comes back with `players.json`).
 
+### Fixed
+
+* **Menu lock**: the "Ports" and "Recalbox Challenges" systems stayed
+  visible; they are now hidden too (`emulationstation.collection.ports` and
+  `.challenges` set to 0, the previous values put back on unlock; a copy
+  kept by an older version gets the Recalbox defaults for them). Recalbox
+  turns "favourites only" off by itself when no game is a favourite: the page
+  now refuses to lock until a game is a favourite, and the lock is undone
+  from the reader's own copy (`frontend-lock.json`) even when Recalbox
+  changed a value.
+
 ## [2.13.0]
 
 ### Added

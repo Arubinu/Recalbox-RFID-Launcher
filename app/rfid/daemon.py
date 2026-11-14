@@ -884,7 +884,8 @@ class Service:
                 self.light.flash("error")
             self.log.info("Carte deverrouiller : quittez d'abord le jeu en cours")
             return "refused"
-        if not frontend_lock.is_unlocked(self.home) and not frontend_lock.is_locked():
+        if (not frontend_lock.is_unlocked(self.home) and not frontend_lock.lock_active(self.home)
+                and not frontend_lock.is_locked()):
             self.feedback.error()
             if self.light is not None:
                 self.light.flash("error")

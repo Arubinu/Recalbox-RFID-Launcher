@@ -5,7 +5,14 @@ Optional ("Settings > Player cards"). Two settings of ``recalbox.conf``:
 * ``emulationstation.favoritesonly=1``: the game lists show the favourites
   only (the parent marks the allowed games as favourites);
 * ``emulationstation.menu=none``: no START menu, so the lock cannot be
-  removed from the TV.
+  removed from the TV;
+* ``emulationstation.collection.ports=0`` and ``...challenges=0``: the
+  "Ports" and "Recalbox Challenges" systems, not filtered by the favourites,
+  are hidden too.
+
+Recalbox turns "favourites only" off by itself when no game is a favourite
+(checked on Recalbox 10.1: "There is no favorite games in any system!"): the
+page asks for a favourite first.
 
 The previous values are kept in ``frontend-lock.json`` and put back when the
 option is turned off (and by the uninstaller). The frontend only reads these
@@ -26,9 +33,19 @@ ES_SERVICE = "/etc/init.d/S31emulationstation"
 LOCK_FILENAME = "frontend-lock.json"
 #: Written while the "unlock" card has opened the menu (the option stays on).
 UNLOCK_FILENAME = "frontend-unlocked.json"
-LOCKED = {"emulationstation.menu": "none", "emulationstation.favoritesonly": "1"}
+LOCKED = {
+    "emulationstation.menu": "none",
+    "emulationstation.favoritesonly": "1",
+    "emulationstation.collection.ports": "0",
+    "emulationstation.collection.challenges": "0",
+}
 #: Values put back when no copy was kept (Recalbox defaults).
-DEFAULTS = {"emulationstation.menu": "default", "emulationstation.favoritesonly": "0"}
+DEFAULTS = {
+    "emulationstation.menu": "default",
+    "emulationstation.favoritesonly": "0",
+    "emulationstation.collection.ports": "1",
+    "emulationstation.collection.challenges": "1",
+}
 
 
 class LockError(Exception):
@@ -119,8 +136,9 @@ def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_ru
                 return {"changed": False}
             saved = {}
         # The values kept before the lock (None: the setting was absent and
-        # is removed again); without a copy, the Recalbox defaults.
-        target = {key: saved[key] for key in LOCKED} if all(key in saved for key in LOCKED) else dict(DEFAULTS)
+        # is removed again); without a copy (or a key locked by an older
+        # version), the Recalbox default.
+        target = {key: saved[key] if key in saved else DEFAULTS[key] for key in LOCKED}
     if all(current[key] == value for key, value in target.items()):
         if not enabled:
             _forget(home)
@@ -143,6 +161,15 @@ def apply(home: str, enabled: bool, conf: str = RECALBOX_CONF, run=None, game_ru
     if not enabled:
         _forget(home)
     return {"changed": True}
+
+
+def lock_active(home: str) -> bool:
+    """True when the reader locked the menu (its copy of the values exists).
+
+    Recalbox may change one of the values afterwards (it turns "favourites
+    only" off when no game is a favourite): the lock still has to be undone.
+    """
+    return os.path.isfile(_lock_path(home))
 
 
 def is_unlocked(home: str) -> bool:
@@ -168,7 +195,7 @@ def toggle_unlock(home: str, conf: str = RECALBOX_CONF, run=None, game_running=N
         apply(home, True, conf=conf, run=run, game_running=game_running)
         forget_unlock(home)
         return "locked"
-    if not is_locked(conf):
+    if not lock_active(home) and not is_locked(conf):
         raise LockError("le menu de la Recalbox n'est pas verrouille (option dans Reglages)")
     apply(home, False, conf=conf, run=run, game_running=game_running)
     with open(os.path.join(home, UNLOCK_FILENAME), "w", encoding="utf-8") as handle:
