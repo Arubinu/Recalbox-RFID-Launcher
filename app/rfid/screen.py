@@ -725,7 +725,7 @@ class Painter:
         return self.pg.Rect(0, 0, self.w, int(self.u * (26 if self.portrait else 15)))
 
     def top(self, surface, index: int, players: dict, now: float, background: bool = True,
-            hint: bool = True) -> None:
+            hint: bool = True, chip: bool = True) -> None:
         pg, u, w = self.pg, self.u, self.w
         rect = self.top_rect()
         if background:
@@ -746,11 +746,24 @@ class Painter:
             image = self.hint_image()
             image.set_alpha(int(255 * pulse))
             surface.blit(image, self.hint_position(image))
-        player = player_info(players, self.language)
-        if player and self.portrait:
+        player = player_info(players, self.language) if chip else None
+        if player:
+            self.chip_at(surface, player, accent, clock.get_width())
+
+    def chip_at(self, surface, player, accent, clock_width: int) -> None:
+        """The player, left of the clock (under it on a vertical screen)."""
+        u, w = self.u, self.w
+        margin = int(u * 5)
+        if self.portrait:
             self.player_chip(surface, player, accent, w - margin, margin + int(u * 12))
-        elif player:
-            self.player_chip(surface, player, accent, w - margin - clock.get_width() - int(u * 3), margin)
+        else:
+            self.player_chip(surface, player, accent, w - margin - clock_width - int(u * 3), margin)
+
+    def clock_width(self) -> int:
+        minute = time.strftime("%H:%M")
+        if self._clock is None or self._clock[0] != minute:
+            self._clock = (minute, self._fast(self.font("Exo2-SemiBoldCondensed.otf", self.u * 7).render(minute, True, TEXT)))
+        return self._clock[1].get_width()
 
     def hint_image(self):
         if self._hint is None:
@@ -853,8 +866,6 @@ class Painter:
                    first.get_height(), (second.get_height() + int(u * 1)) if second is not None else 0]
         y = (h - sum(heights)) // 2
         if image is not None:
-            shadow = self.shape(image.get_width() + int(u * 2), image.get_height() + int(u * 2), (0, 0, 0, 120), int(u * 1.5))
-            frame.blit(shadow, ((w - shadow.get_width()) // 2 + int(u * 0.6), y + int(u * 0.6)))
             frame.blit(image, ((w - image.get_width()) // 2, y))
             y += image.get_height() + int(u * 4)
         for line, gap in ((title, 0), (console, int(u * 3)), (first, int(u * 1)), (second, 0)):
@@ -1148,15 +1159,16 @@ class GpuScreen:
             bar.draw(dstrect=(int(w / 2 - width / 2), strip_y + strip_h + int(u * 1.2), int(width), int(u * 0.6)))
         static["left"].draw(dstrect=(0, band_y, painter.fade_left.get_width(), band_h))
         static["right"].draw(dstrect=(w - painter.fade_right.get_width(), band_y, painter.fade_right.get_width(), band_h))
-        # Top: drawn on a transparent surface when it changes (minute, player, console).
-        key = (index, time.strftime("%H:%M"), json.dumps(players, sort_keys=True))
+        # Top: drawn on a transparent surface when it changes (minute, console).
+        key = (index, time.strftime("%H:%M"))
         if key != self.top_key:
             self.top_key = key
             layer = pg.Surface(painter.top_rect().size, pg.SRCALPHA)
-            painter.top(layer, index, players, now, background=False, hint=False)
+            painter.top(layer, index, players, now, background=False, hint=False, chip=False)
             self.top_texture = self.texture(layer)
             self.top_texture.blend_mode = 1
         self.top_texture.draw(dstrect=painter.top_rect())
+        self.draw_chip(index, players)
         if self.hint_texture is None:
             self.hint_texture = self.texture(painter.hint_image())
             self.hint_texture.blend_mode = 1
@@ -1183,6 +1195,54 @@ class GpuScreen:
             sw, sh = self.screen
             self.canvas.draw(dstrect=((sw - w) // 2, (sh - h) // 2, w, h), angle=self.angle)
         renderer.present()
+
+    #: The player's chip comes in (fades in, slides from the right) and goes out.
+    CHIP_IN_S = 0.45
+    CHIP_OUT_S = 0.35
+
+    def chip_texture(self, index: int, player):
+        painter = self.painter
+        layer = self.pg.Surface(painter.top_rect().size, self.pg.SRCALPHA)
+        painter.chip_at(layer, player, painter.hero(index)["accent"], painter.clock_width())
+        texture = self.texture(layer)
+        texture.blend_mode = 1
+        return texture
+
+    def draw_chip(self, index: int, players: dict) -> None:
+        """The player left of the clock: animated when they come, change or leave."""
+        painter = self.painter
+        player = player_info(players, painter.language)
+        who = (player.get("uid"), player.get("name")) if player else None
+        content = (json.dumps(player, sort_keys=True), index, time.strftime("%H:%M")) if player else None
+        now = time.monotonic()
+        current = getattr(self, "chip", None)  # (who, content, texture, since)
+        if who is None:
+            if current is not None:
+                self.chip_out = (current[2], now)
+                self.chip = current = None
+        elif current is None or current[0] != who:
+            if current is not None:
+                self.chip_out = (current[2], now)  # the other player leaves while this one comes
+            self.chip = current = (who, content, self.chip_texture(index, player), now)
+        elif current[1] != content:
+            # Same player, new time (or console colour): no animation.
+            self.chip = current = (who, content, self.chip_texture(index, player), current[3])
+        rect = painter.top_rect()
+        slide = painter.u * 3
+        leaving = getattr(self, "chip_out", None)
+        if leaving is not None:
+            done = (now - leaving[1]) / self.CHIP_OUT_S
+            if done >= 1:
+                self.chip_out = None
+            else:
+                texture = leaving[0]
+                texture.alpha = int(255 * (1 - ease(done)))
+                texture.draw(dstrect=(rect.x + int(slide * ease(done)), rect.y, rect.w, rect.h))
+        if current is not None:
+            shown = ease((now - current[3]) / self.CHIP_IN_S)
+            texture = current[2]
+            texture.alpha = int(255 * shown)
+            texture.draw(dstrect=(rect.x + int(slide * (1 - shown)), rect.y, rect.w, rect.h))
 
     def bar_texture(self, width: int, height: int, colour, radius: int):
         key = (width, height, tuple(colour), radius)
@@ -1477,7 +1537,7 @@ def _run_gpu(self, pygame, conf) -> int:
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
     gpu.toast = gpu.page = gpu.launch = None
-    gpu._bar = None
+    gpu._bar = gpu.chip = gpu.chip_out = None
     gpu.canvas = None
     # Textures first, then the renderer and the window: freed in another
     # order, SDL crashes while quitting.

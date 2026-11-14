@@ -50,6 +50,11 @@ by `rfidctl version`.
   has stopped moving (before, it appeared during the movement).
 * **Reader screen, console logos**: a very light blurred shadow of their own
   shape, so that their white parts show on the white plates.
+* **Reader screen, the player**: the player next to the clock fades in while
+  sliding from the right, fades out when leaving, and a change of player is
+  a crossfade (the time going down changes without animation).
+* **Reader screen, the game placed**: its picture is shown without a frame
+  behind it.
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 
