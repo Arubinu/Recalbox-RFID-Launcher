@@ -575,6 +575,10 @@
   .search-row select { flex: 0 1 220px; height: 40px; }
   .tag-ico img { width: 38px; height: 38px; object-fit: cover; border-radius: 11px; display: block; }
   .tag-actions { display: flex; gap: 2px; align-items: center; }
+  .avatar-btn { border: 1px dashed var(--line); cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
+  .avatar-btn:hover, .avatar-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .avatar-btn.has { border-style: solid; }
+  .avatar-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
   .chip.time { background: var(--warn-soft); color: var(--warn-text); }
   .chip.chip-special { background: var(--primary-soft); color: var(--primary-text); }
   .specials { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -2914,6 +2918,16 @@ function healthChecks() {
   } else if (state.frontend) {
     checks.push({ tone: "ok", title: t("Lancement des jeux possible"), text: t("Cette version de Recalbox accepte les commandes du lecteur.") });
   }
+  const commands = service.command_check || {};
+  if (commands.checked) {
+    const odd = commands.last_different;
+    checks.push(!commands.different
+      ? { tone: "ok", title: t("Écran du lecteur : lancement conforme"), text: t("Même commande que Recalbox pour les {n} derniers jeux lancés depuis son interface.", { n: commands.checked }) }
+      : { tone: service.display_mode === "reader" ? "warn" : "idle", title: t("Écran du lecteur : lancement différent"),
+          text: odd && odd.error ? t("{game} : {error}", { game: odd.game, error: odd.error })
+            : t("{game} : {list}", { game: odd ? odd.game : "?", list: ((odd && odd.differences) || []).map((d) => d.option + " " + (d.reader ?? "—") + " ≠ " + (d.recalbox ?? "—")).join(", ") }),
+          value: commands.different + " / " + commands.checked });
+  }
   if (service.last_uid) {
     checks.push({ tone: "idle", title: t("Dernier badge lu"), text: "", value: service.last_uid });
   }
@@ -2991,11 +3005,105 @@ function playerRow(name, info, uid) {
   const reset = el("button", { className: "btn sm", text: t("Remettre à zéro"), attrs: { type: "button" },
     onclick: () => resetPlayer(uid, name) });
   reset.disabled = busy || !(info.used_s > 0);
+  const actions = [reset];
+  if (uid && info.avatar) {
+    actions.unshift(el("button", {
+      className: "icon-btn", title: t("Retirer l'avatar"),
+      attrs: { type: "button", "aria-label": t("Retirer l'avatar de {name}", { name }) },
+      onclick: () => removeAvatar(uid, name),
+    }, [icon("trash", 18)]));
+  }
   return el("li", { className: "tag" }, [
-    el("span", { className: "tag-ico" }, [icon("player", 19)]),
+    uid ? avatarButton(uid, info.avatar || 0, name) : el("span", { className: "tag-ico" }, [icon("player", 19)]),
     el("div", { attrs: { style: "min-width:0" } }, children),
-    el("div", { className: "tag-actions" }, [reset]),
+    el("div", { className: "tag-actions" }, actions),
   ]);
+}
+/* ---- avatars: one picture per player card, shown on the TV instead of the initial ---- */
+const AVATAR_SIZE = 256;
+const avatarCache = new Map(); // uid -> { version, url }
+function avatarButton(uid, version, name) {
+  const cached = avatarCache.get(uid);
+  const ready = version && cached && cached.version === version && cached.url;
+  const button = el("button", {
+    className: "tag-ico avatar-btn" + (ready ? " has" : ""),
+    title: t("Choisir l'avatar"),
+    attrs: { type: "button", "aria-label": t("Choisir l'avatar de {name}", { name }) },
+    onclick: () => pickAvatar(uid, name),
+  }, [ready ? el("img", { attrs: { src: cached.url, alt: "" } }) : icon("player", 19)]);
+  if (version && !ready) loadAvatar(uid, version);
+  return button;
+}
+async function loadAvatar(uid, version) {
+  const cached = avatarCache.get(uid);
+  if (cached && cached.version === version) return;
+  avatarCache.set(uid, { version, url: null });
+  try {
+    const reply = await agent.send("players.avatar_get", { uid });
+    if (reply.found) {
+      avatarCache.set(uid, { version, url: "data:image/jpeg;base64," + reply.data });
+      renderPlayers();
+    }
+  } catch (error) {
+    avatarCache.delete(uid);
+  }
+}
+/* The picture is cut to a square (centre) and shrunk here: the Recalbox gets a small JPEG. */
+async function avatarJpeg(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error(t("image illisible")));
+      image.src = url;
+    });
+    const side = Math.min(image.naturalWidth, image.naturalHeight);
+    if (!side) throw new Error(t("image illisible"));
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = AVATAR_SIZE;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE);
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side,
+      0, 0, AVATAR_SIZE, AVATAR_SIZE);
+    return canvas.toDataURL("image/jpeg", 0.88).split(",")[1];
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+function pickAvatar(uid, name) {
+  if (busy) return;
+  const input = el("input", { attrs: { type: "file", accept: "image/*" } });
+  input.addEventListener("change", async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const saved = await run(async () => {
+      const data = await avatarJpeg(file);
+      await agent.send("players.avatar_set", { uid, data }, 30000);
+      avatarCache.set(uid, { version: -1, url: "data:image/jpeg;base64," + data });
+      return true;
+    }, "Avatar non enregistré :");
+    if (saved) {
+      toast("ok", t("Avatar de {name} enregistré.", { name }));
+      setTimeout(refresh, 1200);
+    }
+  });
+  input.click();
+}
+async function removeAvatar(uid, name) {
+  const ok = await ask({
+    title: t("Retirer l'avatar de {name} ?", { name }),
+    text: t("L'initiale du prénom revient à la place de l'image."),
+    ok: t("Retirer"),
+  });
+  if (!ok) return;
+  if (await run(() => agent.send("players.avatar_delete", { uid }), "Avatar non retiré :")) {
+    avatarCache.delete(uid);
+    toast("ok", t("Avatar de {name} retiré.", { name }));
+    setTimeout(refresh, 1200);
+  }
 }
 function renderPlayers() {
   $("#unlock-note").hidden = !serviceStatus().menu_unlocked;

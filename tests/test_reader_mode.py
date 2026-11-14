@@ -72,6 +72,40 @@ class CommandTest(unittest.TestCase):
         self.assertFalse(es_command._is_joystick(base, word_bits=32))
 
 
+class CommandCheckTest(unittest.TestCase):
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="rfid-check-")
+        self.addCleanup(shutil.rmtree, self.home, True)
+
+    def test_identique(self):
+        result = es_command.check(REAL, built=list(REAL), now=lambda: 5)
+        self.assertEqual((result["same"], result["system"], result["game"]), (True, "gb", "Tuff.gb"))
+        es_command.record(self.home, result)
+        self.assertEqual(es_command.summary(self.home)["different"], 0)
+
+    def test_difference_gardee(self):
+        ours = [part if part != "auto" else "16/9" for part in REAL]
+        result = es_command.check(REAL, built=ours)
+        self.assertFalse(result["same"])
+        self.assertEqual(result["differences"], [{"option": "-ratio", "recalbox": "auto", "reader": "16/9"}])
+        for _ in range(es_command.KEEP_CHECKS + 3):
+            es_command.record(self.home, es_command.check(REAL, built=list(REAL)))
+        es_command.record(self.home, result)
+        summary = es_command.summary(self.home)
+        self.assertEqual(summary["checked"], es_command.KEEP_CHECKS, "les plus anciens partent")
+        self.assertEqual(summary["last_different"]["differences"][0]["option"], "-ratio")
+
+    def test_commande_lue_dans_proc(self):
+        proc = tempfile.mkdtemp(prefix="rfid-proc-")
+        self.addCleanup(shutil.rmtree, proc, True)
+        os.makedirs(os.path.join(proc, "4242"))
+        with open(os.path.join(proc, "4242", "cmdline"), "wb") as handle:
+            handle.write(b"\0".join(part.encode() for part in REAL) + b"\0")
+        with mock.patch("rfid.esbridge.emulator_pids", return_value=[4242]):
+            self.assertEqual(es_command.running_command(proc_dir=proc), REAL)
+        self.assertIsNone(es_command.running_command(proc_dir=os.path.join(proc, "none")))
+
+
 class FakeProcess:
     def __init__(self, argv, **kwargs):
         self.argv = argv

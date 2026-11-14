@@ -29,6 +29,7 @@ import shlex
 import struct
 import subprocess
 import sys
+import time
 
 try:
     from xml.etree import ElementTree
@@ -163,11 +164,16 @@ def choose_core(system: str, rom: str, conf: dict, info: dict, meta: dict) -> di
 
 
 # -------------------------------------------------------------- controllers
-def probe_pads(timeout: float = 20.0) -> list:
-    """Controllers as SDL sees them (index, guid, name, axes, hats, buttons)."""
+def probe_pads(timeout: float = 20.0, gentle: bool = False) -> list:
+    """Controllers as SDL sees them (index, guid, name, axes, hats, buttons).
+
+    gentle: low priority (a game is running).
+    """
+    argv = [sys.executable, "-c", _PROBE]
+    if gentle:
+        argv = ["nice", "-n", "15"] + argv
     try:
-        result = subprocess.run([sys.executable, "-c", _PROBE], capture_output=True, text=True,
-                                timeout=timeout)
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
         lines = [line for line in result.stdout.splitlines() if line.startswith("[")]
         return json.loads(lines[-1]) if lines else []
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -330,3 +336,70 @@ def compare(actual, ours) -> list:
 
 def describe(argv) -> str:
     return " ".join(shlex.quote(str(part)) for part in argv)
+
+
+# ------------------------------------------------------------------ check
+#: Commands of Recalbox's interface compared with ours (the last ones are kept).
+CHECK_FILENAME = "command-check.json"
+KEEP_CHECKS = 20
+
+
+def running_command(proc_dir: str = "/proc"):
+    """argv of the launcher started by Recalbox's interface, or None."""
+    from .esbridge import _is_launcher, emulator_pids
+
+    for pid in emulator_pids(proc_dir=proc_dir):
+        if _is_launcher(pid, proc_dir):
+            try:
+                with open(os.path.join(proc_dir, str(pid), "cmdline"), "rb") as handle:
+                    raw = handle.read()
+            except OSError:
+                continue
+            argv = [part.decode("utf-8", "replace") for part in raw.split(b"\0") if part]
+            if len(argv) > 2:
+                return argv
+    return None
+
+
+def check(actual, built=None, now=None) -> dict:
+    """Compares the interface's command with the one the reader would run."""
+    found = options(actual)
+    system, rom = str(found.get("-system") or ""), str(found.get("-rom") or "")
+    result = {"time": int((now or time.time)()), "system": system, "game": os.path.basename(rom)}
+    try:
+        ours = built if built is not None else build(system, rom, pads=probe_pads(gentle=True))
+    except CommandError as exc:
+        result.update(same=False, error=str(exc), differences=[])
+        return result
+    differences = compare(actual, ours)
+    result.update(same=not differences, differences=[
+        {"option": key, "recalbox": theirs, "reader": mine} for key, theirs, mine in differences])
+    return result
+
+
+def read_checks(home: str) -> list:
+    try:
+        with open(os.path.join(home, CHECK_FILENAME), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return []
+    return [item for item in data.get("checks") or [] if isinstance(item, dict)] if isinstance(data, dict) else []
+
+
+def record(home: str, result: dict) -> None:
+    checks = (read_checks(home) + [result])[-KEEP_CHECKS:]
+    path = os.path.join(home, CHECK_FILENAME)
+    temporary = path + ".tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump({"checks": checks}, handle, ensure_ascii=False, indent=1)
+    os.replace(temporary, path)
+
+
+def summary(home: str) -> dict:
+    """{"checked", "different", "last"} for the status (the page shows it)."""
+    checks = read_checks(home)
+    if not checks:
+        return {}
+    different = [item for item in checks if not item.get("same")]
+    return {"checked": len(checks), "different": len(different),
+            "last": checks[-1], "last_different": different[-1] if different else None}

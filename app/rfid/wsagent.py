@@ -58,7 +58,7 @@ from .consts import (
     TAG_WRITE_FILENAME,
     TOKEN_FILENAME,
 )
-from . import access, backup, bootcfg, frontend_lock, portable
+from . import access, avatars, backup, bootcfg, frontend_lock, portable
 from . import players as players_module
 from .artwork import Artwork, ArtworkError
 from .frames import FrameError, FrameStore
@@ -1085,6 +1085,30 @@ class Agent:
         except Exception:  # noqa: BLE001 - frontend unreachable: let Recalbox decide
             return True
 
+    def _cmd_players_avatar_get(self, client, message):
+        data = avatars.load(self.home, normalize_uid(str(message.get("uid") or "")))
+        if data is None:
+            return {"found": False}
+        return {"found": True, "data": base64.b64encode(data).decode("ascii")}
+
+    def _cmd_players_avatar_set(self, client, message):
+        """Avatar of a player card: a JPEG already cropped by the page (base64)."""
+        uid = normalize_uid(str(message.get("uid") or ""))
+        entry = self._tags().get(uid)
+        if not entry or entry.get("action") != "player":
+            raise ValueError("ce badge n'est pas une carte joueur")
+        try:
+            data = base64.b64decode(str(message.get("data") or ""), validate=True)
+        except (ValueError, TypeError):
+            raise ValueError("image illisible")
+        avatars.save(self.home, uid, data)
+        if self.log:
+            self.log.info("Avatar de %s enregistre" % (entry.get("name") or uid))
+        return {"saved": True}
+
+    def _cmd_players_avatar_delete(self, client, message):
+        return {"deleted": avatars.delete(self.home, normalize_uid(str(message.get("uid") or "")))}
+
     def _cmd_players_stats(self, client, message):
         """Time played per day, player and game (last 60 days), for the statistics."""
         return {"rows": players_module.stats_rows(self.home), "keep_days": players_module.KEEP_DAYS}
@@ -1658,7 +1682,13 @@ class Agent:
         uid = str(message.get("uid") or "")
         if not uid:
             raise ValueError("UID manquant")
-        return {"removed": self._tags().delete(uid)}
+        removed = self._tags().delete(uid)
+        if removed:
+            try:
+                avatars.delete(self.home, uid)
+            except Exception:  # noqa: BLE001 - not a valid UID: no avatar
+                pass
+        return {"removed": removed}
 
     def _cmd_tags_export(self, client, message):
         store = self._tags()

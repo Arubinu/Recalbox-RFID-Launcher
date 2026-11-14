@@ -50,6 +50,11 @@ TEXTS = {
              "pt": "faltam {t}"},
     "unlimited": {"fr": "sans limite", "en": "no limit", "de": "ohne Limit", "es": "sin límite", "it": "senza limiti",
                   "pt": "sem limite"},
+    "played": {"fr": "{t} jouées aujourd'hui", "en": "{t} played today", "de": "heute {t} gespielt",
+               "es": "{t} jugados hoy", "it": "{t} giocati oggi", "pt": "{t} jogados hoje"},
+    "played_week": {"fr": "{t} jouées cette semaine", "en": "{t} played this week", "de": "diese Woche {t} gespielt",
+                    "es": "{t} jugados esta semana", "it": "{t} giocati questa settimana", "pt": "{t} jogados esta semana"},
+    "guest": {"fr": "Invité", "en": "Guest", "de": "Gast", "es": "Invitado", "it": "Ospite", "pt": "Convidado"},
     "next": {"fr": "prochaine partie", "en": "next game", "de": "nächstes Spiel", "es": "próxima partida",
              "it": "prossima partita", "pt": "próximo jogo"},
     "consoles": {"fr": "{n} consoles", "en": "{n} consoles", "de": "{n} Konsolen", "es": "{n} consolas",
@@ -136,19 +141,37 @@ def read_players(home: str) -> dict:
 
 
 def player_info(players: dict, language: str):
-    """{"name", "detail", "ratio"} of the active or waiting player, or None."""
+    """{"name", "uid", "detail", "ratio"} of the active or waiting player
+    (or of the guest when the guest has a time limit), or None.
+
+    detail: the time left when the player has a limit, otherwise the time
+    played today (or this week).
+    """
     current = players.get("current") or {}
     rows = {row.get("uid"): row for row in players.get("players") or []}
-    if current.get("uid") and current.get("uid") != "guest":
-        row = rows.get(current["uid"], {})
-        name = current.get("name") or row.get("name") or ""
+    uid = current.get("uid") if current.get("uid") != "guest" else None
+    waiting = False
+    if not current.get("uid") and players.get("pending"):
+        uid, waiting = players.get("pending_uid"), True
+    if uid or waiting:
+        row = rows.get(uid, {})
+        name = current.get("name") or players.get("pending") or row.get("name") or ""
+        info = {"name": name, "uid": uid or "", "ratio": None, "avatar": row.get("avatar", 0)}
         quota = (row.get("quota_min") or 0) * 60
-        if not quota or row.get("remaining_s") is None:
-            return {"name": name, "detail": text("unlimited", language), "ratio": None}
-        left = max(0, row.get("remaining_s") or 0)
-        return {"name": name, "detail": text("left", language, t=duration(left)), "ratio": left / float(quota)}
-    if players.get("pending"):
-        return {"name": players["pending"], "detail": text("next", language), "ratio": None}
+        if quota and row.get("remaining_s") is not None:
+            left = max(0, row.get("remaining_s") or 0)
+            info.update(detail=text("left", language, t=duration(left)), ratio=left / float(quota))
+        elif row.get("used_s", 0) >= 60:
+            key = "played_week" if row.get("period") == "week" else "played"
+            info["detail"] = text(key, language, t=duration(row["used_s"]))
+        else:
+            info["detail"] = text("next" if waiting else "unlimited", language)
+        return info
+    guest = players.get("guest") or {}
+    if guest.get("quota_min"):
+        left = max(0, guest.get("remaining_s") or 0)
+        return {"name": text("guest", language), "uid": "", "ratio": left / float(guest["quota_min"] * 60),
+                "detail": text("left", language, t=duration(left))}
     return None
 
 
@@ -213,6 +236,8 @@ class Painter:
         self._clock = None
         self._hint = None
         self.gap = 0
+        self.home = None          # where the player avatars are (avatars/<UID>.jpg)
+        self._avatars = {}
 
     # ---- resources
     def font(self, name: str, size: float):
@@ -498,6 +523,31 @@ class Painter:
         self.scene(surface, index, previous, progress)
         self.top(surface, index, players, now)
 
+    def avatar(self, uid, version, size: int):
+        """The player's picture cut in a disc (None: show the initial)."""
+        if not uid or not self.home:
+            return None
+        key = (uid, version, size)
+        if key not in self._avatars:
+            pg = self.pg
+            picture = None
+            try:
+                from .avatars import path as avatar_path
+                image = self._fast(pg.image.load(avatar_path(self.home, uid)))
+                side = min(image.get_width(), image.get_height())
+                square = image.subsurface(((image.get_width() - side) // 2, (image.get_height() - side) // 2, side, side))
+                big = pg.Surface((size * 2, size * 2), pg.SRCALPHA)  # a JPEG has no alpha
+                big.blit(pg.transform.smoothscale(square, (size * 2, size * 2)), (0, 0))
+                mask = pg.Surface((size * 2, size * 2), pg.SRCALPHA)
+                pg.draw.circle(mask, (255, 255, 255, 255), (size, size), size)
+                big.blit(mask, (0, 0), special_flags=pg.BLEND_RGBA_MIN)
+                picture = pg.transform.smoothscale(big, (size, size))  # smooth edge
+            except Exception:  # noqa: BLE001 - missing or unreadable: the initial
+                picture = None
+            self._avatars = {k: v for k, v in self._avatars.items() if k[0] != uid}
+            self._avatars[key] = picture
+        return self._avatars[key]
+
     def player_chip(self, surface, player, accent, right: int, top: int):
         pg, u = self.pg, self.u
         name = self.font("Exo2-Bold.ttf", u * 3.6).render(player["name"], True, TEXT)
@@ -510,8 +560,12 @@ class Painter:
         surface.blit(chip, (x, top - int(u * 0.8)))
         centre = (x + int(u * 0.8) + size // 2, top + size // 2)
         pg.draw.circle(surface, accent, centre, size // 2)
-        initial = self.font("Exo2-Bold.ttf", u * 4.2).render((player["name"][:1] or "?").upper(), True, TEXT)
-        surface.blit(initial, (centre[0] - initial.get_width() // 2, centre[1] - initial.get_height() // 2))
+        picture = self.avatar(player.get("uid"), player.get("avatar"), size - int(u * 0.5))
+        if picture is not None:
+            surface.blit(picture, (centre[0] - picture.get_width() // 2, centre[1] - picture.get_height() // 2))
+        else:
+            initial = self.font("Exo2-Bold.ttf", u * 4.2).render((player["name"][:1] or "?").upper(), True, TEXT)
+            surface.blit(initial, (centre[0] - initial.get_width() // 2, centre[1] - initial.get_height() // 2))
         tx = x + int(u * 0.8) + size + int(u * 2)
         surface.blit(name, (tx, top - int(u * 0.9)))
         detail_y = top + name.get_height() - int(u * 1.9)
@@ -697,6 +751,7 @@ class Screen:
         if not consoles:
             consoles = [{"id": "", "name": "Recalbox", "count": 0, "maker": "", "year": ""}]
         painter = Painter(pygame, width, height, consoles, self.language, region(conf))
+        painter.home = self.home
         index, previous, changed = 0, None, time.monotonic()
         painter.hero(0)
         worker = {"thread": None}
@@ -776,6 +831,7 @@ def _run_gpu(self, pygame, conf) -> int:
     renderer.present()
     consoles = _consoles()
     painter = Painter(pygame, width, height, consoles, self.language, region(conf))
+    painter.home = self.home
     gpu = GpuScreen(pygame, painter, window, renderer)
     index, previous, changed = 0, None, time.monotonic()
     painter.hero(0)
@@ -840,7 +896,8 @@ def run(home: str) -> int:
     return Screen(home).run()
 
 
-def preview(output: str, width: int = 1280, height: int = 720, at=(0.0,), players=None, counts=None) -> list:
+def preview(output: str, width: int = 1280, height: int = 720, at=(0.0,), players=None, counts=None,
+            home: str = None) -> list:
     """Draws frames into PNG files (no screen): output-<n>.png."""
     os.environ["SDL_VIDEODRIVER"] = "dummy"
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
@@ -851,6 +908,7 @@ def preview(output: str, width: int = 1280, height: int = 720, at=(0.0,), player
     pygame.display.set_mode((1, 1))
     consoles = counts if counts is not None else count_games()
     painter = Painter(pygame, width, height, consoles, "fr")
+    painter.home = home
     written = []
     for number, (index, previous, progress) in enumerate(at):
         surface = pygame.Surface((width, height))

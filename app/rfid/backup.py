@@ -1,7 +1,7 @@
 """Full backup of the reader data, in one ZIP file.
 
 What is saved: the badges, the settings, the card templates and frames, the
-play time counters, the players and the reader calibration. Never saved: the
+play time counters, the players and their avatars, and the reader calibration. Never saved: the
 page password, the session secret, the pairing state and the logs (they
 belong to this Recalbox, or are secrets).
 
@@ -38,6 +38,7 @@ FILES = {
 #: Folders saved with their files (only these extensions).
 FOLDERS = {
     "frames": (".png", ".svg", ".json", ".webp", ".jpg", ".jpeg"),
+    "avatars": (".jpg",),
 }
 #: Readable copy of the statistics (players.json holds the data): written in
 #: the archive, never restored.
