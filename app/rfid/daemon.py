@@ -714,6 +714,9 @@ class Service:
                     self.log.info("Fin de partie : temps de jeu enregistre")
             return
         self._players_gone = 0
+        if controller.paused and self.saver is not None and self.saver.state() == "PLAYING":
+            controller.resume_time()  # pause left from the game itself
+            self.log.info("Fin de la pause : le temps est de nouveau compte")
         if current is None and not self._refusing:
             self._menu_game()
 

@@ -99,18 +99,29 @@ class PlayTimer:
         """The limited game is over (time up, card removed, quit)."""
         if self.session is None:
             return
-        remaining = max(0.0, self.session["deadline"] - self.clock())
-        self.last = dict(self.session, ended=self.clock(), reason=reason, remaining=remaining)
+        remaining = self.remaining_s() or 0.0
+        self.last = dict(self.session, ended=self.clock(), reason=reason, remaining=remaining, paused_at=None)
         self.session = None
 
     def remaining_s(self):
         if self.session is None:
             return None
-        return max(0.0, self.session["deadline"] - self.clock())
+        now = self.session.get("paused_at") or self.clock()
+        return max(0.0, self.session["deadline"] - now)
+
+    def pause(self) -> None:
+        """The game is paused: the time left no longer goes down."""
+        if self.session is not None and self.session.get("paused_at") is None:
+            self.session["paused_at"] = self.clock()
+
+    def resume(self) -> None:
+        if self.session is not None and self.session.get("paused_at") is not None:
+            self.session["deadline"] += self.clock() - self.session["paused_at"]
+            self.session["paused_at"] = None
 
     def tick(self) -> str:
         """Returns "warn300", "warn60", "expired" or "" (call it often)."""
-        if self.session is None:
+        if self.session is None or self.session.get("paused_at") is not None:
             return ""
         left = self.session["deadline"] - self.clock()
         if left <= 0:

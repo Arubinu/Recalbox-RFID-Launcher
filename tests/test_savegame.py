@@ -216,7 +216,14 @@ class ControllerSaveTest(unittest.TestCase):
         return Controller(self.store, support.FakeLauncher(), support.FakeFeedback(), self.config, None,
                           state_provider=dict, clock=support.FakeClock(), saver=self.saver)
 
-    def test_option_desactivee_par_defaut(self):
+    def test_option_activee_par_defaut(self):
+        self.controller().stop_game()
+        self.assertEqual(self.saver.saved, 1)
+
+    def test_option_coupee(self):
+        with open(os.path.join(self.directory, "config.ini"), "w", encoding="utf-8") as handle:
+            handle.write("[launch]\nsave_on_quit = 0\n")
+        self.config.reload()
         self.controller().stop_game()
         self.assertEqual(self.saver.saved, 0)
 

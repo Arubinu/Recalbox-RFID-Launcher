@@ -61,6 +61,44 @@ MESSAGES = {
         "fr": "Partie reprise là où elle s'était arrêtée", "en": "Game resumed where it stopped",
         "de": "Spiel dort fortgesetzt, wo es aufgehört hat", "es": "Partida reanudada donde se quedó",
         "it": "Partita ripresa da dove si era fermata", "pt": "Jogo retomado onde tinha parado"},
+    "paused": {
+        "fr": "Pause : le temps de jeu est arrêté", "en": "Paused: the play time is stopped",
+        "de": "Pause: Die Spielzeit ist angehalten", "es": "Pausa: el tiempo de juego está detenido",
+        "it": "Pausa: il tempo di gioco è fermo", "pt": "Pausa: o tempo de jogo está parado"},
+    "resumed": {
+        "fr": "C'est reparti !", "en": "Back to the game!", "de": "Weiter geht's!",
+        "es": "¡Seguimos!", "it": "Si riparte!", "pt": "Vamos lá!"},
+    "saved": {
+        "fr": "Partie sauvegardée", "en": "Game saved", "de": "Spiel gespeichert",
+        "es": "Partida guardada", "it": "Partita salvata", "pt": "Jogo guardado"},
+    "save_failed": {
+        "fr": "Sauvegarde impossible pour ce jeu", "en": "This game cannot be saved",
+        "de": "Dieses Spiel kann nicht gespeichert werden", "es": "No se puede guardar este juego",
+        "it": "Impossibile salvare questo gioco", "pt": "Não é possível guardar este jogo"},
+    "sound_off": {
+        "fr": "Son coupé", "en": "Sound off", "de": "Ton aus", "es": "Sonido apagado",
+        "it": "Audio disattivato", "pt": "Som desligado"},
+    "sound_on": {
+        "fr": "Son remis", "en": "Sound on", "de": "Ton an", "es": "Sonido activado",
+        "it": "Audio attivato", "pt": "Som ligado"},
+    "time_left": {
+        "fr": "{name} : {t} de jeu restantes", "en": "{name}: {t} of play left",
+        "de": "{name}: noch {t} Spielzeit", "es": "{name}: quedan {t} de juego",
+        "it": "{name}: restano {t} di gioco", "pt": "{name}: faltam {t} de jogo"},
+    "time_unlimited": {
+        "fr": "{name} : temps de jeu sans limite", "en": "{name}: no play time limit",
+        "de": "{name}: Spielzeit ohne Limit", "es": "{name}: tiempo de juego sin límite",
+        "it": "{name}: tempo di gioco senza limiti", "pt": "{name}: tempo de jogo sem limite"},
+    "guest": {
+        "fr": "Invité", "en": "Guest", "de": "Gast", "es": "Invitado", "it": "Ospite", "pt": "Convidado"},
+    "player_switched": {
+        "fr": "La partie compte maintenant pour {name}", "en": "The game now counts for {name}",
+        "de": "Das Spiel zählt jetzt für {name}", "es": "La partida cuenta ahora para {name}",
+        "it": "La partita ora conta per {name}", "pt": "O jogo conta agora para {name}"},
+    "player_next": {
+        "fr": "{name} joue la prochaine partie", "en": "{name} plays the next game",
+        "de": "{name} spielt das nächste Spiel", "es": "{name} juega la próxima partida",
+        "it": "{name} gioca la prossima partita", "pt": "{name} joga o próximo jogo"},
     "warn300": {
         "fr": "Plus que 5 minutes de jeu", "en": "5 minutes of play left",
         "de": "Noch 5 Minuten Spielzeit", "es": "Quedan 5 minutos de juego",

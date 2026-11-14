@@ -265,7 +265,9 @@ class Painter:
     def __init__(self, pygame, width: int, height: int, consoles: list, language: str, region: str = "eu"):
         self.pg = pygame
         self.w, self.h = width, height
-        self.u = height / 100.0
+        #: Vertical screen (Recalbox's rotation setting): another layout.
+        self.portrait = height > width
+        self.u = min(width, height) / 100.0
         self.consoles = consoles
         self.language = language
         self.region = region
@@ -342,12 +344,18 @@ class Painter:
                 return self.cache[index]
         pg, u, w, h = self.pg, self.u, self.w, self.h
         console = self.consoles[index]
-        logo, logo_svg = self.svg(os.path.join(self.p["logos"], console["id"] + ".svg"), int(w * 0.26), int(h * 0.11))
+        portrait = self.portrait
+        # Boxes (fractions of the screen): logo, console drawing, glow.
+        logo_box = (w * 0.62, h * 0.075) if portrait else (w * 0.26, h * 0.1)
+        art_box = (w * 0.88, h * 0.33) if portrait else (w * 0.52, h * 0.56)
+        art_cx, art_bottom = (w * 0.5, h * 0.53) if portrait else (w * 0.31, h * 0.73)
+        logo, logo_svg = self.svg(os.path.join(self.p["logos"], console["id"] + ".svg"),
+                                  int(logo_box[0]), int(logo_box[1] * 1.1))
         accent = accent_from_svg(logo_svg) or DEFAULT_ACCENT
         art = None
         art_path = self.art_path(console["id"])
         if art_path:
-            art, art_svg = self.svg(art_path, int(w * 0.52), int(h * 0.6))
+            art, art_svg = self.svg(art_path, int(art_box[0]), int(art_box[1] * 1.07))
             accent = accent_from_svg(logo_svg) or accent_from_svg(art_svg) or accent
         frame = pg.Surface((w, h))
         frame.fill(BACKGROUND)
@@ -357,49 +365,57 @@ class Painter:
             alpha = int(36 * (y - h * 0.55) / (h * 0.45))
             pg.draw.rect(floor, accent + (alpha,), (0, y, w, 4))
         frame.blit(floor, (0, 0))
-        halo = self.glow(accent, int(h * 0.62))
-        frame.blit(halo, (int(w * 0.31) - halo.get_width() // 2, int(h * 0.46) - halo.get_height() // 2))
-        second = self.glow(tuple(min(255, c + 40) for c in accent), int(h * 0.28))
+        halo = self.glow(accent, int(min(w, h) * 0.62))
+        frame.blit(halo, (int(art_cx) - halo.get_width() // 2,
+                          int(art_bottom - art_box[1] * 0.48) - halo.get_height() // 2))
+        second = self.glow(tuple(min(255, c + 40) for c in accent), int(min(w, h) * 0.28))
         frame.blit(second, (int(w * 0.80) - second.get_width() // 2, int(h * 0.12) - second.get_height() // 2))
         # The console drawing, with its shadow.
         if art is not None:
-            box_w, box_h = int(w * 0.52), int(h * 0.56)
+            box_w, box_h = int(art_box[0]), int(art_box[1])
             scale = min(box_w / art.get_width(), box_h / art.get_height(), 1.0)
             if scale < 1.0:
                 art = pg.transform.smoothscale(art, (int(art.get_width() * scale), int(art.get_height() * scale)))
-            cx, bottom = int(w * 0.31), int(h * 0.73)
+            cx, bottom = int(art_cx), int(art_bottom)
             shadow = pg.Surface((int(art.get_width() * 0.9), int(u * 5)), pg.SRCALPHA)
             pg.draw.ellipse(shadow, (0, 0, 0, 110), shadow.get_rect())
             frame.blit(shadow, (cx - shadow.get_width() // 2, bottom - shadow.get_height() // 2))
             frame.blit(art, (cx - art.get_width() // 2, bottom - art.get_height()))
-        # Logo, name, number of games.
+        # Logo, name, number of games (on the right; centred under the drawing
+        # on a vertical screen).
         x = int(w * 0.62)
-        y = int(h * 0.25)
+        y = int(h * 0.58) if portrait else int(h * 0.25)
+
+        def left(width):
+            return (w - width) // 2 if portrait else x
+
         if logo is not None:
-            scale = min(w * 0.26 / logo.get_width(), h * 0.1 / logo.get_height(), 1.0)
+            scale = min(logo_box[0] / logo.get_width(), logo_box[1] / logo.get_height(), 1.0)
             if scale < 1.0:
                 logo = pg.transform.smoothscale(logo, (int(logo.get_width() * scale), int(logo.get_height() * scale)))
             logo = self.plate(logo, int(u * 3), int(u * 2))
             shade = pg.Surface((logo.get_width(), logo.get_height()), pg.SRCALPHA)
             pg.draw.rect(shade, (0, 0, 0, 90), shade.get_rect(), border_radius=int(u * 1.6))
-            frame.blit(shade, (x + int(u * 0.6), y + int(u * 0.9)))
-            frame.blit(logo, (x, y))
+            frame.blit(shade, (left(logo.get_width()) + int(u * 0.6), y + int(u * 0.9)))
+            frame.blit(logo, (left(logo.get_width()), y))
             y += logo.get_height() + int(u * 3)
         name = self.font("OpenSans-CondLight.ttf", u * 4.6).render(console["name"], True, TEXT)
-        frame.blit(name, (x, y))
+        frame.blit(name, (left(name.get_width()), y))
         y += name.get_height() + int(u * 0.6)
         facts = " · ".join(part for part in (console.get("maker"), console.get("year")) if part)
         if facts:
             line = self.font("OpenSans-CondLight.ttf", u * 3.4).render(facts, True, MUTED)
-            frame.blit(line, (x, y))
+            frame.blit(line, (left(line.get_width()), y))
             y += line.get_height()
         y += int(u * 3)
         number = self.font("Exo2-Bold.ttf", u * 15).render(str(console["count"]), True, TEXT)
-        frame.blit(number, (x, y))
         label = self.font("Exo2-SemiBoldCondensed.otf", u * 5).render(
             text("game" if console["count"] == 1 else "games", self.language), True, accent)
-        frame.blit(label, (x + number.get_width() + int(u * 2), y + number.get_height() - label.get_height() - int(u * 2.2)))
-        pg.draw.rect(frame, accent, (x, y + number.get_height() + int(u * 0.5), int(u * 9), int(u * 0.7)),
+        nx = left(number.get_width() + int(u * 2) + label.get_width())
+        frame.blit(number, (nx, y))
+        frame.blit(label, (nx + number.get_width() + int(u * 2), y + number.get_height() - label.get_height() - int(u * 2.2)))
+        bar_x = (w - int(u * 9)) // 2 if portrait else nx
+        pg.draw.rect(frame, accent, (bar_x, y + number.get_height() + int(u * 0.5), int(u * 9), int(u * 0.7)),
                      border_radius=int(u * 0.35))
         try:
             frame = frame.convert()  # same format as the screen: much faster to show
@@ -450,7 +466,8 @@ class Painter:
         dim = strip.copy()
         dim.fill((255, 255, 255, 70), special_flags=pg.BLEND_RGBA_MULT)
         self.strip, self.strip_dim, self.strip_centres = self._fast(strip), self._fast(dim), centres
-        self.band_y, self.band_h = int(h * 0.84), int(h * 0.16)
+        self.band_h = int(u * 16)
+        self.band_y = h - self.band_h
         band = pg.Surface((w, self.band_h), pg.SRCALPHA)
         band.fill((0, 0, 0, 120))
         band.fill((255, 255, 255, 34), (0, 0, w, max(1, int(u * 0.15))))
@@ -520,7 +537,7 @@ class Painter:
 
     # ---- the top: invitation (pulsing), player, clock (redrawn often, small)
     def top_rect(self):
-        return self.pg.Rect(0, 0, self.w, int(self.u * 15))
+        return self.pg.Rect(0, 0, self.w, int(self.u * (26 if self.portrait else 15)))
 
     def top(self, surface, index: int, players: dict, now: float, background: bool = True,
             hint: bool = True) -> None:
@@ -545,7 +562,9 @@ class Painter:
             image.set_alpha(int(255 * pulse))
             surface.blit(image, self.hint_position(image))
         player = player_info(players, self.language)
-        if player:
+        if player and self.portrait:
+            self.player_chip(surface, player, accent, w - margin, margin + int(u * 12))
+        elif player:
             self.player_chip(surface, player, accent, w - margin - clock.get_width() - int(u * 3), margin)
 
     def hint_image(self):
@@ -615,7 +634,7 @@ class Painter:
         return image
 
     def toast_position(self, image):
-        return (self.w - image.get_width()) // 2, int(self.u * 14)
+        return (self.w - image.get_width()) // 2, int(self.u * (28 if self.portrait else 14))
 
     def player_chip(self, surface, player, accent, right: int, top: int):
         pg, u = self.pg, self.u
@@ -655,12 +674,45 @@ def ease(value: float) -> float:
 
 # ------------------------------------------------------------------ screen
 def screen_size(conf: dict):
-    """The resolution of Recalbox's interface (``es.videomode``/``global.videomode``)."""
-    for key in ("es.videomode", "global.videomode"):
-        match = re.match(r"^(\d{3,4})x(\d{3,4})$", conf.get(key, ""))
-        if match:
-            return int(match.group(1)), int(match.group(2))
+    """The resolution chosen for Recalbox's interface (``es.videomode``), or
+    (0, 0): the screen's own resolution (``global.videomode`` is the games')."""
+    match = re.match(r"^(\d{3,4})x(\d{3,4})$", conf.get("es.videomode", ""))
+    if match:
+        return int(match.group(1)), int(match.group(2))
     return 0, 0
+
+
+BOOT_CONF = "/boot/recalbox-boot.conf"
+
+
+def rotation(path: str = BOOT_CONF) -> int:
+    """Clockwise angle of Recalbox's screen rotation (``screen.rotation``:
+    0, 1 = 270, 2 = 180, 3 = 90, as Recalbox turns its videos)."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.strip().startswith("screen.rotation="):
+                    index = line.split("=", 1)[1].strip()
+                    return {"1": 270, "2": 180, "3": 90}.get(index, 0)
+    except OSError:
+        pass
+    return 0
+
+
+def native_size(pygame):
+    try:
+        sizes = pygame.display.get_desktop_sizes()
+        if sizes and sizes[0][0]:
+            return tuple(sizes[0])
+    except Exception:  # noqa: BLE001 - older pygame
+        pass
+    info = pygame.display.Info()
+    return info.current_w or 1280, info.current_h or 720
+
+
+def logical_size(size, angle: int):
+    """The page drawn before the rotation: upright on a turned screen."""
+    return (size[1], size[0]) if angle in (90, 270) else tuple(size)
 
 
 def region(conf: dict) -> str:
@@ -675,10 +727,16 @@ def region(conf: dict) -> str:
 class GpuScreen:
     """Drawn by the graphics chip: every frame is a few texture copies."""
 
-    def __init__(self, pygame, painter, window, renderer):
+    def __init__(self, pygame, painter, window, renderer, angle: int = 0, screen=None):
         from pygame._sdl2.video import Texture
 
         self.pg = pygame
+        self.angle = angle
+        self.screen = screen or (painter.w, painter.h)
+        self.canvas = None
+        if angle:
+            # Drawn upright in this texture, then turned onto the screen.
+            self.canvas = Texture(renderer, (painter.w, painter.h), target=True)
         self.painter = painter
         self.window = window
         self.renderer = renderer
@@ -726,6 +784,8 @@ class GpuScreen:
             self.build_static()
         changing = previous is not None and progress < 1.0
         full = pg.Rect(0, 0, w, h)
+        if self.canvas is not None:
+            renderer.target = self.canvas
         renderer.draw_color = BACKGROUND + (255,)
         renderer.clear()
         if changing:
@@ -792,6 +852,12 @@ class GpuScreen:
             else:
                 texture.alpha = int(255 * alpha)
                 texture.draw(dstrect=(position[0], position[1], texture.width, texture.height))
+        if self.canvas is not None:
+            renderer.target = None
+            renderer.draw_color = BACKGROUND + (255,)
+            renderer.clear()
+            sw, sh = self.screen
+            self.canvas.draw(dstrect=((sw - w) // 2, (sh - h) // 2, w, h), angle=self.angle)
         renderer.present()
 
     def show_toast(self, message: str, index: int) -> None:
@@ -839,13 +905,28 @@ class Screen:
             except Exception as exc:  # noqa: BLE001 - drawn by the processor instead
                 print("graphics chip not available (%s): software drawing" % exc, flush=True)
         try:
-            surface = pygame.display.set_mode(screen_size(conf), pygame.FULLSCREEN)
+            display = pygame.display.set_mode(screen_size(conf), pygame.FULLSCREEN)
         except pygame.error:
-            surface = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         pygame.mouse.set_visible(False)
-        width, height = surface.get_size()
+        angle = rotation()
+        width, height = logical_size(display.get_size(), angle)
+        surface = display if not angle else pygame.Surface((width, height)).convert()
         surface.fill(BACKGROUND)
-        pygame.display.flip()
+        real_flip, real_update = pygame.display.flip, pygame.display.update
+
+        def flip():
+            if angle:
+                display.blit(pygame.transform.rotate(surface, -angle), (0, 0))
+            real_flip()
+
+        def update(rect):
+            if angle:
+                flip()
+            else:
+                real_update(rect)
+
+        flip()
         consoles = count_games()
         if not consoles:
             consoles = [{"id": "", "name": "Recalbox", "count": 0, "maker": "", "year": ""}]
@@ -861,13 +942,13 @@ class Screen:
             except Exception:  # noqa: BLE001 - drawn when shown instead
                 pass
 
-        debug = bool(os.environ.get("RFID_SCREEN_DEBUG"))
+        debug = bool(os.environ.get("RFID_SCREEN_DEBUG")) or os.path.exists("/tmp/rfid-screen-debug")
         frames, slowest, counted = 0, 0.0, time.monotonic()
         players, players_at = {}, 0.0
         messages, messages_at, toast = Messages(), 0.0, None
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
         painter.compose(surface, index, None, 1.0, players, time.time())
-        pygame.display.flip()
+        flip()
         while self.running:
             started = time.monotonic()
             for _event in pygame.event.get():
@@ -891,7 +972,7 @@ class Screen:
                     surface.blit(toast[0], painter.toast_position(toast[0]))
                 else:
                     toast = None
-                pygame.display.flip()
+                flip()
                 time.sleep(0.03)
                 continue
             following = (index + 1) % len(consoles)
@@ -902,16 +983,16 @@ class Screen:
             if progress < 1.0:
                 painter.scene(surface, index, previous, progress)
                 painter.top(surface, index, players, time.time())
-                pygame.display.flip()
+                flip()
             else:
                 if previous is not None:  # end of a change: last full frame
                     previous = None
                     painter.scene(surface, index, None, 1.0)
                     painter.top(surface, index, players, time.time())
-                    pygame.display.flip()
+                    flip()
                 else:
                     painter.top(surface, index, players, time.time())
-                    pygame.display.update(painter.top_rect())
+                    update(painter.top_rect())
                 # The next console is prepared during the pause, never during a change.
                 nxt = (index + 1) % len(consoles)
                 thread = worker["thread"]
@@ -939,19 +1020,19 @@ def _run_gpu(self, pygame, conf) -> int:
 
     size = screen_size(conf)
     if not size[0]:
-        info = pygame.display.Info()
-        size = (info.current_w or 1280, info.current_h or 720)
+        size = native_size(pygame)
     window = Window("Recalbox RFID", size=size, fullscreen=True)
     renderer = Renderer(window, accelerated=1, vsync=True)
     pygame.mouse.set_visible(False)
-    width, height = size
+    angle = rotation()
+    width, height = logical_size(size, angle)
     renderer.draw_color = BACKGROUND + (255,)
     renderer.clear()
     renderer.present()
     consoles = _consoles()
     painter = Painter(pygame, width, height, consoles, self.language, region(conf))
     painter.home = self.home
-    gpu = GpuScreen(pygame, painter, window, renderer)
+    gpu = GpuScreen(pygame, painter, window, renderer, angle=angle, screen=size)
     index, previous, changed = 0, None, time.monotonic()
     painter.hero(0)
     worker = {"thread": None}
@@ -962,11 +1043,11 @@ def _run_gpu(self, pygame, conf) -> int:
         except Exception:  # noqa: BLE001 - drawn when shown instead
             pass
 
-    debug = bool(os.environ.get("RFID_SCREEN_DEBUG"))
+    debug = bool(os.environ.get("RFID_SCREEN_DEBUG")) or os.path.exists("/tmp/rfid-screen-debug")
     frames, slowest, counted = 0, 0.0, time.monotonic()
     players, players_at = {}, 0.0
     messages, messages_at = Messages(), 0.0
-    print("screen %dx%d, %d consoles, graphics chip" % (width, height, len(consoles)), flush=True)
+    print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
         for _event in pygame.event.get():
@@ -1003,6 +1084,7 @@ def _run_gpu(self, pygame, conf) -> int:
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
     gpu.toast = None
+    gpu.canvas = None
     # Textures first, then the renderer and the window: freed in another
     # order, SDL crashes while quitting.
     gpu.heroes.clear()
