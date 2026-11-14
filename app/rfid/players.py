@@ -116,6 +116,11 @@ class Players:
         self.current = None
         #: Last game counted (a bonus card restarts it for the same player).
         self.last = None
+        #: Option "keep the player active": the player of the last game stays
+        #: active for the next ones ({"uid", "entry"}), until their time is up,
+        #: another player card or the unlock card.
+        self.keep = False
+        self.kept = None
 
     # ------------------------------------------------------------ persistence
     def _path(self) -> str:
@@ -193,14 +198,29 @@ class Players:
     def arm(self, uid: str, entry: dict) -> None:
         """A player card was placed: it counts for the next game."""
         self.pending = {"uid": uid, "entry": dict(entry), "until": self.clock() + ARM_WINDOW_S}
+        if self.keep:
+            self.kept = {"uid": uid, "entry": dict(entry)}  # replaces the previous player
 
     def take_pending(self):
-        """The waiting player card, if still valid (it is used only once)."""
+        """The waiting player card, if still valid (it is used only once),
+        or the player kept active (option)."""
         pending = self.pending
         self.pending = None
         if pending is None or self.clock() > pending["until"]:
+            if self.keep and self.kept is not None:
+                return {"uid": self.kept["uid"], "entry": self.kept["entry"], "until": self.clock(), "kept": True}
             return None
+        if self.keep:
+            self.kept = {"uid": pending["uid"], "entry": pending["entry"]}
         return pending
+
+    def release(self, reason: str = "") -> bool:
+        """The kept player is no longer active. True if there was one."""
+        kept, self.kept = self.kept, None
+        if kept is not None and self.log:
+            self.log.info("%s n'est plus le joueur actif%s" % (self.player_name(kept["entry"]),
+                                                               (" (%s)" % reason) if reason else ""))
+        return kept is not None
 
     def begin(self, uid: str, entry: dict, via: str = "card", game=None) -> None:
         """A game starts for this player ("" = guest). via: "card", "reader" or "menu".
@@ -220,6 +240,8 @@ class Players:
             return
         self.checkpoint()
         self.last = {"uid": self.current["uid"], "entry": self.current["entry"], "ended": self.clock()}
+        if self.keep and self.current["uid"] != GUEST:
+            self.kept = {"uid": self.current["uid"], "entry": self.current["entry"]}
         self.current = None
 
     def resume_player(self):
@@ -251,11 +273,15 @@ class Players:
                 "playing": self.current is not None and self.current["uid"] == uid,
             })
         current = self.current
+        waiting = self.pending if self.pending is not None and self.clock() <= self.pending["until"] else None
+        if waiting is None and self.keep and self.kept is not None:
+            waiting = self.kept
         return {
             "players": result,
             "current": None if current is None else {"uid": current["uid"], "name": self.player_name(current["entry"]) if current["uid"] != GUEST else "", "via": current["via"]},
-            "pending": None if self.pending is None or self.clock() > self.pending["until"] else self.player_name(self.pending["entry"]),
-            "pending_uid": None if self.pending is None or self.clock() > self.pending["until"] else self.pending["uid"],
+            "pending": None if waiting is None else self.player_name(waiting["entry"]),
+            "pending_uid": None if waiting is None else waiting["uid"],
+            "kept": bool(self.keep and self.kept is not None),
         }
 
     def reset(self, uid: str) -> None:

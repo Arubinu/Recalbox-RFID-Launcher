@@ -39,7 +39,7 @@ from .esbridge import (
 from .feedback import Feedback
 from .led import StatusLight, build_light
 from .library import Library
-from .osd import ScreenMessages
+from .osd import SCREEN_MESSAGE_FILE, ScreenMessages
 from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
@@ -294,6 +294,7 @@ class Service:
             enabled=self.cfg.get_bool("screen", "messages", True),
             port=self.cfg.get_int("screen", "retroarch_port", 55355),
             log=self.log,
+            screen_file=SCREEN_MESSAGE_FILE,
         )
         self.saver = GameSaver(
             port=self.cfg.get_int("screen", "retroarch_port", 55355),
@@ -649,9 +650,11 @@ class Service:
         controller = self.controller
         players = self.players
         # A player card placed earlier and lifted does not count: for a menu
-        # game, the card stays on the reader.
+        # game, the card stays on the reader (unless the player is kept active).
         players.pending = None
         holder = self._active_player()
+        if holder is None and players.keep and players.kept is not None:
+            holder = (players.kept["uid"], players.kept["entry"])
         if holder is not None:
             uid, entry = holder
             name = players.player_name(entry)
@@ -696,6 +699,11 @@ class Service:
         except Exception:  # noqa: BLE001 - never blocking
             return
         current = players.current
+        kept = players.kept if players.keep else None
+        if kept is not None and current is None and not controller.unlocked:
+            left = controller.player_left(kept["uid"], kept["entry"])
+            if left is not None and left <= 0:
+                players.release("temps ecoule")
         if not running:
             self._refusing = False
             if current is not None and now - current["since"] > 20.0:
@@ -986,6 +994,8 @@ class Service:
                 self.light.flash("error")
             self.log.info("Carte deverrouiller : quittez d'abord le jeu en cours")
             return "refused"
+        if getattr(self, "players", None) is not None:
+            self.players.release("carte deverrouiller")
         if self.cfg.get("display", "mode", "recalbox").strip().lower() == "reader":
             # Reader mode: the card shows Recalbox's interface, then the reader screen again.
             if frontend_lock.is_unlocked(self.home):

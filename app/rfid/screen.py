@@ -67,6 +67,11 @@ MUTED = (150, 158, 175)
 FAINT = (92, 100, 116)
 DEFAULT_ACCENT = (84, 112, 246)
 PLATE = (244, 245, 248, 255)
+#: Messages of the service (see osd.py), shown as a toast.
+MESSAGE_FILE = "/tmp/rfid-screen-message.json"
+TOAST_S = 5.0
+#: A message older than this when the screen reads it is not shown.
+MESSAGE_MAX_AGE_S = 8.0
 #: How long the screen waits for a busy display (boot) before giving up.
 DISPLAY_WAIT_S = 60.0
 
@@ -175,6 +180,43 @@ def player_info(players: dict, language: str):
         return {"name": text("guest", language), "uid": "", "ratio": left / float(guest["quota_min"] * 60),
                 "detail": text("left", language, t=duration(left))}
     return None
+
+
+class Messages:
+    """Watches the message file of the service (cheap: one stat per call)."""
+
+    def __init__(self, path: str = MESSAGE_FILE, wall=None):
+        self.path = path
+        self.wall = wall or time.time
+        self.stamp = self._stamp()  # the message present at start is old
+
+    def _stamp(self):
+        try:
+            return os.stat(self.path).st_mtime_ns
+        except OSError:
+            return None
+
+    def poll(self):
+        """The new message text, or None."""
+        stamp = self._stamp()
+        if stamp is None or stamp == self.stamp:
+            return None
+        self.stamp = stamp
+        try:
+            with open(self.path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict) or abs(self.wall() - float(data.get("at") or 0)) > MESSAGE_MAX_AGE_S:
+            return None
+        return str(data.get("text") or "").strip() or None
+
+
+def toast_alpha(elapsed: float) -> float:
+    """Opacity of a toast shown ``elapsed`` seconds ago (fades in and out)."""
+    if elapsed < 0 or elapsed >= TOAST_S:
+        return 0.0
+    return ease(min(1.0, elapsed / 0.3, (TOAST_S - elapsed) / 0.6))
 
 
 def accent_from_svg(svg: str):
@@ -557,6 +599,24 @@ class Painter:
             self._avatars[key] = picture
         return self._avatars[key]
 
+    def toast_image(self, message: str, accent):
+        """A message of the service, in a dark pill with an accent mark."""
+        pg, u = self.pg, self.u
+        label = self.font("Raleway-SemiBold.ttf", u * 3.4).render(message, True, TEXT)
+        pad_x, pad_y, mark = int(u * 3), int(u * 1.6), int(u * 0.8)
+        width = min(self.w - int(u * 8), label.get_width() + pad_x * 2 + mark * 2)
+        height = label.get_height() + pad_y * 2
+        image = pg.Surface((width, height), pg.SRCALPHA)
+        pg.draw.rect(image, (12, 14, 20, 225), image.get_rect(), border_radius=height // 2)
+        pg.draw.rect(image, tuple(accent) + (255,), image.get_rect(), width=max(2, int(u * 0.3)),
+                     border_radius=height // 2)
+        pg.draw.circle(image, tuple(accent), (pad_x, height // 2), mark)
+        image.blit(label, (pad_x + mark * 2, pad_y), (0, 0, width - pad_x * 2 - mark * 2, label.get_height()))
+        return image
+
+    def toast_position(self, image):
+        return (self.w - image.get_width()) // 2, int(self.u * 14)
+
     def player_chip(self, surface, player, accent, right: int, top: int):
         pg, u = self.pg, self.u
         name = self.font("Exo2-Bold.ttf", u * 3.6).render(player["name"], True, TEXT)
@@ -628,6 +688,7 @@ class GpuScreen:
         self.top_key = None
         self.top_texture = None
         self.hint_texture = None
+        self.toast = None  # (texture, started)
 
     def texture(self, surface):
         return self.Texture.from_surface(self.renderer, surface)
@@ -723,7 +784,24 @@ class GpuScreen:
         self.hint_texture.alpha = int(255 * pulse)
         x, y = painter.hint_position(painter.hint_image())
         self.hint_texture.draw(dstrect=(x, y, self.hint_texture.width, self.hint_texture.height))
+        if self.toast is not None:
+            texture, started, position = self.toast
+            alpha = toast_alpha(time.monotonic() - started)
+            if alpha <= 0:
+                self.toast = None
+            else:
+                texture.alpha = int(255 * alpha)
+                texture.draw(dstrect=(position[0], position[1], texture.width, texture.height))
         renderer.present()
+
+    def show_toast(self, message: str, index: int) -> None:
+        painter = self.painter
+        if painter.strip is None:
+            painter.build_strip()
+        image = painter.toast_image(message, painter.hero(index)["accent"])
+        texture = self.texture(image)
+        texture.blend_mode = 1
+        self.toast = (texture, time.monotonic(), painter.toast_position(image))
 
 
 class Screen:
@@ -786,6 +864,7 @@ class Screen:
         debug = bool(os.environ.get("RFID_SCREEN_DEBUG"))
         frames, slowest, counted = 0, 0.0, time.monotonic()
         players, players_at = {}, 0.0
+        messages, messages_at, toast = Messages(), 0.0, None
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
         painter.compose(surface, index, None, 1.0, players, time.time())
         pygame.display.flip()
@@ -796,6 +875,25 @@ class Screen:
             now = time.monotonic()
             if now - players_at >= 1.0:
                 players, players_at = read_players(self.home), now
+            if now - messages_at >= 0.25:
+                messages_at = now
+                message = messages.poll()
+                if message:
+                    image = painter.toast_image(message, painter.hero(index)["accent"])
+                    toast = (image, now)
+                    players_at = 0.0
+            if toast is not None:
+                alpha = toast_alpha(now - toast[1])
+                painter.scene(surface, index, previous, min(1.0, (now - changed) / FADE_S) if previous is not None else 1.0)
+                painter.top(surface, index, players, time.time())
+                if alpha > 0:
+                    toast[0].set_alpha(int(255 * alpha))
+                    surface.blit(toast[0], painter.toast_position(toast[0]))
+                else:
+                    toast = None
+                pygame.display.flip()
+                time.sleep(0.03)
+                continue
             following = (index + 1) % len(consoles)
             if now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
                 previous, index, changed = index, following, now
@@ -867,6 +965,7 @@ def _run_gpu(self, pygame, conf) -> int:
     debug = bool(os.environ.get("RFID_SCREEN_DEBUG"))
     frames, slowest, counted = 0, 0.0, time.monotonic()
     players, players_at = {}, 0.0
+    messages, messages_at = Messages(), 0.0
     print("screen %dx%d, %d consoles, graphics chip" % (width, height, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
@@ -875,6 +974,12 @@ def _run_gpu(self, pygame, conf) -> int:
         now = time.monotonic()
         if now - players_at >= 1.0:
             players, players_at = read_players(self.home), now
+        if now - messages_at >= 0.25:
+            messages_at = now
+            message = messages.poll()
+            if message:
+                gpu.show_toast(message, index)
+                players_at = 0.0  # the message often comes with a new player state
         following = (index + 1) % len(consoles)
         if now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
             previous, index, changed = index, following, now
@@ -897,6 +1002,7 @@ def _run_gpu(self, pygame, conf) -> int:
                 frames, slowest, counted = 0, 0.0, time.monotonic()
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
+    gpu.toast = None
     # Textures first, then the renderer and the window: freed in another
     # order, SDL crashes while quitting.
     gpu.heroes.clear()

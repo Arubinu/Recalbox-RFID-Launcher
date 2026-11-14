@@ -163,6 +163,42 @@ class PlayerCardsTest(unittest.TestCase):
         self.assertEqual(self.players.current["uid"], "1EA00001", "la nouvelle partie reste a Lea")
         self.assertEqual(self.controller.new_game("1EA00001"), "no_card", "pas une carte de jeu")
 
+    def test_joueur_garde_actif(self):
+        controller = self.make(self.CONFIG + "require = 1\nkeep_active = 1\n")
+        self.assertEqual(controller.on_badge("1EA00001"), "player")
+        self.assertEqual(controller.on_badge("6A0E0001"), "launched")
+        controller.stop_game("quit")
+        self.clock.advance(600)  # long after the card window
+        self.assertEqual(self.players.status([])["pending"], "Lea")
+        self.assertTrue(self.players.status([])["kept"])
+        self.assertEqual(controller.on_badge("6A0E0001"), "launched", "Lea reste active")
+        self.assertEqual(self.players.current["uid"], "1EA00001")
+        controller.stop_game("quit")
+        self.assertEqual(controller.on_badge("70A00002"), "player", "une autre carte joueur la remplace")
+        controller.on_badge("6A0E0001")
+        controller.stop_game("quit")
+        self.assertEqual(self.players.kept["uid"], "70A00002")
+        self.assertTrue(self.players.release("carte deverrouiller"))
+        self.assertEqual(controller.on_badge("6A0E0001"), "player_needed")
+
+    def test_joueur_garde_jusqu_a_la_fin_du_temps(self):
+        controller = self.make(self.CONFIG + "require = 1\nkeep_active = 1\n")
+        controller.on_badge("1EA00001")
+        controller.on_badge("6A0E0001")
+        self.clock.advance(31 * 60)  # Lea has 30 min a day
+        controller.stop_game("time")
+        self.assertEqual(controller.on_badge("6A0E0001"), "exhausted")
+        self.assertIsNone(self.players.kept, "son temps est ecoule : elle n'est plus active")
+        self.assertEqual(controller.on_badge("6A0E0001"), "player_needed")
+
+    def test_sans_l_option_la_carte_ne_sert_qu_une_fois(self):
+        controller = self.make(self.CONFIG + "require = 1\n")
+        controller.on_badge("1EA00001")
+        controller.on_badge("6A0E0001")
+        controller.stop_game("quit")
+        self.assertEqual(controller.on_badge("6A0E0001"), "player_needed")
+        self.assertFalse(self.players.status([])["kept"])
+
     def test_deverrouille_rien_n_est_bloque(self):
         free = [False]
         controller = Controller(self.store, self.launcher, self.feedback,
