@@ -442,12 +442,11 @@ class Controller:
         self.paused = False
         if self.playtime is not None:
             self.playtime.session = None
-        entry = self.players.give_back() if self.players is not None else None
+        if self.players is not None:
+            self.players.give_back()  # silently: the player was already shown as active
         self.launched_uid = None
         self.last_action = ""
         self.launcher.stop_game()
-        if entry is not None:
-            self._say("player_next", name=self.players.player_name(entry))
         self._log("info", "Jeu montre puis abandonne (%s) : le joueur reste actif" % reason)
         return True
 
