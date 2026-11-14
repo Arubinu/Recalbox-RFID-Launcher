@@ -17,6 +17,7 @@ Optional helpers (all may be None):
 
 from __future__ import annotations
 
+import os
 import time
 
 from .esbridge import (
@@ -359,14 +360,35 @@ class Controller:
         except Exception:  # noqa: BLE001 - unreadable /proc: nothing is concluded
             return False
 
+    def save_owner(self) -> str:
+        """Card of the player whose game is saved ("" = the shared save)."""
+        current = self.players.current if self.counting_players else None
+        if not isinstance(current, dict) or current.get("uid") in ("", "guest"):
+            return ""
+        return current["uid"]
+
+    def running_game(self):
+        """{"system", "name"} of the game the frontend runs (None if unknown)."""
+        try:
+            state = self.state_provider() or {}
+        except Exception:  # noqa: BLE001 - unreadable state file
+            return None
+        system = str(state.get("SystemId") or "").strip()
+        name = str(state.get("Game") or "").strip()
+        if not name:
+            path = str(state.get("GamePath") or "")
+            name = os.path.splitext(os.path.basename(path))[0] if path else ""
+        return {"system": system, "name": name} if system and name else None
+
     def stop_game(self, reason: str = "removed") -> bool:
         """Quits the running game (badge removed, quit card, time up).
 
-        reason "refused": a game that was not allowed to start is never saved.
+        reason "refused" (a game not allowed to start) or "new" (a new game is
+        wanted): the game is not saved.
         """
-        if self.save_on_quit and self.saver is not None and reason != "refused":
+        if self.save_on_quit and self.saver is not None and reason not in ("refused", "new"):
             try:
-                self.saver.save()
+                self.saver.save(owner=self.save_owner())
             except Exception as exc:  # noqa: BLE001 - the game is quit anyway
                 self._log("warning", "Sauvegarde de la partie impossible : %s" % exc)
         if self.playtime is not None:
@@ -427,11 +449,36 @@ class Controller:
         self._say(key, **values)
         self._log("info", message)
 
-    def _launch_for_player(self, entry, uid: str, touch: bool = True) -> str:
-        """Starts a game card for the waiting player card (or the guest)."""
+    def game_card(self, uid: str):
+        """Entry of a game card (None for an unknown or special card)."""
+        try:
+            entry = self.store.get(str(uid or "").upper())
+        except StorageError:
+            return None
+        if not entry or entry.get("kind") == KIND_ACTION:
+            return None
+        return entry
+
+    def new_game(self, uid: str, player=None) -> str:
+        """Starts the game card ``uid`` again from the beginning (button double press).
+
+        player: (uid, entry) of the player of the game that was just quit.
+        """
+        entry = self.game_card(uid)
+        if entry is None:
+            return "no_card"
+        return self._launch_for_player(entry, str(uid).upper(), touch=False, player=player)
+
+    def _launch_for_player(self, entry, uid: str, touch: bool = True, player=None) -> str:
+        """Starts a game card for the waiting player card (or the guest).
+
+        player: (uid, entry) to use instead of the waiting card (a new game).
+        """
         if not self.counting_players:
             return self._launch(entry, uid, touch=touch)
         pending = self.players.take_pending()
+        if player is not None and player[0]:
+            pending = {"uid": player[0], "entry": player[1]}
         if pending is not None:
             player = (pending["uid"], pending["entry"])
             left = self.player_left(*player)
@@ -471,7 +518,7 @@ class Controller:
         if self.game_running() and (current is None or current["uid"] == "guest"):
             # Game started from the menu without a card: it becomes this
             # player's, and lasts while the card stays on the reader.
-            self.players.begin(uid, entry, via="reader")
+            self.players.begin(uid, entry, via="reader", game=self.running_game())
             if self.playtime is not None and left is not None and self.playtime.session is None:
                 self.playtime.start(uid, {"name": name}, left / 60.0)
             self.feedback.ok()
@@ -512,7 +559,8 @@ class Controller:
                 self.playtime.start(uid, entry, self.limit_for(entry) if minutes is None else minutes)
             if self.counting_players:
                 who = player if player is not None else self.players.resume_player()
-                self.players.begin(who[0], who[1], via="card")
+                name = entry.get("name") or os.path.splitext(os.path.basename(str(game)))[0]
+                self.players.begin(who[0], who[1], via="card", game={"system": system, "name": name})
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"

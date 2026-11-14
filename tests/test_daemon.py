@@ -95,6 +95,46 @@ class ReleaseGestureTest(unittest.TestCase):
         self.service._handle_gesture("long")
         self.assertEqual(self.armements, [])
 
+    def prepare_double(self, card=True, running=True):
+        from unittest import mock as _mock
+
+        controller = self.service.controller
+        controller.game_card = lambda uid: {"system": "gb", "game": "Tuff.gb"} if card else None
+        controller.game_running = _mock.Mock(return_value=running)
+        controller.new_game = _mock.Mock(return_value="launched")
+        self.service.players = None
+        self.service.feedback = _mock.Mock()
+        self.service.light = None
+        self.service.log = _mock.Mock()
+        self.service._new_game = None
+        self.service._skip_resume = False
+        self.service._launched_uid = None
+
+    def test_double_appui_nouvelle_partie(self):
+        self.prepare_double()
+        self.service._handle_gesture("double")
+        self.service.controller.stop_game.assert_called_once_with("new")
+        self.assertEqual(self.armements, [], "pas d'association")
+        self.assertTrue(self.service._skip_resume)
+        job = self.service._new_game
+        self.assertEqual(job["uid"], "A1B2C3D4")
+        # The frontend is back to its menu: the game starts again.
+        job["at"] = 0
+        self.service.controller.game_running.return_value = False
+        self.service._new_game_step()
+        self.service.controller.new_game.assert_called_once_with("A1B2C3D4", None)
+        self.assertEqual(self.service._launched_uid, "A1B2C3D4")
+        job["at"] = 0
+        self.service.controller.game_running.return_value = True
+        self.service._new_game_step()
+        self.assertIsNone(self.service._new_game, "partie relancee")
+
+    def test_double_appui_sans_carte_de_jeu(self):
+        self.prepare_double(card=False)
+        self.service._handle_gesture("double")
+        self.assertEqual(self.armements, ["short"], "comme un appui court")
+        self.assertIsNone(self.service._new_game)
+
     def test_armer_oublie_le_badge_deja_pose(self):
         self.service._handle_gesture("short")
         self.assertIsNone(self.service._active_uid)

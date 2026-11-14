@@ -50,7 +50,7 @@ class FakeButton:
         self.available = True
 
     def press(self, gesture: str = "short") -> None:
-        self.queue.append("hold" if gesture == "hold" else "short")
+        self.queue.append(gesture if gesture in ("hold", "double") else "short")
 
     def poll(self):
         if not self.queue:

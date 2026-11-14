@@ -13,7 +13,12 @@ for the games run by RetroArch (most consoles), through its network commands
   the very file of the Recalbox "auto save/load" option.
 
 The save state is copied as the "auto" one, then the slot RetroArch wrote is
-put back as it was: the player's own save states never change. Stand-alone
+put back as it was: the player's own save states never change.
+
+With player cards, each player has their own save (``player-saves/<card>/
+<console>/<game>.state`` in the reader folder): it is loaded through a
+temporary slot (``RESUME_SLOT``), removed right after. A player without a
+save of the game starts it new (never someone else's game). Stand-alone
 emulators do not answer ``GET_STATUS``: nothing is done, the game is quit as
 before.
 """
@@ -38,6 +43,14 @@ MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
 SAVE_TIMEOUT_S = 5.0
 #: Time given to a game to start before it is resumed.
 RESUME_TIMEOUT_S = 90.0
+#: Temporary slot used to load a player's own save.
+RESUME_SLOT = 999
+PLAYER_SAVES = "player-saves"
+
+
+def _safe(text) -> str:
+    text = str(text or "").replace("/", "_").replace("\\", "_").strip()
+    return "_" if text in ("", ".", "..") else text
 
 _STATUS = re.compile(r"^GET_STATUS\s+(\w+)\s+([^,]*),(.*?)(?:,crc32=\w+)?\s*$")
 
@@ -81,7 +94,8 @@ class GameSaver:
     """Save on quit and resume, through RetroArch network commands."""
 
     def __init__(self, port: int = RETROARCH_PORT, host: str = "127.0.0.1", log=None,
-                 query=None, cfg_path: str = RETROARCH_CFG, sleep=None, clock=None, show=None):
+                 query=None, cfg_path: str = RETROARCH_CFG, sleep=None, clock=None, show=None,
+                 player_dir: str = ""):
         self.port = int(port)
         self.host = host
         self.log = log
@@ -91,6 +105,8 @@ class GameSaver:
         self._clock = clock or time.time
         #: Shows a message on the game screen (osd.ScreenMessages.say).
         self.show = show
+        #: Folder of the players' own saves ("" = no per-player saves).
+        self.player_dir = player_dir
         self._resuming = False
         self._lock = threading.Lock()
 
@@ -148,9 +164,16 @@ class GameSaver:
             return None
         return info.st_mtime, info.st_size
 
+    def player_path(self, owner: str, folder: str, name: str) -> str:
+        """Own save of a player for a game ("" without per-player saves)."""
+        if not owner or not self.player_dir:
+            return ""
+        console = os.path.basename(os.path.normpath(folder)) if folder else "saves"
+        return os.path.join(self.player_dir, _safe(owner), _safe(console), _safe(name) + ".state")
+
     # ---------------------------------------------------------------- save
-    def save(self, timeout_s: float = SAVE_TIMEOUT_S) -> str:
-        """Saves the running game as its "auto" save state.
+    def save(self, timeout_s: float = SAVE_TIMEOUT_S, owner: str = "") -> str:
+        """Saves the running game: the player's own save, or the "auto" one.
 
         Returns the path written, or "" (no RetroArch game, nothing written).
         """
@@ -183,15 +206,17 @@ class GameSaver:
             if not written:
                 self._info("RetroArch n'a pas ecrit de sauvegarde pour %s" % name)
                 return ""
-            auto = os.path.join(os.path.dirname(written), name + AUTO_SUFFIX)
+            target = (self.player_path(owner, folder, name)
+                      or os.path.join(os.path.dirname(written), name + AUTO_SUFFIX))
             with open(written, "rb") as handle:
                 data = handle.read()
-            temporary = auto + ".rfid-tmp"
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            temporary = target + ".rfid-tmp"
             with open(temporary, "wb") as handle:
                 handle.write(data)
-            os.replace(temporary, auto)
-            self._info("Partie sauvegardee avant de quitter : %s" % auto)
-            return auto
+            os.replace(temporary, target)
+            self._info("Partie sauvegardee avant de quitter : %s" % target)
+            return target
         finally:
             self._put_back(folder, name, before)
 
@@ -240,8 +265,11 @@ class GameSaver:
                 return path
         return ""
 
-    def resume(self, expected: str = "", timeout_s: float = RESUME_TIMEOUT_S) -> bool:
-        """Waits for the game to run, then loads its "auto" save state."""
+    def resume(self, expected: str = "", timeout_s: float = RESUME_TIMEOUT_S, owner=None) -> bool:
+        """Waits for the game to run, then loads its save.
+
+        owner: returns the card of the player of the game ("" = shared save).
+        """
         deadline = self._clock() + timeout_s
         status = None
         while self._clock() < deadline:
@@ -252,6 +280,12 @@ class GameSaver:
             self._sleep(1.0)
         if status is None:
             return False
+        if self.player_dir and owner is not None:
+            # The player of a menu game is known a little after it starts.
+            self._sleep(1.5)
+            uid = owner() or ""
+            if uid:
+                return self._resume_player(uid, status["name"])
         if read_retroarch_cfg(self.cfg_path).get("savestate_auto_load") == "true":
             return False  # Recalbox's own option: RetroArch loaded it already
         if not self.auto_state(status["name"]):
@@ -267,7 +301,36 @@ class GameSaver:
         self._info("Partie reprise : %s" % status["name"])
         return True
 
-    def resume_later(self, expected: str = "") -> bool:
+    def _resume_player(self, uid: str, name: str) -> bool:
+        folder = self.state_folder()
+        own = self.player_path(uid, folder, name)
+        if not folder or not own or not os.path.isfile(own):
+            self._info("Pas de partie sauvegardee pour ce joueur : %s commence au debut" % name)
+            return False
+        slot = os.path.join(folder, "%s.state%d" % (name, RESUME_SLOT))
+        try:
+            with open(own, "rb") as handle:
+                data = handle.read()
+            with open(slot, "wb") as handle:
+                handle.write(data)
+            self._sleep(1.5)
+            # RetroArch answers once the state is read: the slot can go.
+            self._query("LOAD_STATE_SLOT %d" % RESUME_SLOT, 3.0)
+        finally:
+            for path in (slot, slot + ".png"):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        if self.show is not None:
+            try:
+                self.show("game_resumed")
+            except Exception:  # noqa: BLE001 - message only
+                pass
+        self._info("Partie du joueur reprise : %s" % name)
+        return True
+
+    def resume_later(self, expected: str = "", owner=None) -> bool:
         """resume() in the background (one at a time)."""
         with self._lock:
             if self._resuming:
@@ -276,7 +339,7 @@ class GameSaver:
 
         def work():
             try:
-                self.resume(expected)
+                self.resume(expected, owner=owner)
             except Exception as exc:  # noqa: BLE001 - never stops the service
                 self._info("Reprise de la partie impossible : %s" % exc)
             finally:

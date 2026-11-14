@@ -59,6 +59,7 @@ from .consts import (
     TOKEN_FILENAME,
 )
 from . import access, backup, bootcfg, frontend_lock, portable
+from . import players as players_module
 from .artwork import Artwork, ArtworkError
 from .frames import FrameError, FrameStore
 from .calibration import STEPS as CALIBRATION_STEPS
@@ -1077,6 +1078,10 @@ class Agent:
             uid = normalize_uid(uid)
         self._write_command("players_reset", uid=uid)
         return {"requested": True}
+
+    def _cmd_players_stats(self, client, message):
+        """Time played per day, player and game (last 60 days), for the statistics."""
+        return {"rows": players_module.stats_rows(self.home), "keep_days": players_module.KEEP_DAYS}
 
     # ---------------------------------------------------------- card frames
     def _cmd_frames_list(self, client, message):

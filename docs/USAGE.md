@@ -107,6 +107,11 @@ With **"Quit the game when the badge is removed"**, removing the badge quits
 the game and the Recalbox goes back to its menu, like pulling a cartridge out.
 This is the setting of the "slot in the case" idea.
 
+**New game**: with a game card on the reader, **press the button twice
+quickly**. The running game is quit without being saved and starts again from
+the beginning, for the same player. The saved game is not resumed this time;
+it is replaced at the next save. (A single short press still pairs a badge.)
+
 With **"Save the game before quitting"** (Settings, off by default), every
 game the reader quits (badge removed, time up, "Quit" card, player card
 removed) is saved first, and **resumed where it stopped** the next time it
@@ -115,6 +120,11 @@ RetroArch's save states: the save is kept as the game's "auto" save state
 (`saves/<console>/<game>.state.auto`, the same file as Recalbox's own "auto
 save/load" option), and your own save slots are left as they were. RetroArch
 games only (most consoles); the stand-alone emulators are quit without saving.
+With the **player cards**, each player has **their own save**: they find their
+game, never someone else's (a player who never saved this game starts it new;
+games without a player card use the shared save). These saves are kept in
+`player-saves/` in the reader folder: a full uninstall removes them,
+`--keep-data` keeps them, and the full backup does not include them yet.
 
 ## Special cards
 
@@ -195,7 +205,11 @@ previous one:
   optional time (Settings › Player cards).
 
 The Badges tab shows, per player, the time played and left, with a **Reset**
-button. Messages on the game screen: welcome with the time left, "no play time
+button, and the **Statistics**: for each player, the time played per day and
+their most played games over 7, 30 or 60 days (hover a bar for the day's
+time). **Export (CSV)** gives every line kept (day, player, console, game,
+minutes), to open in a spreadsheet. A reset only clears the time limit
+count, never the statistics. Messages on the game screen: welcome with the time left, "no play time
 left", "player card removed". The time is saved per day in `players.json`
 (kept 60 days).
 

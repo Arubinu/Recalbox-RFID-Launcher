@@ -227,6 +227,10 @@ class Service:
         self._es_state_mtime = None
         self._next_es_check = 0.0
         self.saver = None
+        #: New game asked by a button double press: {"uid", "player", "at", "tries"}.
+        self._new_game = None
+        #: The next game start is not resumed (a new game was asked).
+        self._skip_resume = False
         #: The frontend said a game runs (to resume it once, at its start).
         #: None until the first reading: a game already running when the
         #: service starts is never reloaded.
@@ -282,6 +286,7 @@ class Service:
             port=self.cfg.get_int("screen", "retroarch_port", 55355),
             log=self.log,
             show=self.screen.say,
+            player_dir=os.path.join(self.home, "player-saves"),
         )
         if self.light is not None:
             try:
@@ -405,6 +410,7 @@ class Service:
                 if self.controller.tick() == "expired":
                     self.log.info("Mode arme expire")
                 self._playtime_step()
+                self._new_game_step()
                 self._players_step()
                 self._light_step()
                 self._watch_frontend()
@@ -503,9 +509,13 @@ class Service:
             return
         if not getattr(controller, "save_on_quit", False):
             return
+        if self._skip_resume:
+            self._skip_resume = False
+            self.log.info("Nouvelle partie : la sauvegarde n'est pas reprise")
+            return
         path = str((state or {}).get("GamePath") or "")
         expected = os.path.splitext(os.path.basename(path))[0] if path else ""
-        self.saver.resume_later(expected)
+        self.saver.resume_later(expected, owner=controller.save_owner)
 
     # ------------------------------------------------------------- play time
     #: Time given to read "play time is over" before the game is quit.
@@ -599,7 +609,7 @@ class Service:
             if left is not None and left <= 0 and controller.block_exhausted:
                 self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
                 return
-            players.begin(uid, entry, via="reader")
+            players.begin(uid, entry, via="reader", game=controller.running_game())
             self._limit_menu_game(uid, name, left)
             if self.screen is not None:
                 if left is None:
@@ -615,7 +625,7 @@ class Service:
         if left is not None and left <= 0 and controller.block_exhausted:
             self._refuse_game("guest_exhausted", "Jeu du menu refuse : plus de temps sans carte joueur")
             return
-        players.begin("", {}, via="menu")
+        players.begin("", {}, via="menu", game=controller.running_game())
         self._limit_menu_game("", "", left)
         self.log.info("Jeu lance depuis le menu : compte pour l'invite")
 
@@ -847,12 +857,68 @@ class Service:
                         )
                 return
 
-        if gesture != "short":
+        if gesture == "double" and self._start_new_game():
+            return
+        if gesture not in ("short", "double"):
             # "hold" without a pending request does nothing; the "long" gesture
             # no longer exists (erasing is done from the web interface).
             return
         self._forget_latch()
         self.controller.on_button("short")
+
+    # --------------------------------------------------------------- new game
+    #: Time given to the frontend to come back to its menu before a launch.
+    NEW_GAME_RETRY_S = 10.0
+    NEW_GAME_TRIES = 4
+
+    def _start_new_game(self) -> bool:
+        """Button double press with a game card on the reader: the game starts
+        again from the beginning (the running one is quit without saving)."""
+        uid = self._active_uid
+        controller = self.controller
+        if not uid or controller is None or controller.game_card(uid) is None:
+            return False
+        player = None
+        players = getattr(self, "players", None)
+        current = players.current if players is not None else None
+        if current is not None and current.get("uid") not in ("", "guest"):
+            player = (current["uid"], current["entry"])
+        running = controller.game_running()
+        if running:
+            controller.stop_game("new")
+        self._skip_resume = True
+        self._new_game = {"uid": uid, "player": player, "tries": 0,
+                          "at": time.monotonic() + (self.NEW_GAME_RETRY_S if running else 0.0)}
+        self.feedback.ok()
+        if self.light is not None:
+            self.light.flash("ok")
+        self.log.info("Double appui : nouvelle partie pour le badge %s" % uid)
+        return True
+
+    def _new_game_step(self) -> None:
+        """Starts the new game once the frontend is back to its menu."""
+        job = self._new_game
+        if job is None or time.monotonic() < job["at"]:
+            return
+        controller = self.controller
+        if controller.game_running():
+            if job["tries"]:
+                self._new_game = None  # started
+            else:
+                job["at"] = time.monotonic() + 2.0  # the old game is still closing
+            return
+        if job["tries"] >= self.NEW_GAME_TRIES:
+            self._new_game = None
+            self._skip_resume = False
+            self.log.warning("Nouvelle partie : le jeu n'a pas pu etre relance")
+            return
+        job["tries"] += 1
+        job["at"] = time.monotonic() + self.NEW_GAME_RETRY_S
+        if controller.new_game(job["uid"], job["player"]) == "launched":
+            self._launched_uid = job["uid"]
+        else:
+            self._new_game = None
+            self._skip_resume = False
 
     # ----------------------------------------------------------- commandes agent
     def _consume_agent_command(self) -> None:

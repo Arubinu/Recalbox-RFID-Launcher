@@ -578,6 +578,24 @@
   .chip.time { background: var(--warn-soft); color: var(--warn-text); }
   .chip.chip-special { background: var(--primary-soft); color: var(--primary-text); }
   .specials { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .stats-player { padding: 14px 0; border-top: 1px solid var(--line); }
+  .stats-player:first-child { border-top: 0; padding-top: 4px; }
+  .stats-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .stats-head b { font-size: 15px; }
+  .stats-head .stats-total { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .stats-days { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin: 10px 0 2px; }
+  .stats-days span { flex: 1; min-width: 3px; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
+  .stats-days span:hover { background: var(--line); }
+  .stats-days i { display: block; width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 0; }
+  .stats-days i.none { background: transparent; }
+  .stats-axis { display: flex; justify-content: space-between; color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .stats-games { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  .stats-games li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; font-size: 13px; }
+  .stats-games .g { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stats-games .g small { color: var(--muted); }
+  .stats-games .d { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .stats-games .b { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .stats-games .b span { display: block; height: 100%; background: var(--primary); border-radius: 2px; }
   .quota-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 6px; max-width: 260px; }
   .quota-bar span { display: block; height: 100%; background: var(--primary); }
   .quota-bar.low span { background: var(--warn); }
@@ -1235,6 +1253,21 @@
             </div></div>
             <p class="notice-line" id="players-note" hidden></p>
             <ul class="tags" id="players-list"></ul>
+          </section>
+          <section class="card" id="stats-card" hidden>
+            <div class="card-head"><div class="grow">
+              <h2>Statistiques</h2>
+              <p>Temps joué par personne et par jeu, compté avec les cartes joueurs. La Recalbox garde les 60 derniers jours.</p>
+            </div>
+            <div class="actions">
+              <select id="stats-period" aria-label="Période">
+                <option value="7">7 derniers jours</option>
+                <option value="30">30 derniers jours</option>
+                <option value="60">60 derniers jours</option>
+              </select>
+              <button class="btn sm" type="button" id="stats-export">Exporter (CSV)</button>
+            </div></div>
+            <div id="stats-body"></div>
           </section>
         </section>
 
@@ -2977,6 +3010,127 @@ function renderPlayers() {
   else if (status.pending) text = t("Carte de {name} posée : elle compte pour la prochaine partie.", { name: status.pending });
   note.hidden = !text;
   note.textContent = text;
+  loadStats(false);
+  renderStats();
+}
+/* ---- statistics: time played per player and game (players.json) ---- */
+const STATS_REFRESH_MS = 60000;
+let statsRows = null;
+let statsLoadedAt = 0;
+let statsLoading = false;
+async function loadStats(force) {
+  if (statsLoading || !agent.isOpen) return;
+  if (!force && statsRows && Date.now() - statsLoadedAt < STATS_REFRESH_MS) return;
+  statsLoading = true;
+  try {
+    statsRows = (await agent.send("players.stats", {}, 20000)).rows || [];
+    statsLoadedAt = Date.now();
+  } catch (error) {
+    if (!statsRows) statsRows = [];
+  } finally {
+    statsLoading = false;
+  }
+  renderStats();
+}
+function dayKey(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+/* Day keys of the chosen period, oldest first (today last). */
+function statsDays(count) {
+  const days = [];
+  const today = new Date();
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
+    days.push(dayKey(day));
+  }
+  return days;
+}
+function statsPlayerName(uid) {
+  if (uid === "guest") return t("Sans carte joueur (invité)");
+  const tag = tags.find((item) => item.uid === uid);
+  return tag ? tagTitle(tag) : t("Carte {uid} (supprimée)", { uid: prettyUidText(uid) });
+}
+function prettyUidText(uid) {
+  return String(uid || "").match(/.{1,2}/g)?.join(":") || uid;
+}
+function shortDay(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(document.documentElement.lang || undefined, { day: "numeric", month: "short" });
+}
+function renderStats() {
+  const card = $("#stats-card");
+  const players = serviceStatus().players;
+  const rows = statsRows || [];
+  card.hidden = !(players && players.players) && !rows.length;
+  if (card.hidden) return;
+  const count = Number($("#stats-period").value) || 7;
+  const days = statsDays(count);
+  const first = days[0];
+  const kept = rows.filter((row) => row.date >= first);
+  const body = $("#stats-body");
+  $("#stats-export").disabled = !rows.length;
+  if (!kept.length) {
+    body.replaceChildren(el("p", { className: "muted small", text: statsRows === null
+      ? t("Chargement…")
+      : t("Rien de joué sur cette période avec les cartes joueurs.") }));
+    return;
+  }
+  const byPlayer = new Map();
+  for (const row of kept) {
+    if (!byPlayer.has(row.uid)) byPlayer.set(row.uid, { total: 0, days: new Map(), games: new Map() });
+    const entry = byPlayer.get(row.uid);
+    entry.total += row.seconds;
+    entry.days.set(row.date, (entry.days.get(row.date) || 0) + row.seconds);
+    const key = row.system + "|" + row.game;
+    entry.games.set(key, (entry.games.get(key) || 0) + row.seconds);
+  }
+  const blocks = [...byPlayer.entries()].sort((a, b) => b[1].total - a[1].total).map(([uid, entry]) => {
+    const peak = Math.max(...entry.days.values(), 1);
+    const bars = days.map((day) => {
+      const seconds = entry.days.get(day) || 0;
+      const label = shortDay(day) + " : " + (seconds ? formatDuration(seconds) : t("rien"));
+      return el("span", { title: label, attrs: { role: "img", "aria-label": label } },
+        [el("i", { className: seconds ? "" : "none", attrs: { style: "height:" + (seconds ? Math.max(4, Math.round(seconds / peak * 100)) : 0) + "%" } })]);
+    });
+    const games = [...entry.games.entries()].sort((a, b) => b[1] - a[1]);
+    const top = games[0] ? games[0][1] : 1;
+    const list = games.slice(0, 5).map(([key, seconds]) => {
+      const [system, game] = key.split("|");
+      return el("li", {}, [
+        el("span", { className: "g" }, [game + " ", el("small", { text: systemName(system) })]),
+        el("span", { className: "d", text: formatDuration(seconds) }),
+        el("span", { className: "b" }, [el("span", { attrs: { style: "width:" + Math.max(2, Math.round(seconds / top * 100)) + "%" } })]),
+      ]);
+    });
+    if (games.length > 5) list.push(el("li", { className: "muted small", text: t("et {n} autre(s) jeu(x)", { n: games.length - 5 }) }));
+    return el("div", { className: "stats-player" }, [
+      el("div", { className: "stats-head" }, [
+        el("b", { text: statsPlayerName(uid) }),
+        el("span", { className: "stats-total", text: formatDuration(entry.total) }),
+        el("span", { className: "muted small", text: t("{n} jeu(x)", { n: games.length }) }),
+      ]),
+      el("div", { className: "stats-days", attrs: { "aria-label": t("Temps joué par jour") } }, bars),
+      el("div", { className: "stats-axis" }, [el("span", { text: shortDay(days[0]) }), el("span", { text: t("aujourd'hui") })]),
+      el("ul", { className: "stats-games" }, list),
+    ]);
+  });
+  body.replaceChildren(...blocks);
+}
+/* Every row kept on the Recalbox (60 days), one line per day, player and game. */
+function exportStats() {
+  const rows = statsRows || [];
+  if (!rows.length) return;
+  const quote = (value) => {
+    const text = String(value ?? "");
+    return /[;"\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  };
+  const head = [t("Date"), t("Joueur"), t("Console"), t("Jeu"), t("Minutes"), t("Secondes")];
+  const lines = [head.map(quote).join(";")].concat(rows.map((row) => [
+    row.date, statsPlayerName(row.uid), systemName(row.system), row.game,
+    (row.seconds / 60).toFixed(1).replace(".", ","), row.seconds,
+  ].map(quote).join(";")));
+  downloadBlob("statistiques-rfid.csv", "\ufeff" + lines.join("\r\n") + "\r\n", "text/csv;charset=utf-8");
+  toast("ok", t("Statistiques enregistrées dans vos téléchargements."));
 }
 async function resetPlayer(uid, name) {
   const ok = await ask({
@@ -6435,6 +6589,8 @@ function wire() {
     event.target.value = "";
     if (file) restoreBackup(file);
   });
+  $("#stats-period").addEventListener("change", renderStats);
+  $("#stats-export").addEventListener("click", exportStats);
   $("#btn-export").addEventListener("click", async () => {
     const payload = await run(() => agent.send("tags.export"));
     if (payload) { downloadBlob("badges-rfid.csv", payload.csv, "text/csv;charset=utf-8"); toast("ok", t("Liste enregistrée dans vos téléchargements.")); }

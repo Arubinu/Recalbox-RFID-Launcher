@@ -4,6 +4,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.14.0]
+
+### Added
+
+* **New game with a button double press**: with a game card on the reader,
+  two quick presses quit the running game without saving it and start it
+  again from the beginning, for the same player; the saved game is not
+  resumed this time (it stays until the next save). A single short press
+  still pairs a badge; it now waits 0.4 s for a possible second press.
+* **One save per player** (with "Save the game before quitting" and the
+  player cards): each player's game goes to `player-saves/<card>/<console>/
+  <game>.state` and comes back at their next start (loaded through a
+  temporary slot 999, removed right after). A player without a save of the
+  game starts it new; the guest keeps the shared "auto" save.
+* **Statistics per player** (Badges tab): time played per day (bars) and the
+  most played games of each player over 7, 30 or 60 days, and a CSV export
+  (one line per day, player and game). The time per game is kept in
+  `players.json` (`games`), never cleared by a reset of the quota; new agent
+  command `players.stats`.
+
 ## [2.13.0]
 
 ### Added

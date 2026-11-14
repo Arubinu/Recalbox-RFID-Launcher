@@ -63,8 +63,9 @@ class GameSaverTest(unittest.TestCase):
         self.clock = Clock()
         self.retroarch = FakeRetroArch(self.saves)
         self.shown = []
+        self.players_dir = os.path.join(self.home, "player-saves")
         self.saver = GameSaver(query=self.retroarch, cfg_path=self.cfg, sleep=self.clock.sleep,
-                               clock=self.clock, show=self.shown.append)
+                               clock=self.clock, show=self.shown.append, player_dir=self.players_dir)
 
     def tearDown(self):
         shutil.rmtree(self.home, ignore_errors=True)
@@ -128,6 +129,46 @@ class GameSaverTest(unittest.TestCase):
         self.assertEqual(self.read("Tuff.state"), b"MINE")
         self.assertLess(self.clock.now, 1000.0 + 10, "attente bornee")
 
+    def own(self, uid="P1"):
+        return os.path.join(self.players_dir, uid, "gb", "Tuff.state")
+
+    def test_sauvegarde_par_joueur(self):
+        self.put("Tuff.state.auto", b"SHARED")
+        self.assertEqual(self.saver.save(owner="P1"), self.own())
+        with open(self.own(), "rb") as handle:
+            self.assertEqual(handle.read(), b"NEW")
+        self.assertEqual(self.read("Tuff.state.auto"), b"SHARED", "la sauvegarde partagee ne change pas")
+        self.assertEqual(sorted(os.listdir(self.saves)), ["Tuff.state.auto"])
+
+    def test_reprise_par_joueur(self):
+        os.makedirs(os.path.dirname(self.own()))
+        with open(self.own(), "wb") as handle:
+            handle.write(b"LEA")
+        self.put("Tuff.state.auto", b"SHARED")
+        loaded = []
+        query = self.retroarch
+
+        def spy(command, wait):
+            if command.startswith("LOAD_STATE_SLOT"):
+                loaded.append((command, self.read("Tuff.state999")))
+            return query(command, wait)
+
+        self.saver._query = spy
+        self.assertTrue(self.saver.resume("Tuff", owner=lambda: "P1"))
+        self.assertEqual(loaded, [("LOAD_STATE_SLOT 999", b"LEA")])
+        self.assertEqual(sorted(os.listdir(self.saves)), ["Tuff.state.auto"], "emplacement temporaire efface")
+        self.assertEqual(self.shown, ["game_resumed"])
+
+    def test_joueur_sans_sauvegarde_commence_au_debut(self):
+        self.put("Tuff.state.auto", b"SHARED")
+        self.assertFalse(self.saver.resume("Tuff", owner=lambda: "P2"))
+        self.assertFalse([c for c in self.retroarch.sent if c.startswith("LOAD_STATE_SLOT")])
+
+    def test_invite_reprend_la_sauvegarde_partagee(self):
+        self.put("Tuff.state.auto", b"SHARED")
+        self.assertTrue(self.saver.resume("Tuff", owner=lambda: ""))
+        self.assertIn("LOAD_STATE_SLOT -1", self.retroarch.sent)
+
     def test_reprise(self):
         self.put("Tuff.state.auto", b"NEW")
         self.assertTrue(self.saver.resume("Tuff"))
@@ -154,8 +195,9 @@ class FakeSaver:
     def __init__(self):
         self.saved = 0
 
-    def save(self):
+    def save(self, owner=""):
         self.saved += 1
+        self.owner = owner
         return "x"
 
 
@@ -188,6 +230,9 @@ class ControllerSaveTest(unittest.TestCase):
         self.assertEqual(self.saver.saved, 2)
         controller.stop_game("refused")
         self.assertEqual(self.saver.saved, 2, "un jeu refuse n'est jamais sauvegarde")
+        controller.stop_game("new")
+        self.assertEqual(self.saver.saved, 2, "nouvelle partie : rien n'est sauvegarde")
+        self.assertEqual(self.saver.owner, "", "sans cartes joueurs : sauvegarde partagee")
 
 
 if __name__ == "__main__":

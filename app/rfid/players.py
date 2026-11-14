@@ -12,7 +12,9 @@ One card per game:
   is the player's; removing the card then ends the game (the service does it).
 
 The time played is saved in ``players.json`` per day: ``{"usage": {uid:
-{"YYYY-MM-DD": seconds}}}``, kept 60 days. Without a battery the Recalbox
+{"YYYY-MM-DD": seconds}}}``, kept 60 days. The same time per game feeds the
+statistics: ``{"games": {uid: {"YYYY-MM-DD": {"system|game": seconds}}}}``
+(never cleared by a reset: it is what was really played). Without a battery the Recalbox
 clock is only right once the network gave the time (same limit as the bonus
 quotas).
 """
@@ -46,6 +48,60 @@ def period_days(period: str, now: float) -> list:
     return [(today - datetime.timedelta(days=offset)).isoformat() for offset in range(count)]
 
 
+def game_key(game) -> str:
+    """"system|name" of a game ("" when unknown)."""
+    if not isinstance(game, dict):
+        return ""
+    system = str(game.get("system") or "").replace("|", " ").strip()
+    name = str(game.get("name") or "").replace("|", " ").strip()
+    return "%s|%s" % (system, name) if system and name else ""
+
+
+def read_file(path: str):
+    """(usage, games) of a players.json file (empty when unreadable)."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return {}, {}
+    if not isinstance(data, dict):
+        return {}, {}
+    usage = {}
+    for uid, days in (data.get("usage") or {}).items() if isinstance(data.get("usage"), dict) else ():
+        if isinstance(days, dict):
+            usage[str(uid)] = {str(day): float(seconds) for day, seconds in days.items()
+                               if isinstance(seconds, (int, float)) and seconds >= 0}
+    games = {}
+    for uid, days in (data.get("games") or {}).items() if isinstance(data.get("games"), dict) else ():
+        if not isinstance(days, dict):
+            continue
+        clean = {}
+        for day, played in days.items():
+            if isinstance(played, dict):
+                clean[str(day)] = {str(key): float(seconds) for key, seconds in played.items()
+                                   if isinstance(seconds, (int, float)) and seconds >= 0 and "|" in str(key)}
+        games[str(uid)] = clean
+    return usage, games
+
+
+def stats_rows(home: str) -> list:
+    """Time played per day, player and game: the statistics of the page.
+
+    [{"date", "uid", "system", "game", "seconds"}], newest first.
+    """
+    _usage, games = read_file(os.path.join(home, PLAYERS_FILENAME))
+    rows = []
+    for uid, days in games.items():
+        for day, played in days.items():
+            for key, seconds in played.items():
+                system, name = key.split("|", 1)
+                if seconds >= 1:
+                    rows.append({"date": day, "uid": uid, "system": system, "game": name,
+                                 "seconds": int(round(seconds))})
+    rows.sort(key=lambda row: (row["date"], row["uid"], row["system"], row["game"]), reverse=True)
+    return rows
+
+
 class Players:
     def __init__(self, home: str = None, wall=None, clock=None, log=None):
         self.home = home
@@ -53,7 +109,7 @@ class Players:
         self.clock = clock or time.monotonic
         self.log = log
         self._lock = threading.Lock()
-        self.usage = self._load()
+        self.usage, self.games = self._load()
         #: Player card placed, waiting for its game: {"uid", "entry", "until"}.
         self.pending = None
         #: Game being counted: {"uid", "entry", "via", "since", "saved_at"}.
@@ -65,38 +121,26 @@ class Players:
     def _path(self) -> str:
         return os.path.join(self.home, PLAYERS_FILENAME) if self.home else ""
 
-    def _load(self) -> dict:
+    def _load(self):
         path = self._path()
         if not path:
-            return {}
-        try:
-            with open(path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-        except (OSError, ValueError):
-            return {}
-        usage = data.get("usage") if isinstance(data, dict) else None
-        if not isinstance(usage, dict):
-            return {}
-        clean = {}
-        for uid, days in usage.items():
-            if isinstance(days, dict):
-                clean[str(uid)] = {str(day): float(seconds) for day, seconds in days.items()
-                                   if isinstance(seconds, (int, float)) and seconds >= 0}
-        return clean
+            return {}, {}
+        return read_file(path)
 
     def _save(self) -> None:
         path = self._path()
         if not path:
             return
         limit = _day_key(self.wall() - KEEP_DAYS * 86400)
-        for uid in list(self.usage):
-            self.usage[uid] = {day: seconds for day, seconds in self.usage[uid].items() if day >= limit}
-            if not self.usage[uid]:
-                del self.usage[uid]
+        for table in (self.usage, self.games):
+            for uid in list(table):
+                table[uid] = {day: value for day, value in table[uid].items() if day >= limit}
+                if not table[uid]:
+                    del table[uid]
         temporary = path + ".tmp"
         try:
             with open(temporary, "w", encoding="utf-8") as handle:
-                json.dump({"usage": self.usage}, handle)
+                json.dump({"usage": self.usage, "games": self.games}, handle)
             os.replace(temporary, path)
         except OSError as exc:
             if self.log:
@@ -133,6 +177,10 @@ class Players:
             days = self.usage.setdefault(current["uid"], {})
             key = _day_key(self.wall())
             days[key] = days.get(key, 0.0) + elapsed
+            game = game_key(current.get("game"))
+            if game:
+                played = self.games.setdefault(current["uid"], {}).setdefault(key, {})
+                played[game] = played.get(game, 0.0) + elapsed
             self._save()
 
     def tick(self) -> None:
@@ -154,12 +202,15 @@ class Players:
             return None
         return pending
 
-    def begin(self, uid: str, entry: dict, via: str = "card") -> None:
-        """A game starts for this player ("" = guest). via: "card" or "reader"."""
+    def begin(self, uid: str, entry: dict, via: str = "card", game=None) -> None:
+        """A game starts for this player ("" = guest). via: "card", "reader" or "menu".
+
+        game: {"system", "name"} of the game played (for the statistics).
+        """
         self.finish()
         now = self.clock()
         self.current = {"uid": uid or GUEST, "entry": dict(entry or {}), "via": via,
-                        "since": now, "saved_at": now}
+                        "since": now, "saved_at": now, "game": dict(game) if game else None}
         if self.log:
             self.log.info("Partie de %s" % (self.player_name(entry) if uid else "l'invite"))
 

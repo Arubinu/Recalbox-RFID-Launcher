@@ -86,6 +86,28 @@ class PlayersUnitTest(unittest.TestCase):
         self.assertAlmostEqual(self.players.used_s(""), 120)
         self.assertAlmostEqual(self.players.used_s(GUEST), 120)
 
+    def test_statistiques_par_jeu(self):
+        self.players.begin("P1", {"name": "Lea"}, game={"system": "snes", "name": "Mario"})
+        self.clock.advance(600)
+        self.players.begin("", {}, via="menu", game={"system": "megadrive", "name": "Sonic"})
+        self.clock.advance(120)
+        self.players.begin("P1", {"name": "Lea"})  # unknown game: counted, not in the stats
+        self.clock.advance(60)
+        self.players.finish()
+        self.players.reset("P1")
+        rows = players_module.stats_rows(self.home)
+        self.assertEqual(sorted((r["uid"], r["system"], r["game"], r["seconds"]) for r in rows),
+                         [("P1", "snes", "Mario", 600), (GUEST, "megadrive", "Sonic", 120)])
+        self.assertEqual({r["date"] for r in rows}, {"2026-11-11"})
+        self.assertEqual(self.players.used_s("P1", "week"), 0, "la remise a zero ne touche que le quota")
+
+    def test_statistiques_fichier_absent_ou_ancien(self):
+        self.assertEqual(players_module.stats_rows(self.home), [])
+        with open(os.path.join(self.home, players_module.PLAYERS_FILENAME), "w", encoding="utf-8") as handle:
+            json.dump({"usage": {"P1": {"2026-11-11": 60}}}, handle)
+        self.assertEqual(players_module.stats_rows(self.home), [])
+        self.assertAlmostEqual(Players(self.home, wall=self.wall, clock=self.clock).used_s("P1"), 60)
+
     def test_remise_a_zero(self):
         self.players.begin("P1", {"name": "Lea"})
         self.clock.advance(900)
@@ -129,6 +151,17 @@ class PlayerCardsTest(unittest.TestCase):
 
     def end_game(self):
         self.controller.stop_game("quit")
+
+    def test_nouvelle_partie_meme_joueur(self):
+        self.assertEqual(self.controller.on_badge("1EA00001"), "player")
+        self.assertEqual(self.controller.on_badge("6A0E0001"), "launched")
+        self.assertEqual(self.players.current["game"], {"system": "snes", "name": "Mario"})
+        player = (self.players.current["uid"], self.players.current["entry"])
+        self.controller.stop_game("new")
+        self.assertIsNone(self.players.current)
+        self.assertEqual(self.controller.new_game("6a0e0001", player), "launched")
+        self.assertEqual(self.players.current["uid"], "1EA00001", "la nouvelle partie reste a Lea")
+        self.assertEqual(self.controller.new_game("1EA00001"), "no_card", "pas une carte de jeu")
 
     def test_parametres_de_la_carte(self):
         with self.assertRaises(StorageError):
