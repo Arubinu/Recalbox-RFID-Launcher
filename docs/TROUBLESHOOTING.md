@@ -116,7 +116,7 @@ three possible causes apart:
 | the game was quit but the time was not counted as over | quitting from the emulator menu ends the limited session too (the bonus card can resume it) |
 | random game: "no game found" | the console of the card has no game, or "only favourites" with no favourite |
 | "Write the game into the badge" fails | "badge which cannot keep data": a clone that only gives its identifier; "protected": a MIFARE Classic with a custom key; "too small": an Ultralight and a very long file name |
-| a portable card does nothing on another Recalbox | the game must be installed there with the same console folder and file name; the other Recalbox needs version 2.10.0 or later |
+| a portable card does nothing on another Recalbox | the game must be installed there with the same console folder and file name; the reader must be installed on the other Recalbox too |
 
 ## 8. No message on the TV
 
@@ -164,8 +164,7 @@ Messages are shown by **RetroArch**, during a game only:
 | the page asks for an authorization again | the Recalbox restarted: hold the button 3 s |
 | nothing happens from the online version | a browser forbids an `https://` page to open `ws://`: download the page, or use `http://recalbox.local:8765/` |
 
-The phone page (`http://<IP>:8765/`) needs a Recalbox with version 2.10.0 or
-later; use the IP address if `recalbox.local` does not resolve on the phone
+On the phone page (`http://<IP>:8765/`), use the IP address if `recalbox.local` does not resolve on the phone
 (Android often lacks `.local` names).
 
 **Never expose port 8765 on the Internet**: the agent can install code and
