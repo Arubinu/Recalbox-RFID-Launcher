@@ -8,13 +8,22 @@ command shows a message at the bottom of the game screen.
 
 Stand-alone emulators (Dolphin, PPSSPP...) ignore it: the message is simply
 lost, the beeps and the light still work.
+
+Every message is also written to ``SCREEN_MESSAGE_FILE`` (in RAM): the
+reader screen, shown between the games, displays it as a toast.
 """
 
 from __future__ import annotations
 
+import json
+import os
 import socket
+import time
 
 RETROARCH_PORT = 55355
+
+#: Last message, read by the reader screen (in /tmp: no SD card writes).
+SCREEN_MESSAGE_FILE = "/tmp/rfid-screen-message.json"
 
 #: Recalbox settings (the interface language is read there).
 RECALBOX_CONF = "/recalbox/share/system/recalbox.conf"
@@ -126,8 +135,10 @@ class ScreenMessages:
     """Sends short messages to RetroArch (never blocking, never failing)."""
 
     def __init__(self, enabled: bool = True, port: int = RETROARCH_PORT, host: str = "127.0.0.1",
-                 log=None, sender=None):
+                 log=None, sender=None, screen_file: str = None, clock=None):
         self.enabled = bool(enabled)
+        self.screen_file = screen_file
+        self._clock = clock or time.time
         self.port = int(port)
         self.host = host
         self.log = log
@@ -147,11 +158,24 @@ class ScreenMessages:
         finally:
             sock.close()
 
+    def _write_screen(self, text: str) -> None:
+        if not self.screen_file:
+            return
+        temporary = self.screen_file + ".tmp"
+        try:
+            with open(temporary, "w", encoding="utf-8") as handle:
+                json.dump({"text": text, "at": self._clock()}, handle, ensure_ascii=False)
+            os.replace(temporary, self.screen_file)
+        except OSError as exc:
+            if self.log:
+                self.log.debug("Message pour l'ecran du lecteur non ecrit : %s" % exc)
+
     def show(self, text: str) -> bool:
         """Shows ``text`` on the game screen (True if the datagram left)."""
         if not self.enabled or not text:
             return False
         clean = " ".join(str(text).split())[:120]
+        self._write_screen(clean)
         try:
             self._sender(("SHOW_MSG " + clean).encode("utf-8"))
         except OSError as exc:

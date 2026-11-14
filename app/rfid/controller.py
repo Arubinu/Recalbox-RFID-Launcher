@@ -104,6 +104,10 @@ class Controller:
             self.guest_quota_min = max(0, cfg.get_int("players", "guest_quota_min", 0))
             period = cfg.get("players", "guest_period", "day").strip()
             self.guest_period = "week" if period == "week" else "day"
+            if self.players is not None:
+                self.players.keep = cfg.get_bool("players", "keep_active", False)
+                if not self.players.keep:
+                    self.players.kept = None
         if cfg is not None:
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
             self.save_on_quit = cfg.get_bool("launch", "save_on_quit", False)
@@ -500,6 +504,8 @@ class Controller:
             if free:
                 left = None
             if left is not None and left <= 0:
+                if pending.get("kept"):
+                    self.players.release("temps ecoule")
                 self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
                 return "exhausted"
         else:

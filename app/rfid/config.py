@@ -136,6 +136,9 @@ block_exhausted = 1
 guest_quota_min = 0
 # day or week
 guest_period = day
+# The player of a card stays active for the next games (no need to place the
+# card again), until their time is up, another player card or the unlock card.
+keep_active = 0
 # Locks the Recalbox menu: favourite games only, no START menu (the page
 # applies it to recalbox.conf and restarts the menu).
 lock_frontend = 0

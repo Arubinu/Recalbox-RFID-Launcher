@@ -229,6 +229,11 @@ Options:
 * **Block games without a player card**: a game started without one, even from
   the menu, is quit about two seconds after it starts, with a message on the
   screen (Recalbox itself cannot refuse to start a game).
+* **Keep the player active until their time is up**: after a game, the
+  player stays active; the next game cards count for them without placing
+  their card again. They stop being active when their time is used up, when
+  another player card is placed, or with the Unlock card (and when the
+  Recalbox restarts).
 * **Block games when the time is up** (on by default): the games started from
   the menu by a player (or the guest) with no time left are quit too. Game
   cards are always refused in that case.
@@ -264,6 +269,10 @@ own screen:
 * the active player, with their avatar (or initial), their name and their
   time: the time left with a bar when the card has a limit, otherwise the
   time played today (or this week).
+
+The messages that appear at the bottom of a game (player card needed, no
+time left, bonus...) appear at the top of the reader screen too, when no
+game runs: a refused card always says why.
 
 Games start **with the cards only**, with the same command the Recalbox
 interface would run (core, ratio and resolution of the console or the game,
@@ -445,6 +454,7 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[launch] stop_on_remove` | `0` | quit the game when the badge is removed |
 | `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
+| `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
 | `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface |
 | `[display] no_quit_hotkey` | `0` | reader screen: the hotkey no longer quits the games (needs `stop_on_remove`) |
 | `[screen] retroarch_port` | `55355` | RetroArch network command port |

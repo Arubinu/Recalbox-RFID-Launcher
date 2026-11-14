@@ -4,6 +4,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.16.0]
+
+### Added
+
+* **Messages on the reader screen**: the messages sent to the game screen
+  (no player card, no time left, player card for the next game, bonus...)
+  are also shown by the reader screen, as a toast at the top, when no game
+  runs: a game card refused because no player is active now says why. The
+  last message is written to `/tmp/rfid-screen-message.json` (in RAM).
+* **Keep the player active until their time is up** (Settings › Player
+  cards, off by default): after a game, the player stays active and the next
+  game cards count for them without placing their card again, until their
+  time is used up, another player card is placed or the "Unlock" card is
+  placed (a restart forgets them too). The page and the reader screen show
+  the active player (`kept` in the players status).
+
 ## [2.15.0]
 
 ### Added

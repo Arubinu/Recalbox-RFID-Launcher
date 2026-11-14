@@ -111,5 +111,45 @@ class PlayerShownTest(unittest.TestCase):
         self.assertIsNone(screen.player_info({"players": []}, "fr"))
 
 
+class ToastTest(unittest.TestCase):
+    """The service's messages are shown by the reader screen too (no game: no RetroArch)."""
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="rfid-toast-")
+        self.addCleanup(shutil.rmtree, self.home, True)
+        self.path = os.path.join(self.home, "message.json")
+
+    def test_message_ecrit_puis_lu_une_fois(self):
+        from rfid.osd import ScreenMessages
+        watcher = screen.Messages(self.path, wall=lambda: 100.0)
+        messages = ScreenMessages(sender=lambda payload: None, screen_file=self.path, clock=lambda: 100.0)
+        messages.language = "fr"
+        messages.say("player_needed")
+        self.assertEqual(watcher.poll(), "Pose ta carte joueur pour jouer")
+        self.assertIsNone(watcher.poll(), "deja montre")
+
+    def test_vieux_message_ignore(self):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write('{"text": "ancien", "at": 10}')
+        watcher = screen.Messages(self.path + ".absent", wall=lambda: 100.0)
+        watcher.path = self.path
+        self.assertIsNone(watcher.poll())
+
+    def test_message_meme_sans_retroarch(self):
+        from rfid.osd import ScreenMessages
+
+        def fails(payload):
+            raise OSError("pas de jeu")
+
+        messages = ScreenMessages(sender=fails, screen_file=self.path, clock=lambda: 5.0)
+        self.assertFalse(messages.show("Bonjour"))
+        self.assertIn("Bonjour", open(self.path, encoding="utf-8").read())
+
+    def test_fondu(self):
+        self.assertEqual(screen.toast_alpha(-1), 0.0)
+        self.assertEqual(screen.toast_alpha(1.0), 1.0)
+        self.assertEqual(screen.toast_alpha(screen.TOAST_S), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

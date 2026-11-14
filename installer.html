@@ -3124,6 +3124,7 @@ function renderPlayers() {
   const note = $("#players-note");
   let text = "";
   if (!status.players.length) text = t("Aucune carte joueur : créez-en une dans « Cartes spéciales ».");
+  else if (status.kept && status.pending) text = t("{name} est le joueur actif : les prochaines parties comptent pour lui.", { name: status.pending });
   else if (status.pending) text = t("Carte de {name} posée : elle compte pour la prochaine partie.", { name: status.pending });
   note.hidden = !text;
   note.textContent = text;
