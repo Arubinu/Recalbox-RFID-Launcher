@@ -583,8 +583,10 @@
   .stats-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .stats-head b { font-size: 15px; }
   .stats-head .stats-total { font-variant-numeric: tabular-nums; font-weight: 700; }
-  .stats-days { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin: 10px 0 2px; }
-  .stats-days span { flex: 1; min-width: 3px; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
+  #stats-card .actions { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+  #stats-card .actions select { width: auto; }
+  .stats-days { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; height: 56px; margin: 10px 0 2px; border-bottom: 1px solid var(--line); }
+  .stats-days span { flex: 0 1 28px; min-width: 3px; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
   .stats-days span:hover { background: var(--line); }
   .stats-days i { display: block; width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 0; }
   .stats-days i.none { background: transparent; }
