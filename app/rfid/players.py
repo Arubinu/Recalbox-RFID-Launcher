@@ -333,6 +333,19 @@ class Players:
             self.kept = {"uid": self.current["uid"], "entry": self.current["entry"]}
         self.current = None
 
+    def give_back(self):
+        """The game never started (shown, then given up): its player is the
+        one of the next game again. Returns the entry of that player, or None."""
+        current = self.current
+        if current is None:
+            return None
+        self.checkpoint()
+        self.current = None
+        if current["uid"] == GUEST:
+            return None
+        self.pending = {"uid": current["uid"], "entry": current["entry"], "until": self.clock() + ARM_WINDOW_S}
+        return current["entry"]
+
     def resume_player(self):
         """(uid, entry) of the game that just ended (a bonus card starts it
         again for the same player), or the guest."""

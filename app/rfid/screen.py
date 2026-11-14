@@ -1080,6 +1080,8 @@ class GpuScreen:
         loop = strip_w + painter.gap
         centre, width = painter.strip_centres[index]
         alpha = ease(max(0.0, progress - 0.7) / 0.3) if changing else 1.0
+        if self.page is not None:
+            alpha = 0.0  # the player's page: no console is chosen
         for shift in (-loop, 0, loop):
             for number, (x, plate_w, texture) in enumerate(self.plates):
                 left = offset + shift + x

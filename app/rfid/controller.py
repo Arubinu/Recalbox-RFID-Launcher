@@ -408,6 +408,9 @@ class Controller:
         reason "refused" (a game not allowed to start) or "new" (a new game is
         wanted): the game is not saved.
         """
+        reader = getattr(self.launcher, "reader", None)
+        if reader is not None and getattr(reader, "pending", None) is not None:
+            return self._give_up_waiting_game(reason)
         if self.save_on_quit and self.saver is not None and reason not in ("refused", "new"):
             try:
                 self.saver.save(owner=self.save_owner())
@@ -431,6 +434,21 @@ class Controller:
             return False
         self.last_action = ""
         self._log("info", "Jeu arrete (%s)" % reason)
+        return True
+
+    def _give_up_waiting_game(self, reason: str) -> bool:
+        """The game shown on the reader screen never started: nothing to save,
+        no time counted, and its player stays the active one."""
+        self.paused = False
+        if self.playtime is not None:
+            self.playtime.session = None
+        entry = self.players.give_back() if self.players is not None else None
+        self.launched_uid = None
+        self.last_action = ""
+        self.launcher.stop_game()
+        if entry is not None:
+            self._say("player_next", name=self.players.player_name(entry))
+        self._log("info", "Jeu montre puis abandonne (%s) : le joueur reste actif" % reason)
         return True
 
     def _delete(self, uid: str) -> str:
