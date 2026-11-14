@@ -23,12 +23,22 @@ archive to a GitHub release.
   `emulation` `game-launcher` `parental-controls` `kids` `cartridge` `python` `gpio`
 * **Settings › General › Social preview**: upload `docs/images/social-preview.png` (1280×640).
 
+## First release (1.0.0)
+
+The tag `v1.0.0` is already in the repository. Push it after `main`:
+`git push -u origin main && git push origin v1.0.0`. The **Build and publish** workflow then creates the
+GitHub release **v1.0.0** with the page `recalbox-rfid-installer.html` and the archive `recalbox-rfid.zip`
+attached: open it in **Releases**, write the notes (the `## [1.0.0]` part of `CHANGELOG.md`) and save.
+
+Creating the release from the GitHub page instead (**Releases › Draft a new release**, new tag `v1.0.0` on
+`main`) works too: the tag starts the same workflow, which attaches both files to that release a minute later.
+
 ## Releasing a version
 
 1. Bump the version everywhere (`VERSION`, `app/rfid/__init__.py`, `install.sh`, `README.md`, a `## [x.y.z]` entry in
    `CHANGELOG.md`); `tests/test_version.py` checks they match.
 2. `python tools/build_installer.py`, then commit (the test suite fails if `dist/` is stale).
-3. Tag and push: `git tag v2.9.0 && git push origin v2.9.0`.
+3. Tag and push: `git tag v1.1.0 && git push origin v1.1.0`.
 
 The release then holds:
 
