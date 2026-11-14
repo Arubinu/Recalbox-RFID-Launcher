@@ -23,7 +23,9 @@ by `rfidctl version`.
   At boot the service starts before the Recalbox interface: it waits for it
   (up to 2 minutes) and stops it before showing its screen; if the interface
   comes back and takes the display, it is stopped again (not counted as a
-  crash), and a crashed screen restarts after 2 s.
+  crash), and a crashed screen restarts after 2 s. The display can stay busy
+  for a while at boot (even the Recalbox interface fails to start then): the
+  screen waits for it, up to a minute.
 * **Turn off the hotkey that quits the games** (with the reader screen and
   "Quit the game when the badge is removed" only): the controller hotkey and
   the RetroArch menu no longer quit the game; only removing the badge does.

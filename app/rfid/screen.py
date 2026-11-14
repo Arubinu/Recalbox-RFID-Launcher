@@ -67,6 +67,8 @@ MUTED = (150, 158, 175)
 FAINT = (92, 100, 116)
 DEFAULT_ACCENT = (84, 112, 246)
 PLATE = (244, 245, 248, 255)
+#: How long the screen waits for a busy display (boot) before giving up.
+DISPLAY_WAIT_S = 60.0
 
 
 def text(key: str, language: str, **values) -> str:
@@ -732,7 +734,19 @@ class Screen:
         signal.signal(signal.SIGTERM, lambda *_: setattr(self, "running", False))
         signal.signal(signal.SIGINT, lambda *_: setattr(self, "running", False))
         conf = read_conf()
-        pygame.display.init()
+        # At boot the display can stay busy for a while after Recalbox's
+        # interface was stopped: wait for it instead of failing.
+        deadline = time.monotonic() + DISPLAY_WAIT_S
+        while True:
+            try:
+                pygame.display.init()
+                break
+            except pygame.error as exc:
+                if not self.running or time.monotonic() >= deadline:
+                    raise
+                print("display busy (%s): retrying" % exc, flush=True)
+                pygame.display.quit()
+                time.sleep(2.0)
         pygame.font.init()
         if not os.environ.get("RFID_SCREEN_SOFTWARE"):
             try:
