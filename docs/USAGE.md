@@ -107,6 +107,15 @@ With **"Quit the game when the badge is removed"**, removing the badge quits
 the game and the Recalbox goes back to its menu, like pulling a cartridge out.
 This is the setting of the "slot in the case" idea.
 
+With **"Save the game before quitting"** (Settings, off by default), every
+game the reader quits (badge removed, time up, "Quit" card, player card
+removed) is saved first, and **resumed where it stopped** the next time it
+starts, from a card or from the menu ("Game resumed" on the screen). It uses
+RetroArch's save states: the save is kept as the game's "auto" save state
+(`saves/<console>/<game>.state.auto`, the same file as Recalbox's own "auto
+save/load" option), and your own save slots are left as they were. RetroArch
+games only (most consoles); the stand-alone emulators are quit without saving.
+
 ## Special cards
 
 Badges › **Special cards**: choose the card, set it up, then place the badge.
@@ -225,9 +234,9 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    game name are sent. The folder lists are cached for two weeks in
    `cache/libretro`. Turn it off in Settings › Cards.
 2. **Choose a template**: Cartridge, Banner, Game box, Arcade, Minimal,
-   Collection (with the console drawing), Picture only. **Landscape** or
-   **Portrait**.
-3. **Adjust each element** (Picture, Title, Logo, Console, Colours): touch it on
+   Collection (with the console drawing), Box cover and Info card (with the
+   **number of players**), Picture only. **Landscape** or **Portrait**.
+3. **Adjust each element** (Picture, Title, Logo, Console, Players, Colours): touch it on
    the card and drag it; two fingers to enlarge and rotate it (wheel and
    Shift + wheel with a mouse; arrows to nudge it). The controls under the card
    do the same thing precisely: size, rotation (and quarter turns), font, text
@@ -248,6 +257,11 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    left square (the shop cuts them), and a red dotted line in the editor shows
    the safe area where the text must stay. Eight cards per A4 page then; the
    downloaded PNG gets the bleed too.
+
+**Players**: "1 player", "1–2 players"... with silhouettes, on a pill
+(card colour, white, dark) or without background. The number comes from the
+Recalbox game list; type it when the game has none (for example `1-2`). Every
+template has it, hidden: turn it on with **Show**.
 
 **Undo / redo**: the arrows above the card, or Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z).
 One step per gesture, up to 80 steps.

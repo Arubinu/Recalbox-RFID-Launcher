@@ -78,6 +78,28 @@ def _http_get(url: str, timeout: float = 4.0):
     return kind.split(";")[0].strip().lower(), data
 
 
+def players_text(value) -> str:
+    """Number of players as written on a card: "1", "1-2", "2-4" ("" unknown).
+
+    The frontend API gives the most players (2 means "1-2"); the gamelist
+    holds the scraped text ("1-4", "2").
+    """
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, (int, float)):
+        count = int(value)
+        if count < 1 or count > 99:
+            return ""
+        return "1" if count == 1 else "1-%d" % count
+    text = str(value or "").strip().replace(" ", "").replace("–", "-")
+    parts = text.split("-")
+    if not 1 <= len(parts) <= 2 or not all(part.isdigit() and 0 < int(part) < 100 for part in parts):
+        return ""
+    if len(parts) == 2 and int(parts[0]) >= int(parts[1]):
+        return str(int(parts[0])) if parts[0] == parts[1] else ""
+    return "-".join(str(int(part)) for part in parts)
+
+
 def _text(node, tag: str) -> str:
     child = node.find(tag) if node is not None else None
     return (child.text or "").strip() if child is not None and child.text else ""
@@ -151,7 +173,7 @@ class Library:
 
     # --------------------------------------------------------------- games
     def games(self, system: str, force: bool = False) -> list:
-        """Games of one system: [{"system", "path", "name", "favorite", "genre"}]."""
+        """Games of one system: [{"system", "path", "name", "favorite", "genre", "players"}]."""
         system = str(system or "").strip()
         if not system or "/" in system or system.startswith("."):
             raise LibraryError("console inconnue")
@@ -189,6 +211,7 @@ class Library:
                 "name": str(item.get("name") or os.path.splitext(os.path.basename(path))[0]),
                 "favorite": bool(item.get("favorite")),
                 "genre": str(item.get("genre") or ""),
+                "players": players_text(item.get("players")),
             })
         return result
 
@@ -227,9 +250,25 @@ class Library:
                 "name": _text(node, "name") or os.path.splitext(os.path.basename(full))[0],
                 "favorite": _text(node, "favorite").lower() == "true",
                 "genre": _text(node, "genre"),
+                "players": players_text(_text(node, "players")),
             })
         result.sort(key=lambda item: item["name"].lower())
         return result
+
+    def game_info(self, system: str, path: str):
+        """One game of the list (same fields as games()), or None."""
+        path = str(path or "").replace("\\", "/")
+        if not path:
+            return None
+        base = os.path.basename(path).lower()
+        found = None
+        for game in self.games(system):
+            if game["path"] == path:
+                return game
+            # A badge may keep the file name only (older lists).
+            if found is None and os.path.basename(game["path"]).lower() == base:
+                found = game
+        return found
 
     def search(self, query: str = "", system: str = "", limit: int = 60) -> list:
         """Games whose name holds every word of ``query`` (accents ignored)."""

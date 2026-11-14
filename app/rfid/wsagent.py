@@ -1231,6 +1231,14 @@ class Agent:
                                     str(message.get("system") or ""), limit)
         return {"games": games}
 
+    def _cmd_games_info(self, client, message):
+        """One game (number of players...), for the card designer."""
+        try:
+            game = self.library.game_info(str(message.get("system") or ""), str(message.get("path") or ""))
+        except LibraryError as exc:
+            raise RuntimeError(str(exc))
+        return {"game": game}
+
     def _cmd_media_image(self, client, message):
         """Scraped picture of a game (base64), for the card designer."""
         try:
@@ -1681,6 +1689,9 @@ OPTIONS = (
     {"section": "launch", "key": "stop_on_remove", "type": "bool", "default": False,
      "label": "Quitter le jeu quand on retire le badge",
      "help": "Comme une cartouche : retirer le badge ramène au menu de la Recalbox."},
+    {"section": "launch", "key": "save_on_quit", "type": "bool", "default": False,
+     "label": "Sauvegarder la partie avant de quitter",
+     "help": "Quand le lecteur quitte un jeu (badge retiré, temps écoulé, carte « Quitter »…), la partie est sauvegardée puis reprise au prochain lancement du jeu. Jeux RetroArch seulement ; vos propres sauvegardes ne sont pas touchées."},
     {"section": "button", "key": "arm_timeout_s", "type": "number", "min": 3, "max": 60,
      "default": 10, "label": "Temps pour poser le badge (secondes)",
      "help": "Après « Associer un badge à ce jeu » ou un appui court sur le bouton du boîtier."},

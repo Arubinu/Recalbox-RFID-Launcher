@@ -1060,6 +1060,9 @@ class FakeLibrary:
     def game_image(self, system, path):
         return ("image/png", b"PNG") if path.endswith("Mario.smc") else None
 
+    def game_info(self, system, path):
+        return {"system": system, "path": path, "name": "Mario", "players": "1-2"} if path.endswith("Mario.smc") else None
+
     def system_logo(self, system, kind="logo", region=""):
         return ("image/svg+xml", b"<svg/>")
 
@@ -1080,6 +1083,8 @@ class CardsCommandsTest(AgentTestCase):
         self.assertEqual(base64.b64decode(image["data"]), b"PNG")
         self.assertFalse(client.call("media.image", system="snes", path="/x.smc")["found"])
         self.assertEqual(client.call("media.logo", system="snes")["svg"], "<svg/>")
+        self.assertEqual(client.call("games.info", system="snes", path="/r/Mario.smc")["game"]["players"], "1-2")
+        self.assertIsNone(client.call("games.info", system="snes", path="/x.smc")["game"])
 
     def test_associer_un_jeu_choisi(self):
         client = self.authenticated_client()

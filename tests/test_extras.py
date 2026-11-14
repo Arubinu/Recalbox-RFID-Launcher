@@ -11,7 +11,7 @@ import unittest
 import support
 from rfid import bootcfg, led, osd
 from rfid.config import Config
-from rfid.library import Library, LibraryError, find_rom, relative_to_system
+from rfid.library import Library, LibraryError, find_rom, players_text, relative_to_system
 
 
 class FakeGpio:
@@ -172,7 +172,7 @@ SYSTEMS = {"systems": [
     {"name": "megadrive", "fullName": "Mega Drive", "manufacturer": "Sega"},
 ]}
 SNES = {"roms": [
-    {"path": "/recalbox/share/roms/snes/Super Mario World.smc", "name": "Super Mario World", "favorite": True},
+    {"path": "/recalbox/share/roms/snes/Super Mario World.smc", "name": "Super Mario World", "favorite": True, "players": 2},
     {"path": "/recalbox/share/roms/snes/Pokémon.smc", "name": "Pokémon Édition", "favorite": False},
 ]}
 MD = {"roms": [{"path": "/recalbox/share/roms/megadrive/Sonic.md", "name": "Sonic", "favorite": False}]}
@@ -232,7 +232,7 @@ class LibraryTest(unittest.TestCase):
         os.makedirs(os.path.join(directory, "nes", "media"))
         with open(os.path.join(directory, "nes", "gamelist.xml"), "w", encoding="utf-8") as handle:
             handle.write("<gameList><game><path>./Zelda.nes</path><name>Zelda</name>"
-                         "<image>./media/zelda.png</image><favorite>true</favorite></game>"
+                         "<image>./media/zelda.png</image><favorite>true</favorite><players>1-2</players></game>"
                          "<game><path>./Hidden.nes</path><hidden>true</hidden></game></gameList>")
         with open(os.path.join(directory, "nes", "media", "zelda.png"), "wb") as handle:
             handle.write(b"PNGDATA")
@@ -242,7 +242,20 @@ class LibraryTest(unittest.TestCase):
         games = library.games("nes")
         self.assertEqual([g["name"] for g in games], ["Zelda"])
         self.assertTrue(games[0]["favorite"])
+        self.assertEqual(games[0]["players"], "1-2")
         self.assertEqual(library.game_image("nes", games[0]["path"]), ("image/png", b"PNGDATA"))
+
+    def test_nombre_de_joueurs(self):
+        self.assertEqual([players_text(v) for v in (1, 2, 4, 0, True, None)], ["1", "1-2", "1-4", "", "", ""])
+        self.assertEqual([players_text(v) for v in ("1-4", "2", " 1 - 2 ", "1–2", "4-1", "2-2", "abc")],
+                         ["1-4", "2", "1-2", "1-2", "", "2", ""])
+        library, _api = self.library()
+        mario = library.game_info("snes", "/recalbox/share/roms/snes/Super Mario World.smc")
+        self.assertEqual(mario["players"], "1-2")
+        self.assertEqual(library.game_info("snes", "Super Mario World.smc")["name"], "Super Mario World",
+                         "un badge peut ne garder que le nom du fichier")
+        self.assertEqual(library.game_info("megadrive", "/recalbox/share/roms/megadrive/Sonic.md")["players"], "")
+        self.assertIsNone(library.game_info("snes", "/absent.smc"))
 
     def test_console_invalide(self):
         library, _api = self.library()

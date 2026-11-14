@@ -45,6 +45,10 @@ MESSAGES = {
         "fr": "Carte joueur retirée : fin de la partie", "en": "Player card removed: game over",
         "de": "Spielerkarte entfernt: Spielende", "es": "Tarjeta de jugador retirada: fin de la partida",
         "it": "Carta giocatore tolta: fine della partita", "pt": "Cartão de jogador retirado: fim do jogo"},
+    "game_resumed": {
+        "fr": "Partie reprise là où elle s'était arrêtée", "en": "Game resumed where it stopped",
+        "de": "Spiel dort fortgesetzt, wo es aufgehört hat", "es": "Partida reanudada donde se quedó",
+        "it": "Partita ripresa da dove si era fermata", "pt": "Jogo retomado onde tinha parado"},
     "warn300": {
         "fr": "Plus que 5 minutes de jeu", "en": "5 minutes of play left",
         "de": "Noch 5 Minuten Spielzeit", "es": "Quedan 5 minutos de juego",

@@ -62,6 +62,7 @@ class Controller:
         power=None,
         card_reader=None,
         players=None,
+        saver=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -77,8 +78,11 @@ class Controller:
         self.power = power
         self.card_reader = card_reader
         self.players = players
+        #: Saves the game before quitting it (savegame.GameSaver).
+        self.saver = saver
 
         self.ignore_when_running = True
+        self.save_on_quit = False
         self.arm_timeout_s = 10.0
         self.action = ACTION_LAUNCH
         self.default_limit_min = 0
@@ -96,6 +100,7 @@ class Controller:
             self.guest_period = "week" if period == "week" else "day"
         if cfg is not None:
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
+            self.save_on_quit = cfg.get_bool("launch", "save_on_quit", False)
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
             self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
             self.default_limit_min = max(0, cfg.get_int("time", "default_limit_min", 0))
@@ -355,7 +360,15 @@ class Controller:
             return False
 
     def stop_game(self, reason: str = "removed") -> bool:
-        """Quits the running game (badge removed, quit card, time up)."""
+        """Quits the running game (badge removed, quit card, time up).
+
+        reason "refused": a game that was not allowed to start is never saved.
+        """
+        if self.save_on_quit and self.saver is not None and reason != "refused":
+            try:
+                self.saver.save()
+            except Exception as exc:  # noqa: BLE001 - the game is quit anyway
+                self._log("warning", "Sauvegarde de la partie impossible : %s" % exc)
         if self.playtime is not None:
             self.playtime.end(reason)
         if self.players is not None:

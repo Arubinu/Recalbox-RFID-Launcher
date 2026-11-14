@@ -3948,7 +3948,7 @@ const FONT_STACKS = {
   narrow: '700 {s}px "Arial Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif',
 };
 const FONT_NAMES = { sans: "Moderne", round: "Arrondie", serif: "Classique", mono: "Rétro", narrow: "Étroite" };
-const COLOR_NAMES = { auto: "Automatique", ink: "Foncé", paper: "Blanc", accent: "Couleur de la carte", original: "Couleurs d'origine" };
+const COLOR_NAMES = { auto: "Automatique", ink: "Foncé", paper: "Blanc", accent: "Couleur de la carte", original: "Couleurs d'origine", none: "Aucun" };
 
 function cardSize(orientation) {
   return orientation === "portrait" ? { w: CARD_MM.short, h: CARD_MM.long } : { w: CARD_MM.long, h: CARD_MM.short };
@@ -4189,6 +4189,73 @@ const CARD_TEMPLATES = [
       const win = L.window;
       ctx.lineWidth = 0.7; ctx.strokeStyle = "rgba(255,255,255,.85)";
       roundRect(ctx, win.x, win.y, win.w, win.h, win.r); ctx.stroke();
+    },
+  },
+  {
+    id: "jaquette", name: "Jaquette",
+    layout(W, H) {
+      const portrait = H > W;
+      const band = portrait ? H * 0.2 : H * 0.24;
+      return {
+        window: { x: 0, y: 0, w: W, h: H - band, r: 0 },
+        title: portrait
+          ? { x: W / 2, y: H - band * 0.66, size: band * 0.24, maxw: W * 0.88, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 }
+          : { x: W * 0.37, y: H - band / 2, size: band * 0.36, maxw: W * 0.62, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 },
+        logo: { x: portrait ? W / 2 : W * 0.15, y: portrait ? H * 0.06 : H * 0.1, h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.5 : W * 0.24, tint: "paper", visible: true, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.6, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        players: portrait
+          ? { x: W / 2, y: H - band * 0.26, size: band * 0.15, color: "auto", fill: "paper", visible: true, rotation: 0 }
+          : { x: W * 0.835, y: H - band / 2, size: band * 0.21, color: "auto", fill: "paper", visible: true, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+        band,
+      };
+    },
+    under(ctx, W, H, c, L) {
+      ctx.fillStyle = c.accent; ctx.fillRect(0, 0, W, H);
+    },
+    over(ctx, W, H, c, L) {
+      const top = L.window.h;
+      const shade = ctx.createLinearGradient(0, 0, 0, H * 0.24);
+      shade.addColorStop(0, "rgba(0,0,0,.55)"); shade.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = shade; ctx.fillRect(0, 0, W, H * 0.24);
+      const band = ctx.createLinearGradient(0, top, 0, H);
+      band.addColorStop(0, c.accent); band.addColorStop(1, c.dark);
+      ctx.fillStyle = band; ctx.fillRect(0, top, W, H - top);
+      ctx.fillStyle = mixColor(c.accent, "#ffffff", 0.45);
+      ctx.fillRect(0, top, W, 0.7);
+    },
+  },
+  {
+    id: "fiche", name: "Fiche",
+    layout(W, H) {
+      if (H > W) {
+        return {
+          window: { x: 3, y: 3, w: W - 6, h: H * 0.56, r: 1.6 },
+          title: { x: W / 2, y: H * 0.68, size: H * 0.042, maxw: W * 0.86, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
+          logo: { x: W / 2, y: H * 0.9, h: H * 0.06, w: W * 0.6, tint: "original", visible: true, rotation: 0 },
+          console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+          players: { x: W / 2, y: H * 0.79, size: H * 0.036, color: "auto", fill: "accent", visible: true, rotation: 0 },
+          image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+        };
+      }
+      const left = W * 0.56;
+      const mid = left + 3 + (W - left - 6) / 2;
+      const col = W - left - 6;
+      return {
+        window: { x: 3, y: 3, w: left, h: H - 6, r: 1.6 },
+        title: { x: mid, y: H * 0.3, size: H * 0.085, maxw: col * 0.94, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
+        logo: { x: mid, y: H * 0.81, h: H * 0.13, w: col * 0.8, tint: "original", visible: true, rotation: 0 },
+        console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
+        players: { x: mid, y: H * 0.56, size: H * 0.06, color: "auto", fill: "accent", visible: true, rotation: 0 },
+        image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
+      };
+    },
+    under(ctx, W, H) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); },
+    over(ctx, W, H, c, L) {
+      const win = L.window;
+      ctx.fillStyle = c.accent;
+      if (H > W) ctx.fillRect(W / 2 - 7, win.y + win.h + 1.6, 14, 0.8);
+      else ctx.fillRect(win.x + win.w + 3, 3, W - win.x - win.w - 6, 1.1);
     },
   },
   {
@@ -4496,9 +4563,16 @@ async function deleteFrame(meta) {
   }
   await loadFrames();
 }
+/* Number of players: hidden by default, except in the templates made for it. */
+function defaultPlayersLayer(W, H) {
+  const portrait = H > W;
+  return { x: portrait ? W / 2 : W * 0.18, y: H - (portrait ? H * 0.05 : H * 0.1), size: portrait ? 2.4 : 3, color: "auto", fill: "accent", visible: false, rotation: 0 };
+}
 function templateLayers(id, orientation) {
   const { w, h } = cardSize(orientation);
-  return JSON.parse(JSON.stringify(templateById(id).layout(w, h)));
+  const layers = JSON.parse(JSON.stringify(templateById(id).layout(w, h)));
+  if (!layers.players) layers.players = defaultPlayersLayer(w, h);
+  return layers;
 }
 
 const DESIGN_KEY = "rfid-card-design";
@@ -4510,6 +4584,7 @@ const design = {
   title: "",
   image: null,         /* HTMLImageElement */
   imageLabel: "",
+  players: "",         /* "1", "1-2"... (number of players written on the card) */
   logo: null,
   logoSvg: "",
   consoleArt: null,
@@ -4560,15 +4635,20 @@ async function consoleArtwork(system) {
   if (!system) return { logo: null, console: null, svg: "" };
   if (logoCache.has(system)) return logoCache.get(system);
   const result = { logo: null, console: null, svg: "" };
+  /* Only a real answer is kept: a failure (page not connected yet, network)
+     is asked again the next time. */
+  let answered = 0;
   try {
     const logo = await agent.send("media.logo", { system, kind: "logo" }, 15000);
+    answered++;
     if (logo.found) { result.svg = logo.svg; result.logo = await svgImage(logo.svg); }
   } catch (error) { /* no theme logo */ }
   try {
     const art = await agent.send("media.logo", { system, kind: "console" }, 15000);
+    answered++;
     if (art.found) result.console = await svgImage(art.svg);
   } catch (error) { /* no console drawing */ }
-  logoCache.set(system, result);
+  if (answered === 2) logoCache.set(system, result);
   return result;
 }
 
@@ -4779,6 +4859,48 @@ function drawTitleLogo(ctx, image, layer, bounds) {
   ctx.restore();
   bounds.title = { cx: layer.x, cy: layer.y, w, h, rot: layer.rotation || 0 };
 }
+/* "1 joueur", "1–2 joueurs" ("" when the text is not a number of players). */
+function playersLabel(value) {
+  const match = /^(\d{1,2})(?:-(\d{1,2}))?$/.exec(String(value || "").trim());
+  if (!match) return "";
+  if (!match[2] && match[1] === "1") return t("1 joueur");
+  return t("{n} joueurs", { n: match[2] ? match[1] + "\u2013" + match[2] : match[1] });
+}
+function drawPerson(ctx, x, y, s, k, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y - s * 0.24 * k, s * 0.2 * k, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x, y + s * 0.42 * k, s * 0.34 * k, s * 0.36 * k, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+}
+/* Number of players: silhouettes and text, on a pill (or without a background). */
+function drawPlayers(ctx, value, layer, c, bounds) {
+  const label = playersLabel(value);
+  if (!layer || !layer.visible || !label) return;
+  const s = Math.max(1, layer.size || 3);
+  const most = parseInt(String(value).trim().split("-").pop(), 10) || 1;
+  const two = most > 1;
+  ctx.save();
+  ctx.translate(layer.x, layer.y);
+  ctx.rotate((layer.rotation || 0) * Math.PI / 180);
+  ctx.font = FONT_STACKS.sans.replace("{s}", s);
+  const textWidth = ctx.measureText(label).width;
+  const iconWidth = two ? s * 1.06 : s * 0.7;
+  const gap = s * 0.36;
+  const fill = layer.fill && layer.fill !== "none" ? resolveColor(layer.fill, c) : "";
+  const padX = fill ? s * 0.62 : 0;
+  const w = iconWidth + gap + textWidth + padX * 2;
+  const h = s * 1.72;
+  const ink = layer.color && layer.color !== "auto" ? resolveColor(layer.color, c) : (fill ? inkOn(fill) : c.onAccent);
+  if (fill) { ctx.fillStyle = fill; roundRect(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill(); }
+  const left = -w / 2 + padX;
+  if (two) { ctx.globalAlpha = 0.6; drawPerson(ctx, left + s * 0.72, 0, s, 0.86, ink); ctx.globalAlpha = 1; }
+  drawPerson(ctx, left + s * 0.34, 0, s, 1, ink);
+  ctx.fillStyle = ink;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, left + iconWidth + gap, s * 0.05);
+  ctx.restore();
+  bounds.players = { cx: layer.x, cy: layer.y, w, h, rot: layer.rotation || 0 };
+}
 function drawImageLayer(ctx, d, L, c, bounds) {
   const win = L.window;
   const layer = L.image;
@@ -4833,6 +4955,7 @@ function renderCard(canvas, d, pxPerMm, overlay) {
   tpl.over(ctx, W, H, c, L);
   drawPicture(ctx, d.consoleArt, L.console, c, pxPerMm, "console", bounds);
   drawPicture(ctx, d.logo, L.logo, c, pxPerMm, "logo", bounds);
+  drawPlayers(ctx, d.players, L.players, c, bounds);
   if (d.titleStyle === "logo" && d.titleLogo) drawTitleLogo(ctx, d.titleLogo, L.title, bounds);
   else drawTitle(ctx, d.title, L.title, c, bounds);
   ctx.restore();
@@ -4913,7 +5036,7 @@ function resetLayers() {
   design.layers = templateLayers(design.template, design.orientation);
 }
 function hitTest(x, y) {
-  const order = ["title", "logo", "console", "image"];
+  const order = ["players", "title", "logo", "console", "image"];
   for (const key of order) {
     const box = design.bounds[key];
     if (!box) continue;
@@ -4933,7 +5056,11 @@ function hitTest(x, y) {
   }
   return null;
 }
-function layerOf(key) { return key === "image" ? design.layers.image : design.layers[key]; }
+function layerOf(key) {
+  /* Designs made before the players layer existed get it here. */
+  if (key === "players" && design.layers && !design.layers.players) design.layers.players = templateLayers(design.template, design.orientation).players;
+  return key === "image" ? design.layers.image : design.layers[key];
+}
 function selectLayer(key) {
   design.selected = key;
   renderLayerTabs();
@@ -4949,6 +5076,7 @@ function scaleLayer(key, start, factor) {
   const layer = layerOf(key);
   if (key === "image") layer.scale = Math.max(0.2, Math.min(6, start.scale * factor));
   else if (key === "title") layer.size = Math.max(1, Math.min(40, start.size * factor));
+  else if (key === "players") layer.size = Math.max(1, Math.min(12, start.size * factor));
   else {
     const next = Math.max(1, Math.min(90, start.h * factor));
     if (start.w) layer.w = start.w * next / start.h;
@@ -5030,7 +5158,7 @@ function wireCanvas() {
   window.addEventListener("resize", () => { if (designReady) redrawDesign(); });
 }
 
-const LAYER_NAMES = { image: "Image", title: "Titre", logo: "Logo", console: "Console", colors: "Couleurs" };
+const LAYER_NAMES = { image: "Image", title: "Titre", logo: "Logo", console: "Console", players: "Joueurs", colors: "Couleurs" };
 function renderLayerTabs() {
   const box = $("#card-layers");
   box.replaceChildren(...Object.keys(LAYER_NAMES).map((key) => {
@@ -5193,6 +5321,32 @@ function renderControls() {
       ? ctlRow(t("Ombre"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline)
       : ctlRow(t("Contour"), el("span", { className: "muted small", text: t("lisible sur une image") }), outline));
     rows.push(ctlRow("", resetLayerButton("title")));
+  } else if (key === "players") {
+    const layer = layerOf("players");
+    rows.push(visibleControl("players"));
+    const count = el("input", { attrs: { type: "text", "aria-label": t("Nombre de joueurs"), maxlength: 5, placeholder: "1-2", inputmode: "numeric", autocomplete: "off" } });
+    count.value = design.players || "";
+    count.addEventListener("input", () => { design.players = count.value.replace(/[\u2013\u2014]/g, "-").replace(/[^0-9-]/g, ""); redrawDesign(); });
+    rows.push(ctlRow(t("Nombre"), count));
+    if (!design.players) {
+      rows.push(el("p", { className: "muted small", text: design.game
+        ? t("La Recalbox ne connaît pas le nombre de joueurs de ce jeu : écrivez-le (par exemple 1-2).")
+        : t("Écrivez le nombre de joueurs (par exemple 1-2).") }));
+    }
+    const [size, sizeValue] = track(rangeControl("players", "size", 1.5, 10, 0.1, (v) => (Math.round(v * 10) / 10).toLocaleString(document.documentElement.lang || undefined) + " mm"));
+    rows.push(ctlRow(t("Taille"), size, sizeValue));
+    const rotation = rotationControls("players");
+    controlSyncers.push(rotation[0].querySelector("input")._sync);
+    rows.push(...rotation);
+    const fill = el("select", { attrs: { "aria-label": t("Fond") } }, ["accent", "paper", "ink", "none"].map((choice) => el("option", { text: t(COLOR_NAMES[choice]), attrs: { value: choice } })));
+    fill.value = ["accent", "paper", "ink", "none"].includes(layer.fill) ? layer.fill : "accent";
+    fill.addEventListener("change", () => { layer.fill = fill.value; redrawDesign(); });
+    rows.push(ctlRow(t("Fond"), fill));
+    const color = el("select", { attrs: { "aria-label": t("Couleur") } }, ["auto", "paper", "ink", "accent"].map((choice) => el("option", { text: t(COLOR_NAMES[choice]), attrs: { value: choice } })));
+    color.value = ["auto", "paper", "ink", "accent"].includes(layer.color) ? layer.color : "auto";
+    color.addEventListener("change", () => { layer.color = color.value; redrawDesign(); });
+    rows.push(ctlRow(t("Couleur"), color));
+    rows.push(ctlRow("", resetLayerButton("players")));
   } else {
     const missing = key === "logo" ? !design.logo : !design.consoleArt;
     if (missing) {
@@ -5228,7 +5382,7 @@ async function loadSavedTemplates() {
 let thumbTimer = null;
 function scheduleTemplateThumbs() { clearTimeout(thumbTimer); thumbTimer = setTimeout(renderTemplateList, 250); }
 function thumbDesign(base) {
-  return Object.assign({}, design, base, { guide: false, selected: "" });
+  return Object.assign({}, design, { players: design.players || "1-2" }, base, { guide: false, selected: "" });
 }
 function renderTemplateList() {
   const box = $("#card-templates");
@@ -5368,6 +5522,8 @@ async function designGame(game) {
   const chosen = { system: game.system, path: game.path, name: game.name };
   design.game = chosen;
   design.title = game.name;
+  design.players = typeof game.players === "string" ? game.players : "";
+  if (typeof game.players !== "string") loadPlayersCount(chosen);
   renderSource();
   $("#card-source-sub").textContent = t("Chargement de l'image…");
   const art = await consoleArtwork(game.system);
@@ -5387,10 +5543,22 @@ async function designGame(game) {
   await loadGameImage(chosen);
   if (design.game === chosen) lookupOnline(chosen);
 }
+/* Number of players of a game chosen without it (badge, Recalbox selection). */
+async function loadPlayersCount(chosen) {
+  if (!agent.isOpen) return;
+  let info = null;
+  try { info = (await agent.send("games.info", { system: chosen.system, path: chosen.path }, 20000)).game; } catch (error) { return; }
+  if (design.game !== chosen || design.players || !info || !info.players) return;
+  design.players = info.players;
+  if (design.selected === "players") renderControls();
+  redrawDesign();
+  scheduleTemplateThumbs();
+}
 async function designFromTag(tag) {
   setTab("cartes");
   if (tag.kind === "action") {
     design.game = null;
+    design.players = "";
     design.title = tagTitle(tag);
     design.logo = null;
     design.titleStyle = "text";
@@ -5463,7 +5631,7 @@ function designSnapshot() {
     json: JSON.stringify({
       orientation: design.orientation, template: design.template, savedId: design.savedId || "",
       layers: design.layers, accent: design.accent, rounded: design.rounded, title: design.title,
-      imageLabel: design.imageLabel, game: design.game,
+      imageLabel: design.imageLabel, game: design.game, players: design.players || "",
       imageSource: design.imageSource || "", titleStyle: design.titleStyle || "text",
     }),
     image: design.image, logo: design.logo, consoleArt: design.consoleArt, autoAccent: design.autoAccent,

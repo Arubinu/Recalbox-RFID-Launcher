@@ -62,6 +62,9 @@ udp_port = 1337
 ignore_when_game_running = 1
 # Quit the game when the badge is removed from the reader (0 = no)
 stop_on_remove = 0
+# Save the game (RetroArch save state) before the reader quits it, and resume
+# it at the next launch of the game (0 = no)
+save_on_quit = 0
 # Action when an already registered badge is scanned:
 #   launch = starts the game (historical behaviour)
 #   none   = starts nothing: confirmation beep and log only

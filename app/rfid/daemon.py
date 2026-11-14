@@ -27,6 +27,7 @@ from .controller import Controller
 from .esbridge import (
     EsLauncher,
     Target,
+    game_is_running,
     read_state,
     current_target,
     relative_game_key,
@@ -40,6 +41,7 @@ from .library import Library
 from .osd import ScreenMessages
 from .playtime import PlayTimer
 from .players import Players
+from .savegame import GameSaver
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -224,6 +226,11 @@ class Service:
         self._tag_write = None
         self._es_state_mtime = None
         self._next_es_check = 0.0
+        self.saver = None
+        #: The frontend said a game runs (to resume it once, at its start).
+        #: None until the first reading: a game already running when the
+        #: service starts is never reloaded.
+        self._es_playing = None
 
     # ------------------------------------------------------------------ setup
     def setup(self) -> bool:
@@ -271,6 +278,11 @@ class Service:
             port=self.cfg.get_int("screen", "retroarch_port", 55355),
             log=self.log,
         )
+        self.saver = GameSaver(
+            port=self.cfg.get_int("screen", "retroarch_port", 55355),
+            log=self.log,
+            show=self.screen.say,
+        )
         if self.light is not None:
             try:
                 self.light.close()
@@ -283,7 +295,7 @@ class Service:
             self.store, self.launcher, self.feedback, self.cfg, self.log,
             library=self.library, playtime=self.playtime, screen=self.screen,
             light=self.light, power=self._power_off, card_reader=self._read_card_memory,
-            players=self.players,
+            players=self.players, saver=self.saver,
         )
 
     def _read_card_memory(self):
@@ -475,9 +487,25 @@ class Service:
         if mtime == self._es_state_mtime:
             return
         self._es_state_mtime = mtime
-        target = current_target(read_state(), allow_running=True)
+        state = read_state()
+        self._resume_on_start(state)
+        target = current_target(state, allow_running=True)
         if target is not None:
             remember_target(target)
+
+    def _resume_on_start(self, state) -> None:
+        """A game starts: its game saved by the reader is resumed (option)."""
+        playing = game_is_running(state)
+        started = playing and getattr(self, "_es_playing", None) is False
+        self._es_playing = playing
+        controller = self.controller
+        if not started or self.saver is None or controller is None:
+            return
+        if not getattr(controller, "save_on_quit", False):
+            return
+        path = str((state or {}).get("GamePath") or "")
+        expected = os.path.splitext(os.path.basename(path))[0] if path else ""
+        self.saver.resume_later(expected)
 
     # ------------------------------------------------------------- play time
     #: Time given to read "play time is over" before the game is quit.
@@ -493,7 +521,7 @@ class Service:
             self._expire_at = None
             self._launched_uid = None
             try:
-                self.controller.stop_game("time")
+                self.controller.stop_game("refused" if getattr(self, "_refusing", False) else "time")
             except Exception as exc:  # noqa: BLE001 - never blocking
                 self.log.warning("Arret du jeu impossible : %s" % exc)
             return

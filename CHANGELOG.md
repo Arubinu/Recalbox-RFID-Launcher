@@ -4,6 +4,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.13.0]
+
+### Added
+
+* **Save the game before quitting** (`savegame.py`, option, off by default):
+  when the reader quits a game (badge removed, time up, "Quit" card, player
+  card removed), the game is first saved through RetroArch's network commands
+  (`SAVE_FILES`, `SAVE_STATE`), kept as the game's "auto" save state
+  (`<game>.state.auto`, the file of Recalbox's own auto save option), and the
+  slot RetroArch wrote is put back as it was: the player's own save states
+  never change. At the next start of the game (card or menu), the service
+  loads it (`LOAD_STATE_SLOT -1`) and says "Game resumed" on the screen.
+  Nothing is done when Recalbox's auto load is on (RetroArch did it), for a
+  game refused by the player rules, or for stand-alone emulators.
+* **Number of players on the cards**: a new **Players** element (silhouettes
+  and "1–2 players", on a pill or without background) on every template,
+  hidden by default, and two new templates that show it: **Box cover** and
+  **Info card**. The number comes from the Recalbox (frontend API or
+  `gamelist.xml`; new agent command `games.info`) and can be typed by hand.
+
+### Fixed
+
+* Cards: the console logo and drawing stayed missing for a console whose
+  first lookup failed (page not connected yet): a failed lookup is no longer
+  kept.
+
 ## [2.12.0]
 
 ### Added
