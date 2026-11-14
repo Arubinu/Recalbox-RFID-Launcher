@@ -250,7 +250,7 @@ Options:
 * **Time reset**: the hour at which the day's counters restart (midnight by
   default; a game played before it counts for the day before), and the day
   the weekly counters restart (Monday by default).
-* **Change player during a game**: a player card placed during another
+* **Change player during a game** (on by default): a player card placed during another
   player's game takes it over (the time counts for the new player from then
   on, and the screen says so); otherwise the card is for the next game.
 * **Keep the player active until their time is up**: after a game, the
@@ -303,9 +303,10 @@ Options of the reader screen (Settings › TV display):
   some TVs lose the picture for a few seconds at each game).
 * **Show the game before starting it** (on by default): its box art and name
   for two seconds.
-* **Start the game with the controller**: the game shown starts only when a
-  controller button is pressed; removing the card (or two minutes) cancels.
-  The play time counts from the start only.
+* **Start the game with the controller**: Settings › Game launch › "When a
+  paired badge is placed" › "show it, start with the controller". The game
+  shown starts only when a controller button is pressed; removing the card
+  (or two minutes) cancels. The play time counts from the start only.
 * **Show the active player's games**: their last games, with box art, in
   place of the consoles.
 
@@ -488,17 +489,17 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[button] enabled` / `pin` | `1` / `17` | push button (BCM pin) |
 | `[button] hold_press_s` | `3.0` | press that authorizes a device |
 | `[button] arm_timeout_s` | `10` | time to place the badge |
-| `[launch] action` | `launch` | `launch` = start the game; `none` = beep only |
+| `[launch] action` | `launch` | `launch` = start the game; `confirm` = reader screen: shown, started with a controller button; `none` = beep only |
 | `[launch] ignore_when_game_running` | `1` | ignore badges during a game |
 | `[launch] stop_on_remove` | `0` | quit the game when the badge is removed |
 | `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
 | `[players] reset_hour` / `week_start` | `0` / `monday` | when the play time counters restart |
-| `[players] switch_on_card` | `0` | a player card placed during a game takes it over |
+| `[players] switch_on_card` | `1` | a player card placed during a game takes it over |
 | `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
 | `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface (drawn at the screen's resolution, vertical when Recalbox's screen is rotated) |
 | `[display] resolution` | `recalbox` | `native` = the screen's own resolution |
-| `[display] show_game` / `confirm_with_pad` | `1` / `0` | game shown before it starts / started with a controller button |
+| `[display] show_game` | `1` | the game is shown before it starts |
 | `[display] player_games` | `0` | the active player's games in place of the consoles |
 | `[display] no_quit_hotkey` | `0` | reader screen: the hotkey no longer quits the games (needs `stop_on_remove`) |
 | `[screen] retroarch_port` | `55355` | RetroArch network command port |

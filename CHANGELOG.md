@@ -27,14 +27,17 @@ by `rfidctl version`.
   - **resolution option**: like Recalbox (default: the interface and games'
     resolution, the TV never changes mode) or the screen's own;
   - **the game is shown before it starts** (box art, name; on by default);
-  - **start the game with the controller** (option): the game shown starts
-    when a controller button is pressed; removing the card or two minutes
-    without an answer cancel it; the play time counts from the start only;
+  - **start the game with the controller**: a third answer to "When a
+    paired badge is placed" (`[launch] action = confirm`): the game shown
+    starts when a controller button is pressed; removing the card or two
+    minutes without an answer cancel it; the play time counts from the start
+    only (Recalbox's interface: the game starts at once);
   - **the active player's games** (option): their last games with box art,
     in place of the consoles.
 
 ### Changed
 
+* **Change player during a game** is now on by default (new installs).
 * A message written just before the reader screen starts (game refused...)
   is shown too.
 

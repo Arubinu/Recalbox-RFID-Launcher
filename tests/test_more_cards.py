@@ -136,6 +136,7 @@ class CardsTest(unittest.TestCase):
         self.assertEqual(self.screen.said[-1], ("player_switched", {"name": "Tom"}))
 
     def test_sans_l_option_la_carte_est_pour_la_partie_suivante(self):
+        self.controller = self.make(self.CONFIG + "switch_on_card = 0\n")
         self.play_as_lea()
         self.assertEqual(self.controller.on_badge("70A00002"), "player")
         self.assertEqual(self.players.current["uid"], "1EA00001")
