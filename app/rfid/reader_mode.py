@@ -44,6 +44,20 @@ HOTKEY_LINES = (
 #: The screen crashing this many times within CRASH_WINDOW_S: back to Recalbox.
 MAX_CRASHES = 3
 CRASH_WINDOW_S = 120.0
+#: Time between a crash of the screen and its restart.
+RESTART_DELAY_S = 2.0
+#: The system started less than this ago: Recalbox's interface may still be
+#: about to start (the service starts before it); it is waited for.
+BOOT_WINDOW_S = 240.0
+BOOT_WAIT_S = 120.0
+
+
+def system_uptime() -> float:
+    try:
+        with open("/proc/uptime", "r") as handle:
+            return float(handle.read().split()[0])
+    except (OSError, ValueError, IndexError):
+        return BOOT_WINDOW_S  # unknown: not booting
 
 
 def set_hotkey_block(enabled: bool, path: str = OVERRIDES) -> bool:
@@ -105,8 +119,10 @@ class ReaderMode:
     """Switches between Recalbox's interface and the reader screen, starts the games."""
 
     def __init__(self, home: str, log, run=None, running=None, popen=None, clock=None, sleep=None,
-                 python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE):
+                 python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE, uptime=None):
         self.home = home
+        self._uptime = uptime or system_uptime
+        self._restart_at = None
         self.log = log
         self._run = run or (lambda args: subprocess.run(args, stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL, timeout=60))
@@ -168,7 +184,22 @@ class ReaderMode:
                 self._info("Changement de mode impossible : %s" % exc)
 
     # ------------------------------------------------------------ switching
+    def _wait_boot_frontend(self) -> None:
+        """At boot, Recalbox's interface starts after the service: wait for it,
+        otherwise it would take the screen back a few seconds later."""
+        left = BOOT_WINDOW_S - self._uptime()
+        if left <= 0 or self._running():
+            return
+        self._info("Demarrage : attente de l'interface de Recalbox pour la remplacer")
+        deadline = self._clock() + min(BOOT_WAIT_S, left)
+        while self._clock() < deadline:
+            if self._running():
+                self._sleep(3.0)  # let it settle before stopping it
+                return
+            self._sleep(1.0)
+
     def stop_frontend(self) -> bool:
+        self._wait_boot_frontend()
         if not self._running():
             return True
         self._run([ES_SERVICE, "stop"])
@@ -298,7 +329,19 @@ class ReaderMode:
             self._info("Mode lecteur : fin du jeu, retour a l'ecran du lecteur")
             self._game_over()
             return
+        if self.state == "screen" and self.screen is None and self._restart_at is not None:
+            if self._clock() >= self._restart_at:
+                self._restart_at = None
+                self.start_screen()
+            return
         if self.state == "screen" and self.screen is not None and self.screen.poll() is not None:
+            self.screen = None
+            if self._running():
+                # Recalbox's interface came back and took the display: stopped again.
+                self._info("L'interface de Recalbox est revenue : elle est arretee de nouveau")
+                self.state = "recalbox"
+                self._switch(True)
+                return
             now = self._clock()
             self.crashes = [t for t in self.crashes if now - t < CRASH_WINDOW_S] + [now]
             if len(self.crashes) >= MAX_CRASHES:
@@ -308,7 +351,7 @@ class ReaderMode:
                 self._switch(False)
                 return
             self._info("Ecran du lecteur arrete : relance")
-            self.start_screen()
+            self._restart_at = now + RESTART_DELAY_S
 
     def shutdown(self) -> None:
         """The service stops: Recalbox's interface comes back."""

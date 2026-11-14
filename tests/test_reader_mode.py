@@ -140,7 +140,7 @@ class ReaderModeTest(unittest.TestCase):
         self.state = os.path.join(self.home, "es_state.inf")
         self.mode = reader_mode.ReaderMode(self.home, None, run=self.fake_run, running=self.running, popen=self.popen,
                                            clock=self.clock, sleep=self.clock.advance, python="python3",
-                                           hotkey_path=self.hotkeys, state_path=self.state)
+                                           hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0)
         patcher = mock.patch.object(es_command, "build", side_effect=lambda system, rom: ["python", "launcher", "-rom", rom])
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -229,8 +229,50 @@ class ReaderModeTest(unittest.TestCase):
             for _ in range(reader_mode.MAX_CRASHES):
                 self.processes[-1].code = 1
                 self.mode.step()
+                started = len(self.processes)
+                self.mode.step()
+                self.assertEqual(len(self.processes), started, "pas de relance immediate")
+                self.clock.advance(reader_mode.RESTART_DELAY_S)
+                self.mode.step()
         switch.assert_called_once_with(False)
         self.assertFalse(self.mode.wanted)
+
+    def test_interface_revenue_arretee_de_nouveau(self):
+        """At boot, Recalbox's interface may start after the screen and take the display."""
+        self.enter()
+        self.frontend["up"] = True  # started behind our back
+        self.calls.append("start")
+        with mock.patch.object(self.mode, "_switch") as switch:
+            self.processes[-1].code = 1
+            self.mode.step()
+        switch.assert_called_once_with(True)
+        self.assertEqual(self.mode.crashes, [], "ce n'est pas un plantage de l'ecran")
+
+    def test_demarrage_attend_l_interface(self):
+        appears_at = self.clock() + 20
+        state = {"stopped": False}
+
+        def running():
+            return self.clock() >= appears_at and not state["stopped"]
+
+        def run(args):
+            self.calls.append(args[1])
+            state["stopped"] = args[1] == "stop"
+
+        mode = reader_mode.ReaderMode(self.home, None, run=run, running=running, popen=self.popen, clock=self.clock,
+                                      sleep=self.clock.advance, python="python3", hotkey_path=self.hotkeys,
+                                      state_path=self.state, uptime=lambda: 40.0)
+        mode.wanted = True
+        mode.enter()
+        self.assertEqual(self.calls, ["stop"], "l'interface lancee apres le service est arretee")
+        self.assertEqual(mode.state, "screen")
+
+    def test_hors_demarrage_pas_d_attente(self):
+        self.frontend["up"] = False
+        start = self.clock()
+        self.enter()
+        self.assertEqual(self.calls, [])
+        self.assertLess(self.clock() - start, 1)
 
     def test_lanceur_passe_par_le_mode(self):
         launcher = EsLauncher("127.0.0.1", 1)
