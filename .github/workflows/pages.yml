@@ -1,5 +1,6 @@
-# Tests, builds the single-file installer, publishes it on GitHub Pages and,
-# for a "v*" tag, attaches it (with the update ZIP) to a GitHub release.
+# On a "v*" tag only: tests, builds the single-file installer, publishes it on
+# GitHub Pages and attaches it (with the update ZIP) to the GitHub release.
+# Pushing to main runs nothing. "Run workflow" (Actions tab) runs it by hand.
 #
 # One-time setup on GitHub: Settings > Pages > Build and deployment >
 # Source: "GitHub Actions". See docs/PUBLISHING.md.
@@ -7,9 +8,7 @@ name: Build and publish
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 permissions:

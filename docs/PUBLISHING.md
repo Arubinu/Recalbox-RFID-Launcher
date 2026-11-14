@@ -1,8 +1,9 @@
 # Publishing on GitHub
 
-Everything is ready in `.github/workflows/pages.yml`. On every push to `main` it runs the tests, builds the
-single-file installer and publishes it on GitHub Pages. On a `v*` tag it also attaches the installer and the update
-archive to a GitHub release.
+Everything is ready in `.github/workflows/pages.yml`. It runs **on a `v*` tag only**: it runs the tests, builds
+the single-file installer, publishes it on GitHub Pages and attaches it, with the update archive, to the GitHub
+release of the tag. Pushing to `main` runs nothing (the online page changes with the releases only); the
+**Run workflow** button of the Actions tab runs it by hand.
 
 ## One-time setup
 
@@ -10,7 +11,7 @@ archive to a GitHub release.
    replace `arubinu.github.io/Recalbox-RFID-Launcher` in the six `README*.md` files).
 2. Push the code: `git push -u origin main`.
 3. **Settings › Pages › Build and deployment › Source: "GitHub Actions"**.
-4. The first run of the **Build and publish** workflow publishes the page at
+4. The first tag (or **Run workflow**) of the **Build and publish** workflow publishes the page at
    `https://arubinu.github.io/Recalbox-RFID-Launcher/`.
 
 ## Repository page
