@@ -129,6 +129,15 @@ class GameSaver:
     def status(self):
         return parse_status(self._query("GET_STATUS", 0.6))
 
+    def state(self) -> str:
+        """"PLAYING", "PAUSED" or "" (no RetroArch game)."""
+        reply = (self._query("GET_STATUS", 0.6) or "").strip()
+        match = _STATUS.match(reply)
+        return match.group(1) if match and match.group(1) in ("PLAYING", "PAUSED") else ""
+
+    def toggle_pause(self) -> None:
+        self._query("PAUSE_TOGGLE", 0)
+
     def state_folder(self) -> str:
         folder = read_retroarch_cfg(self.cfg_path).get("savestate_directory", "")
         return folder if folder and os.path.isdir(folder) else ""

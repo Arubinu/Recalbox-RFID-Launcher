@@ -18,6 +18,8 @@ Optional helpers (all may be None):
 from __future__ import annotations
 
 import os
+import random
+import threading
 import time
 
 from .esbridge import (
@@ -88,7 +90,7 @@ class Controller:
         self._unlocked = unlocked
 
         self.ignore_when_running = True
-        self.save_on_quit = False
+        self.save_on_quit = True
         self.arm_timeout_s = 10.0
         self.action = ACTION_LAUNCH
         self.default_limit_min = 0
@@ -97,6 +99,11 @@ class Controller:
         self.block_exhausted = True
         self.guest_quota_min = 0
         self.guest_period = "day"
+        self.switch_player = False
+        #: The game was paused by the pause card.
+        self.paused = False
+        #: Mutes the Recalbox or not (audio.toggle_mute): True, False, None.
+        self.mixer = None
         if cfg is not None:
             self.players_enabled = cfg.get_bool("players", "enabled", False)
             self.require_player = cfg.get_bool("players", "require", False)
@@ -104,13 +111,18 @@ class Controller:
             self.guest_quota_min = max(0, cfg.get_int("players", "guest_quota_min", 0))
             period = cfg.get("players", "guest_period", "day").strip()
             self.guest_period = "week" if period == "week" else "day"
+            self.switch_player = cfg.get_bool("players", "switch_on_card", False)
             if self.players is not None:
+                from .players import WEEK_DAYS
+                self.players.reset_hour = min(23, max(0, cfg.get_int("players", "reset_hour", 0)))
+                day = cfg.get("players", "week_start", "monday").strip().lower()
+                self.players.week_start = WEEK_DAYS.index(day) if day in WEEK_DAYS else 0
                 self.players.keep = cfg.get_bool("players", "keep_active", False)
                 if not self.players.keep:
                     self.players.kept = None
         if cfg is not None:
             self.ignore_when_running = cfg.get_bool("launch", "ignore_when_game_running", True)
-            self.save_on_quit = cfg.get_bool("launch", "save_on_quit", False)
+            self.save_on_quit = cfg.get_bool("launch", "save_on_quit", True)
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
             self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
             self.default_limit_min = max(0, cfg.get_int("time", "default_limit_min", 0))
@@ -400,6 +412,7 @@ class Controller:
                 self.saver.save(owner=self.save_owner())
             except Exception as exc:  # noqa: BLE001 - the game is quit anyway
                 self._log("warning", "Sauvegarde de la partie impossible : %s" % exc)
+        self.paused = False
         if self.playtime is not None:
             self.playtime.end(reason)
         if self.players is not None:
@@ -548,9 +561,23 @@ class Controller:
             self._greet(name, left)
             self._log("info", "Carte joueur %s : la partie en cours lui est comptee" % name)
             return "player_game"
+        if self.switch_player and self.game_running() and current is not None and current["uid"] != uid:
+            # Option: the game goes on for the new player.
+            game = current.get("game") or self.running_game()
+            self.players.begin(uid, entry, via=current.get("via") or "card", game=game)
+            if self.players.keep:
+                self.players.kept = {"uid": uid, "entry": dict(entry)}
+            if self.playtime is not None:
+                self.playtime.start(uid, {"name": name}, (left / 60.0) if left is not None else 0)
+            self.feedback.ok()
+            self._flash("ok")
+            self._say("player_switched", name=name)
+            self._log("info", "Carte joueur %s : la partie en cours lui est maintenant comptee" % name)
+            return "player_switched"
         self.players.arm(uid, entry)
         self.feedback.ok()
         self._flash("ok")
+        self._say("player_next", name=name)
         self._log("info", "Carte joueur %s : pour la prochaine partie" % name)
         return "player"
 
@@ -621,6 +648,14 @@ class Controller:
             return self._bonus(uid, params)
         if action == "player":
             return self._player_card(uid, entry)
+        if action == "pause":
+            return self._pause_card(uid)
+        if action == "save":
+            return self._save_card(uid)
+        if action == "sound":
+            return self._sound_card(uid)
+        if action == "time":
+            return self._time_card(uid)
         if action == "unlock":
             if self.unlock is None:
                 self.feedback.error()
@@ -630,6 +665,121 @@ class Controller:
             return self.unlock()
         self.feedback.error()
         return "unknown"
+
+    def _no_game(self, card: str) -> str:
+        self.feedback.error()
+        self._flash("error")
+        self._log("info", "Carte « %s » : aucun jeu RetroArch en cours" % card)
+        return "nothing"
+
+    def _pause_card(self, uid: str) -> str:
+        """Pauses the game and the time, or resumes both (RetroArch games)."""
+        if self.saver is None or not self.game_running():
+            return self._no_game("pause")
+        state = self.saver.state()
+        if not state:
+            return self._no_game("pause")
+        self.saver.toggle_pause()
+        self._touch(uid)
+        self.feedback.ok()
+        self._flash("ok")
+        if state == "PLAYING":
+            self.paused = True
+            if self.playtime is not None:
+                self.playtime.pause()
+            if self.players is not None:
+                self.players.pause()
+            self._say("paused")
+            self._log("info", "Carte pause : jeu en pause, temps arrete")
+            return "paused"
+        self.resume_time()
+        self._say("resumed")
+        self._log("info", "Carte pause : reprise du jeu")
+        return "resumed"
+
+    def resume_time(self) -> None:
+        """The game plays again: its time is counted again."""
+        self.paused = False
+        if self.playtime is not None:
+            self.playtime.resume()
+        if self.players is not None:
+            self.players.resume()
+
+    def _save_card(self, uid: str) -> str:
+        """Saves the game now, where it is resumed at the next start."""
+        if self.saver is None or not self.game_running() or not self.saver.state():
+            return self._no_game("sauvegarde")
+        self._touch(uid)
+        self.feedback.ok()
+        self._flash("ok")
+        owner = self.save_owner()
+
+        def work():
+            try:
+                path = self.saver.save(owner=owner)
+            except Exception as exc:  # noqa: BLE001 - reported on the screen
+                path = ""
+                self._log("warning", "Carte sauvegarde : %s" % exc)
+            if path:
+                self._say("saved")
+                self._log("info", "Carte sauvegarde : %s" % path)
+            else:
+                self._say("save_failed")
+
+        threading.Thread(target=work, name="rfid-save-card", daemon=True).start()
+        return "saving"
+
+    def _sound_card(self, uid: str) -> str:
+        """Mutes the Recalbox, or brings the sound back."""
+        mixer = self.mixer
+        if mixer is None:
+            from .audio import toggle_mute as mixer
+        muted = mixer()
+        if muted is None:
+            self.feedback.error()
+            self._flash("error")
+            self._log("warning", "Carte son : reglage du son impossible")
+            return "failed"
+        self._touch(uid)
+        if not muted:
+            self.feedback.ok()  # heard: the sound is back
+        self._flash("ok")
+        self._say("sound_off" if muted else "sound_on")
+        self._log("info", "Carte son : %s" % ("son coupe" if muted else "son remis"))
+        return "muted" if muted else "unmuted"
+
+    def _time_card(self, uid: str) -> str:
+        """Shows the time left to the active player (or the guest)."""
+        from .screen import duration
+
+        if not self.counting_players:
+            self.feedback.error()
+            self._flash("error")
+            return "disabled"
+        player = None
+        current = self.players.current
+        if current is not None and current["uid"] != "guest":
+            player = (current["uid"], current["entry"])
+        elif self.players.pending is not None and self.clock() <= self.players.pending["until"]:
+            player = (self.players.pending["uid"], self.players.pending["entry"])
+        elif self.players.keep and self.players.kept is not None:
+            player = (self.players.kept["uid"], self.players.kept["entry"])
+        if player is not None:
+            name = self.players.player_name(player[1])
+            left = self.player_left(*player)
+        else:
+            from .osd import message
+            name = message("guest", getattr(self.screen, "language", "fr"))
+            left = self.guest_left()
+        self._touch(uid)
+        self.feedback.ok()
+        self._flash("ok")
+        if left is None:
+            self._say("time_unlimited", name=name)
+        else:
+            self._say("time_left", name=name, t=duration(left))
+        self._log("info", "Carte temps : %s, %s" % (name, "sans limite" if left is None else "%d s" % left))
+        return "time"
 
     def _touch(self, uid: str) -> None:
         try:
@@ -643,7 +793,10 @@ class Controller:
             self._flash("error")
             return "failed"
         try:
-            game = self.library.pick_random(params.get("system") or "", bool(params.get("favorites")))
+            if params.get("games"):
+                game = self._pick_collection(params["games"])
+            else:
+                game = self.library.pick_random(params.get("system") or "", bool(params.get("favorites")))
         except LibraryError as exc:
             game = None
             self._log("warning", "Liste des jeux illisible : %s" % exc)
@@ -662,6 +815,16 @@ class Controller:
         self._log("info", "Jeu au hasard : %s (%s)" % (game["name"], game["system"]))
         self._touch(uid)
         return self._launch_for_player(chosen, uid, touch=False)
+
+    def _pick_collection(self, games: list, rng=None):
+        """One game of the card's list (games removed since are skipped)."""
+        rng = rng or random
+        present = [game for game in games if os.path.isfile(game.get("path") or "")]
+        if not present:
+            return None
+        game = dict(rng.choice(present))
+        game["name"] = game.get("name") or os.path.splitext(os.path.basename(game["path"]))[0]
+        return game
 
     def _bonus(self, uid: str, params: dict) -> str:
         if self.playtime is None:

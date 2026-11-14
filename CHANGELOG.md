@@ -4,6 +4,44 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [2.17.0]
+
+### Added
+
+* **New special cards**: **Pause** (pauses the game and stops the play time,
+  placed again it resumes; a pause undone from the game counts the time
+  again), **Save** (saves the game now, where the save before quitting goes),
+  **Sound** (mutes the Recalbox through PulseAudio, or brings the sound back)
+  and **Time left** (shows the time left to the active player or the guest).
+  The page says they work during a game only when the games are not quit on
+  card removal.
+* **Collection**: the random card can draw among a list of games picked in
+  its settings (`games` in its parameters; missing games are skipped).
+* **Change player during a game** (option): a player card placed during
+  another player's game takes it over, with a message; without it, the
+  screen now says the card is for the next game.
+* **Time reset hour and day** (Settings › Player cards): the day's counters
+  restart at the chosen hour, the weekly ones on the chosen day.
+* **Reader screen at the screen's resolution** (1920×1080 on a Full HD TV
+  instead of the games' 1280×720: sharper drawings and texts, about 40 frames
+  per second on a Pi 3), and **vertical** when Recalbox's screen is turned
+  (`screen.rotation` in `recalbox-boot.conf`): its own layout, drawn upright
+  then turned by the graphics chip.
+
+### Changed
+
+* **Save the game before quitting** is now on by default (new installs).
+
+### Fixed
+
+* **Reader screen, Recalbox interface left running**: while it starts, the
+  interface's main process is named "Main", so it was not seen; stopped in
+  the middle of its start (service restarted by an update, boot), it takes
+  about 40 s to quit and keeps the display, and an update could leave the TV
+  on the text screen of Recalbox. It is now recognised by its program, only
+  stopped once it has run for 25 s, and forced to quit if it is still there
+  after the usual wait.
+
 ## [2.16.0]
 
 ### Added

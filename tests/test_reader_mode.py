@@ -174,6 +174,33 @@ class ReaderModeTest(unittest.TestCase):
         self.mode.wanted = True
         self.mode.enter()
 
+    def test_interface_en_demarrage_pas_arretee_trop_tot(self):
+        ages = {"value": 3.0}
+
+        def age():
+            ages["value"] += 1.0  # one second per check (the fake sleep)
+            return ages["value"]
+
+        self.mode._age = age
+        self.enter()
+        self.assertGreaterEqual(ages["value"], reader_mode.SETTLE_S, "attend la fin de son demarrage")
+        self.assertEqual(self.calls, ["stop"])
+
+    def test_interface_bloquee_arretee_de_force(self):
+        self.frontend["quits_after"] = 10 ** 6  # never quits on its own
+        killed = []
+
+        def kill(pid, sig):
+            killed.append((pid, sig))
+            if sig == getattr(reader_mode.signal, "SIGKILL", 9):
+                self.frontend["quits_after"] = 0
+
+        self.mode._pids = lambda: [1196]
+        self.mode._kill = kill
+        self.enter()
+        self.assertEqual([sig for _pid, sig in killed], [reader_mode.signal.SIGTERM, getattr(reader_mode.signal, "SIGKILL", 9)])
+        self.assertEqual(self.mode.state, "screen")
+
     def test_entree_attend_l_arret_reel(self):
         self.frontend["quits_after"] = 50  # 25 s, longer than the init script waits
         self.enter()

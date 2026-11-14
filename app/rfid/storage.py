@@ -52,7 +52,14 @@ KIND_ACTION = "action"
 #:   poweroff = turns the Recalbox off
 #:   player   = player card (time counted per person)
 #:   unlock   = opens the locked Recalbox menu, and locks it again
-ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock")
+#:   pause    = pauses the game (and the time), or resumes it
+#:   save     = saves the game now (resumed at the next start)
+#:   sound    = mutes the Recalbox, or brings the sound back
+#:   time     = shows the time left to the active player
+ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock", "pause", "save", "sound", "time")
+
+#: Games of a "collection" card (a random game among a chosen list).
+MAX_COLLECTION = 200
 
 #: Play time periods of a player card.
 PLAYER_PERIODS = ("day", "week")
@@ -78,7 +85,21 @@ def clean_params(action: str, params) -> dict:
         system = str(params.get("system") or "").strip()
         if "/" in system:
             raise StorageError("console invalide")
-        return {"system": system, "favorites": bool(params.get("favorites"))}
+        result = {"system": system, "favorites": bool(params.get("favorites"))}
+        games = []
+        for item in list(params.get("games") or [])[:MAX_COLLECTION]:
+            if not isinstance(item, dict):
+                continue
+            game_system = str(item.get("system") or "").strip()
+            game_path = str(item.get("path") or "").strip()
+            if not game_system or "/" in game_system or not (game_path.startswith("/") or os.path.isabs(game_path)):
+                continue
+            name = str(item.get("name") or "").strip()[:120]
+            games.append({"system": game_system, "path": game_path,
+                          "name": name or os.path.splitext(os.path.basename(game_path))[0]})
+        if games:
+            result["games"] = games
+        return result
     if action == "bonus":
         try:
             minutes = int(float(params.get("minutes") or 10))

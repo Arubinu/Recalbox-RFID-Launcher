@@ -37,14 +37,20 @@ SAVE_EVERY_S = 30.0
 RESUME_WINDOW_S = 15 * 60
 
 
-def _day_key(stamp: float) -> str:
-    return time.strftime("%Y-%m-%d", time.localtime(stamp))
+#: Days a week can start on (option ``[players] week_start``).
+WEEK_DAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 
-def period_days(period: str, now: float) -> list:
-    """Day keys of the current period ("day": today, "week": since Monday)."""
-    today = datetime.date.fromtimestamp(now)
-    count = today.weekday() + 1 if period == "week" else 1
+def _day_key(stamp: float, reset_hour: int = 0) -> str:
+    """The play day of a moment: it starts at ``reset_hour`` (0 = midnight)."""
+    return time.strftime("%Y-%m-%d", time.localtime(stamp - reset_hour * 3600))
+
+
+def period_days(period: str, now: float, reset_hour: int = 0, week_start: int = 0) -> list:
+    """Day keys of the current period ("day": today, "week": since the first
+    day of the week, ``week_start`` 0 = Monday), days starting at ``reset_hour``."""
+    today = datetime.date.fromtimestamp(now - reset_hour * 3600)
+    count = (today.weekday() - week_start) % 7 + 1 if period == "week" else 1
     return [(today - datetime.timedelta(days=offset)).isoformat() for offset in range(count)]
 
 
@@ -121,6 +127,9 @@ class Players:
         #: another player card or the unlock card.
         self.keep = False
         self.kept = None
+        #: Time counters restart at this hour, and the week on this day (0 = Monday).
+        self.reset_hour = 0
+        self.week_start = 0
 
     # ------------------------------------------------------------ persistence
     def _path(self) -> str:
@@ -156,11 +165,22 @@ class Players:
         """Seconds played in the current period, the running game included."""
         uid = uid or GUEST
         days = self.usage.get(uid, {})
-        total = sum(days.get(day, 0.0) for day in period_days(period, self.wall()))
+        total = sum(days.get(day, 0.0) for day in period_days(period, self.wall(), self.reset_hour, self.week_start))
         current = self.current
-        if current is not None and current["uid"] == uid:
+        if current is not None and current["uid"] == uid and not current.get("paused"):
             total += max(0.0, self.clock() - current["saved_at"])
         return total
+
+    def pause(self) -> None:
+        """The game is paused: its time is no longer counted."""
+        self.checkpoint()
+        if self.current is not None:
+            self.current["paused"] = True
+
+    def resume(self) -> None:
+        if self.current is not None and self.current.get("paused"):
+            self.current["saved_at"] = self.clock()
+            self.current["paused"] = False
 
     def remaining_s(self, uid: str, quota_min: int, period: str = "day"):
         """Seconds left (None = no limit)."""
@@ -177,10 +197,10 @@ class Players:
             now = self.clock()
             elapsed = max(0.0, now - current["saved_at"])
             current["saved_at"] = now
-            if elapsed <= 0:
+            if elapsed <= 0 or current.get("paused"):
                 return
             days = self.usage.setdefault(current["uid"], {})
-            key = _day_key(self.wall())
+            key = _day_key(self.wall(), self.reset_hour)
             days[key] = days.get(key, 0.0) + elapsed
             game = game_key(current.get("game"))
             if game:
@@ -287,7 +307,7 @@ class Players:
     def reset(self, uid: str) -> None:
         """Forgets the time played today and this week (parent's gift)."""
         uid = uid or GUEST
-        days = set(period_days("week", self.wall()))
+        days = set(period_days("week", self.wall(), self.reset_hour, self.week_start))
         with self._lock:
             if uid in self.usage:
                 self.usage[uid] = {day: seconds for day, seconds in self.usage[uid].items() if day not in days}

@@ -45,6 +45,11 @@ class PlayersUnitTest(unittest.TestCase):
     def test_periodes(self):
         self.assertEqual(period_days("day", WEDNESDAY), ["2026-11-11"])
         self.assertEqual(period_days("week", WEDNESDAY), ["2026-11-11", "2026-11-10", "2026-11-09"])
+        early = time.mktime((2026, 11, 11, 3, 0, 0, 0, 0, -1))  # Wednesday, 3 am
+        self.assertEqual(period_days("day", early, reset_hour=4), ["2026-11-10"], "avant 4 h : la veille")
+        self.assertEqual(period_days("day", early, reset_hour=0), ["2026-11-11"])
+        self.assertEqual(period_days("week", WEDNESDAY, week_start=2), ["2026-11-11"], "semaine du mercredi")
+        self.assertEqual(len(period_days("week", WEDNESDAY, week_start=3)), 7, "semaine du jeudi : depuis jeudi dernier")
 
     def test_temps_compte_et_enregistre(self):
         self.players.begin("P1", {"name": "Lea"})
@@ -190,6 +195,12 @@ class PlayerCardsTest(unittest.TestCase):
         self.assertEqual(controller.on_badge("6A0E0001"), "exhausted")
         self.assertIsNone(self.players.kept, "son temps est ecoule : elle n'est plus active")
         self.assertEqual(controller.on_badge("6A0E0001"), "player_needed")
+
+    def test_heure_et_jour_de_remise_a_zero(self):
+        self.make(self.CONFIG + "reset_hour = 5\nweek_start = sunday\n")
+        self.assertEqual((self.players.reset_hour, self.players.week_start), (5, 6))
+        self.make(self.CONFIG + "reset_hour = 99\nweek_start = jamais\n")
+        self.assertEqual((self.players.reset_hour, self.players.week_start), (23, 0))
 
     def test_sans_l_option_la_carte_ne_sert_qu_une_fois(self):
         controller = self.make(self.CONFIG + "require = 1\n")

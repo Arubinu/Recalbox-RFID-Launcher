@@ -72,7 +72,7 @@ ignore_when_game_running = 1
 stop_on_remove = 0
 # Save the game (RetroArch save state) before the reader quits it, and resume
 # it at the next launch of the game (0 = no)
-save_on_quit = 0
+save_on_quit = 1
 # Action when an already registered badge is scanned:
 #   launch = starts the game (historical behaviour)
 #   none   = starts nothing: confirmation beep and log only
@@ -136,9 +136,16 @@ block_exhausted = 1
 guest_quota_min = 0
 # day or week
 guest_period = day
+# The play time counters restart at this hour (0-23, 0 = midnight), and the
+# weekly ones on this day (monday ... sunday).
+reset_hour = 0
+week_start = monday
 # The player of a card stays active for the next games (no need to place the
 # card again), until their time is up, another player card or the unlock card.
 keep_active = 0
+# A player card placed during another player's game takes the game over: the
+# time counts for the new player from then on (0 = it is for the next game).
+switch_on_card = 0
 # Locks the Recalbox menu: favourite games only, no START menu (the page
 # applies it to recalbox.conf and restarts the menu).
 lock_frontend = 0

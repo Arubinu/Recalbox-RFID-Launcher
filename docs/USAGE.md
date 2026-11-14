@@ -138,12 +138,20 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 
 | Card | What it does |
 | --- | --- |
-| **Random game** | starts a game drawn at random: every console, one console, or only the favourites. Can carry a play time limit |
+| **Random game** | starts a game drawn at random: every console, one console, only the favourites, or a **collection** (games picked one by one in the card settings). Can carry a play time limit |
 | **Bonus time** | adds minutes to a time-limited game (see below), a limited number of times per period |
 | **Quit the game** | quits the running game, back to the menu |
 | **Turn off** | turns the Recalbox off cleanly |
 | **Player card** | counts the play time of one person (see "Player cards") |
 | **Unlock** | with the menu lock: opens every game, then locks again (see "Player cards") |
+| **Pause** | pauses the game and the play time (game limit and player time); placed again, everything resumes. RetroArch games |
+| **Save** | saves the game right away, where "Save the game before quitting" saves it (resumed at the next start). RetroArch games |
+| **Sound** | mutes the Recalbox (games and menus); placed again, the sound comes back |
+| **Time left** | shows the play time left to the active player (or the guest) on the screen |
+
+During a game, a special card can only be placed if the games are **not**
+quit when the badge is removed (otherwise lifting the game card quits the
+game). The beep only says the card was read.
 
 The pencil of a badge changes its name, its time limit, or the parameters of a
 special card.
@@ -229,6 +237,12 @@ Options:
 * **Block games without a player card**: a game started without one, even from
   the menu, is quit about two seconds after it starts, with a message on the
   screen (Recalbox itself cannot refuse to start a game).
+* **Time reset**: the hour at which the day's counters restart (midnight by
+  default; a game played before it counts for the day before), and the day
+  the weekly counters restart (Monday by default).
+* **Change player during a game**: a player card placed during another
+  player's game takes it over (the time counts for the new player from then
+  on, and the screen says so); otherwise the card is for the next game.
 * **Keep the player active until their time is up**: after a game, the
   player stays active; the next game cards count for them without placing
   their card again. They stop being active when their time is used up, when
@@ -261,7 +275,9 @@ Options:
 
 Optional (**Settings › TV display › reader screen**; the Recalbox interface
 by default). The TV no longer shows the Recalbox interface but the reader's
-own screen:
+own screen, drawn at the screen's own resolution (or `es.videomode` when it
+is set), and laid out vertically when the screen is turned in Recalbox
+(`screen.rotation`):
 
 * the consoles that have games, one after the other (artwork and logo of the
   Recalbox theme, number of games, maker, year), and a band with every logo;
@@ -454,8 +470,10 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[launch] stop_on_remove` | `0` | quit the game when the badge is removed |
 | `[time] default_limit_min` | `0` | play time of the badges without their own limit (0 = none) |
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
+| `[players] reset_hour` / `week_start` | `0` / `monday` | when the play time counters restart |
+| `[players] switch_on_card` | `0` | a player card placed during a game takes it over |
 | `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
-| `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface |
+| `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface (drawn at the screen's resolution, vertical when Recalbox's screen is rotated) |
 | `[display] no_quit_hotkey` | `0` | reader screen: the hotkey no longer quits the games (needs `stop_on_remove`) |
 | `[screen] retroarch_port` | `55355` | RetroArch network command port |
 | `[led] type` | `none` | `none`, `rgb` or `ws2812` |

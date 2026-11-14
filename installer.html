@@ -575,6 +575,13 @@
   .search-row select { flex: 0 1 220px; height: 40px; }
   .tag-ico img { width: 38px; height: 38px; object-fit: cover; border-radius: 11px; display: block; }
   .tag-actions { display: flex; gap: 2px; align-items: center; }
+  .coll { display: flex; flex-direction: column; gap: 8px; }
+  .coll-results { display: flex; flex-wrap: wrap; gap: 6px; }
+  .coll-results .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .coll-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; max-height: 220px; overflow: auto; }
+  .coll-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 10px; border-top: 1px solid var(--line); font-size: 13px; }
+  .coll-list li:first-child { border-top: 0; }
+  .coll-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .avatar-btn { border: 1px dashed var(--line); cursor: pointer; padding: 0; border-radius: 50%; overflow: hidden; }
   .avatar-btn:hover, .avatar-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
   .avatar-btn.has { border-style: solid; }
@@ -1254,6 +1261,18 @@
               <button class="special" type="button" data-special="unlock">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/></svg></span>
                 <b>Déverrouiller</b><span>Ouvre tous les jeux du menu verrouillé, puis le referme.</span></button>
+              <button class="special" type="button" data-special="pause">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg></span>
+                <b>Pause</b><span>Met le jeu et le temps de jeu en pause, puis repart.</span></button>
+              <button class="special" type="button" data-special="save">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/></svg></span>
+                <b>Sauvegarder</b><span>Sauvegarde la partie tout de suite, sans quitter.</span></button>
+              <button class="special" type="button" data-special="sound">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span>
+                <b>Son</b><span>Coupe le son de la Recalbox, puis le remet.</span></button>
+              <button class="special" type="button" data-special="time">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9.5 2.5h5"/></svg></span>
+                <b>Temps restant</b><span>Affiche le temps de jeu qui reste au joueur.</span></button>
             </div>
           </section>
 
@@ -1711,6 +1730,10 @@ const ICONS = {
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
   player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  pause: '<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
+  save: '<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/>',
+  sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  time: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9.5 2.5h5"/>',
   unlock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/>',
   link: '<path d="M12 5v14M5 12h14"/>',
   rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
@@ -3762,6 +3785,9 @@ const CHOIX_TEXTES = {
   "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
   "players.guest_period=day": "par jour", "players.guest_period=week": "par semaine",
   "display.mode=recalbox": "interface de Recalbox", "display.mode=reader": "écran du lecteur",
+  "players.week_start=monday": "lundi", "players.week_start=tuesday": "mardi", "players.week_start=wednesday": "mercredi",
+  "players.week_start=thursday": "jeudi", "players.week_start=friday": "vendredi", "players.week_start=saturday": "samedi",
+  "players.week_start=sunday": "dimanche",
 };
 let optionsData = null;
 let optionsPending = {};
@@ -4052,6 +4078,7 @@ function periodName(hours) {
 }
 function specialName(action, params) {
   const p = params || {};
+  if (action === "random" && p.games && p.games.length) return t("Collection de {n} jeux", { n: p.games.length });
   if (action === "random") {
     const where = p.system ? systemName(p.system) : "";
     return p.favorites ? t("Favori au hasard") + (where ? " · " + where : "") : t("Jeu au hasard") + (where ? " · " + where : "");
@@ -4060,6 +4087,10 @@ function specialName(action, params) {
   if (action === "quit") return t("Quitter le jeu");
   if (action === "poweroff") return t("Éteindre la Recalbox");
   if (action === "unlock") return t("Déverrouiller le menu");
+  if (action === "pause") return t("Pause");
+  if (action === "save") return t("Sauvegarder la partie");
+  if (action === "sound") return t("Son coupé / remis");
+  if (action === "time") return t("Temps restant");
   if (action === "player") {
     if (!p.quota_min) return t("Carte joueur · sans limite");
     return t("Carte joueur · {n} min par {p}", { n: p.quota_min, p: t(p.period === "week" ? "semaine" : "jour") });
@@ -4099,6 +4130,7 @@ async function specialFields(action, values) {
     select.value = p.system || "";
     fields.push(formField(t("Console"), select, "", true));
     fields.push(switchField("f-fav", t("Seulement parmi les favoris"), Boolean(p.favorites)));
+    fields.push(collectionField(p.games || [], select));
     fields.push(limitField(values ? values.limit_min : null));
   } else if (action === "bonus") {
     fields.push(formField(t("Minutes en plus"), numberInput("f-minutes", p.minutes || 10, 1, 240)));
@@ -4113,15 +4145,55 @@ async function specialFields(action, values) {
       el("option", { text: t("par semaine"), attrs: { value: "week" } }),
     ]);
     period.value = p.period === "week" ? "week" : "day";
-    fields.push(formField(t("Période"), period, t("Le compteur repart à zéro chaque jour à minuit, ou chaque lundi.")));
+    fields.push(formField(t("Période"), period, t("Le compteur repart à zéro chaque jour, ou chaque semaine, à l'heure et au jour choisis dans Réglages › Cartes joueurs.")));
     if (!playersEnabled()) {
       fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
     }
   }
   return fields;
 }
+/* A collection: the random card picks among these games only. */
+let collectionGames = [];
+function collectionField(games, systemSelect) {
+  collectionGames = games.map((game) => ({ system: game.system, path: game.path, name: game.name }));
+  const chosen = el("ul", { className: "coll-list" });
+  const results = el("div", { className: "coll-results" });
+  const search = el("input", { attrs: { type: "search", placeholder: t("Ajouter un jeu à la collection…"), autocomplete: "off", spellcheck: "false" } });
+  const draw = () => {
+    chosen.replaceChildren(...collectionGames.map((game, index) => el("li", {}, [
+      el("span", { text: game.name + " · " + systemName(game.system) }),
+      el("button", { className: "icon-btn", title: t("Retirer"), attrs: { type: "button", "aria-label": t("Retirer {game}", { game: game.name }) },
+        onclick: () => { collectionGames.splice(index, 1); draw(); } }, [icon("x", 16)]),
+    ])));
+    chosen.hidden = !collectionGames.length;
+  };
+  let timer = null;
+  let asked = 0;
+  search.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const query = search.value.trim();
+      const ticket = ++asked;
+      if (query.length < 2) { results.replaceChildren(); return; }
+      let found = [];
+      try { found = (await agent.send("games.search", { query, system: systemSelect.value, limit: 8 }, 20000)).games || []; }
+      catch (error) { found = []; }
+      if (ticket !== asked) return;
+      results.replaceChildren(...found.map((game) => el("button", {
+        className: "btn sm", attrs: { type: "button" }, text: "+ " + game.name + " · " + systemName(game.system),
+        onclick: () => {
+          if (!collectionGames.some((item) => item.path === game.path)) collectionGames.push({ system: game.system, path: game.path, name: game.name });
+          draw();
+        },
+      })));
+    }, 300);
+  });
+  draw();
+  return formField(t("Collection (facultatif)"), el("div", { className: "coll" }, [search, results, chosen]),
+    t("Avec des jeux dans la liste, la carte tire au sort parmi eux seulement (la console et les favoris ne comptent plus)."), true);
+}
 function readSpecialParams(action) {
-  if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true" };
+  if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true", games: collectionGames.slice() };
   if (action === "bonus") return { minutes: Number($("#f-minutes").value) || 10, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
   if (action === "player") return { quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)), period: $("#f-player-period").value === "week" ? "week" : "day" };
   return {};
@@ -4139,6 +4211,10 @@ const SPECIAL_HELP = {
   poweroff: "Éteint la Recalbox proprement, comme depuis son menu.",
   unlock: "Avec l'option « Verrouiller le menu de la Recalbox » : posée une fois, tous les jeux et le menu START reviennent, et aucun jeu n'est bloqué ; posée encore, tout est verrouillé comme avant. L'interface de la Recalbox redémarre quelques secondes à chaque fois (pas pendant une partie).",
   player: "Une carte par personne : posée avant le jeu (ou laissée sur le lecteur pour un jeu lancé depuis le menu), elle compte son temps de jeu.",
+  pause: "Pendant une partie (jeux RetroArch) : posée une fois, le jeu et le temps de jeu se mettent en pause ; posée encore, tout repart. Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte (sinon retirer la carte de jeu pour poser celle-ci quitte la partie).",
+  save: "Pendant une partie (jeux RetroArch) : sauvegarde la partie tout de suite, au même endroit que la sauvegarde avant de quitter (elle est reprise au prochain lancement). Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte.",
+  sound: "Coupe le son de la Recalbox (jeux et menus) ; posée encore, le son revient. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
+  time: "Affiche à l'écran le temps de jeu qui reste au joueur actif (ou à l'invité). Le bip confirme seulement que la carte est lue. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
 };
 
 /* One dialog for the special cards (creation) and for badge settings. */
