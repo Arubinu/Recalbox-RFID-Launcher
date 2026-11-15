@@ -514,6 +514,8 @@ class PowerControl:
 
     #: The screen tells the service that someone uses a controller (idle power-off).
     ACTIVITY_S = 10.0
+    #: Presses ignored just after the menu opens (the other button of the pair).
+    SETTLE_S = 0.4
 
     def __init__(self, home: str, language: str, pads, clock=None, wall=None, send=None, read=None):
         from . import power
@@ -532,6 +534,7 @@ class PowerControl:
         self.checked_at = None
         self.polled_at = None
         self.sent_at = None
+        self.opened_at = 0.0
         self.key = None
 
     def _send(self, action: str) -> None:
@@ -557,6 +560,10 @@ class PowerControl:
                 self._send("cancel")
             return True
         if self.menu is not None:
+            # START and SELECT pressed together arrive as two presses: the one
+            # after the opening must not confirm the first line ("Turn off").
+            if pressed and (names & {"start", "select", "hotkey"} or now - self.opened_at < self.SETTLE_S):
+                return True
             if "up" in names:
                 self.menu.move(-1)
             elif "down" in names:
@@ -570,6 +577,7 @@ class PowerControl:
         self.refresh_actions()
         if pressed and self.actions and not busy and self.pads.combo(event):
             self.menu = PowerMenu(self.actions, clock=self.clock)
+            self.opened_at = now
             self._send("activity")
             return True
         if pressed and (self.sent_at is None or now - self.sent_at >= self.ACTIVITY_S):

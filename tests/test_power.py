@@ -175,6 +175,7 @@ class PowerControlTest(unittest.TestCase):
         self.assertEqual(control.menu.items, ["poweroff", "reboot", "cancel"])
         self.assertTrue(control.handle(hat("down")))
         self.assertEqual(control.menu.choice(), "reboot")
+        self.clock.now += 1
         self.assertTrue(control.handle(press("a")))
         self.assertIsNone(control.menu)
         self.assertEqual(self.sent[-1], "reboot")
@@ -184,8 +185,28 @@ class PowerControlTest(unittest.TestCase):
         control.handle(press("select", combo=True))
         self.assertEqual(control.menu.items, ["poweroff", "cancel"])
         control.handle(hat("up"))
+        self.clock.now += 1
         control.handle(press("b"))
         self.assertNotIn("poweroff", self.sent)
+
+    def test_start_et_select_ensemble_ne_valident_pas(self):
+        """The two presses of the pair arrive together: the second one must not turn off."""
+        control = self.make()
+        for _ in range(2):
+            self.clock.now += 5
+            self.assertTrue(control.handle(press("select", combo=True)))  # both already held
+            self.assertTrue(control.handle(press("start", combo=True)))
+            self.assertTrue(control.handle(press("a")), "pression juste apres l'ouverture : ignoree")
+            self.assertIsNotNone(control.menu)
+            self.clock.now += 1
+            self.assertTrue(control.handle(press("start")))
+            self.assertIsNotNone(control.menu, "START ne valide pas")
+            control.handle(hat("up"))
+            self.assertEqual(control.menu.choice(), "cancel")
+            control.handle(press("a"))
+            self.assertIsNone(control.menu)
+        self.assertNotIn("poweroff", self.sent)
+        self.assertNotIn("reboot", self.sent)
 
     def test_menu_desactive_ou_jeu_montre(self):
         control = self.make(menu="off")
