@@ -1071,6 +1071,47 @@ class Agent:
         self.start_install(client, ["sh", installer, "--upgrade", "--no-restart", "--home", self.home])
         return {"started": True}
 
+    def _cmd_screen_note_get(self, client, message):
+        """The parent's message shown on the reader screen."""
+        from .screen import read_note
+
+        return {"text": read_note(self.home)}
+
+    def _cmd_screen_note_set(self, client, message):
+        """Writes (or removes, with an empty text) the parent's message."""
+        from .screen import NOTE_FILENAME
+
+        note = " ".join(str(message.get("text") or "").split())[:120]
+        target = os.path.join(self.home, NOTE_FILENAME)
+        if not note:
+            try:
+                os.remove(target)
+            except OSError:
+                pass
+            return {"text": ""}
+        temporary = target + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"text": note, "at": int(time.time())}, handle)
+        os.replace(temporary, target)
+        return {"text": note}
+
+    def _cmd_refusals_list(self, client, message):
+        """The games refused (who, what, why), newest first."""
+        from . import refusals
+
+        return {"rows": refusals.read(self.home)}
+
+    def _cmd_refusals_clear(self, client, message):
+        from . import refusals
+
+        refusals.clear(self.home)
+        return {"cleared": True}
+
+    def _cmd_screen_restart(self, client, message):
+        """Starts the reader screen again (a display stuck on the TV)."""
+        self._write_command("screen_restart")
+        return {"requested": True}
+
     def _cmd_players_reset(self, client, message):
         """Forgets the time played this week by a player ("" = guest)."""
         uid = str(message.get("uid") or "")
@@ -1749,6 +1790,13 @@ OPTIONS = (
     {"section": "display", "key": "player_games", "type": "bool", "default": False, "when": "display.mode=reader",
      "label": "Montrer les jeux du joueur actif",
      "help": "Quand un joueur est actif, l'écran du lecteur montre ses derniers jeux joués avec leurs jaquettes, à la place des consoles."},
+    {"section": "display", "key": "dim_min", "type": "choice", "choices": ["recalbox", "0", "5", "10", "15", "30", "60"],
+     "default": "recalbox", "when": "display.mode=reader",
+     "label": "Assombrir l'écran du lecteur",
+     "help": "Sans carte posée, sans jeu ni bouton de la manette pendant ce temps, l'écran du lecteur s'assombrit (moins de lumière, et les TV OLED ne marquent pas). Une carte, un message ou un bouton de la manette le rallume. « Comme Recalbox » suit le délai de l'économiseur d'écran de Recalbox (menu START › Réglages de l'interface), et passe au noir si Recalbox est réglée sur « noir »."},
+    {"section": "display", "key": "show_info", "type": "bool", "default": True, "when": "display.mode=reader",
+     "label": "Infos et trophées sur l'écran du lecteur",
+     "help": "De temps en temps, à la place de « Pose une carte pour jouer » : le jeu préféré du joueur actif, ses trophées (consoles et jeux découverts, jours de jeu d'affilée…), le jeu le plus joué de la semaine, et comment éteindre avec la manette. Un nouveau trophée s'affiche aussi à la fin de la partie."},
     {"section": "display", "key": "power_menu", "type": "choice", "choices": ["both", "poweroff", "off"],
      "default": "both", "when": "display.mode=reader",
      "label": "Éteindre et redémarrer depuis l'écran du lecteur",
@@ -1778,6 +1826,15 @@ OPTIONS = (
     {"section": "time", "key": "default_limit_min", "type": "number", "min": 0, "max": 600,
      "default": 0, "label": "Temps de jeu par partie (minutes)",
      "help": "Pour les badges sans limite à eux. 0 = pas de limite. Prévient 5 minutes puis 1 minute avant la fin, puis quitte le jeu."},
+    {"section": "time", "key": "curfew_from", "type": "time", "default": "",
+     "label": "Heure du coucher : début",
+     "help": "À partir de cette heure, plus de jeux : les cartes de jeu sont refusées, et la partie en cours est sauvegardée puis quittée (un message prévient 5 minutes avant). Vide = pas d'heure du coucher. La carte « Déverrouiller » ignore l'heure du coucher."},
+    {"section": "time", "key": "curfew_to", "type": "time", "default": "", "when": "time.curfew_from!=",
+     "label": "Heure du coucher : fin",
+     "help": "Les jeux sont de nouveau permis à partir de cette heure (le lendemain matin si elle est plus tôt que le début)."},
+    {"section": "time", "key": "curfew_poweroff", "type": "bool", "default": False, "when": "time.curfew_from!=",
+     "label": "Éteindre à l'heure du coucher",
+     "help": "À l'heure du coucher, la Recalbox s'éteint après une minute (le compte à rebours ne s'annule pas). Allumée pendant l'heure du coucher, elle reste allumée, mais les jeux restent refusés."},
     {"section": "screen", "key": "messages", "type": "bool", "default": True,
      "label": "Messages à l'écran pendant les parties",
      "help": "Temps restant, temps bonus, demande d'accès d'un appareil… Affichés par les jeux RetroArch (le menu de la Recalbox ne peut pas les afficher)."},
@@ -1888,6 +1945,15 @@ def validate_option(option, valeur) -> str:
         if brut.lower() in ("0", "false", "non", "off", "no", ""):
             return "0"
         raise ValueError("valeur oui/non attendue pour %s" % option["label"])
+    if option["type"] == "time":
+        if not brut:
+            return ""
+        from . import bedtime
+
+        minutes = bedtime.parse(brut)
+        if minutes is None:
+            raise ValueError("%s : heure attendue (HH:MM)" % option["label"])
+        return bedtime.clock_text(minutes)
     if option["type"] == "choice":
         choix = [str(item) for item in option["choices"]]
         if brut not in choix:

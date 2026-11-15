@@ -152,6 +152,9 @@ class Players:
         self.usage, self.games = self._load()
         #: Play time given by reward cards: {uid: {"d:<day>" or "w:<first day>": minutes}}.
         self.extra = self._load_extra()
+        #: Last game of each player, for the "continue" card:
+        #: {uid: {"system", "name", "path", "at"}} ("guest" without a card).
+        self.last_games = self._load_last_games()
         #: Player card placed, waiting for its game: {"uid", "entry", "until"}.
         self.pending = None
         #: Game being counted: {"uid", "entry", "via", "since", "saved_at"}.
@@ -191,6 +194,31 @@ class Players:
                                    if isinstance(value, (int, float)) and value > 0}
         return extra
 
+    def _load_last_games(self) -> dict:
+        path = self._path()
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle).get("last_games") or {}
+        except (OSError, ValueError, AttributeError, TypeError):
+            return {}
+        return {str(uid): dict(game) for uid, game in data.items()
+                if isinstance(game, dict) and game.get("path") and game.get("system")} if isinstance(data, dict) else {}
+
+    def remember(self, uid: str, system: str, name: str, path: str) -> None:
+        """The game a player just started (the "continue" card starts it again)."""
+        if not system or not path:
+            return
+        with self._lock:
+            self.last_games[uid or GUEST] = {"system": system, "name": name or "", "path": path, "at": int(self.wall())}
+            self._save()
+
+    def last_game(self, uid=None):
+        """The last game of this player, or of anyone (uid None)."""
+        if uid is not None:
+            return self.last_games.get(uid or GUEST)
+        games = sorted(self.last_games.values(), key=lambda game: game.get("at", 0), reverse=True)
+        return games[0] if games else None
+
     def _period_key(self, period: str) -> str:
         days = period_days(period, self.wall(), self.reset_hour, self.week_start)
         return ("w:" + days[-1]) if period == "week" else ("d:" + days[0])
@@ -223,7 +251,8 @@ class Players:
                 extra = {uid: {key: value for key, value in keys.items() if key[2:] >= limit_extra}
                          for uid, keys in self.extra.items()}
                 json.dump({"usage": self.usage, "games": self.games,
-                           "extra": {uid: keys for uid, keys in extra.items() if keys}}, handle)
+                           "extra": {uid: keys for uid, keys in extra.items() if keys},
+                           "last_games": self.last_games}, handle)
             os.replace(temporary, path)
         except OSError as exc:
             if self.log:

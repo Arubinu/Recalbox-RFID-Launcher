@@ -57,7 +57,9 @@ KIND_ACTION = "action"
 #:   sound    = mutes the Recalbox, or brings the sound back
 #:   time     = shows the time left to the active player
 #:   reward   = more play time for a player, today or this week
-ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock", "pause", "save", "sound", "time", "reward")
+#:   continue = starts again the last game of the active player (or the last one)
+ACTIONS = ("random", "quit", "bonus", "poweroff", "player", "unlock", "pause", "save", "sound", "time", "reward",
+           "continue")
 
 #: Games of a "collection" card (a random game among a chosen list).
 MAX_COLLECTION = 200

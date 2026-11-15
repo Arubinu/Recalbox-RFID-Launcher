@@ -96,6 +96,32 @@ TEXTS = {
     "press_cancel": {"fr": "Appuie sur un bouton de la manette pour annuler", "en": "Press a controller button to cancel",
                      "de": "Drück eine Controller-Taste zum Abbrechen", "es": "Pulsa un botón del mando para cancelar",
                      "it": "Premi un tasto del controller per annullare", "pt": "Carrega num botão do comando para cancelar"},
+    "tip_power": {"fr": "START + SELECT : éteindre ou redémarrer", "en": "START + SELECT: turn off or restart",
+                  "de": "START + SELECT: ausschalten oder neu starten", "es": "START + SELECT: apagar o reiniciar",
+                  "it": "START + SELECT: spegnere o riavviare", "pt": "START + SELECT: desligar ou reiniciar"},
+    "tip_power_off": {"fr": "START + SELECT : éteindre la console", "en": "START + SELECT: turn the console off",
+                      "de": "START + SELECT: Konsole ausschalten", "es": "START + SELECT: apagar la consola",
+                      "it": "START + SELECT: spegnere la console", "pt": "START + SELECT: desligar a consola"},
+    "favourite": {"fr": "Jeu préféré de {name} : {game}", "en": "{name}'s favourite game: {game}",
+                  "de": "Lieblingsspiel von {name}: {game}", "es": "Juego favorito de {name}: {game}",
+                  "it": "Gioco preferito di {name}: {game}", "pt": "Jogo favorito de {name}: {game}"},
+    "week_game": {"fr": "Jeu de la semaine : {game}", "en": "Game of the week: {game}", "de": "Spiel der Woche: {game}",
+                  "es": "Juego de la semana: {game}", "it": "Gioco della settimana: {game}",
+                  "pt": "Jogo da semana: {game}"},
+    "trophy_count": {"fr": "{name} : {n} trophée(s), dernier : {what}", "en": "{name}: {n} trophy(ies), last: {what}",
+                     "de": "{name}: {n} Trophäe(n), zuletzt: {what}", "es": "{name}: {n} trofeo(s), último: {what}",
+                     "it": "{name}: {n} trofeo/i, ultimo: {what}", "pt": "{name}: {n} troféu(s), último: {what}"},
+    "t_consoles": {"fr": "{n} consoles", "en": "{n} consoles", "de": "{n} Konsolen", "es": "{n} consolas",
+                   "it": "{n} console", "pt": "{n} consolas"},
+    "t_games": {"fr": "{n} jeux", "en": "{n} games", "de": "{n} Spiele", "es": "{n} juegos", "it": "{n} giochi",
+                "pt": "{n} jogos"},
+    "t_streak": {"fr": "{n} jours d'affilée", "en": "{n} days in a row", "de": "{n} Tage am Stück",
+                 "es": "{n} días seguidos", "it": "{n} giorni di fila", "pt": "{n} dias seguidos"},
+    "t_hours": {"fr": "{n} heures de jeu", "en": "{n} hours of play", "de": "{n} Stunden Spielzeit",
+                "es": "{n} horas de juego", "it": "{n} ore di gioco", "pt": "{n} horas de jogo"},
+    "good_night": {"fr": "C'est l'heure de dormir : bonne nuit !", "en": "Bedtime: good night!",
+                   "de": "Schlafenszeit: gute Nacht!", "es": "Hora de dormir: ¡buenas noches!",
+                   "it": "È ora di dormire: buonanotte!", "pt": "Hora de dormir: boa noite!"},
     "idle_cancel": {"fr": "Personne ne joue : un bouton ou une carte annule",
                     "en": "Nobody is playing: a button or a card cancels",
                     "de": "Niemand spielt: eine Taste oder eine Karte bricht ab",
@@ -505,7 +531,8 @@ def power_texts(state: dict, language: str, wall=None):
     left = max(0, int(math.ceil(float(state.get("until") or 0) - (wall or time.time)())))
     title = text("off_in" if state.get("action") == "poweroff" else "reboot_in", language, n=left)
     source = state.get("source")
-    detail = text("cancel_hint" if source == "card" else "idle_cancel" if source == "idle" else "press_cancel", language)
+    detail = text({"card": "cancel_hint", "idle": "idle_cancel", "curfew": "good_night"}.get(source, "press_cancel"),
+                  language)
     return title, detail
 
 
@@ -618,6 +645,187 @@ class PowerControl:
             _key, title, detail, items, selected, bar, until, total = view
             show(painter.power_panel(title, detail, items, selected, bar), until, total)
         return True
+
+
+#: The parent's message, written by the page (home/screen-note.json).
+NOTE_FILENAME = "screen-note.json"
+NOTE_COLOUR = (246, 196, 92)
+#: Each text of the hint line stays this long, and fades in and out.
+HINT_S = 7.0
+HINT_FADE_S = 0.5
+#: Recalbox's screen saver (display.dim_min = "recalbox").
+ES_SETTINGS = "/recalbox/share/system/.emulationstation/es_settings.cfg"
+#: Opacity of the dark veil: dimmed, or black (Recalbox's "black" screen saver).
+DIM_ALPHA = 200
+BLACK_ALPHA = 250
+
+
+def read_note(home: str) -> str:
+    try:
+        with open(os.path.join(home, NOTE_FILENAME), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return ""
+    return str(data.get("text") or "").strip()[:120] if isinstance(data, dict) else ""
+
+
+def recalbox_screensaver(path: str = ES_SETTINGS):
+    """(minutes, black) of Recalbox's screen saver; minutes 0 = never."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            content = handle.read()
+    except OSError:
+        return 5.0, False
+    delay = re.search(r'name="ScreenSaverTime"\s+value="(\d+)"', content)
+    behaviour = re.search(r'name="ScreenSaverBehavior"\s+value="([^"]*)"', content)
+    minutes = int(delay.group(1)) / 60000.0 if delay else 5.0
+    return minutes, bool(behaviour and behaviour.group(1).lower() == "black")
+
+
+def dim_setting(value: str, saver=recalbox_screensaver):
+    """(minutes, black) of display.dim_min: "0" = never, minutes, or "recalbox"."""
+    value = str(value or "0").strip().lower()
+    if value == "recalbox":
+        return saver()
+    try:
+        return max(0.0, float(value)), False
+    except ValueError:
+        return 0.0, False
+
+
+def week_game(games: dict, today: float = None) -> str:
+    """Name of the game played most these last 7 days (every player), or ""."""
+    first = time.strftime("%Y-%m-%d", time.localtime((today or time.time()) - 6 * 86400))
+    table = {}
+    for days in games.values():
+        for day, played in days.items():
+            if day >= first:
+                for key, seconds in played.items():
+                    table[key] = table.get(key, 0.0) + seconds
+    if not table:
+        return ""
+    return max(table.items(), key=lambda item: item[1])[0].split("|", 1)[1]
+
+
+def favourite_game(days: dict, today: float = None) -> str:
+    first = time.strftime("%Y-%m-%d", time.localtime((today or time.time()) - 30 * 86400))
+    table = {}
+    for day, played in (days or {}).items():
+        if day >= first:
+            for key, seconds in played.items():
+                table[key] = table.get(key, 0.0) + seconds
+    if not table:
+        return ""
+    return max(table.items(), key=lambda item: item[1])[0].split("|", 1)[1]
+
+
+def screen_infos(home: str, players: dict, language: str, power_actions=()) -> list:
+    """The useful facts shown now and then in place of the hint."""
+    from . import trophies
+    from .players import read_file
+
+    infos = []
+    if power_actions:
+        infos.append((text("tip_power" if "reboot" in power_actions else "tip_power_off", language), "info"))
+    _usage, games = read_file(os.path.join(home, "players.json"))
+    info = player_info(players, language)
+    if info and info.get("uid"):
+        favourite = favourite_game(games.get(info["uid"]) or {})
+        if favourite:
+            infos.append((text("favourite", language, name=info["name"], game=favourite), "info"))
+        keys = trophies.read(home).get(info["uid"]) or {}
+        last = trophies.latest(keys)
+        if last is not None:
+            infos.append((text("trophy_count", language, name=info["name"], n=len(keys),
+                               what=text("t_" + last[0], language, n=last[1])), "trophy"))
+    else:
+        game = week_game(games)
+        if game:
+            infos.append((text("week_game", language, game=game), "info"))
+    return infos
+
+
+def hint_sequence(hint: str, note: str, infos: list) -> list:
+    """[(text, colour, kind)]: the hint, then each extra in turn (the note more often).
+
+    ``infos``: [(text, kind)], kind "info" or "trophy" (the icon before the text).
+    """
+    infos = [item if isinstance(item, tuple) else (item, "info") for item in infos or ()]
+    extras = []
+    if note:
+        for info in infos or [None]:
+            extras.append((note, NOTE_COLOUR, "note"))
+            if info:
+                extras.append((info[0], TEXT, info[1]))
+    else:
+        extras = [(info[0], TEXT, info[1]) for info in infos]
+    sequence = []
+    for extra in extras:
+        sequence += [(hint, TEXT, "card"), extra]
+    return sequence or [(hint, TEXT, "card")]
+
+
+def hint_slot(count: int, now: float):
+    """(index, opacity) of the text shown at ``now`` among ``count``."""
+    if count <= 1:
+        return 0, 1.0
+    cycle = now % (HINT_S * count)
+    index = int(cycle // HINT_S)
+    phase = cycle - index * HINT_S
+    return index, max(0.0, min(1.0, phase / HINT_FADE_S, (HINT_S - phase) / HINT_FADE_S))
+
+
+def refresh_hints(painter, home: str, language: str, players: dict, power_ui=None) -> None:
+    """The texts of the hint line: the hint, the parent's message, the useful facts."""
+    try:
+        infos = []
+        if wants(home, "show_info", True):
+            if power_ui is not None:
+                power_ui.refresh_actions()
+            infos = screen_infos(home, players, language, power_ui.actions if power_ui is not None else ())
+        painter.hints = hint_sequence(text("hint", language), read_note(home), infos)
+    except Exception as exc:  # noqa: BLE001 - the plain hint then
+        print("hints: %s" % exc, flush=True)
+        painter.hints = None
+
+
+class Dimmer:
+    """Darkens the reader screen after a while with no card, game or button."""
+
+    def __init__(self, home: str, clock=None, read=None):
+        self.home = home
+        self.clock = clock or time.monotonic
+        self.read = read or (lambda: dim_setting(setting(home, "display", "dim_min", "0")))
+        self.active_at = self.clock()
+        self.checked_at = None
+        self.minutes, self.black = 0.0, False
+        self.level = 0.0
+        self.stamp = self.clock()
+
+    def wake(self) -> None:
+        self.active_at = self.clock()
+
+    @property
+    def dark(self) -> bool:
+        return self.level > 0.05
+
+    def step(self) -> float:
+        """The darkness now (0..1): fades in slowly, out quickly."""
+        now = self.clock()
+        if self.checked_at is None or now - self.checked_at >= 5.0:
+            self.checked_at = now
+            self.minutes, self.black = self.read()
+        target = 1.0 if self.minutes > 0 and now - self.active_at >= self.minutes * 60 else 0.0
+        elapsed = max(0.0, now - self.stamp)
+        self.stamp = now
+        if target > self.level:
+            self.level = min(target, self.level + elapsed / 1.5)
+        else:
+            self.level = max(target, self.level - elapsed / 0.3)
+        return self.level
+
+    def alpha(self) -> int:
+        return int((BLACK_ALPHA if self.black else DIM_ALPHA) * ease(self.level))
 
 
 def wants(home: str, key: str, default: bool = False) -> bool:
@@ -1052,14 +1260,10 @@ class Painter:
             self._clock = (minute, self._fast(self.font("Exo2-SemiBoldCondensed.otf", u * 7).render(minute, True, TEXT)))
         clock = self._clock[1]
         surface.blit(clock, (w - margin - clock.get_width(), margin - int(u * 1)))
-        icon = pg.Rect(margin, margin + int(u * 0.6), int(u * 5.4), int(u * 3.6))
-        self.draw_shape(surface, icon, accent, int(u * 0.7), max(2, int(u * 0.45)))
-        self.draw_shape(surface, (icon.x + int(u * 0.9), icon.y + int(u * 0.9), int(u * 1.6), int(u * 1.2)), accent,
-                     int(u * 0.25))
         if hint:
-            pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(now * 2.2))
-            image = self.hint_image()
-            image.set_alpha(int(255 * pulse))
+            image, opacity, index = self.current_hint(time.monotonic(), accent)
+            pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(now * 2.2)) if index % 2 == 0 else 1.0
+            image.set_alpha(int(255 * pulse * opacity))
             surface.blit(image, self.hint_position(image))
         player = player_info(players, self.language) if chip else None
         if player:
@@ -1080,18 +1284,93 @@ class Painter:
             self._clock = (minute, self._fast(self.font("Exo2-SemiBoldCondensed.otf", self.u * 7).render(minute, True, TEXT)))
         return self._clock[1].get_width()
 
-    def hint_image(self):
-        if self._hint is None:
-            self._hint = self._fast(self.font("Raleway-SemiBold.ttf", self.u * 3.6).render(
-                text("hint", self.language), True, TEXT))
-        return self._hint
+    def hint_icon(self, kind: str, accent):
+        """The icon before the hint line: a card, a message, an "i", a cup."""
+        pg, u, k = self.pg, self.u, self.SUPERSAMPLE
+        width, height = int(u * 5.4), int(u * 3.6)
+        big = pg.Surface((width * k, height * k), pg.SRCALPHA)
+        colour = tuple(NOTE_COLOUR if kind == "note" else accent)[:3]
+        big.fill(colour + (0,))
+        line = max(2, int(u * 0.45)) * k
+        rgba = colour + (255,)
+        W, H = width * k, height * k
+        if kind == "note":
+            # A speech bubble with its tail on the bottom left.
+            body = pg.Rect(int(W * 0.12), 0, int(W * 0.76), int(H * 0.78))
+            pg.draw.rect(big, rgba, body, width=line, border_radius=int(H * 0.22))
+            tail = [(body.x + int(W * 0.14), body.bottom - line), (body.x + int(W * 0.06), H - 1),
+                    (body.x + int(W * 0.34), body.bottom - line)]
+            pg.draw.polygon(big, rgba, tail)
+            for number in range(3):
+                centre = (body.x + int(body.w * (0.3 + 0.2 * number)), body.centery)
+                pg.draw.circle(big, rgba, centre, int(line * 0.75))
+        elif kind == "info":
+            # A full disc with the "i" cut out: as heavy as the other icons.
+            centre = (W // 2, H // 2)
+            pg.draw.circle(big, rgba, centre, H // 2)
+            hole = colour + (0,)
+            stroke = int(H * 0.15)
+            pg.draw.circle(big, hole, (centre[0], int(H * 0.27)), int(stroke * 0.62))
+            pg.draw.rect(big, hole, (centre[0] - stroke // 2, int(H * 0.42), stroke, int(H * 0.36)), border_radius=stroke // 2)
+        elif kind == "trophy":
+            cx = W // 2
+            cup = [(cx - int(H * 0.42), 0), (cx + int(H * 0.42), 0), (cx + int(H * 0.3), int(H * 0.42)),
+                   (cx + int(H * 0.12), int(H * 0.58)), (cx - int(H * 0.12), int(H * 0.58)), (cx - int(H * 0.3), int(H * 0.42))]
+            pg.draw.polygon(big, rgba, cup)
+            for side in (-1, 1):
+                pg.draw.arc(big, rgba, (cx + side * int(H * 0.36) - int(H * 0.2), int(H * 0.04), int(H * 0.4), int(H * 0.36)),
+                            -1.6 if side > 0 else 1.5, 1.6 if side > 0 else 4.7, max(1, line // 2))
+            pg.draw.rect(big, rgba, (cx - line // 2, int(H * 0.56), line, int(H * 0.24)))
+            pg.draw.rect(big, rgba, (cx - int(H * 0.26), int(H * 0.8), int(H * 0.52), H - int(H * 0.8)), border_radius=line // 2)
+        else:
+            # The card, as before.
+            pg.draw.rect(big, rgba, big.get_rect(), width=line, border_radius=int(u * 0.7) * k)
+            pg.draw.rect(big, rgba, (int(u * 0.9) * k, int(u * 0.9) * k, int(u * 1.6) * k, int(u * 1.2) * k),
+                         border_radius=int(u * 0.25) * k)
+        return pg.transform.smoothscale(big, (width, height))
+
+    def hint_image(self, message: str = None, colour=TEXT, kind: str = "card", accent=None):
+        """The hint line (or another text in its place) with its icon, cut to fit beside the player."""
+        message = message or text("hint", self.language)
+        accent = tuple(accent or DEFAULT_ACCENT)[:3]
+        key = (message, tuple(colour), kind, accent)
+        cache = self.__dict__.setdefault("_hints", {})
+        if key not in cache:
+            pg, u = self.pg, self.u
+            font = self.font("Raleway-SemiBold.ttf", u * 3.6)
+            room = int(self.w - self.hint_position_x() - u * (26 if self.portrait else 62))
+            shown = message
+            while font.size(shown)[0] > room and len(shown) > 4:
+                shown = shown[:-2].rstrip() + "…"
+            label = font.render(shown, True, tuple(colour))
+            icon = self.hint_icon(kind, accent)
+            gap = int(u * 1.6)
+            height = max(label.get_height(), icon.get_height())
+            image = pg.Surface((icon.get_width() + gap + label.get_width(), height), pg.SRCALPHA)
+            image.blit(icon, (0, (height - icon.get_height()) // 2))
+            image.blit(label, (icon.get_width() + gap, (height - label.get_height()) // 2))
+            if len(cache) > 24:
+                cache.clear()
+            cache[key] = self._fast(image)
+        return cache[key]
+
+    def hint_position_x(self) -> int:
+        u = self.u
+        return int(u * 5) + int(u * 5.4) + int(u * 1.6)
+
+    def current_hint(self, now: float, accent=None):
+        """(image, opacity, index) of the hint line at ``now`` (texts set in self.hints)."""
+        hints = getattr(self, "hints", None) or [(text("hint", self.language), TEXT, "card")]
+        index, opacity = hint_slot(len(hints), now)
+        message, colour, kind = (tuple(hints[index]) + ("card",))[:3]
+        return self.hint_image(message, colour, kind, accent), opacity, index
 
     def hint_position(self, image):
+        """Top left of the hint line (its icon first)."""
         u = self.u
         margin = int(u * 5)
-        icon_right = margin + int(u * 5.4)
         centre_y = margin + int(u * 0.6) + int(u * 3.6) // 2
-        return icon_right + int(u * 1.6), centre_y - image.get_height() // 2
+        return margin, centre_y - image.get_height() // 2
 
     def compose(self, surface, index: int, previous, progress: float, players: dict, now: float) -> None:
         """The whole frame (preview, first frame)."""
@@ -1431,6 +1710,7 @@ class GpuScreen:
         self.page = None   # (key, texture): the player's games, in place of the consoles
         self.launch = None  # (texture, started): the game placed, before it starts
         self.power = None  # the power menu or a countdown, over everything
+        self.dim_alpha = 0  # dark veil when nobody uses the reader (Dimmer)
 
     def texture(self, surface):
         return self.Texture.from_surface(self.renderer, surface)
@@ -1528,13 +1808,20 @@ class GpuScreen:
             self.top_texture.blend_mode = 1
         self.top_texture.draw(dstrect=painter.top_rect())
         self.draw_chip(index, players)
-        if self.hint_texture is None:
-            self.hint_texture = self.texture(painter.hint_image())
-            self.hint_texture.blend_mode = 1
-        pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(now * 2.2))
-        self.hint_texture.alpha = int(255 * pulse)
-        x, y = painter.hint_position(painter.hint_image())
-        self.hint_texture.draw(dstrect=(x, y, self.hint_texture.width, self.hint_texture.height))
+        image, opacity, number = painter.current_hint(time.monotonic(), painter.hero(index)["accent"])
+        textures = self.__dict__.setdefault("hint_textures", {})
+        if id(image) not in textures:
+            if len(textures) > 24:
+                textures.clear()
+            texture = self.texture(image)
+            texture.blend_mode = 1
+            textures[id(image)] = (image, texture)  # the image is kept: its id stays unique
+        hint = textures[id(image)][1]
+        # The usual hint pulses; the other texts stay still, easier to read.
+        pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(now * 2.2)) if number % 2 == 0 else 1.0
+        hint.alpha = int(255 * pulse * opacity)
+        x, y = painter.hint_position(image)
+        hint.draw(dstrect=(x, y, hint.width, hint.height))
         if self.toast is not None:
             texture, started, position = self.toast
             alpha = toast_alpha(time.monotonic() - started)
@@ -1547,6 +1834,10 @@ class GpuScreen:
             texture, started = self.launch
             texture.alpha = int(255 * ease(min(1.0, (time.monotonic() - started) / 0.35)))
             texture.draw(dstrect=full)
+        if self.dim_alpha > 0:
+            renderer.draw_blend_mode = 1
+            renderer.draw_color = (0, 0, 0, self.dim_alpha)
+            renderer.fill_rect(full)
         if self.power is not None:
             self.draw_power(full)
         if self.canvas is not None:
@@ -1759,6 +2050,8 @@ class Screen:
         pads = Pads(pygame)
         power_ui = PowerControl(self.home, self.language, pads)
         overlay = {"panel": None, "until": None, "total": None}
+        dimmer = Dimmer(self.home)
+        hints_at = None
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
         painter.compose(surface, index, None, 1.0, players, time.time())
         flip()
@@ -1767,7 +2060,13 @@ class Screen:
             for event in pygame.event.get():
                 if event.type in (getattr(pygame, "JOYDEVICEADDED", -1), getattr(pygame, "JOYDEVICEREMOVED", -1)):
                     pads.open()
-                elif power_ui.handle(event, busy=launch_page is not None):
+                    continue
+                if event.type in (pygame.JOYBUTTONDOWN, pygame.JOYHATMOTION, pygame.JOYAXISMOTION):
+                    dark = dimmer.dark
+                    dimmer.wake()
+                    if dark and event.type == pygame.JOYBUTTONDOWN:
+                        continue  # this press only wakes the screen up
+                if power_ui.handle(event, busy=launch_page is not None):
                     continue
                 elif event.type == pygame.JOYBUTTONDOWN and waiting:
                     answer_go()
@@ -1787,6 +2086,26 @@ class Screen:
             if power_ui.update(painter, lambda panel, until, total: overlay.update(panel=panel, until=until, total=total)) \
                     and overlay["panel"] is None:
                 painter.scene(surface, index, None, 1.0)  # the panel closed: the consoles again
+                painter.top(surface, index, players, time.time())
+                flip()
+            if hints_at is None or now - hints_at >= 10.0:
+                hints_at = now
+                refresh_hints(painter, self.home, self.language, players, power_ui)
+            if launch_page is not None or overlay["panel"] is not None or toast is not None:
+                dimmer.wake()
+            was_dark = dimmer.dark
+            dimmer.step()
+            if dimmer.dark:
+                painter.scene(surface, index, None, 1.0)
+                painter.top(surface, index, players, time.time())
+                veil = pygame.Surface((width, height), pygame.SRCALPHA)
+                veil.fill((0, 0, 0, dimmer.alpha()))
+                surface.blit(veil, (0, 0))
+                flip()
+                time.sleep(0.2)
+                continue
+            if was_dark:
+                painter.scene(surface, index, None, 1.0)  # awake: the full picture again
                 painter.top(surface, index, players, time.time())
                 flip()
             if overlay["panel"] is not None:
@@ -1911,13 +2230,21 @@ def _run_gpu(self, pygame, conf) -> int:
     show_player = wants(self.home, "player_games")
     pads = Pads(pygame)
     power_ui = PowerControl(self.home, self.language, pads)
+    dimmer = Dimmer(self.home)
+    hints_at, who = None, None
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
         for event in pygame.event.get():
             if event.type in (getattr(pygame, "JOYDEVICEADDED", -1), getattr(pygame, "JOYDEVICEREMOVED", -1)):
                 pads.open()
-            elif power_ui.handle(event, busy=shown["launch"] is not None):
+                continue
+            if event.type in (pygame.JOYBUTTONDOWN, pygame.JOYHATMOTION, pygame.JOYAXISMOTION):
+                dark = dimmer.dark
+                dimmer.wake()
+                if dark and event.type == pygame.JOYBUTTONDOWN:
+                    continue  # this press only wakes the screen up
+            if power_ui.handle(event, busy=shown["launch"] is not None):
                 continue
             elif event.type == pygame.JOYBUTTONDOWN and shown["waiting"]:
                 answer_go()
@@ -1946,9 +2273,21 @@ def _run_gpu(self, pygame, conf) -> int:
             message = messages.poll()
             if message:
                 gpu.show_toast(message, index)
+                dimmer.wake()
                 players_at = 0.0  # the message often comes with a new player state
         power_ui.poll(busy=shown["launch"] is not None)
         power_ui.update(painter, gpu.show_power)
+        if shown["launch"] is not None or power_ui.state is not None or power_ui.menu is not None:
+            dimmer.wake()
+        current = (player_info(players, self.language) or {}).get("uid")
+        if current != who:
+            who, hints_at = current, None
+            dimmer.wake()
+        if hints_at is None or now - hints_at >= 10.0:
+            hints_at = now
+            refresh_hints(painter, self.home, self.language, players, power_ui)
+        dimmer.step()
+        gpu.dim_alpha = dimmer.alpha()
         following = (index + 1) % len(consoles)
         if gpu.page is None and now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
             previous, index, changed = index, following, now
@@ -1972,7 +2311,8 @@ def _run_gpu(self, pygame, conf) -> int:
                 print("%.1f fps, slowest %.0f ms" % (frames / (time.monotonic() - counted), slowest * 1000), flush=True)
                 frames, slowest, counted = 0, 0.0, time.monotonic()
         if progress >= 1.0:
-            time.sleep(0.02)  # the pulse only: no need for every screen refresh
+            # The pulse only: no need for every screen refresh (even less when dark).
+            time.sleep(0.15 if dimmer.level >= 1.0 else 0.02)
     gpu.toast = gpu.page = gpu.launch = gpu.power = None
     gpu._bar = gpu.chip = gpu.chip_out = None
     gpu.canvas = None

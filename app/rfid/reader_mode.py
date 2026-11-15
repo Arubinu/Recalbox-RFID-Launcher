@@ -381,6 +381,16 @@ class ReaderMode:
             except Exception:  # noqa: BLE001
                 pass
 
+    def restart_screen(self) -> bool:
+        """Starts the reader screen again (asked from the page): not a crash."""
+        if self.state != "screen":
+            return False
+        self._info("Ecran du lecteur relance depuis la page")
+        self.stop_screen()
+        self._restart_at = None
+        self.start_screen()
+        return True
+
     # ---------------------------------------------------------------- games
     def launch(self, system: str, rom: str, name: str = "") -> bool:
         """Starts a game in place of the screen. False when not in the mode.

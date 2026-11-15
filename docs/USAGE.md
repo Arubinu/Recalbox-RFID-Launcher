@@ -31,7 +31,7 @@ Either way, the device is authorized once by **holding the case button for
 | **Cards** | design and print the cards to put on the badges |
 | **Hardware** | state of the reader, the button and the game launch; **Test with a badge**; **automatic tuning** of the reader |
 | **Settings** | every setting, saved and applied at once |
-| **Updates** | one-click update, service, restart of the Recalbox, logs |
+| **Updates** | one-click update (from the page, or the latest version on GitHub), service, restart of the reader screen or of the Recalbox, logs |
 
 The **`EN` / `FR` / `DE` / `ES` / `IT` / `PT`** button switches the language:
 a click picks the next one and keeps it; a **long press** goes back to the
@@ -148,6 +148,7 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 | **Save** | saves the game right away, where "Save the game before quitting" saves it (resumed at the next start). RetroArch games |
 | **Sound** | mutes the Recalbox (games and menus); placed again, the sound comes back |
 | **Time left** | shows the play time left to the active player (or the guest) on the screen |
+| **Continue** | starts again the last game of the active player (player card placed, or player kept active), or the last game played without a player; with "Save the game before quitting", it resumes where it stopped |
 
 During a game, a special card can only be placed if the games are **not**
 quit when the badge is removed (otherwise lifting the game card quits the
@@ -201,6 +202,15 @@ The uses are kept in `playtime.json` (they survive a restart). Without a
 battery, the Recalbox clock may restart in 1980 until the network gives the
 time: the quota then starts again from zero.
 
+**Bedtime** (Settings › Play time, start and end, empty = none): no games
+between these hours, even across midnight (21:00 to 07:00). A message warns
+5 minutes before; at bedtime the running game is saved and quit, game cards
+and games started from the menu are refused ("Bedtime: no games before
+07:00"). **Turn off at bedtime** (option) turns the Recalbox off after a
+one-minute countdown that cannot be cancelled; turned on again during
+bedtime, it stays on but games stay refused. The **Unlock** card ignores
+bedtime.
+
 ## Player cards
 
 Optional (**Settings › Player cards**, off by default). Each person gets a
@@ -231,6 +241,16 @@ minutes), to open in a spreadsheet. A reset only clears the time limit
 count, never the statistics. Messages on the game screen: welcome with the time left, "no play time
 left", "player card removed". The time is saved per day in `players.json`
 (kept 60 days).
+
+**Trophies**: consoles discovered (3, 10, 20), different games (10, 25,
+50), days of play in a row (3, 7, 14) and hours of play (5, 20, 50), worked
+out from the last 60 days and kept once earned (`trophies.json`). A new
+trophy is announced on the screen.
+
+**Refused games** (under the statistics): who tried to play, what, when and
+why (no player card, no time left, outside their time slot, game not allowed,
+bedtime), from the cards and the Recalbox menu. The last 200 are kept
+(`refusals.json`); **Clear** empties the list.
 
 Options:
 
@@ -320,6 +340,19 @@ Options of the reader screen (Settings › TV display):
 * **Turn off when nobody plays** (minutes, 0 = never, the default): with no
   card on the reader and no game for that long, the screen announces the
   shutdown; a controller button or a card cancels it within 30 seconds.
+* **Dim the reader screen**: like Recalbox (the default: the delay of its
+  screen saver, START › Interface settings, and black when Recalbox is set to
+  black), off, or after 5 to 60 minutes with no card, no game and no
+  controller button. A card, a message or a button wakes it up (that button
+  does nothing else).
+* **Facts and trophies** (on by default): now and then, in place of "Place a
+  card to play": START + SELECT to turn off, the active player's favourite
+  game and last trophy, or the game of the week without a player.
+* **Message on the reader screen** (Badges tab, with the reader screen): a
+  short note of yours ("Bed at 8 pm!") shown in the same place, more often
+  than the facts, until you remove it.
+* **Restart the reader screen** (Updates tab): when the TV shows something
+  wrong, without restarting the service or the Recalbox.
 
 The messages that appear at the bottom of a game (player card needed, no
 time left, bonus...) appear at the top of the reader screen too, when no
@@ -354,6 +387,9 @@ Tab **Cards**: the size is the one of a bank card (CR80, 85.6 × 54 mm), at
    console** from the Recalbox theme, and the main colour of the logo. **My
    image** uses your own picture instead (any size: it is fitted to the card).
    The Cards tab starts from the game selected on the Recalbox.
+   **Add several cards**: one card for each game paired with a badge (every
+   console or one), or for the favourites or every game of a console, with the
+   current template (60 at most at once).
    **Online pictures**: the Recalbox also looks the game up in the RetroArch
    picture database (libretro thumbnails, no account). When found, the
    **Source** list of the Picture element offers **Box art**, **Screenshot** and

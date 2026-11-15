@@ -39,6 +39,24 @@ by `rfidctl version`.
 * A newly chosen game shows on the card at once.
 * Printing with bleed: the corners are filled; no light edge around the card.
 
+## [Unreleased]
+
+### Added
+
+* **Bedtime**: no games between two hours, a warning 5 minutes before, then
+  the game is saved and quit; option to turn the Recalbox off.
+* **Continue card**: starts again the last game of the active player.
+* **Reader screen**: dims after a while (like Recalbox's screen saver, or a
+  chosen delay); facts and trophies now and then in place of the hint
+  (START + SELECT, favourite game, last trophy, game of the week); a message
+  written in the page; restart of the reader screen from the page.
+* **Trophies** for the players (consoles, games, days in a row, hours).
+* **Refused games** in the statistics: who, what, when and why.
+* **Updates from GitHub**: the page offers the latest published version in
+  one click (option).
+* **Add several cards** to the print sheet: paired games, favourites or
+  every game of a console.
+
 ## [1.1.0]
 
 ### Added

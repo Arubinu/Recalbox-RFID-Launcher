@@ -68,6 +68,12 @@ resolution = recalbox
 show_game = 1
 # Reader screen: when a player is active, their own games instead of the consoles
 player_games = 0
+# Reader screen: darkened after this many minutes with no card, no game and no
+# controller button (0 = never, "recalbox" = Recalbox's screen saver delay)
+dim_min = recalbox
+# Reader screen: now and then, the favourite game and trophies of the active
+# player, the game of the week, the controller shortcut (instead of the hint)
+show_info = 1
 # Reader screen: power menu opened with START + SELECT (no game running):
 #   both = turn off or restart, poweroff = turn off only, off = no menu
 power_menu = both
@@ -107,6 +113,12 @@ sound_player = auto
 # Play time allowed by a game card that has no limit of its own
 # (minutes, 0 = no limit). Warnings 5 and 1 minute before the end.
 default_limit_min = 0
+# Bedtime (HH:MM, empty = none): no games between these hours, the running
+# game is saved and quit (warning 5 minutes before). The unlock card ignores it.
+curfew_from =
+curfew_to =
+# Turn the Recalbox off at bedtime (after a one-minute countdown)
+curfew_poweroff = 0
 
 [screen]
 # Messages on the game screen (time left, bonus, access request...).
