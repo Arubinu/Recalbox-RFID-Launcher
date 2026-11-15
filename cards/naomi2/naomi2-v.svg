@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 856" width="54mm" height="85.6mm">
+  <title>NAOMI 2 — carte verticale, languette en bas</title>
+  <defs>
+    <clipPath id="card"><rect width="540" height="856" rx="31.8"/></clipPath>
+    <clipPath id="win"><path d="M40 76 H500 Q516 76 516 92 V492 Q516 508 500 508 H40 Q24 508 24 492 V92 Q24 76 40 76 Z"/></clipPath>
+    <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="540" height="856"><rect width="540" height="856" fill="#fff"/><path d="M40 76 H500 Q516 76 516 92 V492 Q516 508 500 508 H40 Q24 508 24 492 V92 Q24 76 40 76 Z" fill="#000"/><circle cx="336" cy="548" r="149.6" fill="#fff"/></mask>
+    <mask id="noCarve" maskUnits="userSpaceOnUse" x="0" y="0" width="540" height="856"><rect width="540" height="856" fill="#fff"/><circle cx="336" cy="548" r="149.6" fill="#000"/></mask>
+    <linearGradient id="bodyG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9aa3b5"/><stop offset=".6" stop-color="#7c8597"/><stop offset="1" stop-color="#5a6273"/></linearGradient>
+    <linearGradient id="spineG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1d24"/><stop offset=".08" stop-color="#4f5462"/><stop offset=".5" stop-color="#3b4150"/><stop offset="1" stop-color="#262a34"/></linearGradient>
+    <linearGradient id="spineShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.35"/></linearGradient>
+    <linearGradient id="fadeG" gradientUnits="userSpaceOnUse" x1="0" y1="430" x2="0" y2="530"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="fadeM" maskUnits="userSpaceOnUse" x="0" y="0" width="540" height="856"><rect width="540" height="856" fill="url(#fadeG)"/></mask>
+    <pattern id="tex" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#666d7c" opacity=".07"/><rect x="4" y="4" width="4" height="4" fill="#666d7c" opacity=".07"/><rect x="4" width="4" height="4" fill="#000" opacity=".12"/><rect y="4" width="4" height="4" fill="#000" opacity=".12"/></pattern>
+    
+    <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#b9bcc4"/><stop offset="0.52" stop-color="#5d6068"/><stop offset="1" stop-color="#d9dbe0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a9da6" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#9a9da6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+    <pattern id="scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#000" opacity=".5"/></pattern>
+    <pattern id="dither" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="1" height="1" fill="#000" opacity=".25"/><rect x="1" y="1" width="1" height="1" fill="#000" opacity=".25"/></pattern>
+    <filter id="noise" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+    <filter id="woodF" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".008 .16" numOctaves="3" seed="7"/><feColorMatrix values=".55 0 0 0 .22  .34 0 0 0 .12  .16 0 0 0 .04  0 0 0 0 1"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#000" flood-opacity=".7"/></filter>
+    <filter id="glowW" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g clip-path="url(#card)">
+    <g id="art" mask="url(#hole)">
+      <rect width="540" height="856" fill="url(#bodyG)"/>
+      <rect x="0" y="0" width="540" height="856" fill="url(#tex)" opacity="0.6" />
+      <rect width="540" height="856" filter="url(#noise)"/>
+
+      <!-- encadré de la jaquette -->
+      <g mask="url(#noCarve)">
+        <path d="M40 76 H500 Q516 76 516 92 V492 Q516 508 500 508 H40 Q24 508 24 492 V92 Q24 76 40 76 Z" fill="none" stroke="#000" stroke-width="14" stroke-opacity="0.3" transform="translate(0 2)"/>
+        <path d="M40 76 H500 Q516 76 516 92 V492 Q516 508 500 508 H40 Q24 508 24 492 V92 Q24 76 40 76 Z" fill="none" stroke="url(#frameG)" stroke-width="3.2"/>
+      </g>
+      <g clip-path="url(#win)">
+        <circle cx="336" cy="548" r="149.6" fill="none" stroke="#000" stroke-width="14" stroke-opacity="0.3"/>
+        <circle cx="336" cy="548" r="149.6" fill="none" stroke="url(#frameG)" stroke-width="3.2"/>
+      </g>
+
+      <!-- détails -->
+      <g id="aux1"><defs><linearGradient id="v57" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#191b1e"/><stop offset=".55" stop-color="#2b2f35"/><stop offset=".56" stop-color="#949baa"/><stop offset="1" stop-color="#7c8597"/></linearGradient></defs><rect x="26" y="542" width="166" height="6.5" rx="3.25" fill="url(#v57)"/><rect x="26" y="552.5" width="166" height="6.5" rx="3.25" fill="url(#v57)"/><rect x="26" y="563" width="166" height="6.5" rx="3.25" fill="url(#v57)"/><rect x="26" y="573.5" width="166" height="6.5" rx="3.25" fill="url(#v57)"/><rect x="26" y="584" width="166" height="6.5" rx="3.25" fill="url(#v57)"/></g>
+      <g id="aux2"><circle cx="40" cy="645" r="12" fill="#3f6" opacity=".22"/><circle cx="40" cy="645" r="5" fill="#3f6"/><circle cx="38.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="66" cy="645" r="12" fill="#3f6" opacity=".22"/><circle cx="66" cy="645" r="5" fill="#3f6"/><circle cx="64.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="92" cy="645" r="12" fill="#ff3b2a" opacity=".22"/><circle cx="92" cy="645" r="5" fill="#ff3b2a"/><circle cx="90.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/></g>
+
+      <!-- motif principal -->
+      <g id="hero" transform="translate(336 548) scale(0.8)"><defs><radialGradient id="hPlate" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#494d5b"/><stop offset=".5" stop-color="#2b3040"/><stop offset="1" stop-color="#1c1f2a"/></radialGradient><radialGradient id="hBall" cx="0.35" cy="0.3" r="0.7"><stop offset="0" stop-color="#9fb9ed"/><stop offset=".5" stop-color="#2a63d6"/><stop offset="1" stop-color="#15326b"/></radialGradient><radialGradient id="hBt0" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#ed7277"/><stop offset=".5" stop-color="#e3262e"/><stop offset="1" stop-color="#94191e"/></radialGradient><radialGradient id="hBt1" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#ed7277"/><stop offset=".5" stop-color="#e3262e"/><stop offset="1" stop-color="#94191e"/></radialGradient><radialGradient id="hBt2" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#ed7277"/><stop offset=".5" stop-color="#e3262e"/><stop offset="1" stop-color="#94191e"/></radialGradient><radialGradient id="hBt3" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#f9da6b"/><stop offset=".5" stop-color="#f5c61b"/><stop offset="1" stop-color="#9f8112"/></radialGradient><radialGradient id="hBt4" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#f9da6b"/><stop offset=".5" stop-color="#f5c61b"/><stop offset="1" stop-color="#9f8112"/></radialGradient><radialGradient id="hBt5" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#f9da6b"/><stop offset=".5" stop-color="#f5c61b"/><stop offset="1" stop-color="#9f8112"/></radialGradient><linearGradient id="hShaft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ddd"/><stop offset="1" stop-color="#777"/></linearGradient></defs>
+      <circle r="162" fill="url(#hPlate)" filter="url(#drop)"/>
+      <circle r="160" fill="none" stroke="#606470" stroke-opacity=".5" stroke-width="2"/>
+      
+      <ellipse cx="-92" cy="34" rx="40" ry="16" fill="#000" opacity=".5"/>
+      <circle cx="-92" cy="30" r="30" fill="#181a23"/>
+      <rect x="-96" y="-24" width="8" height="54" fill="url(#hShaft)"/>
+      <circle cx="-92" cy="-34" r="32" fill="url(#hBall)" filter="url(#soft)"/>
+      <circle cx="-10" cy="-34" r="22" fill="#161820"/><circle cx="-10" cy="-38" r="18" fill="url(#hBt0)"/><ellipse cx="-14.5" cy="-45.2" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/><circle cx="36" cy="-46" r="22" fill="#161820"/><circle cx="36" cy="-50" r="18" fill="url(#hBt1)"/><ellipse cx="31.5" cy="-57.2" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/><circle cx="82" cy="-36" r="22" fill="#161820"/><circle cx="82" cy="-40" r="18" fill="url(#hBt2)"/><ellipse cx="77.5" cy="-47.2" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/><circle cx="-2" cy="18" r="22" fill="#161820"/><circle cx="-2" cy="14" r="18" fill="url(#hBt3)"/><ellipse cx="-6.5" cy="6.8" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/><circle cx="44" cy="6" r="22" fill="#161820"/><circle cx="44" cy="2" r="18" fill="url(#hBt4)"/><ellipse cx="39.5" cy="-5.2" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/><circle cx="90" cy="16" r="22" fill="#161820"/><circle cx="90" cy="12" r="18" fill="url(#hBt5)"/><ellipse cx="85.5" cy="4.8" rx="8.1" ry="3.96" fill="#fff" opacity=".35"/>
+      <defs><path id="hArc" d="M-112.68 104.97 A154 154 0 0 0 112.68 104.97"/></defs><text font-family="'Segoe UI',Arial,sans-serif" font-weight="700" font-size="10.5" letter-spacing="2.6" fill="#cfd8ea"><textPath href="#hArc" startOffset="50%" text-anchor="middle">ARCADE  ·  DUAL GPU</textPath></text></g>
+
+      <rect width="540" height="856" fill="url(#sheen)"/>
+
+      <!-- languette (partie qui dépasse du lecteur) -->
+      <g id="spine">
+        <rect x="0" y="670" width="540" height="30" fill="url(#spineShade)"/>
+        <rect x="0" y="700" width="540" height="156" fill="url(#spineG)"/>
+        
+        <rect x="0" y="700" width="540" height="1.2" fill="#80848d" opacity=".6"/>
+      </g>
+    </g>
+    <rect x="24" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="476" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+  </g>
+</svg>

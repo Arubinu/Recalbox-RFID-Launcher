@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cartes — galerie</title>
+<style>
+  body { margin: 0; padding: 30px; background: #1d1611; font-family: "Segoe UI", system-ui, sans-serif; color: #c9b8a8;
+         display: flex; flex-wrap: wrap; gap: 26px; }
+  figure { margin: 0; }
+  figcaption { font-size: 13px; margin-top: 6px; color: #a8988a }
+  .card { position: relative; border-radius: 31.8px; overflow: hidden; box-shadow: 0 14px 30px rgba(0,0,0,.55); }
+  .card > * { position: absolute; }
+  .cover { object-fit: cover; }
+  .frame { inset: 0; width: 100%; height: 100%; }
+  .z { display: flex; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; }
+  .logo { font: 400 32px/1 "Bahnschrift", sans-serif; letter-spacing: 7px; }
+  .title { font: 700 38px/1.12 "Bahnschrift", "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+  .title > div { flex: none; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 6px; box-sizing: border-box; }
+  .players { font: 700 26px/1 "Bahnschrift"; gap: 6px; border: 1.5px solid currentColor; border-radius: 28px; opacity: .9 }
+  .players svg { width: 26px; height: 26px; fill: currentColor }
+  .slogo { font: 700 italic 20px/1 "Arial Black"; }
+</style>
+</head>
+<body>
+<script src="zones.js"></script>
+<script>
+// ?v=h-right|h-left|v  &s=échelle  &from=0&n=999  &c=id1,id2
+const q = new URLSearchParams(location.search);
+const variant = q.get('v') || 'h-right', scale = +(q.get('s') || .5);
+const from = +(q.get('from') || 0), n = +(q.get('n') || 999);
+const only = q.get('c') ? q.get('c').split(',') : null;
+
+const cover = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 600">
+<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a2a8c"/><stop offset=".6" stop-color="#3fa2e6"/><stop offset="1" stop-color="#bfe9ff"/></linearGradient></defs>
+<rect width="450" height="600" fill="url(#s)"/><circle cx="330" cy="150" r="60" fill="#fff3b0"/>
+<path d="M0 400 L110 300 L190 360 L300 250 L450 380 V600 H0Z" fill="#26407a"/><path d="M0 470 Q120 420 240 460 T450 450 V600 H0Z" fill="#14234a"/>
+<path d="M60 600 L215 420 L235 420 L390 600Z" fill="#3a3f55"/><path d="M222 430 V600" stroke="#ffd400" stroke-width="6" stroke-dasharray="22 18"/></svg>`);
+const person = '<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4.5"/><path d="M3 22c0-5 4-8.5 9-8.5s9 3.5 9 8.5z"/></svg>';
+
+const ids = Object.keys(ZONES).filter(id => !only || only.includes(id)).slice(from, from + n);
+for (const id of ids) {
+  const P = ZONES[id], z = P.variants[variant], [W, H] = z.viewBox, st = z.style;
+  const pos = r => `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
+  const inner = z.title.rotate ? `<div style="width:${z.title.h}px;height:${z.title.w}px;transform:rotate(${z.title.rotate}deg)">` : '<div style="width:100%;height:100%">';
+  const fig = document.createElement('figure');
+  
+  fig.innerHTML = `<div style="width:${W * scale}px;height:${H * scale}px"><div class="card" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:0 0">
+      <img class="cover" style="${pos(z.cover)}" src="${cover}">
+      <img class="frame" src="${id}/${id}-${variant}.svg">
+      <div class="z logo" style="${pos(z.logo)};color:${st.logoColor}">${P.name}</div>
+      <div class="z title" style="${pos(z.title)};color:${st.titleColor}">${inner}Turbo Run</div></div>
+      <div class="z players" style="${pos(z.players)};color:${st.titleColor}">${person}1-2</div>
+      <div class="z slogo" style="${pos(z.spineLogo)};color:${st.titleColor}">${P.short}</div>
+    </div></div><figcaption>${id}</figcaption>`;
+  document.body.append(fig);
+}
+</script>
+</body>
+</html>

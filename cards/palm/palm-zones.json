@@ -1,0 +1,136 @@
+{
+  "unit": "0.1mm",
+  "radius": 31.8,
+  "name": "PALM OS",
+  "short": "PALM",
+  "variants": {
+    "h-right": {
+      "viewBox": [
+        856,
+        540
+      ],
+      "cover": {
+        "x": 24,
+        "y": 24,
+        "w": 448,
+        "h": 426,
+        "note": "cover sits underneath; the card hides the notch carved by the motif"
+      },
+      "logo": {
+        "x": 70,
+        "y": 466,
+        "w": 356,
+        "h": 54
+      },
+      "title": {
+        "x": 722,
+        "y": 116,
+        "w": 112,
+        "h": 318,
+        "rotate": -90
+      },
+      "players": {
+        "x": 728,
+        "y": 36,
+        "w": 100,
+        "h": 56
+      },
+      "spineLogo": {
+        "x": 728,
+        "y": 452,
+        "w": 100,
+        "h": 52
+      },
+      "style": {
+        "titleColor": "#f4f4f6",
+        "logoColor": "#f4f4f6",
+        "spineColor": "#3a3c44"
+      }
+    },
+    "h-left": {
+      "viewBox": [
+        856,
+        540
+      ],
+      "cover": {
+        "x": 384,
+        "y": 24,
+        "w": 448,
+        "h": 426,
+        "note": "cover sits underneath; the card hides the notch carved by the motif"
+      },
+      "logo": {
+        "x": 430,
+        "y": 466,
+        "w": 356,
+        "h": 54
+      },
+      "title": {
+        "x": 22,
+        "y": 116,
+        "w": 112,
+        "h": 318,
+        "rotate": 90
+      },
+      "players": {
+        "x": 28,
+        "y": 36,
+        "w": 100,
+        "h": 56
+      },
+      "spineLogo": {
+        "x": 28,
+        "y": 452,
+        "w": 100,
+        "h": 52
+      },
+      "style": {
+        "titleColor": "#f4f4f6",
+        "logoColor": "#f4f4f6",
+        "spineColor": "#3a3c44"
+      }
+    },
+    "v": {
+      "viewBox": [
+        540,
+        856
+      ],
+      "cover": {
+        "x": 24,
+        "y": 76,
+        "w": 492,
+        "h": 432,
+        "note": "cover sits underneath; the card hides the notch carved by the motif"
+      },
+      "logo": {
+        "x": 70,
+        "y": 12,
+        "w": 400,
+        "h": 52
+      },
+      "title": {
+        "x": 134,
+        "y": 718,
+        "w": 272,
+        "h": 120
+      },
+      "players": {
+        "x": 26,
+        "y": 750,
+        "w": 96,
+        "h": 56
+      },
+      "spineLogo": {
+        "x": 418,
+        "y": 750,
+        "w": 96,
+        "h": 56
+      },
+      "style": {
+        "titleColor": "#f4f4f6",
+        "logoColor": "#f4f4f6",
+        "spineColor": "#3a3c44"
+      }
+    }
+  }
+}
