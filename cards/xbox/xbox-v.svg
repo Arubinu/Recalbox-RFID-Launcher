@@ -42,8 +42,16 @@
       </g>
 
       <!-- détails -->
-      <g id="aux1"><defs><linearGradient id="v176" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040404"/><stop offset=".55" stop-color="#060607"/><stop offset=".56" stop-color="#3d3d3e"/><stop offset="1" stop-color="#121214"/></linearGradient></defs><rect x="26" y="542" width="166" height="6.5" rx="3.25" fill="url(#v176)"/><rect x="26" y="552.5" width="166" height="6.5" rx="3.25" fill="url(#v176)"/><rect x="26" y="563" width="166" height="6.5" rx="3.25" fill="url(#v176)"/><rect x="26" y="573.5" width="166" height="6.5" rx="3.25" fill="url(#v176)"/><rect x="26" y="584" width="166" height="6.5" rx="3.25" fill="url(#v176)"/></g>
-      <g id="aux2"><defs><radialGradient id="r177" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#757579"/><stop offset="1" stop-color="#2e2e33"/></radialGradient></defs><circle cx="52" cy="645" r="24" fill="#0e0e0f"/><circle cx="52" cy="645" r="20" fill="url(#r177)" filter="url(#soft)"/><circle cx="114" cy="645" r="24" fill="#0e0e0f"/><circle cx="114" cy="645" r="20" fill="url(#r177)" filter="url(#soft)"/><circle cx="164" cy="645" r="5" fill="#2fbf2f"/><circle cx="164" cy="645" r="12" fill="#2fbf2f" opacity=".25"/></g>
+      <g id="aux1"><rect x="30" y="552" width="26" height="8" rx="2" fill="#151517" stroke="#5f5f62"/>
+        <rect x="26" y="570" width="34" height="16" rx="8" fill="#2a2a2e" stroke="#5f5f62"/>
+        <rect x="34" y="575.5" width="18" height="5" rx="2.5" fill="#111112"/><rect x="74" y="552" width="26" height="8" rx="2" fill="#151517" stroke="#5f5f62"/>
+        <rect x="70" y="570" width="34" height="16" rx="8" fill="#2a2a2e" stroke="#5f5f62"/>
+        <rect x="78" y="575.5" width="18" height="5" rx="2.5" fill="#111112"/><rect x="118" y="552" width="26" height="8" rx="2" fill="#151517" stroke="#5f5f62"/>
+        <rect x="114" y="570" width="34" height="16" rx="8" fill="#2a2a2e" stroke="#5f5f62"/>
+        <rect x="122" y="575.5" width="18" height="5" rx="2.5" fill="#111112"/><rect x="162" y="552" width="26" height="8" rx="2" fill="#151517" stroke="#5f5f62"/>
+        <rect x="158" y="570" width="34" height="16" rx="8" fill="#2a2a2e" stroke="#5f5f62"/>
+        <rect x="166" y="575.5" width="18" height="5" rx="2.5" fill="#111112"/></g>
+      <g id="aux2"><defs><radialGradient id="r96" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#757579"/><stop offset="1" stop-color="#2e2e33"/></radialGradient></defs><circle cx="52" cy="645" r="24" fill="#0e0e0f"/><circle cx="52" cy="645" r="20" fill="url(#r96)" filter="url(#soft)"/><circle cx="114" cy="645" r="24" fill="#0e0e0f"/><circle cx="114" cy="645" r="20" fill="url(#r96)" filter="url(#soft)"/><circle cx="164" cy="645" r="5" fill="#2fbf2f"/><circle cx="164" cy="645" r="12" fill="#2fbf2f" opacity=".25"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(336 548) scale(0.8)"><defs><radialGradient id="hBase" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#303032"/><stop offset=".5" stop-color="#141416"/><stop offset="1" stop-color="#0d0d0e"/></radialGradient><radialGradient id="hLid" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#66666a"/><stop offset=".5" stop-color="#24242a"/><stop offset="1" stop-color="#1c1c21"/></radialGradient><radialGradient id="hHub" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#626266"/><stop offset=".5" stop-color="#1f1f24"/><stop offset="1" stop-color="#131316"/></radialGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
@@ -71,7 +79,7 @@
         <rect x="0" y="700" width="540" height="1.2" fill="#646465" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="38" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="476" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="476" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
   </g>
 </svg>

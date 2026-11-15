@@ -2159,7 +2159,15 @@ const A = {
   // deux boutons d'action inclinés (A / B) + start/select
   ab(o, b, T) {
     const C = o.colors || ['#a8205a', '#a8205a'], r = Math.min(19, b.h / 2 - 6), cy = b.y + b.h / 2, g = id('ab');
-    const x1 = b.x + b.w - r * 3.6, x2 = b.x + b.w - r - 4;
+    // une rangée de boutons (manette Vectrex : 4 boutons alignés), centrée
+    if (o.row) {
+      const n = o.row, rr = Math.min(r, (b.w - 8) / n / 2 - 4), sp = (b.w - 8) / n;
+      return `<defs>${C.map((c, i) => `<radialGradient id="${g}${i}" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="${lt(c, .4)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${dk(c, .45)}"/></radialGradient>`).join('')}</defs>` +
+        Array.from({ length: n }, (_, i) => `<circle cx="${f(b.x + 4 + sp * (i + .5))}" cy="${f(cy)}" r="${f(rr + 3)}" fill="${dk(T.body[1], .25)}"/><circle cx="${f(b.x + 4 + sp * (i + .5))}" cy="${f(cy)}" r="${f(rr)}" fill="url(#${g}${i % C.length})" filter="url(#soft)"/>`).join('');
+    }
+    // sans les boutons start/select à gauche, la paire est centrée dans sa zone
+    const shift = o.pills === false ? -(b.w - r * 4.6 - 4) / 2 : 0;
+    const x1 = b.x + b.w - r * 3.6 + shift, x2 = b.x + b.w - r - 4 + shift;
     return `<defs>${C.map((c, i) => `<radialGradient id="${g}${i}" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="${lt(c, .4)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${dk(c, .45)}"/></radialGradient>`).join('')}</defs>` +
       (o.pills !== false ? `<rect x="${b.x + 4}" y="${cy - 4}" width="30" height="9" rx="4.5" fill="${o.pill || dk(T.body[1], .35)}" transform="rotate(-25 ${b.x + 19} ${cy})"/><rect x="${b.x + 42}" y="${cy - 4}" width="30" height="9" rx="4.5" fill="${o.pill || dk(T.body[1], .35)}" transform="rotate(-25 ${b.x + 57} ${cy})"/>` : '') +
       `<circle cx="${x1}" cy="${cy + 7}" r="${r}" fill="url(#${g}0)" filter="url(#soft)"/><circle cx="${x2}" cy="${cy - 7}" r="${r}" fill="url(#${g}1)" filter="url(#soft)"/>`;
@@ -2231,8 +2239,155 @@ const A = {
   },
   // fentes cartouches (ordinateurs)
   slot2(o, b, T) {
-    const c = o.color || '#050506';
-    return [0, 1].map(i => `<rect x="${b.x + 4}" y="${b.y + b.h / 2 - 14 + i * 18}" width="${b.w - 8}" height="10" rx="5" fill="${c}" stroke="${lt(T.body[1], .2)}" stroke-width="1"/>`).join('');
+    const c = o.color || '#050506', n = o.n || 2;
+    return Array.from({ length: n }, (_, i) => `<rect x="${b.x + 4}" y="${f(b.y + b.h / 2 - (n * 18 - 8) / 2 + i * 18)}" width="${b.w - 8}" height="10" rx="5" fill="${c}" stroke="${lt(T.body[1], .2)}" stroke-width="1"/>`).join('');
+  },
+  // lecteur de cassettes intégré (ordinateurs 8 bits) : fenêtre et deux bobines
+  cassette(o, b, T) {
+    const w = Math.min(b.w, 124), h = Math.min(b.h - 6, 46), x = b.x + (b.w - w) / 2, y = b.y + (b.h - h) / 2;
+    const c = o.color || dk(T.body[1], .55), wx = x + w * .14, ww = w * .72, wy = y + h * .3, wh = h * .5, r = wh * .36;
+    const reel = (cx) => `<circle cx="${f(cx)}" cy="${f(wy + wh / 2)}" r="${f(r)}" fill="#e9e6df"/><circle cx="${f(cx)}" cy="${f(wy + wh / 2)}" r="${f(r * .42)}" fill="#1a1a1c"/>` +
+      [0, 120, 240].map(a => `<rect x="${f(cx - .9)}" y="${f(wy + wh / 2 - r * .95)}" width="1.8" height="${f(r * .5)}" fill="#1a1a1c" transform="rotate(${a} ${f(cx)} ${f(wy + wh / 2)})"/>`).join('');
+    return `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="6" fill="${c}" stroke="${lt(c, .18)}" stroke-width="1.2"/>
+      <rect x="${f(x + 8)}" y="${f(y + 4)}" width="${f(w - 16)}" height="${f(h * .14)}" rx="2" fill="${o.label || lt(c, .25)}"/>
+      <rect x="${f(wx)}" y="${f(wy)}" width="${f(ww)}" height="${f(wh)}" rx="4" fill="#0b0b0c" stroke="${dk(c, .5)}"/>
+      <rect x="${f(wx + ww * .2)}" y="${f(wy + wh / 2 - r * .7)}" width="${f(ww * .6)}" height="${f(r * 1.4)}" fill="#4a2c1a"/>
+      ${reel(wx + ww * .24)}${reel(wx + ww * .76)}
+      <rect x="${f(wx)}" y="${f(wy)}" width="${f(ww)}" height="${f(wh / 2)}" rx="4" fill="#fff" opacity=".08"/>`;
+  },
+  // prises joystick DB9 (Atari, Amiga, Commodore, MSX…)
+  joyports(o, b, T) {
+    const n = o.n || 2, c = o.color || dk(T.body[1], .62), pw = Math.min(42, (b.w - (n - 1) * 10) / n), ph = Math.min(24, b.h - 16);
+    const x0 = b.x + (b.w - (n * pw + (n - 1) * 10)) / 2, y = b.y + (b.h - ph) / 2, s = pw * .14;
+    return Array.from({ length: n }, (_, i) => {
+      const x = x0 + i * (pw + 10);
+      const pins = [...Array.from({ length: 5 }, (_, k) => [x + pw * .18 + k * pw * .16, y + ph * .36]), ...Array.from({ length: 4 }, (_, k) => [x + pw * .26 + k * pw * .16, y + ph * .68])];
+      return `<path d="M${f(x)} ${f(y)} h${f(pw)} l${f(-s)} ${f(ph)} h${f(-(pw - 2 * s))} z" fill="${dk(c, .35)}" stroke="${lt(c, .3)}" stroke-width="1.6" stroke-linejoin="round"/>` +
+        pins.map(([px, py]) => `<circle cx="${f(px)}" cy="${f(py)}" r="${f(Math.max(1.2, pw * .04))}" fill="#c9a24a"/>`).join('');
+    }).join('');
+  },
+  // rangée de touches de fonction (couleur propre, inclinées façon Atari ST avec skew)
+  fkeys(o, b, T) {
+    const n = o.n || 5, C = o.colors || [o.color || dk(T.body[1], .3)], gap = 5;
+    const kw = (b.w - 8 - (n - 1) * gap) / n, kh = Math.min(26, b.h - 18), y = b.y + (b.h - kh) / 2;
+    return Array.from({ length: n }, (_, i) => {
+      const x = b.x + 4 + i * (kw + gap), c = C[i % C.length], cx = x + kw / 2;
+      return `<g transform="${o.skew ? `translate(${f(cx)} ${f(y + kh / 2)}) skewX(${o.skew}) translate(${f(-cx)} ${f(-(y + kh / 2))})` : ''}">
+        <rect x="${f(x)}" y="${f(y + 2)}" width="${f(kw)}" height="${f(kh)}" rx="3" fill="${dk(c, .45)}"/>
+        <rect x="${f(x)}" y="${f(y)}" width="${f(kw)}" height="${f(kh - 2)}" rx="3" fill="${c}"/>
+        <rect x="${f(x + 2.5)}" y="${f(y + 2)}" width="${f(kw - 5)}" height="${f(kh * .45)}" rx="2" fill="${lt(c, .22)}"/></g>`;
+    }).join('');
+  },
+  // tiroir de lecteur CD en façade + bouton d'éjection
+  cdtray(o, b, T) {
+    const c = o.color || dk(T.body[1], .2), h = Math.min(32, b.h - 12), y = b.y + (b.h - h) / 2, w = b.w - 4;
+    const ex = b.x + w - 26, glow = o.glow;
+    return `<rect x="${b.x}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="5" fill="${c}" stroke="${dk(c, .45)}" stroke-width="1.2"/>
+      <rect x="${b.x + 2}" y="${f(y + 2)}" width="${f(w - 4)}" height="${f(h * .3)}" rx="3" fill="#fff" opacity=".07"/>
+      <rect x="${b.x + 10}" y="${f(y + h / 2 - 2.5)}" width="${f(w - 48)}" height="5" rx="2.5" fill="${glow || '#050506'}"/>
+      ${glow ? `<rect x="${b.x + 6}" y="${f(y + h / 2 - 7)}" width="${f(w - 40)}" height="14" rx="7" fill="${glow}" opacity=".25"/>` : ''}
+      <rect x="${f(ex)}" y="${f(y + h / 2 - 8)}" width="20" height="16" rx="3" fill="${dk(c, .3)}" stroke="${lt(c, .2)}"/>
+      <path d="M${f(ex + 10)} ${f(y + h / 2 - 5)} l5 5.5 h-10 z M${f(ex + 5)} ${f(y + h / 2 + 2.5)} h10 v2 h-10 z" fill="${lt(c, .55)}"/>`;
+  },
+  // monnayeur de borne d'arcade : plaques chromées, fente et bouton lumineux
+  coin(o, b, T) {
+    const n = b.w >= 96 ? 2 : 1, pw = 40, ph = Math.min(b.h - 4, 54), g = id('co'), lit = o.color || '#ff3b2a';
+    const x0 = b.x + (b.w - (n * pw + (n - 1) * 10)) / 2, y = b.y + (b.h - ph) / 2;
+    return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f5f8"/><stop offset=".5" stop-color="#9da1aa"/><stop offset="1" stop-color="#d9dbe1"/></linearGradient></defs>` +
+      Array.from({ length: n }, (_, i) => {
+        const x = x0 + i * (pw + 10);
+        return `<rect x="${f(x)}" y="${f(y)}" width="${pw}" height="${f(ph)}" rx="5" fill="url(#${g})" stroke="#55585f" filter="url(#soft)"/>
+          <rect x="${f(x + pw / 2 - 2.5)}" y="${f(y + ph * .14)}" width="5" height="${f(ph * .38)}" rx="2" fill="#0c0c0d"/>
+          <circle cx="${f(x + pw / 2)}" cy="${f(y + ph * .76)}" r="7.5" fill="${lit}" opacity=".3"/>
+          <circle cx="${f(x + pw / 2)}" cy="${f(y + ph * .76)}" r="4.6" fill="${lit}" stroke="${dk(lit, .5)}"/>`;
+      }).join('');
+  },
+  // prises manette + fentes carte mémoire (consoles de salon à CD)
+  pads(o, b, T) {
+    const n = o.n || 2, c = o.color || dk(T.body[1], .55), pw = Math.min(46, (b.w - (n - 1) * 10) / n), x0 = b.x + (b.w - (n * pw + (n - 1) * 10)) / 2;
+    const my = b.y + b.h / 2 - 17, py = b.y + b.h / 2 + 1;
+    return Array.from({ length: n }, (_, i) => {
+      const x = x0 + i * (pw + 10);
+      return `<rect x="${f(x + 4)}" y="${f(my)}" width="${f(pw - 8)}" height="8" rx="2" fill="${dk(c, .5)}" stroke="${lt(c, .25)}"/>
+        <rect x="${f(x)}" y="${f(py)}" width="${f(pw)}" height="16" rx="8" fill="${c}" stroke="${lt(c, .25)}"/>
+        <rect x="${f(x + 8)}" y="${f(py + 5.5)}" width="${f(pw - 16)}" height="5" rx="2.5" fill="${dk(c, .6)}"/>`;
+    }).join('');
+  },
+  // parabole satellite (Satellaview)
+  dish(o, b, T) {
+    const s = Math.min(b.h - 6, 50), cx = b.x + b.w / 2, cy = b.y + b.h / 2, c = o.color || '#e9e9ec', g = id('di');
+    return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lt(c, .3)}"/><stop offset="1" stop-color="${dk(c, .35)}"/></linearGradient></defs>
+      <path d="M${f(cx - s * .1)} ${f(cy + s * .2)} L${f(cx - s * .3)} ${f(cy + s * .5)} M${f(cx - s * .1)} ${f(cy + s * .2)} L${f(cx + s * .12)} ${f(cy + s * .5)}" stroke="${dk(c, .45)}" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="${f(cx - s * .1)}" cy="${f(cy - s * .05)}" rx="${f(s * .42)}" ry="${f(s * .3)}" transform="rotate(-30 ${f(cx - s * .1)} ${f(cy - s * .05)})" fill="url(#${g})" stroke="${dk(c, .4)}" stroke-width="1.2"/>
+      <path d="M${f(cx - s * .1)} ${f(cy - s * .05)} L${f(cx + s * .38)} ${f(cy - s * .3)}" stroke="${dk(c, .45)}" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="${f(cx + s * .4)}" cy="${f(cy - s * .31)}" r="${f(s * .07)}" fill="${o.accent || '#3e5cc2'}"/>`;
+  },
+  // bouton d'éjection (lecteurs de disquettes, 64DD…)
+  eject(o, b, T) {
+    const c = o.color || dk(T.body[1], .35), w = Math.min(b.w - 4, 64), h = Math.min(b.h - 14, 30), x = b.x + (b.w - w) / 2, y = b.y + (b.h - h) / 2;
+    return `<rect x="${f(x)}" y="${f(y + 2)}" width="${f(w)}" height="${f(h)}" rx="6" fill="${dk(c, .45)}"/>
+      <rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h - 2)}" rx="6" fill="${c}" stroke="${lt(c, .2)}"/>
+      <path d="M${f(x + w / 2)} ${f(y + h * .2)} l${f(h * .32)} ${f(h * .32)} h${f(-h * .64)} z M${f(x + w / 2 - h * .32)} ${f(y + h * .6)} h${f(h * .64)} v${f(h * .1)} h${f(-h * .64)} z" fill="${o.ink || lt(c, .6)}"/>`;
+  },
+  // stylet (Palm)
+  stylus(o, b, T) {
+    const c = o.color || '#9aa0aa', y = b.y + b.h / 2, x0 = b.x + 6, x1 = b.x + b.w - 6, g = id('st');
+    return `<defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lt(c, .45)}"/><stop offset=".5" stop-color="${c}"/><stop offset="1" stop-color="${dk(c, .4)}"/></linearGradient></defs>
+      <g transform="rotate(-12 ${f((x0 + x1) / 2)} ${f(y)})" filter="url(#soft)">
+        <path d="M${f(x0)} ${f(y)} L${f(x0 + 18)} ${f(y - 4.5)} H${f(x1 - 4)} Q${f(x1)} ${f(y - 4.5)} ${f(x1)} ${f(y)} Q${f(x1)} ${f(y + 4.5)} ${f(x1 - 4)} ${f(y + 4.5)} H${f(x0 + 18)} Z" fill="url(#${g})"/>
+        <rect x="${f(x1 - 30)}" y="${f(y - 4.5)}" width="10" height="9" fill="${dk(c, .35)}"/></g>`;
+  },
+  // afficheur « turbo » des PC (7 segments) + bouton turbo
+  turbo(o, b, T) {
+    const c = o.color || dk(T.body[1], .55), led = o.led || '#ff3b2a', w = Math.min(b.w, 120), h = Math.min(b.h - 8, 40), x = b.x + (b.w - w) / 2, y = b.y + (b.h - h) / 2;
+    return `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="5" fill="${c}" stroke="${lt(c, .15)}"/>
+      <rect x="${f(x + 6)}" y="${f(y + 6)}" width="${f(w * .5)}" height="${f(h - 12)}" rx="3" fill="#120404"/>
+      <text x="${f(x + 6 + w * .25)}" y="${f(y + h / 2 + (h - 12) * .3)}" text-anchor="middle" font-family="Consolas,'Courier New',monospace" font-weight="700" font-size="${f((h - 12) * .85)}" fill="${led}" filter="url(#glowW)">${o.text || '66'}</text>
+      <rect x="${f(x + w * .62)}" y="${f(y + h / 2 - 8)}" width="${f(w * .3)}" height="16" rx="4" fill="${lt(c, .2)}" stroke="#000" filter="url(#soft)"/>`;
+  },
+  // boutons carrés en façade (POWER / RESET de la NES, PAUSE de la Master System…) + voyant
+  squareButtons(o, b, T) {
+    const n = o.n || 2, C = o.colors || [o.color || dk(T.body[1], .5)], s = Math.min(b.h - 18, 30, (b.w - (o.led ? 30 : 0) - (n - 1) * 12) / n);
+    const y = b.y + (b.h - s) / 2, x0 = b.x + 4;
+    return Array.from({ length: n }, (_, i) => {
+      const x = x0 + i * (s + 12), c = C[i % C.length];
+      return `<rect x="${f(x - 3)}" y="${f(y - 3)}" width="${f(s + 6)}" height="${f(s + 6)}" rx="5" fill="${dk(T.body[1], .3)}"/>
+        <rect x="${f(x)}" y="${f(y)}" width="${f(s)}" height="${f(s)}" rx="3.5" fill="${c}" stroke="${dk(c, .45)}" filter="url(#soft)"/>
+        <rect x="${f(x + 3)}" y="${f(y + 3)}" width="${f(s - 6)}" height="${f(s * .35)}" rx="2" fill="${lt(c, .25)}" opacity=".7"/>`;
+    }).join('') + (o.led ? `<circle cx="${f(x0 + n * (s + 12) + 8)}" cy="${f(b.y + b.h / 2)}" r="11" fill="${o.led}" opacity=".25"/><circle cx="${f(x0 + n * (s + 12) + 8)}" cy="${f(b.y + b.h / 2)}" r="4.6" fill="${o.led}"/>` : '');
+  },
+  // interrupteurs à glissière (POWER / RESET de la Super Nintendo, de la N64…)
+  sliders(o, b, T) {
+    const n = o.n || 2, C = o.knobs || [o.knob || lt(T.body[1], .15)], tw = Math.min(70, (b.w - (n - 1) * 12) / n), th = 12;
+    const y = b.y + b.h / 2, x0 = b.x + (b.w - (n * tw + (n - 1) * 12)) / 2, track = o.track || dk(T.body[1], .6);
+    return Array.from({ length: n }, (_, i) => {
+      const x = x0 + i * (tw + 12), c = C[i % C.length], kx = x + (i % 2 ? tw * .55 : 4);
+      return `<rect x="${f(x)}" y="${f(y - th / 2)}" width="${f(tw)}" height="${th}" rx="${th / 2}" fill="${track}" stroke="${lt(T.body[1], .2)}"/>
+        <rect x="${f(kx)}" y="${f(y - 12)}" width="${f(tw * .4)}" height="24" rx="5" fill="${c}" stroke="${dk(c, .45)}" filter="url(#soft)"/>
+        <path d="M${f(kx + tw * .12)} ${f(y - 6)} v12 M${f(kx + tw * .2)} ${f(y - 6)} v12 M${f(kx + tw * .28)} ${f(y - 6)} v12" stroke="${dk(c, .3)}" stroke-width="1.2"/>`;
+    }).join('');
+  },
+  // prise ronde DIN (manette PC Engine, 3DO…)
+  din(o, b, T) {
+    const n = o.n || 1, r = Math.min(b.h / 2 - 6, 19), c = o.color || dk(T.body[1], .55), x0 = b.x + (b.w - (n * 2 * r + (n - 1) * 14)) / 2 + r, cy = b.y + b.h / 2;
+    return Array.from({ length: n }, (_, i) => {
+      const cx = x0 + i * (2 * r + 14);
+      // broches en arc de cercle, ouvert vers le bas
+      const pins = Array.from({ length: 7 }, (_, k) => [cx + Math.cos(Math.PI * (.85 + k * .22)) * r * .52, cy + Math.sin(Math.PI * (.85 + k * .22)) * r * .52]);
+      return `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r + 3)}" fill="${lt(c, .25)}"/><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="${dk(c, .5)}"/>
+        <rect x="${f(cx - 2.5)}" y="${f(cy - r)}" width="5" height="${f(r * .3)}" fill="${lt(c, .25)}"/>` +
+        pins.map(([px, py]) => `<circle cx="${f(px)}" cy="${f(py)}" r="${f(Math.max(1.3, r * .09))}" fill="#c9a24a"/>`).join('') +
+        `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(Math.max(1.3, r * .09))}" fill="#c9a24a"/>`;
+    }).join('');
+  },
+  // souris et pointeur (jeux « pointer et cliquer »)
+  mouse(o, b, T) {
+    const c = o.color || '#e6e2d6', h = Math.min(b.h - 8, 46), w = h * .66, cx = b.x + b.w * .35, cy = b.y + b.h / 2;
+    const ax = b.x + b.w * .72, ay = cy - h * .35, a = h * .55;
+    return `<path d="M${f(cx)} ${f(cy - h / 2)} C${f(cx - 10)} ${f(cy - h / 2 - 10)} ${f(cx - 26)} ${f(cy - h / 2 + 2)} ${f(cx - 34)} ${f(cy - h / 2 - 6)}" fill="none" stroke="${dk(c, .45)}" stroke-width="2"/>
+      <rect x="${f(cx - w / 2)}" y="${f(cy - h / 2)}" width="${f(w)}" height="${f(h)}" rx="${f(w / 2)}" fill="${c}" stroke="${dk(c, .4)}" filter="url(#soft)"/>
+      <path d="M${f(cx - w / 2)} ${f(cy - h * .12)} H${f(cx + w / 2)} M${f(cx)} ${f(cy - h / 2)} V${f(cy - h * .12)}" stroke="${dk(c, .4)}" stroke-width="1.2"/>
+      <path d="M${f(ax)} ${f(ay)} v${f(a)} l${f(a * .25)} ${f(-a * .24)} l${f(a * .17)} ${f(a * .36)} l${f(a * .12)} ${f(-a * .06)} l${f(-a * .17)} ${f(-a * .35)} h${f(a * .34)} z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/>`;
   },
   // lecteur de disquette 3.5"
   floppy(o, b, T) {
@@ -2379,10 +2534,15 @@ function card(T, side, opts = {}) {
   const [g1, g2, g3, g4] = G.fade;
   const titleInk = pick(sp.ink || T.ink, sp.bg);
   const logoInk = pick(T.logoInk || T.ink, body[1]);
-  const filet = T.frame && !FRAME[T.frame] ? T.frame : null;
+  // filets autour du logo : couleur du cadre, sinon chrome clair ; sur un plastique
+  // clair (ou trop proche de leur couleur), un filet foncé reste visible.
+  const lightBody = luma(body[1]) > .55;
+  let filet = T.frame && !FRAME[T.frame] ? T.frame : (lightBody ? dk(body[1], .62) : '#e8e9ee');
+  if (Math.abs(luma(filet) - luma(body[1])) < .3) filet = lightBody ? dk(body[1], .62) : '#e8e9ee';
+  const filetH = lightBody ? 2.2 : 1.6;
 
   const defs = `
-    <clipPath id="card"><rect width="${W}" height="${H}" rx="${R}"/></clipPath>
+    <clipPath id="card"><rect width="${W}" height="${H}" rx="${opts.square ? 0 : R}"/></clipPath>
     <clipPath id="win"><path d="${win}"/></clipPath>
     <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><path d="${win}" fill="#000"/>${strokeOf(carve, 'fill="#fff"')}</mask>
     <mask id="noCarve" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/>${strokeOf(carve, 'fill="#000"')}</mask>
@@ -2394,7 +2554,7 @@ function card(T, side, opts = {}) {
     ${pattern('tex', tex.type, texColor)}
     ${spTex ? pattern('spTex', spTex.type, lt(sp.bg, luma(sp.bg) > .5 ? -0 : .18)) : ''}
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1">${frameC.map((c, i) => `<stop offset="${[0, .45, .52, 1][i]}" stop-color="${c}"/>`).join('')}</linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${filet || '#9a9da6'}" stop-opacity="0"/><stop offset=".5" stop-color="${filet || '#e8e9ee'}"/><stop offset="1" stop-color="${filet || '#9a9da6'}" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${filet}" stop-opacity="0"/><stop offset=".5" stop-color="${filet}"/><stop offset="1" stop-color="${filet}" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -2440,8 +2600,8 @@ function card(T, side, opts = {}) {
 
   const lg = G.zones.logo, ly = lg.y + lg.h / 2, cv = G.cover;
   const overlay = `
-    <rect x="${cv.x}" y="${ly}" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="${cv.x + cv.w - 40}" y="${ly}" width="40" height="1.6" fill="url(#filetG)"/>`;
+    <rect x="${cv.x}" y="${f(ly - filetH / 2)}" width="40" height="${filetH}" fill="url(#filetG)"/>
+    <rect x="${cv.x + cv.w - 40}" y="${f(ly - filetH / 2)}" width="40" height="${filetH}" fill="url(#filetG)"/>`;
 
   const label = { right: 'horizontale, languette à droite', left: 'horizontale, languette à gauche', bottom: 'verticale, languette en bas' }[side];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W / 10}mm" height="${H / 10}mm">
@@ -2497,25 +2657,25 @@ module.exports = {
   sega32x: {
     name: 'SEGA 32X', short: '32X', body: BLACK, texture: { type: 'grid', color: '#3a3a3f', fade: true },
     hero: { type: 'dome', accent: '#e3262e', mark: { text: '32X', style: 'red', y: -50, size: 50 }, arc: { text: '32-BIT  SUPER  POWER', color: '#f5c61b' } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b'] }, aux2: { type: 'power', led: '#ff3b2a' },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b'] }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#101012', texture: 'grid' },
   },
   megacd: {
     name: 'MEGA-CD', short: 'CD', body: BLACK, texture: { type: 'grid', color: '#3a3a3f', fade: true },
     hero: { type: 'disc', base: '#141416', lid: '#232327', hub: '#111', arc: { text: 'COMPACT DISC  ·  16-BIT', color: '#d8262e' }, mark: { text: 'CD', style: 'chrome', y: -62, size: 30 } },
-    aux1: { type: 'vents' }, aux2: { type: 'power', volume: false },
+    aux1: { type: 'ribs' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#101012', texture: 'grid' },
   },
   mastersystem: {
     name: 'MASTER SYSTEM', short: 'SMS', body: BLACK, texture: { type: 'grid', color: '#e8e8e8', opacity: .16, fade: true },
     hero: { type: 'slot', case: '#141416', cart: '#0f0f11', label: '#e3262e', band: '#d8262e', bandH: 6, ribs: true },
-    aux1: { type: 'hstripes', colors: ['#d8262e', '#d8262e'], h: 4 }, aux2: [{ type: 'power', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#d8262e', '#d8262e'], h: 4 }, aux2: [{ type: 'squareButtons', n: 2, colors: ['#1d1d20', '#d8262e'] }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#121214', texture: 'grid' }, frame: '#d8262e',
   },
   sg1000: {
     name: 'SG-1000', short: 'SG', body: WHITE, texture: { type: 'ribs', color: '#bdbdb8' },
     hero: { type: 'slot', case: '#e9e9e5', cart: '#2b2b2e', label: '#d8262e', band: '#d8262e', bandH: 10 },
-    aux1: { type: 'hstripes', colors: ['#d8262e', '#1e1e20'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', panel: '#2a2a2e', volume: false },
+    aux1: { type: 'hstripes', colors: ['#d8262e', '#1e1e20'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#d8262e', track: '#2a2a2e' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#1b1b1d' }, ink: '#2a2a2e',
   },
   gamegear: {
@@ -2528,7 +2688,7 @@ module.exports = {
     name: 'SATURN', short: 'SS', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#3b3b41', hub: '#2a2a2e', arc: { text: '32-BIT  ·  DUAL CPU', color: '#8fa0d8' },
       buttons: [{ x: 128, y: 100, r: 13, color: '#3f68d6' }, { x: 100, y: 128, r: 13, color: '#8f8f96' }] },
-    aux1: { type: 'vents' }, aux2: { type: 'roundButtons', color: '#55555c', led: '#3f6' },
+    aux1: { type: 'pads', n: 2, color: '#2a2a2e' }, aux2: { type: 'roundButtons', color: '#55555c', led: '#3f6' },
     spine: { bg: '#18181b', texture: 'carbon' },
   },
   dreamcast: {
@@ -2546,25 +2706,25 @@ module.exports = {
   naomi: {
     name: 'NAOMI', short: 'NAOMI', body: dark('#2c3a5c', '#1d2742', '#111729'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1a2238', ball: '#e3262e', colors: ['#2a63d6', '#2a63d6', '#2a63d6', '#e3262e', '#e3262e', '#e3262e'], six: true, arc: { text: 'ARCADE  ·  NEW ARCHITECTURE', color: '#8fb4ff' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'coin' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#141b30', texture: 'carbon' },
   },
   naomi2: {
     name: 'NAOMI 2', short: 'N2', body: dark('#9aa3b5', '#7c8597', '#5a6273'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#2b3040', ball: '#2a63d6', colors: ['#e3262e', '#e3262e', '#e3262e', '#f5c61b', '#f5c61b', '#f5c61b'], six: true, arc: { text: 'ARCADE  ·  DUAL GPU', color: '#cfd8ea' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'coin', color: '#2f8cff' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#3b4150' },
   },
   naomigd: {
     name: 'NAOMI GD-ROM', short: 'GD', body: dark('#2c3a5c', '#1d2742', '#111729'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#141b30', lid: '#c9ccd6', hub: '#9aa0ad', arc: { text: 'GD-ROM  ·  ARCADE', color: '#8fb4ff' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#141b30' },
   },
   atomiswave: {
     name: 'ATOMISWAVE', short: 'AW', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1c1c20', ball: '#f26a21', colors: ['#f26a21', '#f5c61b', '#22a84a', '#2a63d6'], stripe: '#f26a21', arc: { text: 'ARCADE  ·  CARTRIDGE SYSTEM', color: '#f26a21' } },
-    aux1: { type: 'hstripes', colors: ['#f26a21', '#f5c61b'] }, aux2: { type: 'leds', colors: ['#f26a21', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#f26a21', '#f5c61b'] }, aux2: [{ type: 'coin', color: '#f26a21' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
 
@@ -2572,43 +2732,43 @@ module.exports = {
   nes: {
     name: 'NES', short: 'NES', body: dark('#dcdcd8', '#c9c9c4', '#adada8'), texture: { type: 'ribs', color: '#a9a9a4' },
     hero: { type: 'buttons', layout: 'nes', plate: '#c9c9c4' },
-    aux1: { type: 'ribs', color: '#2a2a2c' }, aux2: [{ type: 'power', panel: '#2a2a2c', led: '#ff2a1a', knob: '#555', volume: false }],
+    aux1: { type: 'ribs', color: '#2a2a2c' }, aux2: { type: 'squareButtons', n: 2, color: '#2a2a2c', led: '#ff2a1a' },
     spine: { bg: '#2c2c2f', texture: 'ribs' }, ink: '#2c2c2f', frame: '#c4161c',
   },
   famicomdisksystem: {
     name: 'FAMICOM DISK', short: 'FDS', body: dark('#b42b33', '#9a1f27', '#741319'), texture: { type: 'ribs', color: '#6e1015' },
     hero: { type: 'disk', case: '#efe6d2', media: '#f2c21b', led: '#ff3b2a', eject: '#9a1f27' },
-    aux1: { type: 'hstripes', colors: ['#efe6d2', '#d6b347'] }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#efe6d2', '#d6b347'] }, aux2: [{ type: 'eject', color: '#8b1a1f', ink: '#efe6d2' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#efe6d2' },
   },
   snes: {
     name: 'SUPER NINTENDO', short: 'SNES', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'buttons', layout: 'diamond', plate: '#c9c8ce', colors: SNESC },
-    aux1: { type: 'hstripes', colors: ['#46474b', '#46474b'], h: 9 }, aux2: [{ type: 'power', panel: '#86878b', knob: '#5a5a62', led: '#c11b25', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#46474b', '#46474b'], h: 9 }, aux2: [{ type: 'sliders', n: 2, knob: '#86878b', track: '#46474b' }, { type: 'leds', colors: ['#c11b25'], flex: .4 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   satellaview: {
     name: 'SATELLAVIEW', short: 'BS-X', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'disc', base: '#b7b6bc', lid: '#e3e2e7', hub: '#9c9ba2', glow: '#6fa8ff', arc: { text: 'SATELLITE  DATA  BROADCAST', color: '#5b5ca8' } },
-    aux1: { type: 'hstripes', colors: SNESC }, aux2: { type: 'leds', colors: ['#6fa8ff', '#3f6'] },
+    aux1: { type: 'hstripes', colors: SNESC }, aux2: [{ type: 'dish' }, { type: 'leds', colors: ['#6fa8ff', '#3f6'], flex: .45 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   sufamiturbo: {
     name: 'SUFAMI TURBO', short: 'ST', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'slot', case: '#c9c8ce', cart: '#d9d8de', label: '#e6a21b', double: true },
-    aux1: { type: 'hstripes', colors: SNESC }, aux2: { type: 'leds', colors: ['#c11b25'] },
+    aux1: { type: 'hstripes', colors: SNESC }, aux2: [{ type: 'slot2' }, { type: 'leds', colors: ['#c11b25'], flex: .45 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   nintendo64: {
     name: 'NINTENDO 64', short: 'N64', body: dark('#3c3c40', '#2b2b2e', '#18181a'), texture: { type: 'noise' },
     hero: { type: 'buttons', layout: 'n64', plate: '#9a9aa0', colors: ['#2b56c8', '#1f9a4a', '#f2c518'], mark: { text: '64-BIT', style: 'chrome', y: -112, size: 22 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: [{ type: 'power', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: { type: 'pads', n: 4 },
     spine: { bg: '#1e1e21' },
   },
   nintendo64dd: {
     name: '64DD', short: '64DD', body: dark('#3c3c40', '#2b2b2e', '#18181a'), texture: { type: 'noise' },
     hero: { type: 'disk', case: '#2b2b2e', media: '#5a5a62', shutter: '#9a9aa0', led: '#3f6' },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: [{ type: 'eject' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#1e1e21' },
   },
   gamecube: {
@@ -2620,7 +2780,7 @@ module.exports = {
   wii: {
     name: 'Wii', short: 'Wii', body: WHITE, texture: { type: 'none' },
     hero: { type: 'disc', base: '#e8e8e6', lid: '#fbfbfa', hub: '#e0e0de', glow: '#38b6ff', rings: false, dot: '#38b6ff' },
-    aux1: { type: 'roundButtons', n: 2, color: '#ececea', led: '#38b6ff' }, aux2: { type: 'leds', colors: ['#38b6ff', '#38b6ff'] },
+    aux1: { type: 'roundButtons', n: 2, color: '#ececea', led: '#38b6ff' }, aux2: { type: 'cdtray', color: '#f1f1ee', glow: '#38b6ff' },
     spine: { bg: '#efefed' }, ink: '#404044', frame: '#38b6ff',
   },
   virtualboy: {
@@ -2676,7 +2836,7 @@ module.exports = {
   playstation2: {
     name: 'PLAYSTATION 2', short: 'PS2', body: BLACK, texture: { type: 'ribs', color: '#2a2a30' },
     hero: { type: 'disc', base: '#0e0e10', lid: '#1d1d22', hub: '#111', glow: '#2f5bff', dot: '#2f5bff' },
-    aux1: { type: 'ps' }, aux2: { type: 'leds', colors: ['#3f6', '#2f5bff'] },
+    aux1: { type: 'ps' }, aux2: [{ type: 'pads' }, { type: 'leds', colors: ['#3f6', '#2f5bff'], flex: .45 }],
     spine: { bg: '#0f0f12', texture: 'ribs' }, frame: '#2f5bff',
   },
   psp: {
@@ -2690,13 +2850,13 @@ module.exports = {
   pcengine: {
     name: 'PC ENGINE', short: 'PCE', body: WHITE, texture: { type: 'vribs', color: '#d0d0cc' },
     hero: { type: 'slot', case: '#ececea', cart: '#2b2b2e', label: '#e3262e', cartW: 150, mark: { text: 'HuCARD', style: '#e3262e', y: 82, size: 20 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'power', panel: '#bdbdb8', knob: '#ececea', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#ececea', track: '#2a2a2e' }, { type: 'din' }],
     spine: { bg: '#2b2b2e' }, ink: '#c41a1a', frame: '#e3262e',
   },
   supergrafx: {
     name: 'SUPERGRAFX', short: 'SGX', body: dark('#5a5a60', '#46464c', '#2e2e33'), texture: { type: 'vribs', color: '#3a3a40' },
     hero: { type: 'slot', case: '#3a3a40', cart: '#2b2b2e', label: '#e3262e', cartW: 150, mark: { text: 'SUPER', style: 'chrome', y: 82, size: 20 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#3a3a40', track: '#111' }, { type: 'din' }],
     spine: { bg: '#2b2b30' },
   },
   pcenginecd: {
@@ -2708,7 +2868,7 @@ module.exports = {
   pcfx: {
     name: 'PC-FX', short: 'FX', body: dark('#2e2e33', '#1f1f23', '#121214'), texture: { type: 'vribs', color: '#2a2a30' },
     hero: { type: 'disc', base: '#161619', lid: '#3a3a40', hub: '#2a2a2e', arc: { text: '32-BIT  ·  FULL MOTION', color: '#f26a21' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#f26a21'] },
+    aux1: { type: 'pads', n: 2 }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#141416' },
   },
 
@@ -2716,13 +2876,13 @@ module.exports = {
   neogeo: {
     name: 'NEO GEO', short: 'NEO', body: dark('#2d2d2d', '#212121', '#141414'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1a1a1a', ball: '#e3262e', colors: NEO, stripe: '#c19528', mark: { text: 'MAX 330 MEGA', style: 'gold', y: 112, size: 18, italic: false } },
-    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: { type: 'power', led: '#f7b210', volume: false },
+    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'joyports' }],
     spine: { bg: '#161616', texture: 'carbon' }, ink: '#f7d36a', frame: 'gold',
   },
   neogeocd: {
     name: 'NEO GEO CD', short: 'NGCD', body: dark('#2d2d2d', '#212121', '#141414'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#151515', lid: '#2c2c2c', hub: '#1c1c1c', arc: { text: 'CD-ROM  ·  ARCADE AT HOME', color: '#c19528' }, buttons: [{ x: 120, y: -112, r: 12, color: '#e3262e' }, { x: 140, y: -82, r: 12, color: '#2a63d6' }] },
-    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: { type: 'leds', colors: ['#f7b210', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#f7b210'], flex: .45 }],
     spine: { bg: '#161616', texture: 'carbon' }, ink: '#f7d36a', frame: 'gold',
   },
   ngp: {
@@ -2748,7 +2908,7 @@ module.exports = {
   atari5200: {
     name: 'ATARI 5200', short: '5200', body: BLACK, texture: { type: 'ribs', color: '#2a2a2e' },
     hero: { type: 'keypad', case: '#141416', key: '#2c2c30', overlay: '#c9ccd4', keyInk: '#f2c94c', side: ['#e3262e', '#e3262e'] },
-    aux1: { type: 'hstripes', colors: ['#c9ccd4', '#8f9298'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#c9ccd4', '#8f9298'], h: 5 }, aux2: { type: 'joyports', n: 4 },
     spine: { bg: '#121214', texture: 'ribs' }, frame: 'chrome',
   },
   atari7800: {
@@ -2772,7 +2932,7 @@ module.exports = {
   atarist: {
     name: 'ATARI ST', short: 'ST', body: dark('#d9d9d6', '#c6c6c2', '#a9a9a4'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9d9d6', key: '#bdbdb8', fkeys: { n: 10, color: '#a9a9a4' }, deck: '#9a9a96' },
-    aux1: { type: 'grille' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'fkeys', n: 5, skew: -22 }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#4a4a4e' }, ink: '#2a2a2e',
   },
   lynx: {
@@ -2786,31 +2946,31 @@ module.exports = {
   '3do': {
     name: '3DO', short: '3DO', body: BLACK, texture: { type: 'none' },
     hero: { type: 'disc', base: '#111113', lid: '#26262a', hub: '#1a1a1c', mark: { text: '3D', style: 'gold', y: -62, size: 28 }, arc: { text: 'INTERACTIVE MULTIPLAYER', color: '#c19528' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'din' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#101012' }, frame: 'gold',
   },
   cdi: {
     name: 'CD-i', short: 'CD-i', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'none' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#33333a', hub: '#26262a', arc: { text: 'COMPACT DISC INTERACTIVE', color: '#8fa0d8' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'pads', n: 2 }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
   amigacd32: {
     name: 'AMIGA CD32', short: 'CD32', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#3a3a40', hub: '#2a2a2e', arc: { text: '32-BIT  CD  GAME SYSTEM', color: '#e3262e' } },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
   amigacdtv: {
     name: 'AMIGA CDTV', short: 'CDTV', body: BLACK, texture: { type: 'ribs', color: '#26262a' },
     hero: { type: 'disk', case: '#141416', media: '#2a2a2e', shutter: '#9aa0aa', led: '#3f6' },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#121214' },
   },
   xbox: {
     name: 'XBOX', short: 'XBOX', body: BLACK, texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#141416', lid: '#24242a', hub: false, rings: false, jewel: '#2fbf2f', glow: '#2fbf2f' },
-    aux1: { type: 'vents' }, aux2: { type: 'roundButtons', n: 2, color: '#3a3a40', led: '#2fbf2f' },
+    aux1: { type: 'pads', n: 4, color: '#2a2a2e' }, aux2: { type: 'roundButtons', n: 2, color: '#3a3a40', led: '#2fbf2f' },
     spine: { bg: '#101012', texture: 'carbon' }, ink: '#7dff7d', frame: '#2fbf2f',
   },
   channelf: {
@@ -2822,7 +2982,7 @@ module.exports = {
   colecovision: {
     name: 'COLECOVISION', short: 'COLECO', body: BLACK, texture: { type: 'ribs', color: '#26262a' },
     hero: { type: 'keypad', case: '#141416', key: '#2c2c30', overlay: '#3a3a40', side: ['#e3262e', '#e3262e'] },
-    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 3 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 3 }, aux2: [{ type: 'sliders', n: 1, knob: '#9aa0aa', track: '#111' }, { type: 'joyports' }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   intellivision: {
@@ -2834,25 +2994,25 @@ module.exports = {
   videopac: {
     name: 'VIDEOPAC', short: 'G7000', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#141416', key: '#2a4fb0', flat: true, rows: 4, cols: 12, space: false, deck: '#c9ccd4' },
-    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   videopacplus: {
     name: 'VIDEOPAC+', short: 'G7400', body: dark('#3a3a40', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#d9d9de', flat: true, rows: 4, cols: 12, space: false, deck: '#1a1a1d' },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#2a63d6'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#2a63d6'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#18181a' }, frame: 'chrome',
   },
   vectrex: {
     name: 'VECTREX', short: 'VECTREX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'crt', case: '#141416', content: 'vector', w: 260, h: 300 },
-    aux1: { type: 'grille', color: '#2a2a2e' }, aux2: { type: 'ab', colors: ['#e3262e', '#e3262e'], pills: false },
+    aux1: { type: 'grille', color: '#2a2a2e' }, aux2: { type: 'ab', row: 4, colors: ['#e3262e'], pills: false },
     spine: { bg: '#0d0d0f' }, frame: 'chrome',
   },
   scv: {
     name: 'SUPER CASSETTE VISION', short: 'SCV', body: dark('#e85a4f', '#d43c33', '#a82820'), texture: { type: 'none' },
     hero: { type: 'slot', case: '#f2f0ea', cart: '#2b2b2e', label: '#2a63d6', ribs: true },
-    aux1: { type: 'hstripes', colors: ['#f2f0ea', '#2b2b2e'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', panel: '#2b2b2e', volume: false },
+    aux1: { type: 'hstripes', colors: ['#f2f0ea', '#2b2b2e'], h: 5 }, aux2: { type: 'squareButtons', n: 2, colors: ['#2b2b2e', '#d8262e'], led: '#ff3b2a' },
     spine: { bg: '#2b2b2e' },
   },
   multivision: {
@@ -2912,13 +3072,13 @@ module.exports = {
   palm: {
     name: 'PALM OS', short: 'PALM', body: dark('#8a8f99', '#6f747e', '#50545c'), texture: { type: 'none' },
     hero: { type: 'screen', w: 240, h: 290, bezel: '#2a2c33', content: 'mono', rx: 20, pal: ['#b8c8a0', '#98a888', '#4a5a44', '#1c2a1a'], pad: 28, top: 28, bottom: 60 },
-    aux1: { type: 'roundButtons', n: 4, color: '#3a3c44' }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'roundButtons', n: 4, color: '#3a3c44' }, aux2: { type: 'stylus' },
     spine: { bg: '#3a3c44' },
   },
   gx4000: {
     name: 'GX4000', short: 'GX', body: dark('#3a3a40', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'slot', case: '#2a2a2e', cart: '#1b1b1d', label: '#e3262e', band: '#e3262e', bandH: 8 },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#18181a' }, frame: '#e3262e',
   },
 
@@ -2927,68 +3087,68 @@ module.exports = {
   amiga600: {
     name: 'AMIGA 600', short: 'A600', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e6dfcb', key: '#e9e3d2', fkeys: { n: 10, color: '#cfc7b0' }, deck: '#9a9280', special: [{ color: '#bdb5a0', at: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]] }] },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   amiga1200: {
     name: 'AMIGA 1200', short: 'A1200', body: dark('#e0d8c2', '#cec5ac', '#b1a78c'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#ddd5bf', key: '#e9e3d2', fkeys: { n: 10, color: '#bdb5a0' }, deck: '#8f8774', alt: '#bdb5a0' },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6', '#f7b210'], flex: .45 }],
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   amstradcpc: {
     name: 'AMSTRAD CPC', short: 'CPC', body: dark('#42413c', '#36352f', '#24231f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#36352f', key: '#2a2924', deck: '#1a1916', special: [{ color: '#4f8e3a', at: [[0, 12], [1, 12], [2, 12]] }, { color: '#bf0811', at: [[3, 12], [4, 12]] }, { color: '#2a63d6', at: [[0, 11], [1, 11], [2, 11]] }], fkeys: { n: 12, color: '#7aa678' } },
-    aux1: { type: 'hstripes', colors: ['#bf0811', '#4f8e3a', '#2a63d6'], h: 5 }, aux2: { type: 'leds', colors: ['#bf0811'] },
+    aux1: { type: 'hstripes', colors: ['#bf0811', '#4f8e3a', '#2a63d6'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#bf0811'], flex: .45 }],
     spine: { bg: '#24231f' },
   },
   apple2: {
     name: 'APPLE II', short: 'II', body: dark('#e2d6b8', '#cfc19f', '#ad9f7c'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9cba9', key: '#4a3a2a', deck: '#7a6a4f', rows: 4, cols: 12 },
-    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'floppy', color: '#c9bf9f' },
     spine: { bg: '#4a3a2a' }, ink: '#4a3a2a',
   },
   apple2gs: {
     name: 'APPLE IIGS', short: 'IIGS', body: dark('#d4d4d0', '#bdbdb8', '#9f9f9a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#cfcfca', key: '#e6e6e2', deck: '#8f8f8a', fkeys: { n: 8, color: '#bdbdb8' } },
-    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'floppy' },
     spine: { bg: '#4a4a4e' }, ink: '#3a3a3e',
   },
   bbcmicro: {
     name: 'BBC MICRO', short: 'BBC', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#1d1d20', fkeys: { n: 10, color: '#c4161c' }, deck: '#2a2a2e', special: [{ color: '#a5a07f', at: [[0, 0], [4, 0], [4, 1]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#1d1d20'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#ff3b2a', '#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#1d1d20'], h: 4 }, aux2: { type: 'fkeys', n: 6, color: '#d8452a' },
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e',
   },
   commodore64: {
     name: 'COMMODORE 64', short: 'C64', body: dark('#8a7e6a', '#776b57', '#5a4f3f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#7a6e5a', key: '#3a3330', deck: '#292522', special: [{ color: '#c9b99a', at: [[0, 12], [1, 12], [2, 12], [3, 12]] }] },
-    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#3a3330' }, ink: '#f2e6c9',
   },
   vic20: {
     name: 'VIC-20', short: 'VIC', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#5a4636', deck: '#3a2e24', special: [{ color: '#e9dfc6', at: [[0, 12], [1, 12], [2, 12], [3, 12]] }] },
-    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'fkeys', n: 4, color: '#c9a46a' },
     spine: { bg: '#5a4636' }, ink: '#5a4636',
   },
   dos: {
     name: 'MS-DOS', short: 'DOS', body: BEIGE, texture: { type: 'vribs', color: '#c9bea3' },
     hero: { type: 'crt', case: '#e2d8c0', content: 'prompt', lines: ['C:\\>CD GAMES', 'C:\\GAMES>DIR', 'C:\\GAMES>_'], ink: '#c9c9c9', screen: '#0a0a0a', slot: true },
     aux1: { type: 'floppy' },
-    aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux2: { type: 'turbo', text: '66' },
     spine: { bg: '#3a3a3e' }, ink: '#3a3528',
   },
   dragon: {
     name: 'DRAGON 32', short: 'DRAGON', body: dark('#e2d8c0', '#cfc4a8', '#ada284'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9cfb6', key: '#1d1d20', deck: '#2a2a2e', special: [{ color: '#c4161c', at: [[4, 0], [4, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' }, ink: '#3a3528',
   },
   elektronikabk: {
     name: 'ELEKTRONIKA BK', short: 'BK', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#c9c9c4', deck: '#18181a', special: [{ color: '#c4161c', at: [[0, 0], [0, 12]] }], fkeys: { n: 6, color: '#8f8f8a' } },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#18181a' },
   },
   macintosh: {
@@ -3000,55 +3160,55 @@ module.exports = {
   msx1: {
     name: 'MSX', short: 'MSX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1d1d20', key: '#2c2c30', deck: '#0e0e10', fkeys: { n: 5, color: '#3a5fd6' }, alt: '#55555c' },
-    aux1: { type: 'slot2' }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6'] },
+    aux1: { type: 'slot2' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' },
   },
   msx2: {
     name: 'MSX2', short: 'MSX2', body: dark('#c9c9c4', '#b5b5b0', '#95958f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#bdbdb8', key: '#2c2c30', deck: '#4a4a4e', fkeys: { n: 5, color: '#c4161c' }, alt: '#6a6a70' },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a2a2e'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a2a2e'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a', '#3f6'], flex: .45 }],
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e',
   },
   msxturbor: {
     name: 'MSX turbo R', short: 'turbo R', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#d9d9d6', deck: '#18181a', fkeys: { n: 5, color: '#c4161c' }, alt: '#9a9a96', mark: { text: 'turbo R', style: 'red', y: -122, size: 18 } },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6', '#f7b210'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'floppy' },
     spine: { bg: '#18181a' },
   },
   oricatmos: {
     name: 'ORIC ATMOS', short: 'ORIC', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#2a2a2e', deck: '#c4161c', special: [{ color: '#c4161c', at: [[0, 0], [4, 0], [4, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' }, frame: '#c4161c',
   },
   pc88: {
     name: 'PC-8801', short: 'PC-88', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#d9cfb6', deck: '#8f8774', fkeys: { n: 10, color: '#3a3a3e' }, alt: '#bdb5a0' },
-    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'floppy', color: '#d9d0bb' },
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   pc98: {
     name: 'PC-9801', short: 'PC-98', body: dark('#e6e1d4', '#d6d0c0', '#b8b19e'), texture: { type: 'none' },
     hero: { type: 'crt', case: '#e2dccb', content: 'prompt', lines: ['A>DIR', ' GAME  EXE', 'A>GAME', '_'], ink: '#7ef', screen: '#000814', slot: true },
-    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'floppy', color: '#d9d0bb' },
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   samcoupe: {
     name: 'SAM COUPE', short: 'SAM', body: dark('#5a5a60', '#46464c', '#2e2e33'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#46464c', key: '#2a2a2e', deck: '#1a1a1d', round: true, fkeys: { n: 10, color: '#9a9aa0' } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b', '#2a63d6'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b', '#2a63d6'], h: 4 }, aux2: { type: 'floppy' },
     spine: { bg: '#2a2a2e' },
   },
   sharpx1: {
     name: 'SHARP X1', short: 'X1', body: dark('#c94040', '#a82828', '#7a1818'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e9e9e5', key: '#2c2c30', deck: '#4a4a4e', fkeys: { n: 10, color: '#a82828' } },
-    aux1: { type: 'vents', color: '#5a1010' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'vents', color: '#5a1010' }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#2c2c30' },
   },
   sharpx68000: {
     name: 'X68000', short: 'X68K', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'vribs', color: '#222226' },
     hero: { type: 'crt', case: '#2a2a2e', content: 'prompt', lines: ['Human68k', 'A>GAME.X', '_'], ink: '#9fe', screen: '#00101a', slot: true },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a', '#f7b210'] },
+    aux1: { type: 'ribs' }, aux2: { type: 'floppy' },
     spine: { bg: '#18181a', texture: 'vribs' },
   },
   spectravideo: {
@@ -3060,37 +3220,37 @@ module.exports = {
   thomson: {
     name: 'THOMSON', short: 'MO5', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#3a3a40', deck: '#0e0e10', flat: true, special: [{ color: '#c4161c', at: [[0, 0], [0, 12], [4, 0]] }] },
-    aux1: { type: 'hstripes', colors: ['#2a63d6', '#ffffff', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#2a63d6', '#ffffff', '#c4161c'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' },
   },
   ti994a: {
     name: 'TI-99/4A', short: 'TI-99', body: dark('#c9ccd4', '#aeb2bc', '#8a8f9a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#3a3a40', deck: '#1a1a1d', fkeys: { n: 6, color: '#aeb2bc' } },
-    aux1: { type: 'hstripes', colors: ['#2a2a2e', '#2a2a2e'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#2a2a2e', '#2a2a2e'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e', frame: 'chrome',
   },
   trs80coco: {
     name: 'TRS-80 COCO', short: 'COCO', body: dark('#c9c9c4', '#b5b5b0', '#95958f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#bdbdb8', key: '#2c2c30', deck: '#4a4a4e', special: [{ color: '#c4161c', at: [[4, 0]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a63d6'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a63d6'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#2c2c30' }, ink: '#2c2c30',
   },
   vg5000: {
     name: 'VG 5000', short: 'VG5K', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#2c2c30', deck: '#0e0e10', special: [{ color: '#c4161c', at: [[0, 12], [1, 12], [4, 0]] }, { color: '#9aa0aa', at: [[2, 12], [3, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#9aa0aa'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#9aa0aa'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   zx81: {
     name: 'ZX81', short: 'ZX81', body: BLACK, texture: { type: 'ribs', color: '#222226' },
     hero: { type: 'keyboard', case: '#141416', key: '#1d1d20', deck: '#0b0b0c', flat: true, rows: 4, cols: 10, space: false },
-    aux1: { type: 'hstripes', colors: ['#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c'], h: 4 }, aux2: { type: 'cassette' },
     spine: { bg: '#121214', texture: 'ribs' }, ink: '#ff5a4a', frame: '#c4161c',
   },
   zxspectrum: {
     name: 'ZX SPECTRUM', short: 'ZX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#5b585b', deck: '#0e0e10', round: true, rows: 4, cols: 10, space: false, stripe: SPECTRUM },
-    aux1: { type: 'stripes', colors: SPECTRUM, w: 12 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: SPECTRUM, w: 12 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
 
@@ -3098,13 +3258,13 @@ module.exports = {
   scummvm: {
     name: 'SCUMMVM', short: 'SCUMM', body: dark('#3a2a5c', '#2a1f48', '#1a1230'), texture: { type: 'dots', color: '#7ef', opacity: .1 },
     hero: { type: 'crt', case: '#e2d8c0', content: 'scumm', slot: true },
-    aux1: { type: 'hstripes', colors: ['#f7d26a', '#7ef', '#3a8'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#f7d26a', '#7ef', '#3a8'], h: 4 }, aux2: { type: 'mouse' },
     spine: { bg: '#1a1230' }, ink: '#f7d26a',
   },
   zmachine: {
     name: 'Z-MACHINE', short: 'Z', body: dark('#2a2a2e', '#1b1b1e', '#0e0e10'), texture: { type: 'none' },
     hero: { type: 'crt', case: '#3a3a40', content: 'prompt', lines: ['WEST OF HOUSE', 'You are standing', 'in an open field.', '>open mailbox_'], ink: '#ffb000', screen: '#120a00', fontSize: 15 },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#ffb000'] },
+    aux1: { type: 'grille', color: '#3a2a10' }, aux2: { type: 'text', text: '&gt; GO NORTH_', size: 15, font: 'Consolas, monospace', color: '#ffb000', ls: 1 },
     spine: { bg: '#0e0e10' }, ink: '#ffb000', frame: '#ffb000',
   },
 };
@@ -3147,7 +3307,8 @@ return {
     const key = system + '|' + variant + '|' + uniform;
     if (!cache.has(key)) {
       const theme = themeOf(system) || GENERIC;
-      cache.set(key, card(theme, SIDES[variant] || 'right', uniform ? { spine: THEMES.megadrive.spine } : {}));
+      /* square: the editor rounds the card itself (two roundings leave a light edge). */
+      cache.set(key, card(theme, SIDES[variant] || 'right', Object.assign({ square: true }, uniform ? { spine: THEMES.megadrive.spine } : {})));
     }
     return cache.get(key);
   },
@@ -6062,6 +6223,25 @@ function consoleCardArt(d) {
   consoleArtImages.set(key, load);
   return null;
 }
+/* Names written on a "Console" card. A console without a design of its own
+   takes the name the Recalbox gives it, and initials made from that name:
+   "240p Test Suite" -> "240TS", "Sharp X1" -> "SX1"... */
+function consoleInitials(name) {
+  const skip = new Set(["THE", "OF", "DE", "DU", "LA", "LE", "LES", "AND", "ET"]);
+  const words = String(name || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ").split(" ").filter((word) => word && !skip.has(word));
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].length <= 5 ? words[0] : words[0].slice(0, 3);
+  /* Numbers are kept whole ("240", "X1"), unless the initials get too long. */
+  const full = words.map((word, index) => (/^\d/.test(word) || (index && /^[A-Z]\d+$/.test(word)) ? word.match(/^[A-Z]?\d+/)[0] : word[0])).join("");
+  return full.length <= 6 ? full : words.map((word) => word[0]).join("").slice(0, 5);
+}
+function consoleCardNames(system) {
+  const info = CardArt.info(system);
+  if (!system || CardArt.has(system)) return info;
+  const name = info.name || String(systemName(system) || system).toUpperCase();
+  return { name, short: info.short || consoleInitials(name) };
+}
 /* Waits for the drawing of a card (before an export, which is drawn at once). */
 async function consoleCardReady(d) {
   if (d.template !== "console") return;
@@ -6091,7 +6271,7 @@ const CARD_TEMPLATES = [
       return {
         window: Object.assign(cover, { r: 1.6 }),
         title: { x: title.x + title.w / 2, y: title.y + title.h / 2, size: 4, maxw: (turn ? title.h : title.w) - 1.2, color: "auto", font: "card", upper: true, spacing: 0.1, shadow: true, outline: false, visible: true, rotation: turn },
-        logo: { x: logo.x + logo.w / 2, y: logo.y + logo.h / 2, h: logo.h * 0.82, w: logo.w, tint: "cardBody", visible: true, rotation: 0 },
+        logo: { x: logo.x + logo.w / 2, y: logo.y + logo.h / 2, h: logo.h * 0.82, w: logo.w, tint: "auto", name: true, visible: true, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         players: { x: players.x + players.w / 2, y: players.y + players.h / 2, size: 2.6, compact: true, color: "auto", fill: "none", visible: true, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
@@ -6101,7 +6281,7 @@ const CARD_TEMPLATES = [
     over(ctx, W, H, c, L, d) {
       const art = consoleCardArt(d);
       if (art) ctx.drawImage(art, 0, 0, W, H);
-      const info = CardArt.info((d.game && d.game.system) || "");
+      const info = consoleCardNames((d.game && d.game.system) || "");
       const z = consoleCardRender(d).zones;
       const centre = (r) => [(r.x + r.w / 2) / 10, (r.y + r.h / 2) / 10];
       ctx.save();
@@ -6115,7 +6295,7 @@ const CARD_TEMPLATES = [
         centredText(ctx, info.short, x, y, z.spineLogo.w / 10, false, 0.1);
       }
       /* Name of the console in the logo place, while the theme has no logo. */
-      if (info.name && !d.logo && L.logo && L.logo.visible !== false) {
+      if (info.name && (!d.logo || L.logo.name) && L.logo && L.logo.visible !== false) {
         const [x, y] = centre(z.logo);
         ctx.font = FONT_STACKS.card.replace("700", "400").replace("{s}", 3.4);
         mmShadow(ctx, 0, 0.1, "#000");
@@ -6199,7 +6379,7 @@ const CARD_TEMPLATES = [
       return {
         window: { x: spine + 1.4, y: 1.4, w: W - spine - 2.8, h: H - 2.8, r: 1.2 },
         title: { x: spine / 2, y: H / 2, size: spine * 0.42, maxw: H * 0.9, color: "auto", font: "narrow", outline: false, visible: true, rotation: -90 },
-        logo: { x: spine + (W - spine) / 2, y: H - H * (portrait ? 0.07 : 0.11), h: H * (portrait ? 0.06 : 0.12), w: (W - spine) * 0.55, tint: "paper", visible: true, rotation: 0 },
+        logo: { x: spine + (W - spine) / 2, y: H - H * (portrait ? 0.07 : 0.11), h: H * (portrait ? 0.06 : 0.12), w: (W - spine) * 0.55, tint: "auto", visible: true, rotation: 0 },
         console: { x: W * 0.82, y: H * 0.75, h: H * 0.3, tint: "original", visible: false, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
       };
@@ -6228,7 +6408,7 @@ const CARD_TEMPLATES = [
       return {
         window: { x: 4, y: top, w: W - 8, h: H - top - 4, r: 2.4 },
         title: { x: W / 2, y: top * 0.52, size: top * (portrait ? 0.36 : 0.44), maxw: W * 0.9, color: "paper", font: "round", outline: true, visible: true, rotation: 0 },
-        logo: { x: 4 + (portrait ? W * 0.22 : W * 0.14), y: H - 4 - (portrait ? H * 0.04 : H * 0.07), h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.4 : W * 0.24, tint: "paper", visible: true, rotation: 0 },
+        logo: { x: 4 + (portrait ? W * 0.22 : W * 0.14), y: H - 4 - (portrait ? H * 0.04 : H * 0.07), h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.4 : W * 0.24, tint: "auto", visible: true, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
       };
@@ -6256,7 +6436,7 @@ const CARD_TEMPLATES = [
       return {
         window: { x: 3, y: 3, w: W - 6, h: H - 3 - foot, r: 1.2 },
         title: { x: portrait ? W / 2 : W * 0.42, y: H - foot / 2, size: foot * (portrait ? 0.34 : 0.4), maxw: portrait ? W * 0.88 : W * 0.66, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
-        logo: { x: portrait ? W / 2 : W * 0.855, y: portrait ? H - foot * 0.2 : H - foot / 2, h: portrait ? foot * 0.22 : foot * 0.5, w: portrait ? W * 0.5 : W * 0.21, tint: "original", visible: !portrait, rotation: 0 },
+        logo: { x: portrait ? W / 2 : W * 0.855, y: portrait ? H - foot * 0.2 : H - foot / 2, h: portrait ? foot * 0.22 : foot * 0.5, w: portrait ? W * 0.5 : W * 0.21, tint: "auto", visible: !portrait, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
       };
@@ -6302,7 +6482,7 @@ const CARD_TEMPLATES = [
         title: portrait
           ? { x: W / 2, y: H - band * 0.66, size: band * 0.24, maxw: W * 0.88, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 }
           : { x: W * 0.37, y: H - band / 2, size: band * 0.36, maxw: W * 0.62, color: "auto", font: "sans", outline: false, visible: true, rotation: 0 },
-        logo: { x: portrait ? W / 2 : W * 0.15, y: portrait ? H * 0.06 : H * 0.1, h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.5 : W * 0.24, tint: "paper", visible: true, rotation: 0 },
+        logo: { x: portrait ? W / 2 : W * 0.15, y: portrait ? H * 0.06 : H * 0.1, h: portrait ? H * 0.05 : H * 0.1, w: portrait ? W * 0.5 : W * 0.24, tint: "auto", visible: true, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.6, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         players: portrait
           ? { x: W / 2, y: H - band * 0.26, size: band * 0.15, color: "auto", fill: "paper", visible: true, rotation: 0 }
@@ -6333,7 +6513,7 @@ const CARD_TEMPLATES = [
         return {
           window: { x: 3, y: 3, w: W - 6, h: H * 0.56, r: 1.6 },
           title: { x: W / 2, y: H * 0.68, size: H * 0.042, maxw: W * 0.86, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
-          logo: { x: W / 2, y: H * 0.9, h: H * 0.06, w: W * 0.6, tint: "original", visible: true, rotation: 0 },
+          logo: { x: W / 2, y: H * 0.9, h: H * 0.06, w: W * 0.6, tint: "auto", visible: true, rotation: 0 },
           console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
           players: { x: W / 2, y: H * 0.79, size: H * 0.036, color: "auto", fill: "accent", visible: true, rotation: 0 },
           image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
@@ -6345,7 +6525,7 @@ const CARD_TEMPLATES = [
       return {
         window: { x: 3, y: 3, w: left, h: H - 6, r: 1.6 },
         title: { x: mid, y: H * 0.3, size: H * 0.085, maxw: col * 0.94, color: "ink", font: "sans", outline: false, visible: true, rotation: 0 },
-        logo: { x: mid, y: H * 0.81, h: H * 0.13, w: col * 0.8, tint: "original", visible: true, rotation: 0 },
+        logo: { x: mid, y: H * 0.81, h: H * 0.13, w: col * 0.8, tint: "auto", visible: true, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         players: { x: mid, y: H * 0.56, size: H * 0.06, color: "auto", fill: "accent", visible: true, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
@@ -6365,7 +6545,7 @@ const CARD_TEMPLATES = [
       return {
         window: { x: 0, y: 0, w: W, h: H, r: 0 },
         title: { x: W / 2, y: H > W ? H * 0.08 : H * 0.12, size: H > W ? H * 0.045 : H * 0.09, maxw: W * 0.9, color: "paper", font: "sans", outline: true, visible: false, rotation: 0 },
-        logo: { x: W / 2, y: H - (H > W ? H * 0.06 : H * 0.1), h: H > W ? H * 0.05 : H * 0.1, w: W * 0.45, tint: "paper", visible: false, rotation: 0 },
+        logo: { x: W / 2, y: H - (H > W ? H * 0.06 : H * 0.1), h: H > W ? H * 0.05 : H * 0.1, w: W * 0.45, tint: "auto", visible: false, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: 0, visible: true },
       };
@@ -6411,7 +6591,7 @@ function frameTemplate(meta) {
       return {
         window,
         title: { x: W / 2, y: Math.min(H - 5, window.y + window.h + 4), size: Math.min(W, H) * 0.08, maxw: W * 0.85, color: "paper", font: "sans", outline: true, visible: false, rotation: 0 },
-        logo: { x: W / 2, y: Math.min(W, H) * 0.12, h: Math.min(W, H) * 0.12, w: W * 0.45, tint: "paper", visible: false, rotation: 0 },
+        logo: { x: W / 2, y: Math.min(W, H) * 0.12, h: Math.min(W, H) * 0.12, w: W * 0.45, tint: "auto", visible: false, rotation: 0 },
         console: { x: W * 0.8, y: H * 0.75, h: H * 0.3, w: W * 0.36, tint: "original", visible: false, rotation: 0 },
         image: { dx: 0, dy: 0, scale: 1, rotation: turn, visible: true },
       };
@@ -6882,13 +7062,84 @@ function drawPicture(ctx, image, layer, c, scale, key, bounds) {
   let h = Math.max(0.5, layer.h);
   if (layer.w && h * ratio > layer.w) h = layer.w / ratio;
   const w = h * ratio;
+  let source = image;
+  let halo = "";
+  if (layer.tint === "auto") {
+    /* Automatic: a one-colour logo is painted light or dark against what is
+       really under it; a logo of several colours keeps them (painting it
+       would merge its letters into a blot), with a halo only when it would
+       melt into the background. */
+    const look = pictureLook(image);
+    const under = backgroundLuma(ctx, layer.x, layer.y, w, h);
+    if (look.mono) source = tinted(image, under > 0.5 ? c.ink : c.paper, w, h, scale);
+    else if (Math.abs(look.luma - under) < 0.3) halo = under > 0.5 ? "rgba(0, 0, 0, .75)" : "rgba(255, 255, 255, .85)";
+  } else if (layer.tint && layer.tint !== "original") {
+    source = tinted(image, resolveColor(layer.tint, c), w, h, scale);
+  }
   ctx.save();
   ctx.translate(layer.x, layer.y);
   ctx.rotate((layer.rotation || 0) * Math.PI / 180);
-  const source = !layer.tint || layer.tint === "original" ? image : tinted(image, resolveColor(layer.tint, c), w, h, scale);
+  if (halo) {
+    mmShadow(ctx, Math.max(0.25, h * 0.12), 0, halo);
+    ctx.drawImage(source, -w / 2, -h / 2, w, h);
+    ctx.drawImage(source, -w / 2, -h / 2, w, h);
+    ctx.shadowColor = "transparent";
+  }
   ctx.drawImage(source, -w / 2, -h / 2, w, h);
   ctx.restore();
   bounds[key] = { cx: layer.x, cy: layer.y, w, h, rot: layer.rotation || 0 };
+}
+/* Colours of a picture (cached): one colour or several, and its mean
+   lightness. Measured on a small copy. */
+const pictureLooks = new WeakMap();
+function pictureLook(image) {
+  if (pictureLooks.has(image)) return pictureLooks.get(image);
+  const ratio = naturalRatio(image);
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = Math.max(4, Math.round(96 / ratio));
+  const g = canvas.getContext("2d");
+  g.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
+  const counts = new Map();
+  let total = 0;
+  let luma = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 160) continue;
+    const r = data[i], gr = data[i + 1], b = data[i + 2];
+    const key = (r >> 5) * 64 + (gr >> 5) * 8 + (b >> 5);
+    counts.set(key, (counts.get(key) || 0) + 1);
+    luma += (0.2126 * r + 0.7152 * gr + 0.0722 * b) / 255;
+    total++;
+  }
+  const top = Math.max(0, ...counts.values());
+  const look = { mono: !total || top / total > 0.8, luma: total ? luma / total : 0.5 };
+  pictureLooks.set(image, look);
+  return look;
+}
+/* Mean lightness of what is already drawn under a box (millimetres, card
+   coordinates); paper white where nothing is drawn yet. */
+function backgroundLuma(ctx, x, y, w, h) {
+  const m = ctx.getTransform();
+  const points = [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x - w / 2, y + h / 2], [x + w / 2, y + h / 2]]
+    .map(([px, py]) => [m.a * px + m.c * py + m.e, m.b * px + m.d * py + m.f]);
+  const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point[0]))));
+  const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point[1]))));
+  const right = Math.min(ctx.canvas.width, Math.ceil(Math.max(...points.map((point) => point[0]))));
+  const bottom = Math.min(ctx.canvas.height, Math.ceil(Math.max(...points.map((point) => point[1]))));
+  if (right - left < 1 || bottom - top < 1) return 1;
+  let data;
+  try { data = ctx.getImageData(left, top, right - left, bottom - top).data; } catch (error) { return 1; }
+  let sum = 0;
+  let count = 0;
+  const step = Math.max(4, Math.floor(data.length / 4 / 4000) * 4);
+  for (let i = 0; i < data.length; i += step) {
+    const a = data[i + 3] / 255;
+    const l = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+    sum += l * a + (1 - a);
+    count++;
+  }
+  return count ? sum / count : 1;
 }
 function fitTitle(ctx, text, layer) {
   const stack = FONT_STACKS[layer.font] || FONT_STACKS.sans;
@@ -7098,12 +7349,15 @@ function renderCard(canvas, d, pxPerMm, overlay) {
   ctx.save();
   roundRect(ctx, 0, 0, W, H, d.rounded ? CARD_RADIUS_MM : 0);
   ctx.clip();
-  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  /* White paper under the design (not under the "Console" design, which
+     fills the card itself: a white edge would show around it). */
+  if (!tpl.spine) { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H); }
   tpl.under(ctx, W, H, c, L, d);
   drawImageLayer(ctx, d, L, c, bounds);
   tpl.over(ctx, W, H, c, L, d);
   drawPicture(ctx, d.consoleArt, L.console, c, pxPerMm, "console", bounds);
-  drawPicture(ctx, d.logo, L.logo, c, pxPerMm, "logo", bounds);
+  /* The "Console" design may write the name of the console instead of its logo. */
+  if (!(tpl.spine && L.logo && L.logo.name)) drawPicture(ctx, d.logo, L.logo, c, pxPerMm, "logo", bounds);
   drawPlayers(ctx, d.players, L.players, c, bounds);
   if (d.titleStyle === "logo" && d.titleLogo) drawTitleLogo(ctx, d.titleLogo, L.title, bounds);
   else drawTitle(ctx, d.title, L.title, c, bounds);
@@ -7179,12 +7433,60 @@ function redrawDesign() {
     designFrame = 0;
     const scale = designScale();
     design.safe = printOptions.bleed;
+    placeTitleForLogo();
     design.bounds = renderCard($("#card-canvas"), design, scale.px, true);
     scheduleHistory();
   });
 }
+/* Templates that put the title beside the console logo: without a logo (the
+   theme has none, or it is hidden), the title is centred on the card instead
+   of leaving an empty side. Only while the title is at its template place;
+   it goes back there when the logo is shown again. */
+function placeTitleForLogo() {
+  if (!design.layers || design.template === "console") return;
+  const title = design.layers.title;
+  const logo = design.layers.logo;
+  if (!title || !logo) return;
+  const W = cardSize(design.orientation).w;
+  const home = templateLayers(design.template, design.orientation).title;
+  if ((home.rotation || 0) !== 0) return;
+  const sameRow = Math.abs(home.y - logo.y) < Math.max(logo.h || 0, home.size * 1.5);
+  if (!sameRow) return;
+  const logoShown = Boolean(design.logo) && logo.visible !== false;
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+  const atHome = near(title.x, home.x) && near(title.y, home.y) && near(title.rotation || 0, 0);
+  const atCentre = title.centred && near(title.x, W / 2) && near(title.y, home.y) && near(title.rotation || 0, 0);
+  if (!logoShown && atHome && !near(home.x, W / 2)) {
+    title.x = W / 2;
+    title.maxw = W * 0.88;
+    title.centred = true;
+  } else if (logoShown && atCentre) {
+    title.x = home.x;
+    title.maxw = home.maxw;
+    delete title.centred;
+  } else if (title.centred && !atCentre) {
+    delete title.centred;  /* moved by hand: left where it is */
+  }
+}
 function resetLayers() {
   design.layers = templateLayers(design.template, design.orientation);
+}
+/* Change of direction or of tab side: each element goes to its place in the
+   new layout (position, rotation, box, framing of the picture), but keeps
+   what the user chose for it (shown or not, colours, font, capitals, shadow,
+   logo or name...). The "Console" design has the same elements in every
+   direction: the text sizes are kept too. */
+const LAYER_STYLE = ["visible", "color", "font", "upper", "shadow", "outline", "spacing", "tint", "name", "compact", "fill"];
+function relayoutLayers() {
+  const previous = design.layers;
+  resetLayers();
+  if (!previous) return;
+  const keep = design.template === "console" ? LAYER_STYLE.concat("size") : LAYER_STYLE;
+  for (const [key, layer] of Object.entries(design.layers)) {
+    const old = previous[key];
+    if (!old || typeof layer !== "object") continue;
+    for (const prop of keep) if (prop in old) layer[prop] = old[prop];
+  }
 }
 function hitTest(x, y) {
   const order = ["players", "title", "logo", "console", "image"];
@@ -7519,6 +7821,17 @@ function renderControls() {
     rows.push(ctlRow("", resetLayerButton("players")));
   } else {
     const missing = key === "logo" ? !design.logo : !design.consoleArt;
+    /* "Console" design: the logo of the console, or its name written in its place. */
+    if (key === "logo" && design.template === "console") {
+      const layer = layerOf("logo");
+      const shown = el("select", { attrs: { "aria-label": t("Afficher") } }, [
+        el("option", { text: t("Logo de la console"), attrs: { value: "logo" } }),
+        el("option", { text: t("Nom de la console"), attrs: { value: "name" } }),
+      ]);
+      shown.value = layer.name ? "name" : "logo";
+      shown.addEventListener("change", () => { layer.name = shown.value === "name"; renderControls(); redrawDesign(); });
+      rows.push(ctlRow(t("Contenu"), shown));
+    }
     if (missing) {
       rows.push(el("p", { className: "muted small", text: design.game
         ? t("Le thème de la Recalbox n'a pas d'image pour cette console.")
@@ -7530,7 +7843,7 @@ function renderControls() {
     const rotation = rotationControls(key);
     controlSyncers.push(rotation[0].querySelector("input")._sync);
     rows.push(...rotation);
-    rows.push(tintControl(key, design.template === "console" ? ["cardBody", "original", "paper", "ink"] : ["original", "auto", "paper", "ink", "accent"]));
+    rows.push(tintControl(key, design.template === "console" ? ["auto", "cardBody", "original", "paper", "ink"] : ["auto", "original", "paper", "ink", "accent"]));
     rows.push(ctlRow("", resetLayerButton(key)));
   }
   box.replaceChildren(...rows);
@@ -7697,23 +8010,37 @@ async function designGame(game) {
   design.title = game.name;
   design.players = typeof game.players === "string" ? game.players : "";
   if (typeof game.players !== "string") loadPlayersCount(chosen);
-  renderSource();
-  $("#card-source-sub").textContent = t("Chargement de l'image…");
-  const art = await consoleArtwork(game.system);
-  /* Another game was chosen meanwhile: this slower load must not win. */
-  if (design.game !== chosen) return;
+  /* The card shows the new game at once (title, design of its console);
+     nothing of the previous game is left while the pictures load. */
+  design.image = null;
+  design.imageSource = "";
+  design.imageLabel = "";
+  design.titleStyle = "text";
+  design.titleLogo = null;
+  const cached = logoCache.get(game.system);
+  design.logo = cached ? cached.logo : null;
+  design.consoleArt = cached ? cached.console : null;
   /* A frame made for this console is chosen for it. */
   const ownFrame = frameList.find((meta) => (meta.systems || []).includes(game.system));
   if (ownFrame && design.template !== FRAME_PREFIX + ownFrame.id) selectFrameTemplate(ownFrame);
-  design.logo = art.logo;
-  design.titleStyle = "text";
-  design.titleLogo = null;
-  design.consoleArt = art.console;
-  design.autoAccent = accentFromSvg(art.svg) || fallbackAccent(game.system);
-  design.accent = design.autoAccent;
-  const saved = savedTemplates.find((item) => item.id === design.savedId);
-  if (saved && saved.accent) design.accent = saved.accent;
-  await loadGameImage(chosen);
+  renderSource();
+  $("#card-source-sub").textContent = t("Chargement de l'image…");
+  afterDesignChange();
+  /* The picture is asked first: the theme logo may take several requests
+     on the Recalbox (one per region). Each one is drawn when it arrives. */
+  const picture = loadGameImage(chosen);
+  const artwork = consoleArtwork(game.system).then((art) => {
+    /* Another game was chosen meanwhile: this slower load must not win. */
+    if (design.game !== chosen) return;
+    design.logo = art.logo;
+    design.consoleArt = art.console;
+    design.autoAccent = accentFromSvg(art.svg) || fallbackAccent(game.system);
+    design.accent = design.autoAccent;
+    const saved = savedTemplates.find((item) => item.id === design.savedId);
+    if (saved && saved.accent) design.accent = saved.accent;
+    afterDesignChange();
+  });
+  await Promise.all([picture, artwork]);
   if (design.game === chosen) lookupOnline(chosen);
 }
 /* Number of players of a game chosen without it (badge, Recalbox selection). */
@@ -8679,7 +9006,7 @@ function wire() {
     if (variant !== "v") design.guideEdge = edgeOfVariant(variant);
     /* The layers move when the card turns, or when the tab of the "Console"
        design changes side. */
-    if (turned || design.template === "console") { design.savedId = ""; resetLayers(); }
+    if (turned || design.template === "console") { design.savedId = ""; relayoutLayers(); }
     setOrientationButtons();
     rememberDesign();
     afterDesignChange();

@@ -43,7 +43,7 @@
 
       <!-- détails -->
       <g id="aux1"><rect x="494" y="28" width="184" height="66" rx="8" fill="#000" filter="url(#woodF)"/><rect x="494" y="28" width="184" height="66" rx="8" fill="none" stroke="#000" stroke-opacity=".4"/></g>
-      <g id="aux2"><defs><radialGradient id="r178" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#f0f0ed"/><stop offset="1" stop-color="#babab7"/></radialGradient></defs><circle cx="512" cy="489" r="16" fill="#0e0e0f"/><circle cx="512" cy="489" r="12" fill="url(#r178)" filter="url(#soft)"/><circle cx="558" cy="489" r="16" fill="#0e0e0f"/><circle cx="558" cy="489" r="12" fill="url(#r178)" filter="url(#soft)"/><circle cx="604" cy="489" r="16" fill="#0e0e0f"/><circle cx="604" cy="489" r="12" fill="url(#r178)" filter="url(#soft)"/><circle cx="650" cy="489" r="16" fill="#0e0e0f"/><circle cx="650" cy="489" r="12" fill="url(#r178)" filter="url(#soft)"/></g>
+      <g id="aux2"><defs><radialGradient id="r97" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#f0f0ed"/><stop offset="1" stop-color="#babab7"/></radialGradient></defs><circle cx="512" cy="489" r="16" fill="#0e0e0f"/><circle cx="512" cy="489" r="12" fill="url(#r97)" filter="url(#soft)"/><circle cx="558" cy="489" r="16" fill="#0e0e0f"/><circle cx="558" cy="489" r="12" fill="url(#r97)" filter="url(#soft)"/><circle cx="604" cy="489" r="16" fill="#0e0e0f"/><circle cx="604" cy="489" r="12" fill="url(#r97)" filter="url(#soft)"/><circle cx="650" cy="489" r="16" fill="#0e0e0f"/><circle cx="650" cy="489" r="12" fill="url(#r97)" filter="url(#soft)"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(532 262) scale(1)"><defs><linearGradient id="hCase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3b3d"/><stop offset=".5" stop-color="#1b1b1d"/><stop offset="1" stop-color="#161617"/></linearGradient><linearGradient id="hCart" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4cb3d"/><stop offset="1" stop-color="#c29b16"/></linearGradient><linearGradient id="hLabel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e95158"/><stop offset="1" stop-color="#b61e25"/></linearGradient></defs>
@@ -66,7 +66,7 @@
         <rect x="700" y="0" width="1.2" height="540" fill="#947f6b" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="493" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="432" y="493" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="492.2" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="432" y="492.2" width="40" height="1.6" fill="url(#filetG)"/>
   </g>
 </svg>

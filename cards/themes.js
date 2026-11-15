@@ -27,25 +27,25 @@ module.exports = {
   sega32x: {
     name: 'SEGA 32X', short: '32X', body: BLACK, texture: { type: 'grid', color: '#3a3a3f', fade: true },
     hero: { type: 'dome', accent: '#e3262e', mark: { text: '32X', style: 'red', y: -50, size: 50 }, arc: { text: '32-BIT  SUPER  POWER', color: '#f5c61b' } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b'] }, aux2: { type: 'power', led: '#ff3b2a' },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b'] }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#101012', texture: 'grid' },
   },
   megacd: {
     name: 'MEGA-CD', short: 'CD', body: BLACK, texture: { type: 'grid', color: '#3a3a3f', fade: true },
     hero: { type: 'disc', base: '#141416', lid: '#232327', hub: '#111', arc: { text: 'COMPACT DISC  ·  16-BIT', color: '#d8262e' }, mark: { text: 'CD', style: 'chrome', y: -62, size: 30 } },
-    aux1: { type: 'vents' }, aux2: { type: 'power', volume: false },
+    aux1: { type: 'ribs' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#101012', texture: 'grid' },
   },
   mastersystem: {
     name: 'MASTER SYSTEM', short: 'SMS', body: BLACK, texture: { type: 'grid', color: '#e8e8e8', opacity: .16, fade: true },
     hero: { type: 'slot', case: '#141416', cart: '#0f0f11', label: '#e3262e', band: '#d8262e', bandH: 6, ribs: true },
-    aux1: { type: 'hstripes', colors: ['#d8262e', '#d8262e'], h: 4 }, aux2: [{ type: 'power', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#d8262e', '#d8262e'], h: 4 }, aux2: [{ type: 'squareButtons', n: 2, colors: ['#1d1d20', '#d8262e'] }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#121214', texture: 'grid' }, frame: '#d8262e',
   },
   sg1000: {
     name: 'SG-1000', short: 'SG', body: WHITE, texture: { type: 'ribs', color: '#bdbdb8' },
     hero: { type: 'slot', case: '#e9e9e5', cart: '#2b2b2e', label: '#d8262e', band: '#d8262e', bandH: 10 },
-    aux1: { type: 'hstripes', colors: ['#d8262e', '#1e1e20'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', panel: '#2a2a2e', volume: false },
+    aux1: { type: 'hstripes', colors: ['#d8262e', '#1e1e20'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#d8262e', track: '#2a2a2e' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#1b1b1d' }, ink: '#2a2a2e',
   },
   gamegear: {
@@ -58,7 +58,7 @@ module.exports = {
     name: 'SATURN', short: 'SS', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#3b3b41', hub: '#2a2a2e', arc: { text: '32-BIT  ·  DUAL CPU', color: '#8fa0d8' },
       buttons: [{ x: 128, y: 100, r: 13, color: '#3f68d6' }, { x: 100, y: 128, r: 13, color: '#8f8f96' }] },
-    aux1: { type: 'vents' }, aux2: { type: 'roundButtons', color: '#55555c', led: '#3f6' },
+    aux1: { type: 'pads', n: 2, color: '#2a2a2e' }, aux2: { type: 'roundButtons', color: '#55555c', led: '#3f6' },
     spine: { bg: '#18181b', texture: 'carbon' },
   },
   dreamcast: {
@@ -76,25 +76,25 @@ module.exports = {
   naomi: {
     name: 'NAOMI', short: 'NAOMI', body: dark('#2c3a5c', '#1d2742', '#111729'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1a2238', ball: '#e3262e', colors: ['#2a63d6', '#2a63d6', '#2a63d6', '#e3262e', '#e3262e', '#e3262e'], six: true, arc: { text: 'ARCADE  ·  NEW ARCHITECTURE', color: '#8fb4ff' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'coin' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#141b30', texture: 'carbon' },
   },
   naomi2: {
     name: 'NAOMI 2', short: 'N2', body: dark('#9aa3b5', '#7c8597', '#5a6273'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#2b3040', ball: '#2a63d6', colors: ['#e3262e', '#e3262e', '#e3262e', '#f5c61b', '#f5c61b', '#f5c61b'], six: true, arc: { text: 'ARCADE  ·  DUAL GPU', color: '#cfd8ea' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'coin', color: '#2f8cff' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#3b4150' },
   },
   naomigd: {
     name: 'NAOMI GD-ROM', short: 'GD', body: dark('#2c3a5c', '#1d2742', '#111729'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#141b30', lid: '#c9ccd6', hub: '#9aa0ad', arc: { text: 'GD-ROM  ·  ARCADE', color: '#8fb4ff' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#141b30' },
   },
   atomiswave: {
     name: 'ATOMISWAVE', short: 'AW', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1c1c20', ball: '#f26a21', colors: ['#f26a21', '#f5c61b', '#22a84a', '#2a63d6'], stripe: '#f26a21', arc: { text: 'ARCADE  ·  CARTRIDGE SYSTEM', color: '#f26a21' } },
-    aux1: { type: 'hstripes', colors: ['#f26a21', '#f5c61b'] }, aux2: { type: 'leds', colors: ['#f26a21', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#f26a21', '#f5c61b'] }, aux2: [{ type: 'coin', color: '#f26a21' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
 
@@ -102,43 +102,43 @@ module.exports = {
   nes: {
     name: 'NES', short: 'NES', body: dark('#dcdcd8', '#c9c9c4', '#adada8'), texture: { type: 'ribs', color: '#a9a9a4' },
     hero: { type: 'buttons', layout: 'nes', plate: '#c9c9c4' },
-    aux1: { type: 'ribs', color: '#2a2a2c' }, aux2: [{ type: 'power', panel: '#2a2a2c', led: '#ff2a1a', knob: '#555', volume: false }],
+    aux1: { type: 'ribs', color: '#2a2a2c' }, aux2: { type: 'squareButtons', n: 2, color: '#2a2a2c', led: '#ff2a1a' },
     spine: { bg: '#2c2c2f', texture: 'ribs' }, ink: '#2c2c2f', frame: '#c4161c',
   },
   famicomdisksystem: {
     name: 'FAMICOM DISK', short: 'FDS', body: dark('#b42b33', '#9a1f27', '#741319'), texture: { type: 'ribs', color: '#6e1015' },
     hero: { type: 'disk', case: '#efe6d2', media: '#f2c21b', led: '#ff3b2a', eject: '#9a1f27' },
-    aux1: { type: 'hstripes', colors: ['#efe6d2', '#d6b347'] }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#efe6d2', '#d6b347'] }, aux2: [{ type: 'eject', color: '#8b1a1f', ink: '#efe6d2' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#efe6d2' },
   },
   snes: {
     name: 'SUPER NINTENDO', short: 'SNES', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'buttons', layout: 'diamond', plate: '#c9c8ce', colors: SNESC },
-    aux1: { type: 'hstripes', colors: ['#46474b', '#46474b'], h: 9 }, aux2: [{ type: 'power', panel: '#86878b', knob: '#5a5a62', led: '#c11b25', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#46474b', '#46474b'], h: 9 }, aux2: [{ type: 'sliders', n: 2, knob: '#86878b', track: '#46474b' }, { type: 'leds', colors: ['#c11b25'], flex: .4 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   satellaview: {
     name: 'SATELLAVIEW', short: 'BS-X', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'disc', base: '#b7b6bc', lid: '#e3e2e7', hub: '#9c9ba2', glow: '#6fa8ff', arc: { text: 'SATELLITE  DATA  BROADCAST', color: '#5b5ca8' } },
-    aux1: { type: 'hstripes', colors: SNESC }, aux2: { type: 'leds', colors: ['#6fa8ff', '#3f6'] },
+    aux1: { type: 'hstripes', colors: SNESC }, aux2: [{ type: 'dish' }, { type: 'leds', colors: ['#6fa8ff', '#3f6'], flex: .45 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   sufamiturbo: {
     name: 'SUFAMI TURBO', short: 'ST', body: GREY, texture: { type: 'dots', color: '#ffffff', opacity: .25 },
     hero: { type: 'slot', case: '#c9c8ce', cart: '#d9d8de', label: '#e6a21b', double: true },
-    aux1: { type: 'hstripes', colors: SNESC }, aux2: { type: 'leds', colors: ['#c11b25'] },
+    aux1: { type: 'hstripes', colors: SNESC }, aux2: [{ type: 'slot2' }, { type: 'leds', colors: ['#c11b25'], flex: .45 }],
     spine: { bg: '#86878b' }, ink: '#2e2f33',
   },
   nintendo64: {
     name: 'NINTENDO 64', short: 'N64', body: dark('#3c3c40', '#2b2b2e', '#18181a'), texture: { type: 'noise' },
     hero: { type: 'buttons', layout: 'n64', plate: '#9a9aa0', colors: ['#2b56c8', '#1f9a4a', '#f2c518'], mark: { text: '64-BIT', style: 'chrome', y: -112, size: 22 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: [{ type: 'power', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: { type: 'pads', n: 4 },
     spine: { bg: '#1e1e21' },
   },
   nintendo64dd: {
     name: '64DD', short: '64DD', body: dark('#3c3c40', '#2b2b2e', '#18181a'), texture: { type: 'noise' },
     hero: { type: 'disk', case: '#2b2b2e', media: '#5a5a62', shutter: '#9a9aa0', led: '#3f6' },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6', '#f5c61b'], h: 4 }, aux2: [{ type: 'eject' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#1e1e21' },
   },
   gamecube: {
@@ -150,7 +150,7 @@ module.exports = {
   wii: {
     name: 'Wii', short: 'Wii', body: WHITE, texture: { type: 'none' },
     hero: { type: 'disc', base: '#e8e8e6', lid: '#fbfbfa', hub: '#e0e0de', glow: '#38b6ff', rings: false, dot: '#38b6ff' },
-    aux1: { type: 'roundButtons', n: 2, color: '#ececea', led: '#38b6ff' }, aux2: { type: 'leds', colors: ['#38b6ff', '#38b6ff'] },
+    aux1: { type: 'roundButtons', n: 2, color: '#ececea', led: '#38b6ff' }, aux2: { type: 'cdtray', color: '#f1f1ee', glow: '#38b6ff' },
     spine: { bg: '#efefed' }, ink: '#404044', frame: '#38b6ff',
   },
   virtualboy: {
@@ -206,7 +206,7 @@ module.exports = {
   playstation2: {
     name: 'PLAYSTATION 2', short: 'PS2', body: BLACK, texture: { type: 'ribs', color: '#2a2a30' },
     hero: { type: 'disc', base: '#0e0e10', lid: '#1d1d22', hub: '#111', glow: '#2f5bff', dot: '#2f5bff' },
-    aux1: { type: 'ps' }, aux2: { type: 'leds', colors: ['#3f6', '#2f5bff'] },
+    aux1: { type: 'ps' }, aux2: [{ type: 'pads' }, { type: 'leds', colors: ['#3f6', '#2f5bff'], flex: .45 }],
     spine: { bg: '#0f0f12', texture: 'ribs' }, frame: '#2f5bff',
   },
   psp: {
@@ -220,13 +220,13 @@ module.exports = {
   pcengine: {
     name: 'PC ENGINE', short: 'PCE', body: WHITE, texture: { type: 'vribs', color: '#d0d0cc' },
     hero: { type: 'slot', case: '#ececea', cart: '#2b2b2e', label: '#e3262e', cartW: 150, mark: { text: 'HuCARD', style: '#e3262e', y: 82, size: 20 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'power', panel: '#bdbdb8', knob: '#ececea', led: '#ff3b2a', volume: false }],
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#ececea', track: '#2a2a2e' }, { type: 'din' }],
     spine: { bg: '#2b2b2e' }, ink: '#c41a1a', frame: '#e3262e',
   },
   supergrafx: {
     name: 'SUPERGRAFX', short: 'SGX', body: dark('#5a5a60', '#46464c', '#2e2e33'), texture: { type: 'vribs', color: '#3a3a40' },
     hero: { type: 'slot', case: '#3a3a40', cart: '#2b2b2e', label: '#e3262e', cartW: 150, mark: { text: 'SUPER', style: 'chrome', y: 82, size: 20 } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f26a21'], h: 5 }, aux2: [{ type: 'sliders', n: 1, knob: '#3a3a40', track: '#111' }, { type: 'din' }],
     spine: { bg: '#2b2b30' },
   },
   pcenginecd: {
@@ -238,7 +238,7 @@ module.exports = {
   pcfx: {
     name: 'PC-FX', short: 'FX', body: dark('#2e2e33', '#1f1f23', '#121214'), texture: { type: 'vribs', color: '#2a2a30' },
     hero: { type: 'disc', base: '#161619', lid: '#3a3a40', hub: '#2a2a2e', arc: { text: '32-BIT  ·  FULL MOTION', color: '#f26a21' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#f26a21'] },
+    aux1: { type: 'pads', n: 2 }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#141416' },
   },
 
@@ -246,13 +246,13 @@ module.exports = {
   neogeo: {
     name: 'NEO GEO', short: 'NEO', body: dark('#2d2d2d', '#212121', '#141414'), texture: { type: 'carbon' },
     hero: { type: 'arcade', plate: '#1a1a1a', ball: '#e3262e', colors: NEO, stripe: '#c19528', mark: { text: 'MAX 330 MEGA', style: 'gold', y: 112, size: 18, italic: false } },
-    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: { type: 'power', led: '#f7b210', volume: false },
+    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'joyports' }],
     spine: { bg: '#161616', texture: 'carbon' }, ink: '#f7d36a', frame: 'gold',
   },
   neogeocd: {
     name: 'NEO GEO CD', short: 'NGCD', body: dark('#2d2d2d', '#212121', '#141414'), texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#151515', lid: '#2c2c2c', hub: '#1c1c1c', arc: { text: 'CD-ROM  ·  ARCADE AT HOME', color: '#c19528' }, buttons: [{ x: 120, y: -112, r: 12, color: '#e3262e' }, { x: 140, y: -82, r: 12, color: '#2a63d6' }] },
-    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: { type: 'leds', colors: ['#f7b210', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#c19528', '#c19528'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#f7b210'], flex: .45 }],
     spine: { bg: '#161616', texture: 'carbon' }, ink: '#f7d36a', frame: 'gold',
   },
   ngp: {
@@ -278,7 +278,7 @@ module.exports = {
   atari5200: {
     name: 'ATARI 5200', short: '5200', body: BLACK, texture: { type: 'ribs', color: '#2a2a2e' },
     hero: { type: 'keypad', case: '#141416', key: '#2c2c30', overlay: '#c9ccd4', keyInk: '#f2c94c', side: ['#e3262e', '#e3262e'] },
-    aux1: { type: 'hstripes', colors: ['#c9ccd4', '#8f9298'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#c9ccd4', '#8f9298'], h: 5 }, aux2: { type: 'joyports', n: 4 },
     spine: { bg: '#121214', texture: 'ribs' }, frame: 'chrome',
   },
   atari7800: {
@@ -302,7 +302,7 @@ module.exports = {
   atarist: {
     name: 'ATARI ST', short: 'ST', body: dark('#d9d9d6', '#c6c6c2', '#a9a9a4'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9d9d6', key: '#bdbdb8', fkeys: { n: 10, color: '#a9a9a4' }, deck: '#9a9a96' },
-    aux1: { type: 'grille' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'grille' }, aux2: [{ type: 'fkeys', n: 5, skew: -22 }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#4a4a4e' }, ink: '#2a2a2e',
   },
   lynx: {
@@ -316,31 +316,31 @@ module.exports = {
   '3do': {
     name: '3DO', short: '3DO', body: BLACK, texture: { type: 'none' },
     hero: { type: 'disc', base: '#111113', lid: '#26262a', hub: '#1a1a1c', mark: { text: '3D', style: 'gold', y: -62, size: 28 }, arc: { text: 'INTERACTIVE MULTIPLAYER', color: '#c19528' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'din' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#101012' }, frame: 'gold',
   },
   cdi: {
     name: 'CD-i', short: 'CD-i', body: dark('#3a3a3f', '#26262a', '#161618'), texture: { type: 'none' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#33333a', hub: '#26262a', arc: { text: 'COMPACT DISC INTERACTIVE', color: '#8fa0d8' } },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'pads', n: 2 }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
   amigacd32: {
     name: 'AMIGA CD32', short: 'CD32', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'disc', base: '#1d1d21', lid: '#3a3a40', hub: '#2a2a2e', arc: { text: '32-BIT  CD  GAME SYSTEM', color: '#e3262e' } },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#18181b' },
   },
   amigacdtv: {
     name: 'AMIGA CDTV', short: 'CDTV', body: BLACK, texture: { type: 'ribs', color: '#26262a' },
     hero: { type: 'disk', case: '#141416', media: '#2a2a2e', shutter: '#9aa0aa', led: '#3f6' },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'cdtray' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#121214' },
   },
   xbox: {
     name: 'XBOX', short: 'XBOX', body: BLACK, texture: { type: 'carbon' },
     hero: { type: 'disc', base: '#141416', lid: '#24242a', hub: false, rings: false, jewel: '#2fbf2f', glow: '#2fbf2f' },
-    aux1: { type: 'vents' }, aux2: { type: 'roundButtons', n: 2, color: '#3a3a40', led: '#2fbf2f' },
+    aux1: { type: 'pads', n: 4, color: '#2a2a2e' }, aux2: { type: 'roundButtons', n: 2, color: '#3a3a40', led: '#2fbf2f' },
     spine: { bg: '#101012', texture: 'carbon' }, ink: '#7dff7d', frame: '#2fbf2f',
   },
   channelf: {
@@ -352,7 +352,7 @@ module.exports = {
   colecovision: {
     name: 'COLECOVISION', short: 'COLECO', body: BLACK, texture: { type: 'ribs', color: '#26262a' },
     hero: { type: 'keypad', case: '#141416', key: '#2c2c30', overlay: '#3a3a40', side: ['#e3262e', '#e3262e'] },
-    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 3 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 3 }, aux2: [{ type: 'sliders', n: 1, knob: '#9aa0aa', track: '#111' }, { type: 'joyports' }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   intellivision: {
@@ -364,25 +364,25 @@ module.exports = {
   videopac: {
     name: 'VIDEOPAC', short: 'G7000', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#141416', key: '#2a4fb0', flat: true, rows: 4, cols: 12, space: false, deck: '#c9ccd4' },
-    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#9aa0aa', '#9aa0aa'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   videopacplus: {
     name: 'VIDEOPAC+', short: 'G7400', body: dark('#3a3a40', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#d9d9de', flat: true, rows: 4, cols: 12, space: false, deck: '#1a1a1d' },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#2a63d6'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#2a63d6'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#18181a' }, frame: 'chrome',
   },
   vectrex: {
     name: 'VECTREX', short: 'VECTREX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'crt', case: '#141416', content: 'vector', w: 260, h: 300 },
-    aux1: { type: 'grille', color: '#2a2a2e' }, aux2: { type: 'ab', colors: ['#e3262e', '#e3262e'], pills: false },
+    aux1: { type: 'grille', color: '#2a2a2e' }, aux2: { type: 'ab', row: 4, colors: ['#e3262e'], pills: false },
     spine: { bg: '#0d0d0f' }, frame: 'chrome',
   },
   scv: {
     name: 'SUPER CASSETTE VISION', short: 'SCV', body: dark('#e85a4f', '#d43c33', '#a82820'), texture: { type: 'none' },
     hero: { type: 'slot', case: '#f2f0ea', cart: '#2b2b2e', label: '#2a63d6', ribs: true },
-    aux1: { type: 'hstripes', colors: ['#f2f0ea', '#2b2b2e'], h: 5 }, aux2: { type: 'power', led: '#ff3b2a', panel: '#2b2b2e', volume: false },
+    aux1: { type: 'hstripes', colors: ['#f2f0ea', '#2b2b2e'], h: 5 }, aux2: { type: 'squareButtons', n: 2, colors: ['#2b2b2e', '#d8262e'], led: '#ff3b2a' },
     spine: { bg: '#2b2b2e' },
   },
   multivision: {
@@ -442,13 +442,13 @@ module.exports = {
   palm: {
     name: 'PALM OS', short: 'PALM', body: dark('#8a8f99', '#6f747e', '#50545c'), texture: { type: 'none' },
     hero: { type: 'screen', w: 240, h: 290, bezel: '#2a2c33', content: 'mono', rx: 20, pal: ['#b8c8a0', '#98a888', '#4a5a44', '#1c2a1a'], pad: 28, top: 28, bottom: 60 },
-    aux1: { type: 'roundButtons', n: 4, color: '#3a3c44' }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'roundButtons', n: 4, color: '#3a3c44' }, aux2: { type: 'stylus' },
     spine: { bg: '#3a3c44' },
   },
   gx4000: {
     name: 'GX4000', short: 'GX', body: dark('#3a3a40', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'slot', case: '#2a2a2e', cart: '#1b1b1d', label: '#e3262e', band: '#e3262e', bandH: 8 },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6'], h: 4 }, aux2: { type: 'power', led: '#ff3b2a', volume: false },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#22a84a', '#2a63d6'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .4 }],
     spine: { bg: '#18181a' }, frame: '#e3262e',
   },
 
@@ -457,68 +457,68 @@ module.exports = {
   amiga600: {
     name: 'AMIGA 600', short: 'A600', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e6dfcb', key: '#e9e3d2', fkeys: { n: 10, color: '#cfc7b0' }, deck: '#9a9280', special: [{ color: '#bdb5a0', at: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]] }] },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6', '#ff3b2a'], flex: .45 }],
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   amiga1200: {
     name: 'AMIGA 1200', short: 'A1200', body: dark('#e0d8c2', '#cec5ac', '#b1a78c'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#ddd5bf', key: '#e9e3d2', fkeys: { n: 10, color: '#bdb5a0' }, deck: '#8f8774', alt: '#bdb5a0' },
-    aux1: { type: 'boing' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'boing' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#3f6', '#f7b210'], flex: .45 }],
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   amstradcpc: {
     name: 'AMSTRAD CPC', short: 'CPC', body: dark('#42413c', '#36352f', '#24231f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#36352f', key: '#2a2924', deck: '#1a1916', special: [{ color: '#4f8e3a', at: [[0, 12], [1, 12], [2, 12]] }, { color: '#bf0811', at: [[3, 12], [4, 12]] }, { color: '#2a63d6', at: [[0, 11], [1, 11], [2, 11]] }], fkeys: { n: 12, color: '#7aa678' } },
-    aux1: { type: 'hstripes', colors: ['#bf0811', '#4f8e3a', '#2a63d6'], h: 5 }, aux2: { type: 'leds', colors: ['#bf0811'] },
+    aux1: { type: 'hstripes', colors: ['#bf0811', '#4f8e3a', '#2a63d6'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#bf0811'], flex: .45 }],
     spine: { bg: '#24231f' },
   },
   apple2: {
     name: 'APPLE II', short: 'II', body: dark('#e2d6b8', '#cfc19f', '#ad9f7c'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9cba9', key: '#4a3a2a', deck: '#7a6a4f', rows: 4, cols: 12 },
-    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'floppy', color: '#c9bf9f' },
     spine: { bg: '#4a3a2a' }, ink: '#4a3a2a',
   },
   apple2gs: {
     name: 'APPLE IIGS', short: 'IIGS', body: dark('#d4d4d0', '#bdbdb8', '#9f9f9a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#cfcfca', key: '#e6e6e2', deck: '#8f8f8a', fkeys: { n: 8, color: '#bdbdb8' } },
-    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'stripes', colors: APPLE, w: 9, skew: 0 }, aux2: { type: 'floppy' },
     spine: { bg: '#4a4a4e' }, ink: '#3a3a3e',
   },
   bbcmicro: {
     name: 'BBC MICRO', short: 'BBC', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#1d1d20', fkeys: { n: 10, color: '#c4161c' }, deck: '#2a2a2e', special: [{ color: '#a5a07f', at: [[0, 0], [4, 0], [4, 1]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#1d1d20'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#ff3b2a', '#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#1d1d20'], h: 4 }, aux2: { type: 'fkeys', n: 6, color: '#d8452a' },
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e',
   },
   commodore64: {
     name: 'COMMODORE 64', short: 'C64', body: dark('#8a7e6a', '#776b57', '#5a4f3f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#7a6e5a', key: '#3a3330', deck: '#292522', special: [{ color: '#c9b99a', at: [[0, 12], [1, 12], [2, 12], [3, 12]] }] },
-    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#3a3330' }, ink: '#f2e6c9',
   },
   vic20: {
     name: 'VIC-20', short: 'VIC', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#5a4636', deck: '#3a2e24', special: [{ color: '#e9dfc6', at: [[0, 12], [1, 12], [2, 12], [3, 12]] }] },
-    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: ['#c4161c', '#f6a01a', '#f7e017', '#22a84a', '#1e8fd6'], w: 9 }, aux2: { type: 'fkeys', n: 4, color: '#c9a46a' },
     spine: { bg: '#5a4636' }, ink: '#5a4636',
   },
   dos: {
     name: 'MS-DOS', short: 'DOS', body: BEIGE, texture: { type: 'vribs', color: '#c9bea3' },
     hero: { type: 'crt', case: '#e2d8c0', content: 'prompt', lines: ['C:\\>CD GAMES', 'C:\\GAMES>DIR', 'C:\\GAMES>_'], ink: '#c9c9c9', screen: '#0a0a0a', slot: true },
     aux1: { type: 'floppy' },
-    aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux2: { type: 'turbo', text: '66' },
     spine: { bg: '#3a3a3e' }, ink: '#3a3528',
   },
   dragon: {
     name: 'DRAGON 32', short: 'DRAGON', body: dark('#e2d8c0', '#cfc4a8', '#ada284'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#d9cfb6', key: '#1d1d20', deck: '#2a2a2e', special: [{ color: '#c4161c', at: [[4, 0], [4, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' }, ink: '#3a3528',
   },
   elektronikabk: {
     name: 'ELEKTRONIKA BK', short: 'BK', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#c9c9c4', deck: '#18181a', special: [{ color: '#c4161c', at: [[0, 0], [0, 12]] }], fkeys: { n: 6, color: '#8f8f8a' } },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#18181a' },
   },
   macintosh: {
@@ -530,55 +530,55 @@ module.exports = {
   msx1: {
     name: 'MSX', short: 'MSX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1d1d20', key: '#2c2c30', deck: '#0e0e10', fkeys: { n: 5, color: '#3a5fd6' }, alt: '#55555c' },
-    aux1: { type: 'slot2' }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6'] },
+    aux1: { type: 'slot2' }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' },
   },
   msx2: {
     name: 'MSX2', short: 'MSX2', body: dark('#c9c9c4', '#b5b5b0', '#95958f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#bdbdb8', key: '#2c2c30', deck: '#4a4a4e', fkeys: { n: 5, color: '#c4161c' }, alt: '#6a6a70' },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a2a2e'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a2a2e'], h: 4 }, aux2: [{ type: 'joyports' }, { type: 'leds', colors: ['#ff3b2a', '#3f6'], flex: .45 }],
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e',
   },
   msxturbor: {
     name: 'MSX turbo R', short: 'turbo R', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#d9d9d6', deck: '#18181a', fkeys: { n: 5, color: '#c4161c' }, alt: '#9a9a96', mark: { text: 'turbo R', style: 'red', y: -122, size: 18 } },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a', '#3f6', '#f7b210'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 4 }, aux2: { type: 'floppy' },
     spine: { bg: '#18181a' },
   },
   oricatmos: {
     name: 'ORIC ATMOS', short: 'ORIC', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#2a2a2e', deck: '#c4161c', special: [{ color: '#c4161c', at: [[0, 0], [4, 0], [4, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#c4161c'], h: 5 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' }, frame: '#c4161c',
   },
   pc88: {
     name: 'PC-8801', short: 'PC-88', body: BEIGE, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e2d8c0', key: '#d9cfb6', deck: '#8f8774', fkeys: { n: 10, color: '#3a3a3e' }, alt: '#bdb5a0' },
-    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'floppy', color: '#d9d0bb' },
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   pc98: {
     name: 'PC-9801', short: 'PC-98', body: dark('#e6e1d4', '#d6d0c0', '#b8b19e'), texture: { type: 'none' },
     hero: { type: 'crt', case: '#e2dccb', content: 'prompt', lines: ['A>DIR', ' GAME  EXE', 'A>GAME', '_'], ink: '#7ef', screen: '#000814', slot: true },
-    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'leds', colors: ['#3f6', '#f7b210'] },
+    aux1: { type: 'vents', color: '#9a8f78' }, aux2: { type: 'floppy', color: '#d9d0bb' },
     spine: { bg: '#5a5446' }, ink: '#3a3528',
   },
   samcoupe: {
     name: 'SAM COUPE', short: 'SAM', body: dark('#5a5a60', '#46464c', '#2e2e33'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#46464c', key: '#2a2a2e', deck: '#1a1a1d', round: true, fkeys: { n: 10, color: '#9a9aa0' } },
-    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b', '#2a63d6'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#e3262e', '#f5c61b', '#2a63d6'], h: 4 }, aux2: { type: 'floppy' },
     spine: { bg: '#2a2a2e' },
   },
   sharpx1: {
     name: 'SHARP X1', short: 'X1', body: dark('#c94040', '#a82828', '#7a1818'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#e9e9e5', key: '#2c2c30', deck: '#4a4a4e', fkeys: { n: 10, color: '#a82828' } },
-    aux1: { type: 'vents', color: '#5a1010' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a'] },
+    aux1: { type: 'vents', color: '#5a1010' }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#3f6'], flex: .45 }],
     spine: { bg: '#2c2c30' },
   },
   sharpx68000: {
     name: 'X68000', short: 'X68K', body: dark('#3a3a3f', '#2a2a2e', '#18181a'), texture: { type: 'vribs', color: '#222226' },
     hero: { type: 'crt', case: '#2a2a2e', content: 'prompt', lines: ['Human68k', 'A>GAME.X', '_'], ink: '#9fe', screen: '#00101a', slot: true },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#3f6', '#ff3b2a', '#f7b210'] },
+    aux1: { type: 'ribs' }, aux2: { type: 'floppy' },
     spine: { bg: '#18181a', texture: 'vribs' },
   },
   spectravideo: {
@@ -590,37 +590,37 @@ module.exports = {
   thomson: {
     name: 'THOMSON', short: 'MO5', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#3a3a40', deck: '#0e0e10', flat: true, special: [{ color: '#c4161c', at: [[0, 0], [0, 12], [4, 0]] }] },
-    aux1: { type: 'hstripes', colors: ['#2a63d6', '#ffffff', '#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#2a63d6', '#ffffff', '#c4161c'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#c4161c' },
   },
   ti994a: {
     name: 'TI-99/4A', short: 'TI-99', body: dark('#c9ccd4', '#aeb2bc', '#8a8f9a'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#2a2a2e', key: '#3a3a40', deck: '#1a1a1d', fkeys: { n: 6, color: '#aeb2bc' } },
-    aux1: { type: 'hstripes', colors: ['#2a2a2e', '#2a2a2e'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#2a2a2e', '#2a2a2e'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#2a2a2e' }, ink: '#2a2a2e', frame: 'chrome',
   },
   trs80coco: {
     name: 'TRS-80 COCO', short: 'COCO', body: dark('#c9c9c4', '#b5b5b0', '#95958f'), texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#bdbdb8', key: '#2c2c30', deck: '#4a4a4e', special: [{ color: '#c4161c', at: [[4, 0]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a63d6'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#2a63d6'], h: 4 }, aux2: [{ type: 'slot2', n: 1 }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#2c2c30' }, ink: '#2c2c30',
   },
   vg5000: {
     name: 'VG 5000', short: 'VG5K', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#2c2c30', deck: '#0e0e10', special: [{ color: '#c4161c', at: [[0, 12], [1, 12], [4, 0]] }, { color: '#9aa0aa', at: [[2, 12], [3, 12]] }] },
-    aux1: { type: 'hstripes', colors: ['#c4161c', '#9aa0aa'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c', '#9aa0aa'], h: 4 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
   zx81: {
     name: 'ZX81', short: 'ZX81', body: BLACK, texture: { type: 'ribs', color: '#222226' },
     hero: { type: 'keyboard', case: '#141416', key: '#1d1d20', deck: '#0b0b0c', flat: true, rows: 4, cols: 10, space: false },
-    aux1: { type: 'hstripes', colors: ['#c4161c'], h: 4 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'hstripes', colors: ['#c4161c'], h: 4 }, aux2: { type: 'cassette' },
     spine: { bg: '#121214', texture: 'ribs' }, ink: '#ff5a4a', frame: '#c4161c',
   },
   zxspectrum: {
     name: 'ZX SPECTRUM', short: 'ZX', body: BLACK, texture: { type: 'none' },
     hero: { type: 'keyboard', case: '#1b1b1d', key: '#5b585b', deck: '#0e0e10', round: true, rows: 4, cols: 10, space: false, stripe: SPECTRUM },
-    aux1: { type: 'stripes', colors: SPECTRUM, w: 12 }, aux2: { type: 'leds', colors: ['#ff3b2a'] },
+    aux1: { type: 'stripes', colors: SPECTRUM, w: 12 }, aux2: [{ type: 'cassette' }, { type: 'leds', colors: ['#ff3b2a'], flex: .45 }],
     spine: { bg: '#121214' }, frame: 'chrome',
   },
 
@@ -628,13 +628,13 @@ module.exports = {
   scummvm: {
     name: 'SCUMMVM', short: 'SCUMM', body: dark('#3a2a5c', '#2a1f48', '#1a1230'), texture: { type: 'dots', color: '#7ef', opacity: .1 },
     hero: { type: 'crt', case: '#e2d8c0', content: 'scumm', slot: true },
-    aux1: { type: 'hstripes', colors: ['#f7d26a', '#7ef', '#3a8'], h: 4 }, aux2: { type: 'leds', colors: ['#3f6'] },
+    aux1: { type: 'hstripes', colors: ['#f7d26a', '#7ef', '#3a8'], h: 4 }, aux2: { type: 'mouse' },
     spine: { bg: '#1a1230' }, ink: '#f7d26a',
   },
   zmachine: {
     name: 'Z-MACHINE', short: 'Z', body: dark('#2a2a2e', '#1b1b1e', '#0e0e10'), texture: { type: 'none' },
     hero: { type: 'crt', case: '#3a3a40', content: 'prompt', lines: ['WEST OF HOUSE', 'You are standing', 'in an open field.', '>open mailbox_'], ink: '#ffb000', screen: '#120a00', fontSize: 15 },
-    aux1: { type: 'vents' }, aux2: { type: 'leds', colors: ['#ffb000'] },
+    aux1: { type: 'grille', color: '#3a2a10' }, aux2: { type: 'text', text: '&gt; GO NORTH_', size: 15, font: 'Consolas, monospace', color: '#ffb000', ls: 1 },
     spine: { bg: '#0e0e10' }, ink: '#ffb000', frame: '#ffb000',
   },
 };

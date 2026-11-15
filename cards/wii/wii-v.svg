@@ -42,8 +42,13 @@
       </g>
 
       <!-- détails -->
-      <g id="aux1"><defs><radialGradient id="r84" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#f2f2f0"/><stop offset="1" stop-color="#bdbdbb"/></radialGradient></defs><circle cx="52" cy="569" r="24" fill="#adadaa"/><circle cx="52" cy="569" r="20" fill="url(#r84)" filter="url(#soft)"/><circle cx="114" cy="569" r="24" fill="#adadaa"/><circle cx="114" cy="569" r="20" fill="url(#r84)" filter="url(#soft)"/><circle cx="164" cy="569" r="5" fill="#38b6ff"/><circle cx="164" cy="569" r="12" fill="#38b6ff" opacity=".25"/></g>
-      <g id="aux2"><circle cx="40" cy="645" r="12" fill="#38b6ff" opacity=".22"/><circle cx="40" cy="645" r="5" fill="#38b6ff"/><circle cx="38.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="66" cy="645" r="12" fill="#38b6ff" opacity=".22"/><circle cx="66" cy="645" r="5" fill="#38b6ff"/><circle cx="64.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/></g>
+      <g id="aux1"><defs><radialGradient id="r39" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#f2f2f0"/><stop offset="1" stop-color="#bdbdbb"/></radialGradient></defs><circle cx="52" cy="569" r="24" fill="#adadaa"/><circle cx="52" cy="569" r="20" fill="url(#r39)" filter="url(#soft)"/><circle cx="114" cy="569" r="24" fill="#adadaa"/><circle cx="114" cy="569" r="20" fill="url(#r39)" filter="url(#soft)"/><circle cx="164" cy="569" r="5" fill="#38b6ff"/><circle cx="164" cy="569" r="12" fill="#38b6ff" opacity=".25"/></g>
+      <g id="aux2"><rect x="26" y="629" width="162" height="32" rx="5" fill="#f1f1ee" stroke="#858583" stroke-width="1.2"/>
+      <rect x="28" y="631" width="158" height="9.6" rx="3" fill="#fff" opacity=".07"/>
+      <rect x="36" y="642.5" width="114" height="5" rx="2.5" fill="#38b6ff"/>
+      <rect x="32" y="638" width="122" height="14" rx="7" fill="#38b6ff" opacity=".25"/>
+      <rect x="162" y="637" width="20" height="16" rx="3" fill="#a9a9a7" stroke="#f4f4f1"/>
+      <path d="M172 640 l5 5.5 h-10 z M167 647.5 h10 v2 h-10 z" fill="#f9f9f7"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(336 548) scale(0.8)"><defs><radialGradient id="hBase" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#ebebe9"/><stop offset=".5" stop-color="#e8e8e6"/><stop offset="1" stop-color="#979796"/></radialGradient><radialGradient id="hLid" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#fcfcfc"/><stop offset=".5" stop-color="#fbfbfa"/><stop offset="1" stop-color="#c4c4c3"/></radialGradient><radialGradient id="hHub" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#e9e9e8"/><stop offset=".5" stop-color="#e0e0de"/><stop offset="1" stop-color="#868685"/></radialGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
@@ -71,7 +76,7 @@
         <rect x="0" y="700" width="540" height="1.2" fill="#f5f5f3" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="38" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="476" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="36.9" width="40" height="2.2" fill="url(#filetG)"/>
+    <rect x="476" y="36.9" width="40" height="2.2" fill="url(#filetG)"/>
   </g>
 </svg>

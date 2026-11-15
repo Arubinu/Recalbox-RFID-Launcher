@@ -42,7 +42,7 @@
       </g>
 
       <!-- détails -->
-      <g id="aux1"><defs><radialGradient id="r46" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#e4e4e2"/><stop offset="1" stop-color="#aeaeaa"/></radialGradient></defs><circle cx="520" cy="61" r="24" fill="#adadaa"/><circle cx="520" cy="61" r="20" fill="url(#r46)" filter="url(#soft)"/><circle cx="582" cy="61" r="24" fill="#adadaa"/><circle cx="582" cy="61" r="20" fill="url(#r46)" filter="url(#soft)"/><circle cx="632" cy="61" r="5" fill="#f26a21"/><circle cx="632" cy="61" r="12" fill="#f26a21" opacity=".25"/></g>
+      <g id="aux1"><defs><radialGradient id="r16" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#e4e4e2"/><stop offset="1" stop-color="#aeaeaa"/></radialGradient></defs><circle cx="520" cy="61" r="24" fill="#adadaa"/><circle cx="520" cy="61" r="20" fill="url(#r16)" filter="url(#soft)"/><circle cx="582" cy="61" r="24" fill="#adadaa"/><circle cx="582" cy="61" r="20" fill="url(#r16)" filter="url(#soft)"/><circle cx="632" cy="61" r="5" fill="#f26a21"/><circle cx="632" cy="61" r="12" fill="#f26a21" opacity=".25"/></g>
       <g id="aux2"><rect x="500" y="475" width="54" height="28" rx="7" fill="#c9c9c4"/><rect x="508" y="483" width="38" height="12" rx="3" fill="#50504e"/><rect x="564" y="475" width="54" height="28" rx="7" fill="#c9c9c4"/><rect x="572" y="483" width="38" height="12" rx="3" fill="#50504e"/></g>
 
       <!-- motif principal -->
@@ -71,7 +71,7 @@
         <rect x="700" y="0" width="1.2" height="540" fill="#f3f3f0" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="493" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="432" y="493" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
+    <rect x="432" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
   </g>
 </svg>
