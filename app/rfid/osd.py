@@ -61,6 +61,19 @@ MESSAGES = {
         "fr": "Partie reprise là où elle s'était arrêtée", "en": "Game resumed where it stopped",
         "de": "Spiel dort fortgesetzt, wo es aufgehört hat", "es": "Partida reanudada donde se quedó",
         "it": "Partita ripresa da dove si era fermata", "pt": "Jogo retomado onde tinha parado"},
+    "power_card": {
+        "fr": "Extinction dans {n} s : retire la carte pour annuler",
+        "en": "Turning off in {n} s: remove the card to cancel",
+        "de": "Ausschalten in {n} s: Karte entfernen zum Abbrechen",
+        "es": "Apagado en {n} s: retira la tarjeta para cancelar",
+        "it": "Spegnimento tra {n} s: togli la carta per annullare",
+        "pt": "A desligar em {n} s: retira o cartão para cancelar"},
+    "power_cancelled": {
+        "fr": "Extinction annulée", "en": "Turning off cancelled", "de": "Ausschalten abgebrochen",
+        "es": "Apagado cancelado", "it": "Spegnimento annullato", "pt": "Desligar cancelado"},
+    "reboot_cancelled": {
+        "fr": "Redémarrage annulé", "en": "Restart cancelled", "de": "Neustart abgebrochen",
+        "es": "Reinicio cancelado", "it": "Riavvio annullato", "pt": "Reinício cancelado"},
     "paused": {
         "fr": "Pause : le temps de jeu est arrêté", "en": "Paused: the play time is stopped",
         "de": "Pause: Die Spielzeit ist angehalten", "es": "Pausa: el tiempo de juego está detenido",

@@ -4,6 +4,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [Unreleased]
+
+### Added
+
+* **Turn off and restart from the reader screen**: START + SELECT open a menu
+  (Turn off, Restart, Cancel), then a 5-second countdown that any button
+  cancels. Option: both, turn off only, or off.
+* **Turn off when nobody plays** (reader screen, option): after a chosen number
+  of minutes with no card and no game, a 30-second countdown that a button or
+  a card cancels.
+
+### Changed
+
+* The **Turn off** card waits 10 seconds (removing the card cancels) and quits
+  the game running first, so it is saved. Option to turn off at once.
+
 ## [1.0.0]
 
 First public release.

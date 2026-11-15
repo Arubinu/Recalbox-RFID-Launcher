@@ -141,7 +141,7 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 | **Random game** | starts a game drawn at random: every console, one console, only the favourites, or a **collection** (games picked one by one in the card settings). Can carry a play time limit |
 | **Bonus time** | adds minutes to a time-limited game (see below), a limited number of times per period |
 | **Quit the game** | quits the running game, back to the menu |
-| **Turn off** | turns the Recalbox off cleanly |
+| **Turn off** | turns the Recalbox off cleanly, after a 10-second countdown: removing the card cancels. A game running is quit (and saved, if set) just before. Settings › TV display › "Countdown of the Turn off card" off: at once |
 | **Player card** | counts the play time of one person (see "Player cards") |
 | **Unlock** | with the menu lock: opens every game, then locks again (see "Player cards") |
 | **Pause** | pauses the game and the play time (game limit and player time); placed again, everything resumes. RetroArch games |
@@ -311,6 +311,15 @@ Options of the reader screen (Settings › TV display):
   (or two minutes) cancels. The play time counts from the start only.
 * **Show the active player's games**: their last games, with box art, in
   place of the consoles.
+* **Turn off and restart from the reader screen** (on by default): START and
+  SELECT together on a controller, when no game runs, open a menu with
+  **Turn off**, **Restart** and **Cancel** (D-pad to choose, any button to
+  confirm; it closes by itself after 20 seconds). A 5-second countdown follows,
+  and any button cancels it. "Turn off only" hides Restart, "off" turns the
+  menu off. The buttons are the ones set up in Recalbox for each controller.
+* **Turn off when nobody plays** (minutes, 0 = never, the default): with no
+  card on the reader and no game for that long, the screen announces the
+  shutdown; a controller button or a card cancels it within 30 seconds.
 
 The messages that appear at the bottom of a game (player card needed, no
 time left, bonus...) appear at the top of the reader screen too, when no
