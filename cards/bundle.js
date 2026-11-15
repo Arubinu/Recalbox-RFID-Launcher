@@ -55,7 +55,8 @@ return {
     const key = system + '|' + variant + '|' + uniform;
     if (!cache.has(key)) {
       const theme = themeOf(system) || GENERIC;
-      cache.set(key, card(theme, SIDES[variant] || 'right', uniform ? { spine: THEMES.megadrive.spine } : {}));
+      /* square: the editor rounds the card itself (two roundings leave a light edge). */
+      cache.set(key, card(theme, SIDES[variant] || 'right', Object.assign({ square: true }, uniform ? { spine: THEMES.megadrive.spine } : {})));
     }
     return cache.get(key);
   },

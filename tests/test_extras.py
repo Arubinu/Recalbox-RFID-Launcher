@@ -226,6 +226,26 @@ class LibraryTest(unittest.TestCase):
         with self.assertRaises(LibraryError):
             library.system_logo("snes", "passwd")
 
+    def test_logo_lu_sur_le_disque_sans_frontend(self):
+        """Reader mode: EmulationStation (and its API) is stopped, the theme files are read."""
+        logos = tempfile.mkdtemp(prefix="rfid-logos-")
+        assets = tempfile.mkdtemp(prefix="rfid-assets-")
+        self.addCleanup(shutil.rmtree, logos, True)
+        self.addCleanup(shutil.rmtree, assets, True)
+        for folder, name, text in ((logos, "vectrex.svg", b"<svg id='logo'/>"), (logos, "snes-us.svg", b"<svg id='us'/>"),
+                                   (logos, "snes.svg", b"<svg id='plain'/>"), (assets, "vectrex-console.svg", b"<svg id='c'/>"),
+                                   (logos, "broken.svg", b"not a picture")):
+            with open(os.path.join(folder, name), "wb") as handle:
+                handle.write(text)
+        library = Library(http_get=FakeApi({"/resource/": LibraryError("connection refused")}), roms_dirs=(),
+                          logo_dirs=(logos,), asset_dirs=(assets,))
+        self.assertEqual(library.system_logo("vectrex"), ("image/svg+xml", b"<svg id='logo'/>"))
+        self.assertEqual(library.system_logo("vectrex", "console"), ("image/svg+xml", b"<svg id='c'/>"))
+        # same region order as the API: eu, us, jp, world, then no region
+        self.assertEqual(library.system_logo("snes"), ("image/svg+xml", b"<svg id='us'/>"))
+        self.assertIsNone(library.system_logo("broken"))
+        self.assertIsNone(library.system_logo("nes"))
+
     def test_repli_sur_gamelist(self):
         directory = tempfile.mkdtemp(prefix="rfid-roms-")
         self.addCleanup(shutil.rmtree, directory, True)

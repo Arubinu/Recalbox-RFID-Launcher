@@ -45,7 +45,7 @@
       <g id="aux1"><circle cx="525" cy="61" r="32" fill="#9b8755"/>
       <path d="M516 34 h18 v18 h18 v18 h-18 v18 h-18 v-18 h-18 v-18 h18 z" fill="#e8622b" stroke="#743116" filter="url(#soft)"/>
       <circle cx="525" cy="61" r="5.3999999999999995" fill="#8b3b1a"/></g>
-      <g id="aux2"><defs><radialGradient id="ab1000" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#f1a180"/><stop offset=".55" stop-color="#e8622b"/><stop offset="1" stop-color="#803618"/></radialGradient><radialGradient id="ab1001" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#f1a180"/><stop offset=".55" stop-color="#e8622b"/><stop offset="1" stop-color="#803618"/></radialGradient></defs><circle cx="615.6" cy="496" r="19" fill="url(#ab1000)" filter="url(#soft)"/><circle cx="661" cy="482" r="19" fill="url(#ab1001)" filter="url(#soft)"/></g>
+      <g id="aux2"><defs><radialGradient id="ab550" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#f1a180"/><stop offset=".55" stop-color="#e8622b"/><stop offset="1" stop-color="#803618"/></radialGradient><radialGradient id="ab551" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#f1a180"/><stop offset=".55" stop-color="#e8622b"/><stop offset="1" stop-color="#803618"/></radialGradient></defs><circle cx="566.3000000000001" cy="496" r="19" fill="url(#ab550)" filter="url(#soft)"/><circle cx="611.7" cy="482" r="19" fill="url(#ab551)" filter="url(#soft)"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(525 262) scale(1)"><defs><linearGradient id="hBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbca98"/><stop offset=".5" stop-color="#d6c38a"/><stop offset="1" stop-color="#ab9c6e"/></linearGradient><linearGradient id="hBezel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3b3d"/><stop offset="1" stop-color="#222224"/></linearGradient><radialGradient id="hLed" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#ff8080"/><stop offset=".5" stop-color="#f00"/><stop offset="1" stop-color="#990000"/></radialGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
@@ -69,7 +69,7 @@
         <rect x="700" y="0" width="1.2" height="540" fill="#757576" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="493" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="432" y="493" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
+    <rect x="432" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
   </g>
 </svg>

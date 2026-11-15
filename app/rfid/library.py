@@ -38,6 +38,18 @@ except ImportError:  # pragma: no cover - platform dependent
 #: Frontend web API (Recalbox 10).
 API_BASE = "http://127.0.0.1:81"
 
+#: Theme pictures on disk, used when the frontend API does not answer (the
+#: frontend is stopped in reader mode): console logos, then console drawings
+#: of the theme ("<system>[-<region>]-<kind>.svg").
+LOGO_DIRS = ("/recalbox/system/resources/logos",)
+ASSET_DIRS = (
+    "/recalbox/share/system/.emulationstation/themes/recalbox-next/data/arts/systems_assets",
+    "/recalbox/share_init/system/.emulationstation/themes/recalbox-next/data/arts/systems_assets",
+)
+
+#: Largest theme picture read from the disk.
+MAX_LOGO_BYTES = 4 * 1024 * 1024
+
 #: ROM folders: writable share first, then the read-only base.
 ROMS_DIRS = ("/recalbox/share/roms", "/recalbox/share_init/roms")
 
@@ -108,9 +120,12 @@ def _text(node, tag: str) -> str:
 class Library:
     """Read access to the games known by the Recalbox."""
 
-    def __init__(self, api_base: str = API_BASE, roms_dirs=ROMS_DIRS, log=None, http_get=None):
+    def __init__(self, api_base: str = API_BASE, roms_dirs=ROMS_DIRS, log=None, http_get=None,
+                 logo_dirs=LOGO_DIRS, asset_dirs=ASSET_DIRS):
         self.api_base = api_base.rstrip("/")
         self.roms_dirs = tuple(roms_dirs)
+        self.logo_dirs = tuple(logo_dirs)
+        self.asset_dirs = tuple(asset_dirs)
         self.log = log
         self._http_get = http_get or _http_get
         self._lock = threading.Lock()
@@ -373,9 +388,29 @@ class Library:
             try:
                 content_type, data = self._http_get(url)
             except LibraryError:
-                return None
+                break  # frontend stopped (reader mode): the theme files on disk
             if data and "svg" in content_type:
                 return content_type, data
+        return self._disk_logo(system, kind, regions)
+
+    def _disk_logo(self, system: str, kind: str, regions: list):
+        """Theme picture read from the disk: same regions order as the API."""
+        if kind == "logo":
+            names = ["%s-%s.svg" % (system, region) for region in regions] + ["%s.svg" % system]
+            folders = self.logo_dirs
+        else:
+            names = ["%s-%s-%s.svg" % (system, region, kind) for region in regions] + ["%s-%s.svg" % (system, kind)]
+            folders = self.asset_dirs
+        for folder in folders:
+            for name in names:
+                path = os.path.join(folder, name)
+                try:
+                    with open(path, "rb") as handle:
+                        data = handle.read(MAX_LOGO_BYTES + 1)
+                except OSError:
+                    continue
+                if data and len(data) <= MAX_LOGO_BYTES and b"<svg" in data[:4096]:
+                    return "image/svg+xml", data
         return None
 
 

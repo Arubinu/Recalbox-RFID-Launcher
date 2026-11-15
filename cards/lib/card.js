@@ -109,10 +109,15 @@ function card(T, side, opts = {}) {
   const [g1, g2, g3, g4] = G.fade;
   const titleInk = pick(sp.ink || T.ink, sp.bg);
   const logoInk = pick(T.logoInk || T.ink, body[1]);
-  const filet = T.frame && !FRAME[T.frame] ? T.frame : null;
+  // filets autour du logo : couleur du cadre, sinon chrome clair ; sur un plastique
+  // clair (ou trop proche de leur couleur), un filet foncé reste visible.
+  const lightBody = luma(body[1]) > .55;
+  let filet = T.frame && !FRAME[T.frame] ? T.frame : (lightBody ? dk(body[1], .62) : '#e8e9ee');
+  if (Math.abs(luma(filet) - luma(body[1])) < .3) filet = lightBody ? dk(body[1], .62) : '#e8e9ee';
+  const filetH = lightBody ? 2.2 : 1.6;
 
   const defs = `
-    <clipPath id="card"><rect width="${W}" height="${H}" rx="${R}"/></clipPath>
+    <clipPath id="card"><rect width="${W}" height="${H}" rx="${opts.square ? 0 : R}"/></clipPath>
     <clipPath id="win"><path d="${win}"/></clipPath>
     <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><path d="${win}" fill="#000"/>${strokeOf(carve, 'fill="#fff"')}</mask>
     <mask id="noCarve" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/>${strokeOf(carve, 'fill="#000"')}</mask>
@@ -124,7 +129,7 @@ function card(T, side, opts = {}) {
     ${pattern('tex', tex.type, texColor)}
     ${spTex ? pattern('spTex', spTex.type, lt(sp.bg, luma(sp.bg) > .5 ? -0 : .18)) : ''}
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1">${frameC.map((c, i) => `<stop offset="${[0, .45, .52, 1][i]}" stop-color="${c}"/>`).join('')}</linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${filet || '#9a9da6'}" stop-opacity="0"/><stop offset=".5" stop-color="${filet || '#e8e9ee'}"/><stop offset="1" stop-color="${filet || '#9a9da6'}" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${filet}" stop-opacity="0"/><stop offset=".5" stop-color="${filet}"/><stop offset="1" stop-color="${filet}" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -170,8 +175,8 @@ function card(T, side, opts = {}) {
 
   const lg = G.zones.logo, ly = lg.y + lg.h / 2, cv = G.cover;
   const overlay = `
-    <rect x="${cv.x}" y="${ly}" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="${cv.x + cv.w - 40}" y="${ly}" width="40" height="1.6" fill="url(#filetG)"/>`;
+    <rect x="${cv.x}" y="${f(ly - filetH / 2)}" width="40" height="${filetH}" fill="url(#filetG)"/>
+    <rect x="${cv.x + cv.w - 40}" y="${f(ly - filetH / 2)}" width="40" height="${filetH}" fill="url(#filetG)"/>`;
 
   const label = { right: 'horizontale, languette à droite', left: 'horizontale, languette à gauche', bottom: 'verticale, languette en bas' }[side];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W / 10}mm" height="${H / 10}mm">

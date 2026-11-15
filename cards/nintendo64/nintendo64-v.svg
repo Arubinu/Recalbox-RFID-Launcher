@@ -13,7 +13,7 @@
     
     
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#b9bcc4"/><stop offset="0.52" stop-color="#5d6068"/><stop offset="1" stop-color="#d9dbe0"/></linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a9da6" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#9a9da6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e8e9ee" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#e8e9ee" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -43,15 +43,15 @@
 
       <!-- détails -->
       <g id="aux1"><rect x="26" y="555" width="166" height="4" rx="2" fill="#e3262e"/><rect x="26" y="562" width="166" height="4" rx="2" fill="#22a84a"/><rect x="26" y="569" width="166" height="4" rx="2" fill="#2a63d6"/><rect x="26" y="576" width="166" height="4" rx="2" fill="#f5c61b"/></g>
-      <g id="aux2"><defs><radialGradient id="l77" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#ffc4bf"/><stop offset=".35" stop-color="#ff3b2a"/><stop offset="1" stop-color="#661811"/></radialGradient>
-      <linearGradient id="k78" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b6b70"/><stop offset=".5" stop-color="#3a3a40"/><stop offset="1" stop-color="#232326"/></linearGradient></defs>
-      <rect x="26" y="619" width="140" height="52" rx="12" fill="#131315" stroke="#363638" stroke-width="1.2"/>
-      <rect x="40" y="638" width="70" height="14" rx="7" fill="#000" stroke="#0a0a0b"/>
-      <rect x="42" y="631" width="30" height="28" rx="5" fill="url(#k78)" stroke="#000" filter="url(#soft)"/>
-      <path d="M49 637 v16 M55 637 v16 M61 637 v16 M67 637 v16" stroke="#7f7f83" stroke-width="1.2"/>
-      <circle cx="132" cy="645" r="16" fill="#ff3b2a" opacity=".22"/>
-      <circle cx="132" cy="645" r="5.2" fill="url(#l77)" stroke="#4d120d" stroke-width=".8"/>
-      </g>
+      <g id="aux2"><rect x="30" y="628" width="26" height="8" rx="2" fill="#0a0a0b" stroke="#4e4e50"/>
+        <rect x="26" y="646" width="34" height="16" rx="8" fill="#131315" stroke="#4e4e50"/>
+        <rect x="34" y="651.5" width="18" height="5" rx="2.5" fill="#080808"/><rect x="74" y="628" width="26" height="8" rx="2" fill="#0a0a0b" stroke="#4e4e50"/>
+        <rect x="70" y="646" width="34" height="16" rx="8" fill="#131315" stroke="#4e4e50"/>
+        <rect x="78" y="651.5" width="18" height="5" rx="2.5" fill="#080808"/><rect x="118" y="628" width="26" height="8" rx="2" fill="#0a0a0b" stroke="#4e4e50"/>
+        <rect x="114" y="646" width="34" height="16" rx="8" fill="#131315" stroke="#4e4e50"/>
+        <rect x="122" y="651.5" width="18" height="5" rx="2.5" fill="#080808"/><rect x="162" y="628" width="26" height="8" rx="2" fill="#0a0a0b" stroke="#4e4e50"/>
+        <rect x="158" y="646" width="34" height="16" rx="8" fill="#131315" stroke="#4e4e50"/>
+        <rect x="166" y="651.5" width="18" height="5" rx="2.5" fill="#080808"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(336 548) scale(0.8)"><defs><radialGradient id="hPlate" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#a8a8ad"/><stop offset=".5" stop-color="#9a9aa0"/><stop offset="1" stop-color="#6c6c70"/></radialGradient><radialGradient id="hC0" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#f7d969"/><stop offset=".5" stop-color="#f2c518"/><stop offset="1" stop-color="#856c0d"/></radialGradient><radialGradient id="hC1" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#f7d969"/><stop offset=".5" stop-color="#f2c518"/><stop offset="1" stop-color="#856c0d"/></radialGradient><radialGradient id="hC2" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#f7d969"/><stop offset=".5" stop-color="#f2c518"/><stop offset="1" stop-color="#856c0d"/></radialGradient><radialGradient id="hC3" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#f7d969"/><stop offset=".5" stop-color="#f2c518"/><stop offset="1" stop-color="#856c0d"/></radialGradient><radialGradient id="hA" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#7591db"/><stop offset=".5" stop-color="#2b56c8"/><stop offset="1" stop-color="#182f6e"/></radialGradient><radialGradient id="hB" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#6dbd89"/><stop offset=".5" stop-color="#1f9a4a"/><stop offset="1" stop-color="#115529"/></radialGradient><radialGradient id="hStick" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#b9b9bc"/><stop offset=".5" stop-color="#8a8a90"/><stop offset="1" stop-color="#454548"/></radialGradient></defs>
@@ -76,7 +76,7 @@
         <rect x="0" y="700" width="540" height="1.2" fill="#6d6d6f" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="38" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="476" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="476" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
   </g>
 </svg>

@@ -13,7 +13,7 @@
     <pattern id="tex" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#454545" opacity=".07"/><rect x="4" y="4" width="4" height="4" fill="#454545" opacity=".07"/><rect x="4" width="4" height="4" fill="#000" opacity=".12"/><rect y="4" width="4" height="4" fill="#000" opacity=".12"/></pattern>
     <pattern id="spTex" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#404040" opacity=".07"/><rect x="4" y="4" width="4" height="4" fill="#404040" opacity=".07"/><rect x="4" width="4" height="4" fill="#000" opacity=".12"/><rect y="4" width="4" height="4" fill="#000" opacity=".12"/></pattern>
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6cf"/><stop offset="0.45" stop-color="#e9c35c"/><stop offset="0.52" stop-color="#9c6d12"/><stop offset="1" stop-color="#f3d27a"/></linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a9da6" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#9a9da6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e8e9ee" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#e8e9ee" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -43,7 +43,7 @@
 
       <!-- détails -->
       <g id="aux1"><rect x="494" y="54" width="184" height="4" rx="2" fill="#c19528"/><rect x="494" y="61" width="184" height="4" rx="2" fill="#c19528"/></g>
-      <g id="aux2"><circle cx="508" cy="489" r="12" fill="#f7b210" opacity=".22"/><circle cx="508" cy="489" r="5" fill="#f7b210"/><circle cx="506.5" cy="487.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="534" cy="489" r="12" fill="#3f6" opacity=".22"/><circle cx="534" cy="489" r="5" fill="#3f6"/><circle cx="532.5" cy="487.5" r="1.6" fill="#fff" opacity=".7"/></g>
+      <g id="aux2"><path d="M509.07 477 h42 l-5.88 24 h-30.24 z" fill="#080808" stroke="#565656" stroke-width="1.6" stroke-linejoin="round"/><circle cx="516.63" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="523.35" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="530.07" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="536.79" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="543.51" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="519.99" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="526.71" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="533.43" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="540.15" cy="493.32" r="1.68" fill="#c9a24a"/><path d="M561.07 477 h42 l-5.88 24 h-30.24 z" fill="#080808" stroke="#565656" stroke-width="1.6" stroke-linejoin="round"/><circle cx="568.63" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="575.35" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="582.07" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="588.79" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="595.51" cy="485.64" r="1.68" fill="#c9a24a"/><circle cx="571.99" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="578.71" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="585.43" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="592.15" cy="493.32" r="1.68" fill="#c9a24a"/><circle cx="642.1379310344828" cy="489" r="12" fill="#f7b210" opacity=".22"/><circle cx="642.1379310344828" cy="489" r="5" fill="#f7b210"/><circle cx="640.6379310344828" cy="487.5" r="1.6" fill="#fff" opacity=".7"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(566 262) scale(1)"><defs><radialGradient id="hBase" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#313131"/><stop offset=".5" stop-color="#151515"/><stop offset="1" stop-color="#0e0e0e"/></radialGradient><radialGradient id="hLid" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#6b6b6b"/><stop offset=".5" stop-color="#2c2c2c"/><stop offset="1" stop-color="#222222"/></radialGradient><radialGradient id="hHub" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#606060"/><stop offset=".5" stop-color="#1c1c1c"/><stop offset="1" stop-color="#111111"/></radialGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
@@ -71,7 +71,7 @@
         <rect x="700" y="0" width="1.2" height="540" fill="#686868" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="493" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="432" y="493" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="492.2" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="432" y="492.2" width="40" height="1.6" fill="url(#filetG)"/>
   </g>
 </svg>

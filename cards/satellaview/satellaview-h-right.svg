@@ -13,7 +13,7 @@
     <pattern id="tex" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="4.5" cy="4.5" r="1.3" fill="#ffffff"/></pattern>
     
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#b9bcc4"/><stop offset="0.52" stop-color="#5d6068"/><stop offset="1" stop-color="#d9dbe0"/></linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a9da6" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#9a9da6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4b4b4d" stop-opacity="0"/><stop offset=".5" stop-color="#4b4b4d"/><stop offset="1" stop-color="#4b4b4d" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -43,7 +43,11 @@
 
       <!-- détails -->
       <g id="aux1"><rect x="494" y="43" width="184" height="6" rx="3" fill="#3e5cc2"/><rect x="494" y="52" width="184" height="6" rx="3" fill="#d3262e"/><rect x="494" y="61" width="184" height="6" rx="3" fill="#f3b81f"/><rect x="494" y="70" width="184" height="6" rx="3" fill="#1d9a4c"/></g>
-      <g id="aux2"><circle cx="508" cy="489" r="12" fill="#6fa8ff" opacity=".22"/><circle cx="508" cy="489" r="5" fill="#6fa8ff"/><circle cx="506.5" cy="487.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="534" cy="489" r="12" fill="#3f6" opacity=".22"/><circle cx="534" cy="489" r="5" fill="#3f6"/><circle cx="532.5" cy="487.5" r="1.6" fill="#fff" opacity=".7"/></g>
+      <g id="aux2"><defs><linearGradient id="di31" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0f0f2"/><stop offset="1" stop-color="#979799"/></linearGradient></defs>
+      <path d="M551.07 499 L541.07 514 M551.07 499 L562.07 514" stroke="#808082" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="551.07" cy="486.5" rx="21" ry="15" transform="rotate(-30 551.07 486.5)" fill="url(#di31)" stroke="#8c8c8e" stroke-width="1.2"/>
+      <path d="M551.07 486.5 L575.07 474" stroke="#808082" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="576.07" cy="473.5" r="3.5" fill="#3e5cc2"/><circle cx="642.1379310344828" cy="489" r="12" fill="#6fa8ff" opacity=".22"/><circle cx="642.1379310344828" cy="489" r="5" fill="#6fa8ff"/><circle cx="640.6379310344828" cy="487.5" r="1.6" fill="#fff" opacity=".7"/><circle cx="668.1379310344828" cy="489" r="12" fill="#3f6" opacity=".22"/><circle cx="668.1379310344828" cy="489" r="5" fill="#3f6"/><circle cx="666.6379310344828" cy="487.5" r="1.6" fill="#fff" opacity=".7"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(566 262) scale(1)"><defs><radialGradient id="hBase" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#c0bfc4"/><stop offset=".5" stop-color="#b7b6bc"/><stop offset="1" stop-color="#77767a"/></radialGradient><radialGradient id="hLid" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#ebebee"/><stop offset=".5" stop-color="#e3e2e7"/><stop offset="1" stop-color="#b1b0b4"/></radialGradient><radialGradient id="hHub" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#bab9be"/><stop offset=".5" stop-color="#9c9ba2"/><stop offset="1" stop-color="#5e5d61"/></radialGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
@@ -71,7 +75,7 @@
         <rect x="700" y="0" width="1.2" height="540" fill="#b0b1b4" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="493" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="432" y="493" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
+    <rect x="432" y="491.9" width="40" height="2.2" fill="url(#filetG)"/>
   </g>
 </svg>

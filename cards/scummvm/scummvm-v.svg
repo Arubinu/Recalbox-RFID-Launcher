@@ -13,7 +13,7 @@
     <pattern id="tex" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="4.5" cy="4.5" r="1.3" fill="#7ef"/></pattern>
     
     <linearGradient id="frameG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#b9bcc4"/><stop offset="0.52" stop-color="#5d6068"/><stop offset="1" stop-color="#d9dbe0"/></linearGradient>
-    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a9da6" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#9a9da6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="filetG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e8e9ee" stop-opacity="0"/><stop offset=".5" stop-color="#e8e9ee"/><stop offset="1" stop-color="#e8e9ee" stop-opacity="0"/></linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="1" y2=".62"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".46" stop-color="#fff" stop-opacity=".07"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity=".04"/><stop offset=".36" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <radialGradient id="crtVignette" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
@@ -43,7 +43,10 @@
 
       <!-- détails -->
       <g id="aux1"><rect x="26" y="558.5" width="166" height="4" rx="2" fill="#f7d26a"/><rect x="26" y="565.5" width="166" height="4" rx="2" fill="#7ef"/><rect x="26" y="572.5" width="166" height="4" rx="2" fill="#3a8"/></g>
-      <g id="aux2"><circle cx="40" cy="645" r="12" fill="#3f6" opacity=".22"/><circle cx="40" cy="645" r="5" fill="#3f6"/><circle cx="38.5" cy="643.5" r="1.6" fill="#fff" opacity=".7"/></g>
+      <g id="aux2"><path d="M84.1 622 C74.1 612 58.1 624 50.1 616" fill="none" stroke="#7f7c76" stroke-width="2"/>
+      <rect x="68.92" y="622" width="30.36" height="46" rx="15.18" fill="#e6e2d6" stroke="#8a8880" filter="url(#soft)"/>
+      <path d="M68.92 639.48 H99.28 M84.1 622 V639.48" stroke="#8a8880" stroke-width="1.2"/>
+      <path d="M145.52 628.9 v25.3 l6.33 -6.07 l4.3 9.11 l3.04 -1.52 l-4.3 -8.86 h8.6 z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></g>
 
       <!-- motif principal -->
       <g id="hero" transform="translate(336 548) scale(0.8)"><defs><linearGradient id="hCase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5ddc8"/><stop offset=".5" stop-color="#e2d8c0"/><stop offset="1" stop-color="#b0a896"/></linearGradient><linearGradient id="hGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
@@ -68,7 +71,7 @@
         <rect x="0" y="700" width="540" height="1.2" fill="#6a6578" opacity=".6"/>
       </g>
     </g>
-    <rect x="24" y="38" width="40" height="1.6" fill="url(#filetG)"/>
-    <rect x="476" y="38" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="24" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
+    <rect x="476" y="37.2" width="40" height="1.6" fill="url(#filetG)"/>
   </g>
 </svg>

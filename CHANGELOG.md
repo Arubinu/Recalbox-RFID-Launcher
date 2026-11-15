@@ -4,6 +4,41 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 semantic versioning. The current version is also in the `VERSION` file and shown
 by `rfidctl version`.
 
+## [1.2.0]
+
+### Added
+
+* **A card design for each console** (the new default card): about a hundred
+  consoles, each drawn from its own distinctive signs (shape, colours, buttons,
+  ports...), the game picture in a window, and the title on the tab that sticks
+  out of the reader. Option: the Mega Drive tab on every card, so that a
+  collection looks the same in the reader.
+* **One choice for the way the card goes in the reader**: landscape with the
+  tab on the left or on the right (slot on the side of the box), or portrait
+  with the tab at the bottom (slot in the front). It replaces the direction and
+  slot-edge settings.
+* Title in **capitals** and with a **shadow** (options); **compact** number of
+  players (an icon and "1–2"); the **console name** written instead of its
+  logo (the default of the console design).
+* A console without a design of its own gets its name and initials from the
+  Recalbox.
+* The page served by the Recalbox goes straight to the connection.
+
+### Changed
+
+* **"Automatic" logo colour**, first in the list and the default: a logo of
+  several colours keeps them, a one-colour logo is painted light or dark
+  against what is under it, with a halo when it would melt into the background.
+* Changing the direction of the card keeps the settings of each element.
+* Without a console logo, the title is centred (Cartouche, Bandeau, Minimal).
+
+### Fixed
+
+* In reader mode, console logos and drawings are read from the theme files
+  (EmulationStation and its API are stopped).
+* A newly chosen game shows on the card at once.
+* Printing with bleed: the corners are filled; no light edge around the card.
+
 ## [1.1.0]
 
 ### Added
