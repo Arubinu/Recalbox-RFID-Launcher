@@ -239,7 +239,7 @@
   .field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
   .field > small { font-size: 12.5px; color: var(--faint); }
   .field .field-title { font-size: 13px; font-weight: 600; color: var(--muted); }
-  input[type=text], input[type=password], input[type=number], input[type=search], select {
+  input[type=text], input[type=password], input[type=number], input[type=time], input[type=search], select {
     width: 100%; height: 44px; padding: 0 13px;
     background: var(--bg-2); color: var(--text);
     border: 1px solid var(--line-2); border-radius: var(--r-md);
@@ -487,6 +487,7 @@
   .option-control { flex: 0 0 auto; }
   .option select { height: 38px; min-width: 180px; max-width: 260px; }
   .option input[type=number] { width: 112px; height: 38px; text-align: right; }
+  .option input[type=time] { width: 128px; height: 38px; }
   .switch {
     position: relative; width: 46px; height: 26px; padding: 0; flex: 0 0 auto;
     border-radius: 999px; border: 1px solid rgba(var(--ink-rgb), .18);
@@ -581,6 +582,11 @@
   .week table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .week th, .week td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
   .week thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+  .table-wrap { overflow-x: auto; }
+  table.refusals { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.refusals th, table.refusals td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.refusals thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+  table.refusals .nowrap { white-space: nowrap; }
   .week td.trend.up { color: var(--warn-text); }
   .week td.trend.down { color: var(--ok-text); }
   .week td.best { white-space: normal; min-width: 120px; }
@@ -1290,9 +1296,23 @@
               <button class="special" type="button" data-special="time">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9.5 2.5h5"/></svg></span>
                 <b>Temps restant</b><span>Affiche le temps de jeu qui reste au joueur.</span></button>
+              <button class="special" type="button" data-special="continue">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/><path d="M10 9v6l5-3z"/></svg></span>
+                <b>Continuer</b><span>Relance le dernier jeu du joueur, là où il en était.</span></button>
             </div>
           </section>
 
+          <section class="card" id="note-card" hidden>
+            <div class="card-head"><div class="grow">
+              <h2>Message sur l'écran du lecteur</h2>
+              <p>Un petit mot affiché de temps en temps sur la TV, à la place de « Pose une carte pour jouer » (par exemple « Au lit à 20 h ! »). Il reste jusqu'à ce que vous le retiriez.</p>
+            </div></div>
+            <form class="inline-field" id="note-form">
+              <input type="text" id="note-text" maxlength="120" placeholder="Au lit à 20 h !" aria-label="Message sur l'écran du lecteur">
+              <button class="btn primary" type="submit" id="note-save">Afficher</button>
+              <button class="btn ghost" type="button" id="note-clear" hidden>Retirer</button>
+            </form>
+          </section>
           <section class="card" id="players-card" hidden>
             <div class="card-head"><div class="grow">
               <h2>Joueurs</h2>
@@ -1315,6 +1335,19 @@
               <button class="btn sm" type="button" id="stats-export">Exporter (CSV)</button>
             </div></div>
             <div id="stats-body"></div>
+          </section>
+          <section class="card" id="refusals-card" hidden>
+            <div class="card-head"><div class="grow">
+              <h2>Jeux refusés</h2>
+              <p>Qui a essayé de jouer, à quoi, et pourquoi le jeu a été refusé (cartes et menu de la Recalbox). Les 200 derniers sont gardés.</p>
+            </div>
+            <div class="actions">
+              <button class="btn sm ghost" type="button" id="refusals-clear">Effacer</button>
+            </div></div>
+            <div class="table-wrap"><table class="refusals">
+              <thead><tr><th scope="col">Quand</th><th scope="col">Qui</th><th scope="col">Jeu</th><th scope="col">Pourquoi</th></tr></thead>
+              <tbody id="refusals-body"></tbody>
+            </table></div>
           </section>
         </section>
 
@@ -1375,6 +1408,7 @@
                 <div class="controls" id="card-controls"></div>
                 <div class="actions">
                   <button class="btn primary" type="button" id="card-add">Ajouter à la planche</button>
+                  <button class="btn" type="button" id="card-add-many">Ajouter plusieurs cartes…</button>
                   <button class="btn" type="button" id="card-png">Télécharger l'image</button>
                   <button class="btn" type="button" id="card-save-tpl">Enregistrer comme modèle</button>
                 </div>
@@ -1534,6 +1568,17 @@
               </div>
               <button class="btn primary" type="button" id="btn-update" hidden></button>
             </div>
+            <div class="option-group" style="margin-top:14px">
+              <div class="option">
+                <div class="option-text">
+                  <span class="option-label">Chercher les nouvelles versions en ligne</span>
+                  <span class="option-help">La page demande à GitHub la dernière version publiée et propose de l'installer en un clic (la Recalbox la télécharge : il lui faut Internet). Rien d'autre n'est envoyé.</span>
+                </div>
+                <div class="option-control">
+                  <button class="switch" type="button" role="switch" id="online-updates" aria-checked="true" aria-label="Chercher les nouvelles versions en ligne"></button>
+                </div>
+              </div>
+            </div>
             <div id="install-progress" class="stack" style="margin-top:14px" hidden>
               <div class="waiting"><span class="spinner" aria-hidden="true"></span>
                 <div class="grow"><b id="install-title">Mise à jour en cours…</b><span id="install-text">Ne fermez pas cette page.</span></div></div>
@@ -1572,6 +1617,7 @@
               <button class="btn sm" type="button" id="btn-start">Démarrer</button>
               <button class="btn sm" type="button" id="btn-restart">Redémarrer</button>
               <button class="btn sm" type="button" id="btn-stop">Arrêter</button>
+              <button class="btn sm" type="button" id="btn-screen-restart" hidden>Relancer l'écran du lecteur</button>
             </div>
           </section>
 
@@ -3388,6 +3434,7 @@ const ICONS = {
   save: '<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/>',
   sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
   time: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4.5l3 2"/><path d="M9.5 2.5h5"/>',
+  continue: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/><path d="M10 9v6l5-3z"/>',
   unlock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/>',
   link: '<path d="M12 5v14M5 12h14"/>',
   rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
@@ -4528,6 +4575,7 @@ function enterApp() {
   refresh();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(refresh, 1000);
+  checkLatestRelease(false);
 }
 
 async function refresh() {
@@ -4789,7 +4837,8 @@ function renderPlayers() {
   const card = $("#players-card");
   const status = serviceStatus().players;
   card.hidden = !(status && status.players);
-  if (card.hidden) return;
+  renderNote();
+  if (card.hidden) { loadStats(false); renderRefusals(); return; }
   const rows = status.players.map((player) => playerRow(player.name, player, player.uid));
   if (status.guest) {
     rows.push(playerRow(t("Sans carte joueur (invité)"), {
@@ -4822,6 +4871,7 @@ async function loadStats(force) {
   try {
     statsRows = (await agent.send("players.stats", {}, 20000)).rows || [];
     statsLoadedAt = Date.now();
+    try { refusalRows = (await agent.send("refusals.list", {}, 20000)).rows || []; } catch (error) { refusalRows = []; }
   } catch (error) {
     if (!statsRows) statsRows = [];
   } finally {
@@ -4855,6 +4905,7 @@ function shortDay(key) {
   return new Date(y, m - 1, d).toLocaleDateString(document.documentElement.lang || undefined, { day: "numeric", month: "short" });
 }
 function renderStats() {
+  renderRefusals();
   const card = $("#stats-card");
   const players = serviceStatus().players;
   const rows = statsRows || [];
@@ -4913,6 +4964,60 @@ function renderStats() {
   });
   body.replaceChildren(weekSummary(rows), ...blocks);
 }
+/* ---- the parent's message on the reader screen ---- */
+let noteLoaded = false;
+async function renderNote() {
+  const card = $("#note-card");
+  card.hidden = serviceStatus().display_mode !== "reader";
+  if (card.hidden || noteLoaded || !agent.isOpen) return;
+  noteLoaded = true;
+  try {
+    const answer = await agent.send("screen.note.get", {}, 8000);
+    $("#note-text").value = answer.text || "";
+    $("#note-clear").hidden = !answer.text;
+  } catch (error) { noteLoaded = false; }
+}
+async function saveNote(text) {
+  const answer = await run(() => agent.send("screen.note.set", { text }), "Action impossible :");
+  if (!answer) return;
+  $("#note-text").value = answer.text || "";
+  $("#note-clear").hidden = !answer.text;
+  toast("ok", answer.text ? t("Le message s'affiche sur l'écran du lecteur.") : t("Message retiré."));
+}
+
+/* ---- the games refused (refusals.json) ---- */
+let refusalRows = [];
+const REFUSAL_REASONS = {
+  player_needed: "pas de carte joueur",
+  player_exhausted: "plus de temps de jeu",
+  guest_exhausted: "plus de temps de jeu sans carte joueur",
+  player_schedule: "en dehors de ses horaires",
+  player_not_allowed: "jeu non autorisé pour ce joueur",
+  curfew: "heure du coucher",
+};
+function renderRefusals() {
+  const card = $("#refusals-card");
+  card.hidden = !refusalRows.length;
+  if (card.hidden) return;
+  $("#refusals-body").replaceChildren(...refusalRows.slice(0, 50).map((row) => {
+    const when = new Date(row.at * 1000).toLocaleString(document.documentElement.lang || undefined,
+      { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const game = row.game ? row.game + (row.system ? " (" + systemName(row.system) + ")" : "") : "—";
+    return el("tr", {}, [
+      el("td", { className: "nowrap", text: when }),
+      el("td", { text: row.player || t("Sans carte joueur (invité)") }),
+      el("td", { text: game + (row.via === "menu" ? " · " + t("menu") : "") }),
+      el("td", { text: t(REFUSAL_REASONS[row.reason] || row.reason) }),
+    ]);
+  }));
+}
+async function clearRefusals() {
+  const ok = await ask({ title: t("Effacer les jeux refusés ?"), text: t("La liste repart de zéro."), ok: t("Effacer"), danger: true });
+  if (!ok) return;
+  const done = await run(() => agent.send("refusals.clear"), "Action impossible :");
+  if (done) { refusalRows = []; renderRefusals(); }
+}
+
 /* The week: the last 7 days of each player, compared with the 7 days before. */
 function weekSummary(rows) {
   const days = statsDays(14);
@@ -5128,6 +5233,51 @@ async function removeTag(tag) {
 }
 
 /* ------------------------------------------------------------- maintenance */
+/* The latest release published on GitHub (the browser asks, not the
+   Recalbox; the Recalbox downloads the archive when asked to install it). */
+const RELEASES_LATEST = "https://api.github.com/repos/Arubinu/Recalbox-RFID-Launcher/releases/latest";
+const LATEST_KEY = "rfid-latest-release";
+const ONLINE_UPDATES_KEY = "rfid-online-updates";
+let latestRelease = null;
+function onlineUpdatesWanted() {
+  try { return localStorage.getItem(ONLINE_UPDATES_KEY) !== "0"; } catch (error) { return true; }
+}
+async function checkLatestRelease(force) {
+  if (!onlineUpdatesWanted()) { latestRelease = null; return; }
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(LATEST_KEY) || "null"); } catch (error) { cached = null; }
+  if (cached && !force && Date.now() - (cached.at || 0) < 6 * 3600 * 1000) {
+    latestRelease = cached.version ? cached : null;
+  } else {
+    try {
+      const answer = await fetch(RELEASES_LATEST, { headers: { Accept: "application/vnd.github+json" } });
+      if (!answer.ok) throw new Error(String(answer.status));
+      const data = await answer.json();
+      const asset = (data.assets || []).find((item) => item.name === "recalbox-rfid.zip");
+      const version = String(data.tag_name || "").replace(/^v/i, "");
+      latestRelease = asset && /^\d+(\.\d+)*$/.test(version)
+        ? { version, url: asset.browser_download_url, page: data.html_url, at: Date.now() } : null;
+      try { localStorage.setItem(LATEST_KEY, JSON.stringify(latestRelease || { at: Date.now() })); } catch (error) { /* ignore */ }
+    } catch (error) {
+      latestRelease = null; /* offline, or GitHub refused: checked again later */
+    }
+  }
+  if (state) renderMaintenance();
+}
+async function installLatest() {
+  const release = latestRelease;
+  if (!release) return;
+  const ok = await ask({
+    title: t("Mettre à jour la Recalbox ?"),
+    text: t("La Recalbox va télécharger et installer la version {v} depuis GitHub. Vos badges et réglages sont conservés, et la page se reconnecte toute seule.", { v: release.version }),
+    ok: t("Mettre à jour"),
+  });
+  if (!ok) return;
+  logLines = [];
+  $("#install-log").textContent = t("Mise à jour depuis {url}…", { url: release.url });
+  run(() => agent.send("install", { url: release.url }), "Mise à jour impossible :");
+}
+
 function renderMaintenance() {
   const installed = state.installed_version || "";
   const serviceVersion = serviceStatus().version || "";
@@ -5135,12 +5285,21 @@ function renderMaintenance() {
   const install = state.install || {};
   const pageNewer = Boolean(PAYLOAD && PAGE_VERSION && (!installed || versionPlusGrande(PAGE_VERSION, installed)));
   const sourceNewer = Boolean(source && (!installed || versionPlusGrande(source, installed)));
+  const online = latestRelease && onlineUpdatesWanted() ? latestRelease.version : "";
+  const onlineNewer = Boolean(online && (!installed || versionPlusGrande(online, installed))
+    && (!pageNewer || versionPlusGrande(online, PAGE_VERSION)));
+  $("#online-updates").setAttribute("aria-checked", onlineUpdatesWanted() ? "true" : "false");
 
   $("#ver-box").textContent = installed ? "Version " + installed : t("Pas encore installé");
   const update = $("#btn-update");
   update.hidden = true;
   let text = t("Le programme est à jour.");
-  if (pageNewer) {
+  if (onlineNewer) {
+    text = t("La version {v} est disponible en ligne.", { v: online });
+    update.hidden = false;
+    update.textContent = installed ? t("Mettre à jour vers {v}", { v: online }) : t("Installer la version {v}", { v: online });
+    update.onclick = installLatest;
+  } else if (pageNewer) {
     text = t("Cette page contient la version {v}.", { v: PAGE_VERSION });
     update.hidden = false;
     update.textContent = installed ? t("Mettre à jour vers {v}", { v: PAGE_VERSION }) : t("Installer la version {v}", { v: PAGE_VERSION });
@@ -5173,6 +5332,8 @@ function renderMaintenance() {
   $("#btn-start").disabled = busy || service.running;
   $("#btn-stop").disabled = busy || !service.running;
   $("#btn-restart").disabled = busy || !service.running;
+  $("#btn-screen-restart").hidden = !(service.running && serviceStatus().reader_screen);
+  $("#btn-screen-restart").disabled = busy;
 
   const fact = (k, v) => el("div", { className: "fact" + (String(v || "").length > 14 ? " wide" : "") }, [el("div", { className: "k", text: k }), el("div", { className: "v", text: v || "—" })]);
   $("#tech-facts").replaceChildren(
@@ -5491,6 +5652,8 @@ const CHOIX_TEXTES = {
   "display.resolution=recalbox": "comme Recalbox", "display.resolution=native": "celle de l'écran",
   "display.power_menu=both": "éteindre ou redémarrer", "display.power_menu=poweroff": "éteindre seulement",
   "display.power_menu=off": "désactivé",
+  "display.dim_min=recalbox": "comme Recalbox", "display.dim_min=0": "désactivé", "display.dim_min=5": "après 5 minutes", "display.dim_min=10": "après 10 minutes",
+  "display.dim_min=15": "après 15 minutes", "display.dim_min=30": "après 30 minutes", "display.dim_min=60": "après 1 heure",
   "players.week_start=monday": "lundi", "players.week_start=tuesday": "mardi", "players.week_start=wednesday": "mercredi",
   "players.week_start=thursday": "jeudi", "players.week_start=friday": "vendredi", "players.week_start=saturday": "samedi",
   "players.week_start=sunday": "dimanche",
@@ -5560,6 +5723,12 @@ function controlerOption(option) {
     }
     choix.addEventListener("change", () => { optionsPending[option.full] = choix.value; majEtatOptions(); });
     return choix;
+  }
+  if (option.type === "time") {
+    /* An hour (HH:MM), or empty = off. */
+    const heure = el("input", { attrs: { type: "time", "aria-label": label, value: valeur } });
+    heure.addEventListener("input", () => { optionsPending[option.full] = heure.value; majEtatOptions(); });
+    return heure;
   }
   const champ = el("input", { attrs: { type: "number", inputmode: "decimal", "aria-label": label, value: valeur } });
   if (option.min !== undefined) champ.setAttribute("min", String(option.min));
@@ -5797,6 +5966,7 @@ function specialName(action, params) {
   if (action === "save") return t("Sauvegarder la partie");
   if (action === "sound") return t("Son coupé / remis");
   if (action === "time") return t("Temps restant");
+  if (action === "continue") return t("Continuer");
   if (action === "reward") return t("Récompense +{n} min", { n: p.minutes || 15 });
   if (action === "player") {
     if (!p.quota_min) return t("Carte joueur · sans limite");
@@ -5967,6 +6137,7 @@ const SPECIAL_HELP = {
   save: "Pendant une partie (jeux RetroArch) : sauvegarde la partie tout de suite, au même endroit que la sauvegarde avant de quitter (elle est reprise au prochain lancement). Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte.",
   sound: "Coupe le son de la Recalbox (jeux et menus) ; posée encore, le son revient. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
   reward: "Ajoute du temps de jeu à un joueur pour aujourd'hui (ou cette semaine, selon sa carte), par exemple quand les devoirs sont faits. Pendant sa partie, elle dure aussi plus longtemps.",
+  continue: "Relance le dernier jeu du joueur actif (carte joueur posée, ou joueur gardé actif) ; sans joueur, le dernier jeu joué. Avec « Sauvegarder la partie avant de quitter », la partie reprend là où elle s'était arrêtée. Pratique quand la carte du jeu est rangée.",
   time: "Affiche à l'écran le temps de jeu qui reste au joueur actif (ou à l'invité). Le bip confirme seulement que la carte est lue. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
 };
 
@@ -8281,6 +8452,62 @@ async function addToSheet() {
   const perPage = sheetLayout().perPage;
   toast("ok", t("Carte ajoutée à la planche ({n}/{max} sur la feuille).", { n: ((sheet.length - 1) % perPage) + 1, max: perPage }));
 }
+/* Several cards at once: the games paired with a badge, or the games of a
+   console (all, or the favourites), each with the current design. */
+const BATCH_MAX = 60;
+async function addManyToSheet() {
+  await loadSystems();
+  const source = el("select", { attrs: { id: "f-batch-source" } }, [
+    el("option", { text: t("les jeux associés à un badge"), attrs: { value: "badges" } }),
+    el("option", { text: t("les jeux favoris de la console"), attrs: { value: "favorites" } }),
+    el("option", { text: t("tous les jeux de la console"), attrs: { value: "all" } }),
+  ]);
+  const system = el("select", { attrs: { id: "f-batch-system" } });
+  fillSystemSelect(system);
+  const ok = await cardDialog(t("Ajouter plusieurs cartes"),
+    t("Chaque jeu reçoit une carte avec le modèle choisi (et le cadre de sa console s'il en a un). {n} cartes au plus d'un coup.", { n: BATCH_MAX }),
+    [formField(t("Cartes pour"), source, "", true), formField(t("Console"), system, "", true)], t("Ajouter"));
+  if (!ok) return;
+  const kind = $("#f-batch-source").value;
+  const wanted = $("#f-batch-system").value;
+  let games = [];
+  if (kind === "badges") {
+    games = tags.filter((tag) => tag.kind !== "action" && (tag.path || tag.game) && (!wanted || tag.system === wanted))
+      .map((tag) => ({ system: tag.system, path: tag.path || tag.game, name: tagTitle(tag) }));
+  } else {
+    if (!wanted) { toast("err", t("Choisissez une console.")); return; }
+    const found = await run(() => agent.send("games.search", { query: "", system: wanted, limit: 200 }, 30000), "Liste des jeux impossible :");
+    if (!found) return;
+    games = (found.games || []).filter((game) => kind === "all" || game.favorite);
+  }
+  const seen = new Set();
+  games = games.filter((game) => { const key = game.system + "|" + game.path; if (seen.has(key)) return false; seen.add(key); return true; });
+  if (!games.length) { toast("info", t("Aucun jeu à ajouter.")); return; }
+  if (games.length > BATCH_MAX) {
+    const more = await ask({ title: t("Beaucoup de cartes"), text: t("{n} jeux trouvés : seuls les {max} premiers seront ajoutés.", { n: games.length, max: BATCH_MAX }), ok: t("Continuer") });
+    if (!more) return;
+    games = games.slice(0, BATCH_MAX);
+  }
+  const button = $("#card-add-many");
+  button.disabled = true;
+  const before = design.game;
+  try {
+    for (let index = 0; index < games.length; index++) {
+      button.textContent = t("Ajout {n}/{total}…", { n: index + 1, total: games.length });
+      await designGame(games[index]);
+      await consoleCardReady(design);
+      const preview = exportCanvas(false);
+      sheet.push({ name: design.title || t("Carte"), preview: preview.toDataURL("image/jpeg", 0.8),
+        print: exportCanvas(true).toDataURL("image/png"), printBleed: {}, design: designSnapshot() });
+      renderSheet();
+    }
+    toast("ok", t("{n} cartes ajoutées à la planche.", { n: games.length }));
+  } finally {
+    button.disabled = false;
+    button.textContent = t("Ajouter plusieurs cartes…");
+    if (before) designGame(before);
+  }
+}
 /* Bleed version of a sheet card, rendered when needed from its snapshot. */
 function bleedImage(item, bleedMm) {
   if (item.printBleed[bleedMm]) return item.printBleed[bleedMm];
@@ -9109,10 +9336,23 @@ function wire() {
     $("#install-log").textContent = t("Mise à jour depuis {url}…", { url });
     run(() => agent.send("install", { url }), "Mise à jour impossible :");
   });
+  $("#online-updates").addEventListener("click", () => {
+    const wanted = !onlineUpdatesWanted();
+    try { localStorage.setItem(ONLINE_UPDATES_KEY, wanted ? "1" : "0"); } catch (error) { /* ignore */ }
+    if (wanted) checkLatestRelease(true); else { latestRelease = null; if (state) renderMaintenance(); }
+  });
+  $("#refusals-clear").addEventListener("click", clearRefusals);
+  $("#card-add-many").addEventListener("click", addManyToSheet);
+  $("#note-form").addEventListener("submit", (event) => { event.preventDefault(); saveNote($("#note-text").value.trim()); });
+  $("#note-clear").addEventListener("click", () => saveNote(""));
   $("#btn-start").addEventListener("click", () => serviceAction("start"));
   $("#btn-stop").addEventListener("click", () => serviceAction("stop"));
   $("#btn-restart").addEventListener("click", () => serviceAction("restart"));
   $("#btn-reboot").addEventListener("click", rebootRecalbox);
+  $("#btn-screen-restart").addEventListener("click", async () => {
+    const done = await run(() => agent.send("screen.restart"), "Action impossible :");
+    if (done) toast("ok", t("L'écran du lecteur redémarre (quelques secondes)."));
+  });
   $("#btn-logs").addEventListener("click", () => showLog("service"));
   $("#btn-logs-agent").addEventListener("click", () => showLog("agent"));
 

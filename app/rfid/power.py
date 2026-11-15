@@ -23,7 +23,7 @@ REQUEST_FILE = "/tmp/rfid-screen-power-request.json"
 
 ACTIONS = ("poweroff", "reboot")
 #: Seconds before acting, per source.
-DELAYS = {"card": 10.0, "menu": 5.0, "idle": 30.0}
+DELAYS = {"card": 10.0, "menu": 5.0, "idle": 30.0, "curfew": 60.0}
 #: A request older than this is ignored (written before a restart of the service).
 REQUEST_MAX_AGE_S = 10.0
 

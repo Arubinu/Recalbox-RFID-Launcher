@@ -44,7 +44,7 @@ from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
 from .reader_mode import ReaderMode
-from . import avatars, es_command, frontend_lock, power
+from . import avatars, bedtime, es_command, frontend_lock, power, refusals, trophies
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -198,6 +198,12 @@ class Service:
         self._stop_on_remove = bool(cfg.get_bool("launch", "stop_on_remove", False))
         self.power_ctl = None
         self._idle_since = time.monotonic()
+        #: Bedtime: was it bedtime at the last check (None: not known yet,
+        #: the Recalbox turned on during bedtime is not turned off again).
+        self._bedtime_was = None
+        self._bedtime_warned = ""
+        self._next_bedtime_check = 0.0
+        self._next_trophies_check = 0.0
         self.rearm_absent_ms = 1200
         self.last_error_at = 0.0
         self.last_uid = ""
@@ -320,6 +326,7 @@ class Service:
             players=self.players, saver=self.saver,
             unlock=self._unlock_card,
             unlocked=lambda: frontend_lock.is_unlocked(self.home),
+            home=self.home,
         )
 
     def _read_card_memory(self):
@@ -366,7 +373,7 @@ class Service:
         asked = ctl.take_request()
         if asked:
             self._idle_since = now  # someone uses a controller
-        if asked == "cancel":
+        if asked == "cancel" and (ctl.pending is None or ctl.pending["source"] != "curfew"):
             pending = ctl.pending
             if ctl.cancel("manette"):
                 self._power_cancelled(pending)
@@ -491,6 +498,8 @@ class Service:
                 self._lock_watchdog()
                 self._reader_step()
                 self._power_step()
+                self._bedtime_step()
+                self._trophies_step()
                 self._watch_frontend()
 
                 try:
@@ -545,7 +554,7 @@ class Service:
         self._launched_uid = None
         stop_pending = getattr(self, "_stop_pending", None)
         ctl = getattr(self, "power_ctl", None)
-        if ctl is not None and ctl.pending is not None and ctl.pending["source"] != "card":
+        if ctl is not None and ctl.pending is not None and ctl.pending["source"] not in ("card", "curfew"):
             # A card cancels the countdown of the power menu or of nobody playing.
             pending = ctl.pending
             if ctl.cancel("carte posee"):
@@ -697,9 +706,17 @@ class Service:
             return uid, entry
         return None
 
-    def _refuse_game(self, key: str, message: str, **values) -> None:
+    def _refuse_game(self, key: str, message: str, record: bool = True, **values) -> None:
         """A game started from the menu is not allowed: message, then quit."""
         self._refusing = True
+        if record:
+            game = {}
+            try:
+                game = self.controller.running_game() or {}
+            except Exception:  # noqa: BLE001
+                pass
+            refusals.record(self.home, key, player=values.get("name", ""), game=game.get("name", ""),
+                            system=game.get("system", ""), via="menu")
         if self.screen is not None:
             self.screen.say(key, **values)
         self.feedback.error()
@@ -737,6 +754,7 @@ class Service:
                 self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
                 return
             players.begin(uid, entry, via="reader", game=controller.running_game())
+            self._remember_menu_game(uid)
             self._limit_menu_game(uid, name, left)
             if self.screen is not None:
                 if left is None:
@@ -754,8 +772,18 @@ class Service:
             self._refuse_game("guest_exhausted", "Jeu du menu refuse : plus de temps sans carte joueur")
             return
         players.begin("", {}, via="menu", game=controller.running_game())
+        self._remember_menu_game("")
         self._limit_menu_game("", "", left)
         self.log.info("Jeu lance depuis le menu : compte pour l'invite")
+
+    def _remember_menu_game(self, uid: str) -> None:
+        """A game started from the menu: the "continue" card can start it again."""
+        try:
+            game = self.controller.running_game() or {}
+            path = str((read_state() or {}).get("GamePath") or "")
+            self.players.remember(uid, game.get("system", ""), game.get("name", ""), path)
+        except Exception:  # noqa: BLE001 - never blocking
+            pass
 
     def _players_step(self) -> None:
         """Counts the time of the player, and watches the games started from the menu."""
@@ -1001,6 +1029,83 @@ class Service:
             return
         self._forget_latch()
         self.controller.on_button("short")
+
+    # ---------------------------------------------------------- trophies
+    def _trophies_step(self) -> None:
+        """New trophies of the players (every minute): a message on the screen."""
+        now = time.monotonic()
+        players = getattr(self, "players", None)
+        if (now < self._next_trophies_check or players is None or self.controller is None
+                or not getattr(self.controller, "counting_players", False)):
+            return
+        self._next_trophies_check = now + 60.0
+        try:
+            new = trophies.update(self.home, players.games)
+        except Exception as exc:  # noqa: BLE001 - never blocking
+            self.log.warning("Trophees non calcules : %s" % exc)
+            return
+        for uid, kind, level in new[:3]:
+            entry = None
+            try:
+                entry = self.store.get(uid)
+            except Exception:  # noqa: BLE001
+                pass
+            name = players.player_name(entry)
+            self.log.info("Nouveau trophee pour %s : %s %d" % (name, kind, level))
+            if self.screen is not None:
+                self.screen.say("trophy_" + kind, name=name, n=level)
+
+    # ---------------------------------------------------------- bedtime
+    def _bedtime_step(self) -> None:
+        """Warning 5 minutes before bedtime, then the game is quit (and the
+        Recalbox turned off, as an option). Games started during bedtime are quit."""
+        controller = self.controller
+        span = getattr(controller, "bedtime", None) if controller is not None else None
+        now = time.monotonic()
+        if span is None or now < self._next_bedtime_check:
+            if span is None:
+                self._bedtime_was = None
+            return
+        self._next_bedtime_check = now + 5.0
+        wall = time.time()
+        night = bedtime.active(span, wall)
+        free = controller.unlocked
+        try:
+            running = bool(controller.game_running())
+        except Exception:  # noqa: BLE001
+            running = False
+        if not running and not getattr(controller, "counting_players", False):
+            self._refusing = False
+        before = bedtime.minutes_to_start(span, wall)
+        today = time.strftime("%Y-%m-%d", time.localtime(wall))
+        if not night and 0 < before <= bedtime.WARN_MIN and self._bedtime_warned != today and not free:
+            self._bedtime_warned = today
+            if self.screen is not None:
+                self.screen.say("curfew_soon", n=max(1, int(round(before))))
+            self.log.info("Heure du coucher dans %d min" % max(1, int(round(before))))
+        starting = night and self._bedtime_was is False
+        self._bedtime_was = night
+        ctl = getattr(self, "power_ctl", None)
+        if ctl is not None and ctl.pending is not None and ctl.pending["source"] == "curfew" and free:
+            ctl.cancel("carte deverrouiller")
+        if not night or free:
+            return
+        if running and not getattr(self, "_refusing", False):
+            to = bedtime.clock_text(span[1])
+            if starting:
+                self._refuse_game("curfew_now", "Heure du coucher : fin de la partie", record=False, to=to)
+            else:
+                self._refuse_game("curfew", "Heure du coucher : jeu du menu refuse", to=to)
+        if starting:
+            self.log.info("Heure du coucher")
+            off = ctl is not None and self.cfg.get_bool("time", "curfew_poweroff", False)
+            if not running and self.screen is not None:
+                if off:
+                    self.screen.say("curfew_off")
+                else:
+                    self.screen.say("curfew_now", to=bedtime.clock_text(span[1]))
+            if off:
+                ctl.begin("poweroff", "curfew")
 
     # ------------------------------------------------------- reader mode
     def _configure_reader_mode(self) -> None:
@@ -1281,6 +1386,10 @@ class Service:
             if self.players is not None:
                 self.players.reset(str(payload.get("uid") or ""))
                 self._write_status(force=True)
+        elif command == "screen_restart":
+            reader = getattr(self, "reader_mode", None)
+            if reader is not None:
+                reader.restart_screen()
         elif command == "simulate_scan":
             uid = str(payload.get("uid") or "")
             if uid:
@@ -1992,6 +2101,7 @@ class Service:
             "menu_unlocked": frontend_lock.is_unlocked(self.home),
             "command_check": es_command.summary(self.home),
             "display_mode": (self.cfg.get("display", "mode", "recalbox") if self.cfg else "recalbox").strip().lower(),
+            "reader_screen": getattr(getattr(self, "reader_mode", None), "state", "recalbox") == "screen",
             "light": getattr(getattr(self.light, "output", None), "name", "none"),
         }
         write_json_atomic(status_path(self.home), payload)

@@ -61,6 +61,48 @@ MESSAGES = {
         "fr": "Partie reprise là où elle s'était arrêtée", "en": "Game resumed where it stopped",
         "de": "Spiel dort fortgesetzt, wo es aufgehört hat", "es": "Partida reanudada donde se quedó",
         "it": "Partita ripresa da dove si era fermata", "pt": "Jogo retomado onde tinha parado"},
+    "trophy_consoles": {
+        "fr": "Trophée pour {name} : {n} consoles découvertes !", "en": "Trophy for {name}: {n} consoles discovered!",
+        "de": "Trophäe für {name}: {n} Konsolen entdeckt!", "es": "Trofeo para {name}: ¡{n} consolas descubiertas!",
+        "it": "Trofeo per {name}: {n} console scoperte!", "pt": "Troféu para {name}: {n} consolas descobertas!"},
+    "trophy_games": {
+        "fr": "Trophée pour {name} : {n} jeux différents !", "en": "Trophy for {name}: {n} different games!",
+        "de": "Trophäe für {name}: {n} verschiedene Spiele!", "es": "Trofeo para {name}: ¡{n} juegos distintos!",
+        "it": "Trofeo per {name}: {n} giochi diversi!", "pt": "Troféu para {name}: {n} jogos diferentes!"},
+    "trophy_streak": {
+        "fr": "Trophée pour {name} : {n} jours de jeu d'affilée !", "en": "Trophy for {name}: {n} days of play in a row!",
+        "de": "Trophäe für {name}: {n} Spieltage am Stück!", "es": "Trofeo para {name}: ¡{n} días de juego seguidos!",
+        "it": "Trofeo per {name}: {n} giorni di gioco di fila!", "pt": "Troféu para {name}: {n} dias de jogo seguidos!"},
+    "trophy_hours": {
+        "fr": "Trophée pour {name} : {n} heures de jeu !", "en": "Trophy for {name}: {n} hours of play!",
+        "de": "Trophäe für {name}: {n} Stunden Spielzeit!", "es": "Trofeo para {name}: ¡{n} horas de juego!",
+        "it": "Trofeo per {name}: {n} ore di gioco!", "pt": "Troféu para {name}: {n} horas de jogo!"},
+    "continue_none": {
+        "fr": "Aucun jeu à reprendre pour l'instant", "en": "No game to resume yet",
+        "de": "Noch kein Spiel zum Fortsetzen", "es": "Aún no hay juego para continuar",
+        "it": "Ancora nessun gioco da riprendere", "pt": "Ainda não há jogo para continuar"},
+    "curfew": {
+        "fr": "C'est l'heure de dormir : pas de jeu avant {to}", "en": "Bedtime: no games before {to}",
+        "de": "Schlafenszeit: keine Spiele vor {to}", "es": "Hora de dormir: sin juegos antes de las {to}",
+        "it": "È ora di dormire: niente giochi prima delle {to}", "pt": "Hora de dormir: sem jogos antes das {to}"},
+    "curfew_soon": {
+        "fr": "L'heure du coucher approche : fin des jeux dans {n} min",
+        "en": "Bedtime is coming: games end in {n} min",
+        "de": "Bald ist Schlafenszeit: die Spiele enden in {n} Min.",
+        "es": "Se acerca la hora de dormir: los juegos terminan en {n} min",
+        "it": "Si avvicina l'ora di dormire: i giochi finiscono tra {n} min",
+        "pt": "A hora de dormir aproxima-se: os jogos acabam em {n} min"},
+    "curfew_now": {
+        "fr": "C'est l'heure de dormir : bonne nuit !", "en": "Bedtime: good night!",
+        "de": "Schlafenszeit: gute Nacht!", "es": "Hora de dormir: ¡buenas noches!",
+        "it": "È ora di dormire: buonanotte!", "pt": "Hora de dormir: boa noite!"},
+    "curfew_off": {
+        "fr": "Bonne nuit ! La Recalbox s'éteint dans une minute",
+        "en": "Good night! The Recalbox turns off in one minute",
+        "de": "Gute Nacht! Die Recalbox schaltet sich in einer Minute aus",
+        "es": "¡Buenas noches! La Recalbox se apaga en un minuto",
+        "it": "Buonanotte! La Recalbox si spegne tra un minuto",
+        "pt": "Boa noite! A Recalbox desliga-se dentro de um minuto"},
     "power_card": {
         "fr": "Extinction dans {n} s : retire la carte pour annuler",
         "en": "Turning off in {n} s: remove the card to cancel",

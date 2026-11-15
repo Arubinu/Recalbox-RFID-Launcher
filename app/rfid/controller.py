@@ -69,6 +69,7 @@ class Controller:
         saver=None,
         unlock=None,
         unlocked=None,
+        home=None,
     ):
         self.store = store
         self.launcher = launcher
@@ -89,6 +90,12 @@ class Controller:
         #: "unlock" card: callable doing the switch; unlocked(): is it open.
         self.unlock = unlock
         self._unlocked = unlocked
+        #: Folder of the service (journal of the refused games).
+        self.home = home
+        #: The card being handled: {"card", "game", "system"} (journal of the refusals).
+        self._attempt = {}
+        #: Bedtime: (start, end) in minutes after midnight, or None.
+        self.bedtime = None
 
         self.ignore_when_running = True
         self.save_on_quit = True
@@ -127,6 +134,8 @@ class Controller:
             self.arm_timeout_s = cfg.get_float("button", "arm_timeout_s", 10.0)
             self.action = cfg.get("launch", "action", ACTION_LAUNCH).strip().lower()
             self.default_limit_min = max(0, cfg.get_int("time", "default_limit_min", 0))
+            from . import bedtime
+            self.bedtime = bedtime.window(cfg)
 
         self.mode = MODE_IDLE
         self.target = None
@@ -247,6 +256,7 @@ class Controller:
     def on_badge(self, uid: str) -> str:
         """Handles a badge read (hex UID without separator)."""
         uid = str(uid).upper()
+        self._attempt = {"card": uid}
         # "launched" only describes THIS badge (the service uses it to know
         # which card holds the running game).
         self.last_action = ""
@@ -531,6 +541,19 @@ class Controller:
         self._flash("error")
         self._say(key, **values)
         self._log("info", message)
+        attempt = self._attempt or {}
+        from . import refusals
+
+        refusals.record(self.home, key, player=values.get("name", ""), game=attempt.get("game", ""),
+                        system=attempt.get("system", ""), card=attempt.get("card", ""))
+
+    def bedtime_rule(self):
+        """("curfew", values) during bedtime (unless unlocked), else None."""
+        from . import bedtime
+
+        if self.bedtime is None or self.unlocked or not bedtime.active(self.bedtime, time.time()):
+            return None
+        return "curfew", {"to": bedtime.clock_text(self.bedtime[1])}
 
     def game_card(self, uid: str):
         """Entry of a game card (None for an unknown or special card)."""
@@ -557,6 +580,12 @@ class Controller:
 
         player: (uid, entry) to use instead of the waiting card (a new game).
         """
+        self._attempt = dict(self._attempt or {}, game=entry.get("name") or os.path.splitext(
+            os.path.basename(str(entry.get("path") or entry.get("game") or "")))[0], system=entry.get("system", ""))
+        curfew = self.bedtime_rule()
+        if curfew is not None:
+            self._refuse(curfew[0], "Jeu refuse : c'est l'heure du coucher", **curfew[1])
+            return curfew[0]
         if not self.counting_players:
             return self._launch(entry, uid, touch=touch)
         pending = self.players.take_pending()
@@ -690,6 +719,10 @@ class Controller:
                 who = player if player is not None else self.players.resume_player()
                 name = entry.get("name") or os.path.splitext(os.path.basename(str(game)))[0]
                 self.players.begin(who[0], who[1], via="card", game={"system": system, "name": name})
+            if self.players is not None and entry.get("path"):
+                who = self.players.current["uid"] if self.players.current is not None else ""
+                self.players.remember(who, system, entry.get("name") or os.path.splitext(
+                    os.path.basename(str(game)))[0], entry["path"])
             self._log(
                 "info",
                 "Lancement de %s (%s / %s)"
@@ -724,6 +757,8 @@ class Controller:
             return "poweroff"
         if action == "random":
             return self._random(uid, entry, params)
+        if action == "continue":
+            return self._continue_card(uid, entry)
         if action == "bonus":
             return self._bonus(uid, params)
         if action == "player":
@@ -950,6 +985,30 @@ class Controller:
             "limit_min": entry.get("limit_min"),
         }
         self._log("info", "Jeu au hasard : %s (%s)" % (game["name"], game["system"]))
+        self._touch(uid)
+        return self._launch_for_player(chosen, uid, touch=False)
+
+    def _continue_card(self, uid: str, entry: dict) -> str:
+        """Starts again the last game of the active player (or the last game
+        played, without a player): resumed where it was saved."""
+        game = None
+        if self.players is not None:
+            holder = self._active_player() if self.counting_players else None
+            game = self.players.last_game(holder[0] if holder is not None else None)
+        if not game:
+            self.feedback.error()
+            self._flash("error")
+            self._say("continue_none")
+            self._log("info", "Carte « continuer » : aucun jeu a reprendre")
+            return "nothing"
+        chosen = {
+            "system": game["system"],
+            "game": relative_to_system(game["system"], game["path"]),
+            "path": game["path"],
+            "name": game.get("name") or "",
+            "limit_min": entry.get("limit_min"),
+        }
+        self._log("info", "Carte « continuer » : %s (%s)" % (chosen["name"], chosen["system"]))
         self._touch(uid)
         return self._launch_for_player(chosen, uid, touch=False)
 
