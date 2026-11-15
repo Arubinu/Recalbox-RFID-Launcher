@@ -122,6 +122,9 @@ class PadSettingsTest(unittest.TestCase):
         self.assertEqual(screen.button_of(inputs, "select"), 10)
         self.assertIs(screen.pad_inputs(settings, "", "8BitDo SN30"), inputs, "trouve aussi par son nom")
         self.assertEqual(screen.pad_inputs(settings, "ffff", "Autre"), {})
+        settings[0]["guid"] = "03004d2a1f08000001e4000010010000"
+        self.assertIs(screen.pad_inputs(settings, "030000001f08000001e4000010010000", ""), settings[0]["inputs"],
+                      "la somme du nom (SDL recent) est ignoree")
         self.assertEqual(screen.pad_settings(self.path + ".absent"), [])
 
     def test_noms_des_evenements(self):
