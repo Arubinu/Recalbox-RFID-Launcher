@@ -68,6 +68,14 @@ resolution = recalbox
 show_game = 1
 # Reader screen: when a player is active, their own games instead of the consoles
 player_games = 0
+# Reader screen: power menu opened with START + SELECT (no game running):
+#   both = turn off or restart, poweroff = turn off only, off = no menu
+power_menu = both
+# Reader screen: turned off after this many minutes with no card and no game
+# (a 30 s countdown first; 0 = never)
+idle_off_min = 0
+# The "turn off" card waits 10 seconds (removing the card cancels); 0 = at once
+poweroff_countdown = 1
 
 [launch]
 # The Recalbox frontend listens for the "START|system|game" command on this UDP port

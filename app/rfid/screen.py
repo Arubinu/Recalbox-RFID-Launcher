@@ -6,9 +6,10 @@ spotlight (its drawing, its logo, its number of games, on a glow of its
 colour), a band with the logos of every console that has games, the clock,
 and the active player with their play time. Games start with the cards.
 
-No sound and no controller are opened: the screen must never hold a device
-the next game needs. It quits on SIGTERM (the service stops it before a
-game and starts it again afterwards).
+No sound is opened. The controllers are read only (a game shown waits for a
+button, START + SELECT open the power menu); the screen quits before each
+game, so it never holds a device the game needs. It quits on SIGTERM (the
+service stops it before a game and starts it again afterwards).
 
 ``RFID_SCREEN_ASSETS`` points to a copy of the theme files (preview on a
 computer: ``python -m rfid.screen --preview out.png``).
@@ -74,6 +75,33 @@ TEXTS = {
              "it": "prossima partita", "pt": "próximo jogo"},
     "consoles": {"fr": "{n} consoles", "en": "{n} consoles", "de": "{n} Konsolen", "es": "{n} consolas",
                  "it": "{n} console", "pt": "{n} consolas"},
+    "power_title": {"fr": "Éteindre ou redémarrer ?", "en": "Turn off or restart?", "de": "Ausschalten oder neu starten?",
+                    "es": "¿Apagar o reiniciar?", "it": "Spegnere o riavviare?", "pt": "Desligar ou reiniciar?"},
+    "power_title_off": {"fr": "Éteindre la console ?", "en": "Turn the console off?", "de": "Konsole ausschalten?",
+                        "es": "¿Apagar la consola?", "it": "Spegnere la console?", "pt": "Desligar a consola?"},
+    "poweroff": {"fr": "Éteindre", "en": "Turn off", "de": "Ausschalten", "es": "Apagar", "it": "Spegni",
+                 "pt": "Desligar"},
+    "reboot": {"fr": "Redémarrer", "en": "Restart", "de": "Neu starten", "es": "Reiniciar", "it": "Riavvia",
+               "pt": "Reiniciar"},
+    "cancel": {"fr": "Annuler", "en": "Cancel", "de": "Abbrechen", "es": "Cancelar", "it": "Annulla", "pt": "Cancelar"},
+    "menu_hint": {"fr": "Croix pour choisir, un bouton pour valider", "en": "D-pad to choose, a button to confirm",
+                  "de": "Steuerkreuz zum Wählen, eine Taste zum Bestätigen",
+                  "es": "Cruceta para elegir, un botón para aceptar",
+                  "it": "Croce per scegliere, un tasto per confermare",
+                  "pt": "Direcional para escolher, um botão para confirmar"},
+    "off_in": {"fr": "Extinction dans {n} s", "en": "Turning off in {n} s", "de": "Ausschalten in {n} s",
+               "es": "Apagado en {n} s", "it": "Spegnimento tra {n} s", "pt": "A desligar em {n} s"},
+    "reboot_in": {"fr": "Redémarrage dans {n} s", "en": "Restarting in {n} s", "de": "Neustart in {n} s",
+                  "es": "Reinicio en {n} s", "it": "Riavvio tra {n} s", "pt": "A reiniciar em {n} s"},
+    "press_cancel": {"fr": "Appuie sur un bouton de la manette pour annuler", "en": "Press a controller button to cancel",
+                     "de": "Drück eine Controller-Taste zum Abbrechen", "es": "Pulsa un botón del mando para cancelar",
+                     "it": "Premi un tasto del controller per annullare", "pt": "Carrega num botão do comando para cancelar"},
+    "idle_cancel": {"fr": "Personne ne joue : un bouton ou une carte annule",
+                    "en": "Nobody is playing: a button or a card cancels",
+                    "de": "Niemand spielt: eine Taste oder eine Karte bricht ab",
+                    "es": "Nadie juega: un botón o una tarjeta cancela",
+                    "it": "Nessuno gioca: un tasto o una carta annulla",
+                    "pt": "Ninguém está a jogar: um botão ou um cartão cancela"},
 }
 
 BACKGROUND = (10, 12, 17)
@@ -303,6 +331,279 @@ def open_pads(pygame) -> list:
         return [pygame.joystick.Joystick(number) for number in range(pygame.joystick.get_count())]
     except Exception:  # noqa: BLE001 - no controller support: the card only
         return []
+
+
+#: The controllers as set up in Recalbox (which button is START, SELECT, A...).
+ES_INPUT = "/recalbox/share/system/.emulationstation/es_input.cfg"
+#: A stick pushed this far counts as a direction.
+AXIS_DEAD = 0.6
+#: Hat bits in Recalbox's settings (SDL): up, right, down, left.
+HAT_BITS = {1: (0, 1), 2: (1, 0), 4: (0, -1), 8: (-1, 0)}
+#: Without settings for a controller: the usual layout of the directions.
+FALLBACK_INPUTS = {"up": [("hat", 0, 1), ("axis", 1, -1)], "down": [("hat", 0, 4), ("axis", 1, 1)]}
+
+
+def pad_settings(path: str = ES_INPUT) -> list:
+    """[{"guid", "name", "inputs": {name: [(type, id, value)...]}}] from Recalbox's settings."""
+    import xml.etree.ElementTree as ET
+
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return []
+    found = []
+    for config in root.iter("inputConfig"):
+        if config.get("type") != "joystick":
+            continue
+        inputs = {}
+        for item in config.iter("input"):
+            try:
+                entry = (item.get("type"), int(item.get("id")), int(item.get("value")))
+            except (TypeError, ValueError):
+                continue
+            inputs.setdefault(str(item.get("name") or "").lower(), []).append(entry)
+        found.append({"guid": str(config.get("deviceGUID") or "").lower(),
+                      "name": str(config.get("deviceName") or ""), "inputs": inputs})
+    return found
+
+
+def pad_inputs(settings: list, guid: str, name: str) -> dict:
+    """The settings of one controller (same GUID, else same name)."""
+    guid = str(guid or "").lower()
+    for wanted in ("guid", "name"):
+        for entry in settings:
+            if (wanted == "guid" and guid and entry["guid"] == guid) or (wanted == "name" and entry["name"] == name):
+                return entry["inputs"]
+    return {}
+
+
+def event_names(event_type: str, number: int, value, inputs: dict) -> set:
+    """The names (start, a, up...) of a controller event.
+
+    ``event_type`` is "button" (pressed), "hat" (``value``: (x, y)) or "axis"
+    (``value``: -1 or 1, the stick pushed past ``AXIS_DEAD``).
+    """
+    names = set()
+    table = dict(FALLBACK_INPUTS)
+    table.update(inputs or {})
+    for name, entries in table.items():
+        for kind, ident, expected in entries:
+            if kind != event_type or ident != number:
+                continue
+            if kind == "button":
+                names.add(name)
+            elif kind == "hat" and expected in HAT_BITS and tuple(value) == HAT_BITS[expected]:
+                names.add(name)
+            elif kind == "axis" and expected and value and (expected > 0) == (value > 0):
+                names.add(name)
+            if name == "joystick1up" and kind == "axis" == event_type and ident == number and expected and value:
+                names.add("up" if (expected > 0) == (value > 0) else "down")  # the left stick moves too
+    if event_type == "button" and not inputs:
+        names.add("a")  # a controller unknown to Recalbox: any button confirms
+    return names
+
+
+def button_of(inputs: dict, name: str):
+    for kind, ident, _value in (inputs or {}).get(name, ()):
+        if kind == "button":
+            return ident
+    return None
+
+
+class PowerMenu:
+    """The power menu of the reader screen (START + SELECT)."""
+
+    #: Closed by itself after this long without a button.
+    TIMEOUT_S = 20.0
+
+    def __init__(self, actions, clock=None):
+        self.clock = clock or time.monotonic
+        self.items = list(actions) + ["cancel"]
+        self.selected = 0
+        self.touched = self.clock()
+
+    def move(self, step: int) -> None:
+        self.selected = (self.selected + step) % len(self.items)
+        self.touched = self.clock()
+
+    def choice(self) -> str:
+        return self.items[self.selected]
+
+    def expired(self) -> bool:
+        return self.clock() - self.touched >= self.TIMEOUT_S
+
+
+class Pads:
+    """The controllers and their Recalbox settings: events -> names, START + SELECT."""
+
+    def __init__(self, pygame, settings_path: str = ES_INPUT):
+        self.pg = pygame
+        self.settings = pad_settings(settings_path)
+        self.open()
+
+    def open(self) -> None:
+        self.pads = {}
+        for joystick in open_pads(self.pg):
+            try:
+                ident = joystick.get_instance_id() if hasattr(joystick, "get_instance_id") else joystick.get_id()
+                guid = joystick.get_guid() if hasattr(joystick, "get_guid") else ""
+                self.pads[ident] = (joystick, pad_inputs(self.settings, guid, joystick.get_name()))
+            except Exception:  # noqa: BLE001 - a controller unplugged meanwhile
+                continue
+        self.axes = {}
+
+    def names(self, event) -> set:
+        """The names of a controller event (empty for other events)."""
+        pg = self.pg
+        ident = getattr(event, "instance_id", getattr(event, "joy", None))
+        inputs = self.pads.get(ident, (None, {}))[1]
+        if event.type == pg.JOYBUTTONDOWN:
+            return event_names("button", event.button, 1, inputs)
+        if event.type == pg.JOYHATMOTION:
+            return event_names("hat", event.hat, event.value, inputs)
+        if event.type == pg.JOYAXISMOTION:
+            side = 0 if abs(event.value) < AXIS_DEAD else (1 if event.value > 0 else -1)
+            key = (ident, event.axis)
+            if self.axes.get(key, 0) == side:
+                return set()  # still pushed: one move per push
+            self.axes[key] = side
+            return event_names("axis", event.axis, side, inputs) if side else set()
+        return set()
+
+    def combo(self, event) -> bool:
+        """START and SELECT held together on the controller of this event."""
+        if event.type != self.pg.JOYBUTTONDOWN:
+            return False
+        ident = getattr(event, "instance_id", getattr(event, "joy", None))
+        joystick, inputs = self.pads.get(ident, (None, {}))
+        start, select = button_of(inputs, "start"), button_of(inputs, "select")
+        if joystick is None or start is None or select is None or event.button not in (start, select):
+            return False
+        try:
+            return bool(joystick.get_button(start)) and bool(joystick.get_button(select))
+        except Exception:  # noqa: BLE001
+            return False
+
+
+def setting(home: str, section: str, key: str, default: str = "") -> str:
+    try:
+        from .config import Config
+
+        return Config(os.path.join(home, "config.ini")).get(section, key, default)
+    except Exception:  # noqa: BLE001
+        return default
+
+
+def power_texts(state: dict, language: str, wall=None):
+    """(title, detail) of a countdown of the service."""
+    left = max(0, int(math.ceil(float(state.get("until") or 0) - (wall or time.time)())))
+    title = text("off_in" if state.get("action") == "poweroff" else "reboot_in", language, n=left)
+    source = state.get("source")
+    detail = text("cancel_hint" if source == "card" else "idle_cancel" if source == "idle" else "press_cancel", language)
+    return title, detail
+
+
+class PowerControl:
+    """The power menu (START + SELECT) and the countdowns of the service, on the reader screen."""
+
+    #: The screen tells the service that someone uses a controller (idle power-off).
+    ACTIVITY_S = 10.0
+
+    def __init__(self, home: str, language: str, pads, clock=None, wall=None, send=None, read=None):
+        from . import power
+
+        self.power = power
+        self.home = home
+        self.language = language
+        self.pads = pads
+        self.clock = clock or time.monotonic
+        self.wall = wall or time.time
+        self.send = send or power.request
+        self.read = read or power.read_state
+        self.menu = None
+        self.state = None
+        self.actions = ()
+        self.checked_at = None
+        self.polled_at = None
+        self.sent_at = None
+        self.key = None
+
+    def _send(self, action: str) -> None:
+        self.send(action)
+        self.sent_at = self.clock()
+
+    def refresh_actions(self) -> None:
+        now = self.clock()
+        if self.checked_at is None or now - self.checked_at >= 5.0:
+            self.checked_at = now
+            self.actions = self.power.menu_actions(setting(self.home, "display", "power_menu", "both"))
+
+    def handle(self, event, busy: bool = False) -> bool:
+        """A controller event: True when it was for the power menu or the countdown."""
+        pg = self.pads.pg
+        pressed = event.type == pg.JOYBUTTONDOWN
+        names = self.pads.names(event)
+        if not pressed and not names:
+            return False
+        now = self.clock()
+        if self.state is not None:
+            if pressed:
+                self._send("cancel")
+            return True
+        if self.menu is not None:
+            if "up" in names:
+                self.menu.move(-1)
+            elif "down" in names:
+                self.menu.move(1)
+            elif pressed:
+                choice = self.menu.choice()
+                self.menu = None
+                if choice != "cancel":
+                    self._send(choice)
+            return True
+        self.refresh_actions()
+        if pressed and self.actions and not busy and self.pads.combo(event):
+            self.menu = PowerMenu(self.actions, clock=self.clock)
+            self._send("activity")
+            return True
+        if pressed and (self.sent_at is None or now - self.sent_at >= self.ACTIVITY_S):
+            self._send("activity")
+        return False
+
+    def poll(self, busy: bool = False) -> None:
+        now = self.clock()
+        if self.polled_at is None or now - self.polled_at >= 0.25:
+            self.polled_at = now
+            self.state = self.read()
+        if self.menu is not None and (busy or self.state is not None or self.menu.expired()):
+            self.menu = None
+
+    def view(self):
+        """(key, title, detail, items, selected, bar, until, total) of what to show, or None."""
+        if self.state is not None:
+            title, detail = power_texts(self.state, self.language, self.wall)
+            total = self.power.DELAYS.get(self.state.get("source"), 10.0)
+            return ("count", title, detail), title, detail, (), 0, True, float(self.state.get("until") or 0), total
+        if self.menu is not None:
+            title = text("power_title" if "reboot" in self.menu.items else "power_title_off", self.language)
+            items = [text(item, self.language) for item in self.menu.items]
+            detail = text("menu_hint", self.language)
+            return ("menu", tuple(items), self.menu.selected), title, detail, items, self.menu.selected, False, None, None
+        return None
+
+    def update(self, painter, show) -> bool:
+        """Calls ``show(panel, until, total)`` (``panel`` None: hidden) when the view changes."""
+        view = self.view()
+        key = view[0] if view else None
+        if key == self.key:
+            return False
+        self.key = key
+        if view is None:
+            show(None, None, None)
+        else:
+            _key, title, detail, items, selected, bar, until, total = view
+            show(painter.power_panel(title, detail, items, selected, bar), until, total)
+        return True
 
 
 def wants(home: str, key: str, default: bool = False) -> bool:
@@ -943,6 +1244,49 @@ class Painter:
     def toast_position(self, image):
         return (self.w - image.get_width()) // 2, int(self.u * (28 if self.portrait else 14))
 
+    def power_panel(self, title: str, detail: str, items=(), selected: int = 0, bar: bool = False):
+        """The power menu or a countdown, in a panel: (image, bar rect inside it or None)."""
+        pg, u = self.pg, self.u
+        accent = DEFAULT_ACCENT
+        heading = self.font("Exo2-Bold.ttf", u * 5).render(title, True, TEXT)
+        note = self.font("OpenSans-CondLight.ttf", u * 3).render(detail, True, MUTED) if detail else None
+        rows = [self.font("Raleway-SemiBold.ttf", u * 3.8).render(item, True, TEXT) for item in items]
+        pad, gap, row_h, bar_h = int(u * 4), int(u * 2), int(u * 7), max(4, int(u * 1.1))
+        inner = max([heading.get_width(), note.get_width() if note else 0, int(u * 44)]
+                    + [row.get_width() + int(u * 10) for row in rows])
+        width = min(self.w - int(u * 6), inner + pad * 2)
+        height = pad + heading.get_height()
+        if rows:
+            height += gap + len(rows) * row_h
+        if bar:
+            height += gap + bar_h
+        if note:
+            height += gap + note.get_height()
+        height += pad
+        image = pg.Surface((width, height), pg.SRCALPHA)
+        radius = int(u * 3)
+        image.blit(self.shape(width, height, (16, 19, 27, 255), radius), (0, 0))
+        image.blit(self.shape(width, height, accent + (255,), radius, max(2, int(u * 0.3))), (0, 0))
+        y = pad
+        image.blit(heading, ((width - heading.get_width()) // 2, y), (0, 0, width - pad * 2, heading.get_height()))
+        y += heading.get_height()
+        if rows:
+            y += gap
+            for number, row in enumerate(rows):
+                if number == selected:
+                    image.blit(self.shape(width - pad * 2, row_h, accent + (255,), row_h // 2), (pad, y))
+                image.blit(row, ((width - row.get_width()) // 2, y + (row_h - row.get_height()) // 2))
+                y += row_h
+        bar_rect = None
+        if bar:
+            y += gap
+            bar_rect = pg.Rect(pad, y, width - pad * 2, bar_h)
+            y += bar_h
+        if note:
+            y += gap
+            image.blit(note, ((width - note.get_width()) // 2, y), (0, 0, width - pad * 2, note.get_height()))
+        return image, bar_rect
+
     def player_chip(self, surface, player, accent, right: int, top: int):
         pg, u = self.pg, self.u
         name = self.font("Exo2-Bold.ttf", u * 3.6).render(player["name"], True, TEXT)
@@ -1072,6 +1416,7 @@ class GpuScreen:
         self.toast = None  # (texture, started)
         self.page = None   # (key, texture): the player's games, in place of the consoles
         self.launch = None  # (texture, started): the game placed, before it starts
+        self.power = None  # the power menu or a countdown, over everything
 
     def texture(self, surface):
         return self.Texture.from_surface(self.renderer, surface)
@@ -1188,6 +1533,8 @@ class GpuScreen:
             texture, started = self.launch
             texture.alpha = int(255 * ease(min(1.0, (time.monotonic() - started) / 0.35)))
             texture.draw(dstrect=full)
+        if self.power is not None:
+            self.draw_power(full)
         if self.canvas is not None:
             renderer.target = None
             renderer.draw_color = BACKGROUND + (255,)
@@ -1268,6 +1615,44 @@ class GpuScreen:
         texture.blend_mode = 1
         started = self.launch[1] if self.launch is not None else time.monotonic()
         self.launch = (texture, started)
+
+    def show_power(self, panel, until: float = None, total: float = None) -> None:
+        """The power menu or a countdown (``panel`` from Painter.power_panel), None to hide it."""
+        if panel is None:
+            self.power = None
+            return
+        image, bar = panel
+        texture = self.texture(image)
+        texture.blend_mode = 1
+        started = self.power["started"] if self.power is not None else time.monotonic()
+        position = ((self.painter.w - image.get_width()) // 2, (self.painter.h - image.get_height()) // 2)
+        bars = None
+        if bar is not None:
+            bars = (self.texture(self.painter.shape(bar.w, bar.h, (255, 255, 255, 40), bar.h // 2)),
+                    self.texture(self.painter.shape(bar.w, bar.h, DEFAULT_ACCENT + (255,), bar.h // 2)))
+            for item in bars:
+                item.blend_mode = 1
+        self.power = {"texture": texture, "position": position, "bar": bar, "bars": bars, "until": until,
+                      "total": total, "started": started}
+
+    def draw_power(self, full) -> None:
+        power, renderer = self.power, self.renderer
+        shown = ease(min(1.0, (time.monotonic() - power["started"]) / 0.25))
+        renderer.draw_blend_mode = 1
+        renderer.draw_color = (0, 0, 0, int(160 * shown))
+        renderer.fill_rect(full)
+        texture, (x, y) = power["texture"], power["position"]
+        texture.alpha = int(255 * shown)
+        texture.draw(dstrect=(x, y, texture.width, texture.height))
+        if power["bars"] is not None and power["until"] and power["total"]:
+            bar = power["bar"]
+            left = max(0.0, min(1.0, (power["until"] - time.time()) / power["total"]))
+            back, front = power["bars"]
+            back.alpha = front.alpha = int(255 * shown)
+            back.draw(dstrect=(x + bar.x, y + bar.y, bar.w, bar.h))
+            filled = int(bar.w * left)
+            if filled > 0:
+                front.draw(srcrect=(0, 0, filled, bar.h), dstrect=(x + bar.x, y + bar.y, filled, bar.h))
 
     def show_toast(self, message: str, index: int) -> None:
         painter = self.painter
@@ -1357,14 +1742,20 @@ class Screen:
         players, players_at = {}, 0.0
         messages, messages_at, toast = Messages(), 0.0, None
         launches, launch_page, waiting = Watcher(LAUNCH_FILE, max_age=CONFIRM_MAX_AGE_S), None, False
-        pads = open_pads(pygame)
+        pads = Pads(pygame)
+        power_ui = PowerControl(self.home, self.language, pads)
+        overlay = {"panel": None, "until": None, "total": None}
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
         painter.compose(surface, index, None, 1.0, players, time.time())
         flip()
         while self.running:
             started = time.monotonic()
             for event in pygame.event.get():
-                if event.type == pygame.JOYBUTTONDOWN and waiting:
+                if event.type in (getattr(pygame, "JOYDEVICEADDED", -1), getattr(pygame, "JOYDEVICEREMOVED", -1)):
+                    pads.open()
+                elif power_ui.handle(event, busy=launch_page is not None):
+                    continue
+                elif event.type == pygame.JOYBUTTONDOWN and waiting:
                     answer_go()
                     waiting = False
             now = time.monotonic()
@@ -1378,6 +1769,33 @@ class Screen:
                     painter.scene(surface, index, None, 1.0)
                     painter.top(surface, index, players, time.time())
                     flip()
+            power_ui.poll(busy=launch_page is not None)
+            if power_ui.update(painter, lambda panel, until, total: overlay.update(panel=panel, until=until, total=total)) \
+                    and overlay["panel"] is None:
+                painter.scene(surface, index, None, 1.0)  # the panel closed: the consoles again
+                painter.top(surface, index, players, time.time())
+                flip()
+            if overlay["panel"] is not None:
+                if launch_page is not None:
+                    surface.blit(launch_page, (0, 0))
+                else:
+                    painter.scene(surface, index, None, 1.0)
+                    painter.top(surface, index, players, time.time())
+                dim = pygame.Surface((width, height), pygame.SRCALPHA)
+                dim.fill((0, 0, 0, 160))
+                surface.blit(dim, (0, 0))
+                image, bar = overlay["panel"]
+                x, y = (width - image.get_width()) // 2, (height - image.get_height()) // 2
+                surface.blit(image, (x, y))
+                if bar is not None and overlay["until"] and overlay["total"]:
+                    left = max(0.0, min(1.0, (overlay["until"] - time.time()) / overlay["total"]))
+                    painter.draw_shape(surface, (x + bar.x, y + bar.y, bar.w, bar.h), (255, 255, 255, 40), bar.h // 2)
+                    if int(bar.w * left) > bar.h:
+                        painter.draw_shape(surface, (x + bar.x, y + bar.y, int(bar.w * left), bar.h),
+                                           DEFAULT_ACCENT + (255,), bar.h // 2)
+                flip()
+                time.sleep(0.05)
+                continue
             if launch_page is not None:
                 surface.blit(launch_page, (0, 0))
                 flip()
@@ -1477,13 +1895,16 @@ def _run_gpu(self, pygame, conf) -> int:
     launches = Watcher(LAUNCH_FILE, max_age=CONFIRM_MAX_AGE_S)
     shown = {"launch": None, "waiting": False}
     show_player = wants(self.home, "player_games")
-    pads = open_pads(pygame)
+    pads = Pads(pygame)
+    power_ui = PowerControl(self.home, self.language, pads)
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
         for event in pygame.event.get():
-            if event.type == getattr(pygame, "JOYDEVICEADDED", -1):
-                pads = open_pads(pygame)
+            if event.type in (getattr(pygame, "JOYDEVICEADDED", -1), getattr(pygame, "JOYDEVICEREMOVED", -1)):
+                pads.open()
+            elif power_ui.handle(event, busy=shown["launch"] is not None):
+                continue
             elif event.type == pygame.JOYBUTTONDOWN and shown["waiting"]:
                 answer_go()
                 shown["waiting"] = False
@@ -1512,6 +1933,8 @@ def _run_gpu(self, pygame, conf) -> int:
             if message:
                 gpu.show_toast(message, index)
                 players_at = 0.0  # the message often comes with a new player state
+        power_ui.poll(busy=shown["launch"] is not None)
+        power_ui.update(painter, gpu.show_power)
         following = (index + 1) % len(consoles)
         if gpu.page is None and now - changed >= HOLD_S and len(consoles) > 1 and painter.cached(following):
             previous, index, changed = index, following, now
@@ -1536,7 +1959,7 @@ def _run_gpu(self, pygame, conf) -> int:
                 frames, slowest, counted = 0, 0.0, time.monotonic()
         if progress >= 1.0:
             time.sleep(0.02)  # the pulse only: no need for every screen refresh
-    gpu.toast = gpu.page = gpu.launch = None
+    gpu.toast = gpu.page = gpu.launch = gpu.power = None
     gpu._bar = gpu.chip = gpu.chip_out = None
     gpu.canvas = None
     # Textures first, then the renderer and the window: freed in another

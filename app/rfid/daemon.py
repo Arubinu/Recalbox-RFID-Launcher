@@ -44,7 +44,7 @@ from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
 from .reader_mode import ReaderMode
-from . import avatars, es_command, frontend_lock
+from . import avatars, es_command, frontend_lock, power
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -196,6 +196,8 @@ class Service:
         self._launched_uid = None
         self._stop_pending = None
         self._stop_on_remove = bool(cfg.get_bool("launch", "stop_on_remove", False))
+        self.power_ctl = None
+        self._idle_since = time.monotonic()
         self.rearm_absent_ms = 1200
         self.last_error_at = 0.0
         self.last_uid = ""
@@ -282,6 +284,7 @@ class Service:
         self.reader_mode = ReaderMode(self.home, self.log)
         self.launcher.reader = self.reader_mode
         self._configure_reader_mode()
+        self.power_ctl = power.Power(self.log, prepare=self._before_power)
         self.playtime = PlayTimer(self.home, log=self.log)
         self.players = Players(self.home, log=self.log)
         self._build_extras()
@@ -327,16 +330,72 @@ class Service:
         return reader.read_memory()
 
     def _power_off(self) -> None:
-        """Turns the Recalbox off cleanly (the frontend saves its lists)."""
-        import subprocess
+        """The "turn off" card: after a countdown (removing the card cancels), or at once."""
+        ctl = getattr(self, "power_ctl", None)
+        if ctl is None:
+            return
+        if not self.cfg.get_bool("display", "poweroff_countdown", True):
+            ctl.now("poweroff")
+            return
+        ctl.begin("poweroff", "card", uid=self.last_uid)
+        reader = getattr(self, "reader_mode", None)
+        if self.screen is not None and (reader is None or reader.state != "screen"):
+            # The reader screen shows the countdown itself; elsewhere, a message.
+            self.screen.say("power_card", n=int(power.DELAYS["card"]))
 
+    def _before_power(self, action: str) -> None:
+        """Just before turning off: a game running is quit first (and saved, if set)."""
+        controller = self.controller
         try:
-            subprocess.Popen(
-                ["sh", "-c", "sleep 1; sync; shutdown -h now || poweroff"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
-            )
-        except OSError as exc:
-            self.log.error("Arret impossible : %s" % exc)
+            if controller is not None and controller.game_running():
+                controller.stop_game("poweroff")
+        except Exception as exc:  # noqa: BLE001 - turned off all the same
+            self.log.warning("Arret du jeu avant extinction impossible : %s" % exc)
+
+    def _power_step(self) -> None:
+        ctl = getattr(self, "power_ctl", None)
+        if ctl is None or ctl.done is not None:
+            return
+        now = time.monotonic()
+        reader = getattr(self, "reader_mode", None)
+        on_screen = reader is not None and reader.state == "screen"
+        try:
+            playing = bool(self.controller is not None and self.controller.game_running())
+        except Exception:  # noqa: BLE001
+            playing = False
+        asked = ctl.take_request()
+        if asked:
+            self._idle_since = now  # someone uses a controller
+        if asked == "cancel":
+            pending = ctl.pending
+            if ctl.cancel("manette"):
+                self._power_cancelled(pending)
+        elif asked in power.ACTIONS:
+            allowed = power.menu_actions(self.cfg.get("display", "power_menu", "both"))
+            if asked in allowed and on_screen and not playing and ctl.pending is None:
+                ctl.begin(asked, "menu")
+            else:
+                self.log.info("Menu d'alimentation : %s refuse" % asked)
+        # Nobody playing on the reader screen for a while: turned off.
+        minutes = self.cfg.get_int("display", "idle_off_min", 0)
+        if (minutes <= 0 or not on_screen or playing or ctl.pending is not None
+                or self._active_uid is not None or reader.pending is not None):
+            if ctl.pending is None or ctl.pending["source"] != "idle":
+                self._idle_since = now
+        elif now - self._idle_since >= minutes * 60:
+            self.log.info("Personne ne joue depuis %d min" % minutes)
+            ctl.begin("poweroff", "idle")
+        if ctl.pending is not None and ctl.pending["source"] == "idle" and (playing or not on_screen):
+            ctl.cancel("partie")
+        pending = ctl.pending
+        ctl.step(self._active_uid)
+        if pending is not None and ctl.pending is None and ctl.done is None:
+            self._idle_since = now
+            self._power_cancelled(pending)
+
+    def _power_cancelled(self, pending) -> None:
+        if self.screen is not None and pending is not None:
+            self.screen.say("power_cancelled" if pending["action"] == "poweroff" else "reboot_cancelled")
 
     def _open_reader(self) -> bool:
         try:
@@ -431,6 +490,7 @@ class Service:
                 self._light_step()
                 self._lock_watchdog()
                 self._reader_step()
+                self._power_step()
                 self._watch_frontend()
 
                 try:
@@ -484,6 +544,13 @@ class Service:
         self._absent_hits = 0
         self._launched_uid = None
         stop_pending = getattr(self, "_stop_pending", None)
+        ctl = getattr(self, "power_ctl", None)
+        if ctl is not None and ctl.pending is not None and ctl.pending["source"] != "card":
+            # A card cancels the countdown of the power menu or of nobody playing.
+            pending = ctl.pending
+            if ctl.cancel("carte posee"):
+                self._power_cancelled(pending)
+        self._idle_since = time.monotonic()
         result = self.controller.on_badge(uid)
         self._action_at = time.monotonic()
         if getattr(self.controller, "last_action", "") == "launched":
