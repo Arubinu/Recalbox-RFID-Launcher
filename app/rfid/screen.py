@@ -369,10 +369,16 @@ def pad_settings(path: str = ES_INPUT) -> list:
 
 def pad_inputs(settings: list, guid: str, name: str) -> dict:
     """The settings of one controller (same GUID, else same name)."""
+    def bare(value):
+        # Characters 4-8 hold a checksum of the name in recent SDL versions only.
+        return value[:4] + value[8:] if len(value) == 32 else value
+
     guid = str(guid or "").lower()
-    for wanted in ("guid", "name"):
+    for wanted in ("guid", "bare", "name"):
         for entry in settings:
-            if (wanted == "guid" and guid and entry["guid"] == guid) or (wanted == "name" and entry["name"] == name):
+            if ((wanted == "guid" and guid and entry["guid"] == guid)
+                    or (wanted == "bare" and guid and bare(entry["guid"]) == bare(guid))
+                    or (wanted == "name" and name and entry["name"] == name)):
                 return entry["inputs"]
     return {}
 
