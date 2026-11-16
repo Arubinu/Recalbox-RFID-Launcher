@@ -44,7 +44,7 @@ from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
 from .reader_mode import ReaderMode
-from . import avatars, bedtime, bootmode, es_command, frontend_lock, pads, power, refusals, trophies
+from . import avatars, bedtime, bootmode, es_command, frontend_lock, mqtt, pads, power, refusals, trophies
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -276,6 +276,7 @@ class Service:
             enabled=self.cfg.get_bool("feedback", "sound", True),
             player=self.cfg.get("feedback", "sound_player", "auto"),
             log=self.log,
+            card_sound=self.cfg.get_bool("feedback", "card_sound", False),
         )
 
         self.gpio = build_gpio(self.cfg, self.log)
@@ -290,6 +291,7 @@ class Service:
         self.reader_mode = ReaderMode(self.home, self.log)
         self.launcher.reader = self.reader_mode
         self._configure_reader_mode()
+        self._configure_mqtt()
         self.power_ctl = power.Power(self.log, prepare=self._before_power)
         self.playtime = PlayTimer(self.home, log=self.log)
         self.players = Players(self.home, log=self.log)
@@ -501,6 +503,7 @@ class Service:
                 self._power_step()
                 self._bedtime_step()
                 self._trophies_step()
+                self._mqtt_step()
                 self._watch_frontend()
 
                 try:
@@ -860,12 +863,39 @@ class Service:
             state = "delete"
         elif remaining is not None and remaining <= 60:
             state = "warning"
+        elif self._light_signal():
+            state = self._light_signal()
         elif self.controller is not None and self.controller.launched_uid:
             state = "playing"
         else:
             state = "idle"
         light.set_state(state)
         light.update()
+
+    def _light_signal(self) -> str:
+        """"bedtime", "exhausted" (the active player has no time left) or ""
+        (option [led] signals; worked out every 5 seconds)."""
+        now = time.monotonic()
+        cached = getattr(self, "_signal_cache", None)
+        if cached is not None and now < cached[0]:
+            return cached[1]
+        signal_ = ""
+        controller = self.controller
+        cfg = getattr(self, "cfg", None)
+        try:
+            if (controller is not None and (cfg is None or cfg.get_bool("led", "signals", True))
+                    and not controller.unlocked):
+                if bedtime.active(controller.bedtime, time.time()):
+                    signal_ = "bedtime"
+                elif controller.counting_players:
+                    active = controller._active_player()
+                    left = controller.player_left(*active) if active is not None else controller.guest_left()
+                    if left is not None and left <= 0:
+                        signal_ = "exhausted"
+        except Exception:  # noqa: BLE001 - a light never stops the service
+            signal_ = ""
+        self._signal_cache = (now + 5.0, signal_)
+        return signal_
 
     #: Time (seconds) without seeing the badge before concluding it was removed.
     ABSENCE_MIN_S = 2.0
@@ -1048,7 +1078,8 @@ class Service:
             return
         self._next_trophies_check = now + 60.0
         try:
-            new = trophies.update(self.home, players.games)
+            guests = self._guest_uids()
+            new = trophies.update(self.home, {uid: days for uid, days in players.games.items() if uid not in guests})
         except Exception as exc:  # noqa: BLE001 - never blocking
             self.log.warning("Trophees non calcules : %s" % exc)
             return
@@ -1132,6 +1163,13 @@ class Service:
         reader.on_go = self._game_goes
         reader.on_cancel = self._game_given_up
         reader.configure(wanted, no_hotkey)
+        # Colours and text size are read when the reader screen starts.
+        look = (self.cfg.get("display", "theme", "dark").strip().lower(),
+                self.cfg.get("display", "text_size", "normal").strip().lower())
+        previous, self._screen_look = getattr(self, "_screen_look", None), look
+        if previous is not None and previous != look and getattr(reader, "state", "") == "screen":
+            self.log.info("Couleurs ou textes de l'ecran du lecteur changes : redemarrage de l'ecran")
+            reader.restart_screen()
 
     # A game shown on the reader screen waits for the controller: its time
     # is not counted until it really starts.
@@ -1398,6 +1436,8 @@ class Service:
             reader = getattr(self, "reader_mode", None)
             if reader is not None:
                 reader.restart_screen()
+        elif command == "remote":
+            self._remote(str(payload.get("action") or ""), payload)
         elif command == "simulate_scan":
             uid = str(payload.get("uid") or "")
             if uid:
@@ -1991,6 +2031,9 @@ class Service:
 
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")
+        bridge = getattr(self, "mqtt_bridge", None)
+        if bridge is not None:
+            bridge.stop()  # Home Assistant sees the reader offline
         try:
             pads.set_max_users(None)  # every controller plays again
         except Exception:  # noqa: BLE001
@@ -2036,6 +2079,116 @@ class Service:
             if entry.get("kind") == "action" and entry.get("action") == "player":
                 cards.append((uid, entry))
         return cards
+
+    def _remote(self, action: str, payload: dict) -> None:
+        """A button of the page (remote control): quit, pause, more time, turn off."""
+        if action == "poweroff":
+            ctl = getattr(self, "power_ctl", None)
+            if ctl is not None:
+                self.log.info("Page : extinction de la Recalbox")
+                ctl.now("poweroff")
+            return
+        if self.controller is None:
+            return
+        try:
+            minutes = int(payload.get("minutes") or 10)
+        except (TypeError, ValueError):
+            minutes = 10
+        result = self.controller.remote(action, minutes=max(1, min(120, minutes)))
+        self.log.info("Page : %s -> %s" % (action, result))
+        self._write_status(force=True)
+
+    def _now_playing(self) -> dict:
+        """The game running, for the remote control of the page ({} = none)."""
+        controller = self.controller
+        if controller is None or not controller.game_running():
+            return {}
+        game = controller.running_game() or {}
+        info = {"system": game.get("system", ""), "name": game.get("name", ""), "paused": bool(controller.paused)}
+        lefts = []
+        if self.playtime is not None and self.playtime.remaining_s() is not None:
+            lefts.append(self.playtime.remaining_s())
+        players = getattr(self, "players", None)
+        current = players.current if players is not None and controller.counting_players else None
+        if current is not None:
+            group = players.group(current)
+            if current["uid"] != "guest":
+                info["players"] = players.group_names(group)
+                left = controller.player_left(current["uid"], current["entry"])
+                if left is not None:
+                    lefts.append(left)
+        if lefts:
+            info["remaining_s"] = int(max(0.0, min(lefts)))
+        return info
+
+    # ---------------------------------------------------------- Home Assistant
+    def _configure_mqtt(self) -> None:
+        """Starts, restarts (settings changed) or stops the MQTT bridge."""
+        cfg = self.cfg
+        settings = None
+        if cfg.get_bool("mqtt", "enabled", False) and cfg.get("mqtt", "host", "").strip():
+            settings = {key: cfg.get("mqtt", key, default).strip() for key, default in
+                        (("host", ""), ("port", "1883"), ("user", ""), ("password", ""),
+                         ("topic", "recalbox_rfid"), ("discovery", "homeassistant"))}
+        bridge = getattr(self, "mqtt_bridge", None)
+        if bridge is not None and settings == bridge.settings:
+            return
+        if bridge is not None:
+            bridge.stop()
+            self.mqtt_bridge = None
+        if settings is not None:
+            from .osd import recalbox_language
+
+            self.mqtt_bridge = mqtt.Bridge(settings, log=self.log, version=__version__, language=recalbox_language())
+            self.mqtt_bridge.start()
+            self._next_mqtt = 0.0
+
+    def _mqtt_step(self) -> None:
+        """Every 5 seconds: the state for Home Assistant; at once: its commands."""
+        bridge = getattr(self, "mqtt_bridge", None)
+        if bridge is None:
+            return
+        for command in bridge.take_commands():
+            self.log.info("Home Assistant : %s" % command)
+            self._remote(command, {"minutes": 10})
+            self._next_mqtt = 0.0
+        now = time.monotonic()
+        if now < getattr(self, "_next_mqtt", 0.0):
+            return
+        self._next_mqtt = now + 5.0
+        try:
+            bridge.update(self._mqtt_state(bridge.language))
+        except Exception as exc:  # noqa: BLE001 - never blocking
+            self.log.warning("MQTT : etat non calcule : %s" % exc)
+
+    def _mqtt_state(self, language: str) -> dict:
+        playing = self._now_playing()
+        controller = self.controller
+        player, remaining = playing.get("players", ""), playing.get("remaining_s")
+        if not playing and controller is not None and controller.counting_players:
+            active = controller._active_player()
+            if active is not None:
+                player = self.players.player_name(active[1])
+                remaining = controller.player_left(*active)
+        rows = refusals.read(self.home)
+        last = rows[0] if rows else None
+        return {
+            "game": playing.get("name", ""),
+            "system": playing.get("system", ""),
+            "playing": bool(playing),
+            "paused": bool(playing.get("paused")),
+            "player": player,
+            "remaining_min": None if remaining is None else int(max(0.0, remaining) // 60),
+            "bedtime": bool(controller is not None and bedtime.active(controller.bedtime, time.time())),
+            "refusal": mqtt.refusal_text(last, language),
+            "refusal_info": {} if last is None else {
+                "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(last.get("at", 0))),
+                "player": last.get("player", ""), "game": last.get("game", ""), "reason": last.get("reason", "")},
+        }
+
+    def _guest_uids(self) -> set:
+        """UIDs of the guest cards: no trophies, no weekly summary."""
+        return {uid for uid, entry in self._player_cards() if (entry.get("params") or {}).get("guest")}
 
     def _players_status(self) -> dict:
         if getattr(self, "players", None) is None or self.controller is None                 or not getattr(self.controller, "counting_players", False):
@@ -2084,6 +2237,9 @@ class Service:
             int((self.playtime.remaining_s() or 0) // 15) if self.playtime else 0,
             self._players_signature(),
             frontend_lock.is_unlocked(self.home),
+            bool(self.controller and self.controller.paused),
+            self.controller.launched_uid if self.controller else None,
+            getattr(getattr(self, "mqtt_bridge", None), "connected", None),
         )
         now = time.time()
         if not force and signature == self._status_signature and (now - self._status_written) < 30:
@@ -2110,6 +2266,8 @@ class Service:
             "controller": controller_status,
             "playtime": self.playtime.status() if self.playtime else {},
             "players": self._players_status(),
+            "now_playing": self._now_playing(),
+            "mqtt": self.mqtt_bridge.status() if getattr(self, "mqtt_bridge", None) is not None else {},
             "menu_unlocked": frontend_lock.is_unlocked(self.home),
             "command_check": es_command.summary(self.home),
             "display_mode": (self.cfg.get("display", "mode", "recalbox") if self.cfg else "recalbox").strip().lower(),
@@ -2150,11 +2308,10 @@ class Service:
                     )
                 if self.feedback is not None:
                     wanted = self.cfg.get_bool("feedback", "sound", True)
-                    if wanted and not getattr(self.feedback, "_player", None):
-                        self.feedback.enabled = True
+                    self.feedback.card_sound = self.cfg.get_bool("feedback", "card_sound", False)
+                    if (wanted or self.feedback.card_sound) and not getattr(self.feedback, "_player", None):
                         self.feedback._detect_player()
-                    else:
-                        self.feedback.enabled = wanted and bool(getattr(self.feedback, "_player", None))
+                    self.feedback.enabled = wanted and bool(getattr(self.feedback, "_player", None))
                 if self.store and self.launcher and self.feedback:
                     self._build_extras()
                     # The running session and the armed mode survive the reload.
@@ -2163,6 +2320,7 @@ class Service:
                     if previous is not None:
                         self.controller.launched_uid = previous.launched_uid
                 self._configure_reader_mode()
+                self._configure_mqtt()
                 self.log.info(
                     "Configuration rechargee (%d badge(s))" % (self.store.count() if self.store else 0)
                 )

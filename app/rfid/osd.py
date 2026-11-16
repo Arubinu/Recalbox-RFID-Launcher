@@ -170,6 +170,10 @@ MESSAGES = {
         "fr": "{name} : pas de jeu à cette heure-ci{when}", "en": "{name}: no games at this time{when}",
         "de": "{name}: zu dieser Zeit kein Spiel{when}", "es": "{name}: no se juega a esta hora{when}",
         "it": "{name}: niente giochi a quest'ora{when}", "pt": "{name}: não se joga a esta hora{when}"},
+    "guest_expired": {
+        "fr": "{name} : cette carte invité n'est plus valable", "en": "{name}: this guest card is no longer valid",
+        "de": "{name}: diese Gastkarte ist nicht mehr gültig", "es": "{name}: esta tarjeta de invitado ya no es válida",
+        "it": "{name}: questa carta ospite non è più valida", "pt": "{name}: este cartão de convidado já não é válido"},
     "player_not_allowed": {
         "fr": "{name} : ce jeu n'est pas autorisé", "en": "{name}: this game is not allowed",
         "de": "{name}: dieses Spiel ist nicht erlaubt", "es": "{name}: este juego no está permitido",

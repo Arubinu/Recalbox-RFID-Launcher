@@ -111,6 +111,11 @@ TEXTS = {
     "trophy_count": {"fr": "{name} : {n} trophée(s), dernier : {what}", "en": "{name}: {n} trophy(ies), last: {what}",
                      "de": "{name}: {n} Trophäe(n), zuletzt: {what}", "es": "{name}: {n} trofeo(s), último: {what}",
                      "it": "{name}: {n} trofeo/i, ultimo: {what}", "pt": "{name}: {n} troféu(s), último: {what}"},
+    "week_time": {"fr": "La semaine dernière : {list}", "en": "Last week: {list}", "de": "Letzte Woche: {list}",
+                  "es": "La semana pasada: {list}", "it": "La settimana scorsa: {list}", "pt": "Na semana passada: {list}"},
+    "week_trophies": {"fr": "Trophées de la semaine : {list}", "en": "Trophies of the week: {list}",
+                      "de": "Trophäen der Woche: {list}", "es": "Trofeos de la semana: {list}",
+                      "it": "Trofei della settimana: {list}", "pt": "Troféus da semana: {list}"},
     "t_consoles": {"fr": "{n} consoles", "en": "{n} consoles", "de": "{n} Konsolen", "es": "{n} consolas",
                    "it": "{n} console", "pt": "{n} consolas"},
     "t_games": {"fr": "{n} jeux", "en": "{n} games", "de": "{n} Spiele", "es": "{n} juegos", "it": "{n} giochi",
@@ -134,6 +139,40 @@ BACKGROUND = (10, 12, 17)
 TEXT = (240, 243, 248)
 MUTED = (150, 158, 175)
 FAINT = (92, 100, 116)
+#: Pills and panels (messages, power menu), glass boxes and thin lines.
+TOAST_BG = (12, 14, 20, 225)
+PANEL_BG = (16, 19, 27, 255)
+GLASS = (255, 255, 255, 18)
+LINE = (255, 255, 255, 40)
+BAND = (0, 0, 0, 120)
+BAND_EDGE = (255, 255, 255, 34)
+
+#: Colours of the reader screen (option [display] theme).
+THEMES = {
+    "dark": {"BACKGROUND": BACKGROUND, "TEXT": TEXT, "MUTED": MUTED, "FAINT": FAINT, "TOAST_BG": TOAST_BG,
+             "PANEL_BG": PANEL_BG, "GLASS": GLASS, "LINE": LINE, "BAND": BAND, "BAND_EDGE": BAND_EDGE,
+             "NOTE_COLOUR": (246, 196, 92)},
+    "light": {"BACKGROUND": (232, 236, 242), "TEXT": (22, 26, 34), "MUTED": (78, 86, 102), "FAINT": (128, 136, 150),
+              "TOAST_BG": (255, 255, 255, 238), "PANEL_BG": (250, 251, 253, 255), "GLASS": (0, 0, 0, 16),
+              "LINE": (0, 0, 0, 40), "BAND": (0, 0, 0, 34), "BAND_EDGE": (0, 0, 0, 30),
+              "NOTE_COLOUR": (170, 104, 0)},
+}
+#: Texts smaller than this (in hundredths of the screen) grow with "large text".
+SMALL_TEXT_U = 4.0
+LARGE_TEXT = 1.25
+
+
+def set_theme(name: str) -> str:
+    """Uses the colours of a theme ("dark" or "light"); returns the one used."""
+    name = name if name in THEMES else "dark"
+    globals().update(THEMES[name])
+    return name
+
+
+def apply_look(painter, home: str) -> None:
+    """Theme and text size of the settings (read at the start of the screen)."""
+    set_theme(setting(home, "display", "theme", "dark").strip().lower())
+    painter.text_scale = LARGE_TEXT if setting(home, "display", "text_size", "normal").strip().lower() == "large" else 1.0
 DEFAULT_ACCENT = (84, 112, 246)
 PLATE = (244, 245, 248, 255)
 #: Messages of the service (see osd.py), shown as a toast.
@@ -723,6 +762,51 @@ def favourite_game(days: dict, today: float = None) -> str:
     return max(table.items(), key=lambda item: item[1])[0].split("|", 1)[1]
 
 
+def week_summary(home: str, players: dict, language: str, now: float = None) -> list:
+    """On the first day of the week: [(text, "week")] with the time played last
+    week by each player and their new trophies (guest cards left out)."""
+    import datetime
+
+    from . import trophies
+    from .players import WEEK_DAYS, play_date, read_file
+
+    now = time.time() if now is None else now
+    try:
+        reset_hour = min(23, max(0, int(float(setting(home, "players", "reset_hour", "0") or 0))))
+    except ValueError:
+        reset_hour = 0
+    start = setting(home, "players", "week_start", "monday").strip().lower()
+    start = WEEK_DAYS.index(start) if start in WEEK_DAYS else 0
+    today = play_date(now, reset_hour)
+    if today.weekday() != start:
+        return []
+    days = {(today - datetime.timedelta(days=offset)).isoformat() for offset in range(1, 8)}
+    names = {row.get("uid"): row.get("name") or "" for row in (players.get("players") or ())
+             if row.get("uid") and not row.get("guest")}
+    usage, _games = read_file(os.path.join(home, "players.json"))
+    played = []
+    for uid, name in names.items():
+        seconds = sum(value for day, value in (usage.get(uid) or {}).items() if day in days)
+        if seconds >= 60:
+            played.append((seconds, name))
+    played.sort(reverse=True)
+    lines = []
+    if played:
+        lines.append((text("week_time", language, list=", ".join("%s %s" % (name, duration(seconds))
+                                                                 for seconds, name in played[:4])), "week"))
+    table = trophies.read(home)
+    won = []
+    for uid, name in names.items():
+        count = sum(1 for day in (table.get(uid) or {}).values() if day in days)
+        if count:
+            won.append((count, name))
+    won.sort(reverse=True)
+    if won:
+        lines.append((text("week_trophies", language, list=", ".join("%s %d" % (name, count) for count, name in won[:4])),
+                      "trophy"))
+    return lines
+
+
 def screen_infos(home: str, players: dict, language: str, power_actions=()) -> list:
     """The useful facts shown now and then in place of the hint."""
     from . import trophies
@@ -787,6 +871,8 @@ def refresh_hints(painter, home: str, language: str, players: dict, power_ui=Non
             if power_ui is not None:
                 power_ui.refresh_actions()
             infos = screen_infos(home, players, language, power_ui.actions if power_ui is not None else ())
+        if wants(home, "weekly_summary", True):
+            infos = week_summary(home, players, language) + infos
         painter.hints = hint_sequence(text("hint", language), read_note(home), infos)
     except Exception as exc:  # noqa: BLE001 - the plain hint then
         print("hints: %s" % exc, flush=True)
@@ -945,9 +1031,13 @@ class Painter:
         self._avatars = {}
         self.cache_covers = {}
         self._shapes = {}
+        #: "Large text" option: the small texts are this much bigger.
+        self.text_scale = 1.0
 
     # ---- resources
-    def font(self, name: str, size: float):
+    def font(self, name: str, size: float, scaled: bool = True):
+        if scaled and size < self.u * SMALL_TEXT_U:
+            size *= self.text_scale
         key = (name, int(size))
         if key not in self.fonts:
             path = os.path.join(self.p["fonts"], name)
@@ -1181,8 +1271,8 @@ class Painter:
         self.band_h = int(u * 16)
         self.band_y = h - self.band_h
         band = pg.Surface((w, self.band_h), pg.SRCALPHA)
-        band.fill((0, 0, 0, 120))
-        band.fill((255, 255, 255, 34), (0, 0, w, max(1, int(u * 0.15))))
+        band.fill(BAND)
+        band.fill(BAND_EDGE, (0, 0, w, max(1, int(u * 0.15))))
         self.band = self._fast(band)
         fade = pg.Surface((int(w * 0.18), self.band_h), pg.SRCALPHA)
         for x in range(fade.get_width()):
@@ -1316,6 +1406,19 @@ class Painter:
             stroke = int(H * 0.15)
             pg.draw.circle(big, hole, (centre[0], int(H * 0.27)), int(stroke * 0.62))
             pg.draw.rect(big, hole, (centre[0] - stroke // 2, int(H * 0.42), stroke, int(H * 0.36)), border_radius=stroke // 2)
+        elif kind == "week":
+            # A calendar: a frame, its top band and two rings.
+            body = pg.Rect(int(W * 0.22), int(H * 0.12), int(W * 0.56), int(H * 0.86))
+            pg.draw.rect(big, rgba, body, width=line, border_radius=int(H * 0.12))
+            pg.draw.rect(big, rgba, (body.x, body.y, body.w, int(H * 0.28)), border_top_left_radius=int(H * 0.12),
+                         border_top_right_radius=int(H * 0.12))
+            for side in (0.3, 0.7):
+                pg.draw.rect(big, rgba, (body.x + int(body.w * side) - line // 2, 0, line, int(H * 0.26)),
+                             border_radius=line // 2)
+            for row in range(2):
+                for column in range(3):
+                    pg.draw.rect(big, rgba, (body.x + int(body.w * (0.2 + 0.25 * column)), body.y + int(H * (0.42 + 0.2 * row)),
+                                             line, line))
         elif kind == "trophy":
             cx = W // 2
             cup = [(cx - int(H * 0.42), 0), (cx + int(H * 0.42), 0), (cx + int(H * 0.3), int(H * 0.42)),
@@ -1333,9 +1436,10 @@ class Painter:
                          border_radius=int(u * 0.25) * k)
         return pg.transform.smoothscale(big, (width, height))
 
-    def hint_image(self, message: str = None, colour=TEXT, kind: str = "card", accent=None):
+    def hint_image(self, message: str = None, colour=None, kind: str = "card", accent=None):
         """The hint line (or another text in its place) with its icon, cut to fit beside the player."""
         message = message or text("hint", self.language)
+        colour = colour or TEXT
         accent = tuple(accent or DEFAULT_ACCENT)[:3]
         key = (message, tuple(colour), kind, accent)
         cache = self.__dict__.setdefault("_hints", {})
@@ -1510,7 +1614,7 @@ class Painter:
             if image is not None:
                 frame.blit(image, (x + (cell_w - image.get_width()) // 2, y + picture_h - image.get_height()))
             else:
-                box = self.shape(cell_w, picture_h, (255, 255, 255, 18), int(u * 1.5))
+                box = self.shape(cell_w, picture_h, GLASS, int(u * 1.5))
                 frame.blit(box, (x, y))
             label = name_font.render(game["name"], True, TEXT)
             if label.get_width() > cell_w:
@@ -1532,7 +1636,7 @@ class Painter:
         width = min(self.w - int(u * 8), label.get_width() + pad_x * 2 + mark * 2)
         height = label.get_height() + pad_y * 2
         image = pg.Surface((width, height), pg.SRCALPHA)
-        image.blit(self.shape(width, height, (12, 14, 20, 225), height // 2), (0, 0))
+        image.blit(self.shape(width, height, TOAST_BG, height // 2), (0, 0))
         image.blit(self.shape(width, height, tuple(accent), height // 2, max(2, int(u * 0.3))), (0, 0))
         image.blit(self.shape(mark * 2, mark * 2, tuple(accent), ellipse=True), (pad_x - mark, height // 2 - mark))
         image.blit(label, (pad_x + mark * 2, pad_y), (0, 0, width - pad_x * 2 - mark * 2, label.get_height()))
@@ -1562,7 +1666,7 @@ class Painter:
         height += pad
         image = pg.Surface((width, height), pg.SRCALPHA)
         radius = int(u * 3)
-        image.blit(self.shape(width, height, (16, 19, 27, 255), radius), (0, 0))
+        image.blit(self.shape(width, height, PANEL_BG, radius), (0, 0))
         image.blit(self.shape(width, height, accent + (255,), radius, max(2, int(u * 0.3))), (0, 0))
         y = pad
         image.blit(heading, ((width - heading.get_width()) // 2, y), (0, 0, width - pad * 2, heading.get_height()))
@@ -1585,13 +1689,14 @@ class Painter:
         return image, bar_rect
 
     def player_chip(self, surface, player, accent, right: int, top: int):
-        pg, u = self.pg, self.u
-        name = self.font("Exo2-Bold.ttf", u * 3.6).render(player["name"], True, TEXT)
-        detail = self.font("OpenSans-CondLight.ttf", u * 2.9).render(player["detail"], True, MUTED)
+        # "Large text": the whole chip grows (its texts and their places).
+        pg, u = self.pg, self.u * self.text_scale
+        name = self.font("Exo2-Bold.ttf", u * 3.6, scaled=False).render(player["name"], True, TEXT)
+        detail = self.font("OpenSans-CondLight.ttf", u * 2.9, scaled=False).render(player["detail"], True, MUTED)
         size = int(u * 7)
         width = size + int(u * 2) + max(name.get_width(), detail.get_width(), int(u * 16)) + int(u * 3)
         x = right - width
-        chip = self.shape(width, size + int(u * 1.6), (255, 255, 255, 18), (size + int(u * 1.6)) // 2)
+        chip = self.shape(width, size + int(u * 1.6), GLASS, (size + int(u * 1.6)) // 2)
         surface.blit(chip, (x, top - int(u * 0.8)))
         centre = (x + int(u * 0.8) + size // 2, top + size // 2)
         picture = self.avatar(player.get("uid"), player.get("avatar"), size, max(1, int(round(u * 0.25))), accent)
@@ -1599,7 +1704,7 @@ class Painter:
             surface.blit(picture, (x + int(u * 0.8), top))
         else:
             self.draw_shape(surface, (centre[0] - size // 2, centre[1] - size // 2, size, size), accent, ellipse=True)
-            initial = self.font("Exo2-Bold.ttf", u * 4.2).render((player["name"][:1] or "?").upper(), True, TEXT)
+            initial = self.font("Exo2-Bold.ttf", u * 4.2, scaled=False).render((player["name"][:1] or "?").upper(), True, TEXT)
             surface.blit(initial, (centre[0] - initial.get_width() // 2, centre[1] - initial.get_height() // 2))
         tx = x + int(u * 0.8) + size + int(u * 2)
         surface.blit(name, (tx, top - int(u * 0.9)))
@@ -1608,7 +1713,7 @@ class Painter:
         if player.get("ratio") is not None:
             bar_w = max(name.get_width(), detail.get_width(), int(u * 16))
             bar_y = detail_y + detail.get_height() - int(u * 0.1)
-            self.draw_shape(surface, (tx, bar_y, bar_w, int(u * 0.6)), (255, 255, 255, 40), int(u * 0.3))
+            self.draw_shape(surface, (tx, bar_y, bar_w, int(u * 0.6)), LINE, int(u * 0.3))
             colour = accent if player["ratio"] > 0.2 else (234, 165, 59)
             self.draw_shape(surface, (tx, bar_y, max(int(u * 0.6), int(bar_w * player["ratio"])), int(u * 0.6)), colour,
                          int(u * 0.3))
@@ -1937,7 +2042,7 @@ class GpuScreen:
         position = ((self.painter.w - image.get_width()) // 2, (self.painter.h - image.get_height()) // 2)
         bars = None
         if bar is not None:
-            bars = (self.texture(self.painter.shape(bar.w, bar.h, (255, 255, 255, 40), bar.h // 2)),
+            bars = (self.texture(self.painter.shape(bar.w, bar.h, LINE, bar.h // 2)),
                     self.texture(self.painter.shape(bar.w, bar.h, DEFAULT_ACCENT + (255,), bar.h // 2)))
             for item in bars:
                 item.blend_mode = 1
@@ -2035,6 +2140,7 @@ class Screen:
         if not consoles:
             consoles = [{"id": "", "name": "Recalbox", "count": 0, "maker": "", "year": ""}]
         painter = Painter(pygame, width, height, consoles, self.language, region(conf))
+        apply_look(painter, self.home)
         painter.home = self.home
         index, previous, changed = 0, None, time.monotonic()
         painter.hero(0)
@@ -2126,7 +2232,7 @@ class Screen:
                 surface.blit(image, (x, y))
                 if bar is not None and overlay["until"] and overlay["total"]:
                     left = max(0.0, min(1.0, (overlay["until"] - time.time()) / overlay["total"]))
-                    painter.draw_shape(surface, (x + bar.x, y + bar.y, bar.w, bar.h), (255, 255, 255, 40), bar.h // 2)
+                    painter.draw_shape(surface, (x + bar.x, y + bar.y, bar.w, bar.h), LINE, bar.h // 2)
                     if int(bar.w * left) > bar.h:
                         painter.draw_shape(surface, (x + bar.x, y + bar.y, int(bar.w * left), bar.h),
                                            DEFAULT_ACCENT + (255,), bar.h // 2)
@@ -2213,6 +2319,7 @@ def _run_gpu(self, pygame, conf) -> int:
     renderer.present()
     consoles = _consoles()
     painter = Painter(pygame, width, height, consoles, self.language, region(conf))
+    apply_look(painter, self.home)
     painter.home = self.home
     gpu = GpuScreen(pygame, painter, window, renderer, angle=angle, screen=size)
     index, previous, changed = 0, None, time.monotonic()

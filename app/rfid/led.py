@@ -31,6 +31,7 @@ YELLOW = (255, 190, 0)
 ORANGE = (255, 90, 0)
 CYAN = (0, 255, 255)
 MAGENTA = (255, 0, 200)
+PURPLE = (90, 0, 255)
 
 #: Lasting states: (colour, blink period in seconds or 0 for steady).
 STATES = {
@@ -42,6 +43,10 @@ STATES = {
     "associate": (BLUE, 0.6),
     "delete": (ORANGE, 0.6),
     "warning": (YELLOW, 0.8),
+    #: Bedtime: no games now (option [led] signals).
+    "bedtime": (PURPLE, 0.0),
+    #: The active player has no time left today (option [led] signals).
+    "exhausted": (ORANGE, 0.0),
 }
 
 #: Short events: (colour, duration, blink period).

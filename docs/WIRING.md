@@ -74,6 +74,8 @@ the reader is hidden in the case:
 | red flash | unknown badge, or refused action |
 | slow red blink | the reader does not answer |
 | magenta flash | bonus time added |
+| steady purple | bedtime (option "Light for bedtime and time up") |
+| steady orange | the active player (or the guest) has no time left today (same option) |
 
 Choose the kind of light in the page: **Settings › Status light**.
 
