@@ -356,6 +356,20 @@ Options of the reader screen (Settings › TV display):
   (or two minutes) cancels. The play time counts from the start only.
 * **Show the active player's games**: their last games, with box art, in
   place of the consoles.
+* **Background music** (like Recalbox, the default): the music of the
+  Recalbox interface (its theme's, and yours in `/recalbox/share/music`),
+  at random, with the name of each new track for a few seconds when Recalbox
+  shows it (its "MusicPopupTime" setting). "Like Recalbox" follows its
+  Background music setting (`audio.bgmusic`); "always" plays it anyway; "off"
+  never. **Music volume**: like Recalbox (`audio.music.volume`) or 10 to 100%
+  of the overall volume. The music stops during games and another track
+  starts when the reader screen comes back. Changing these settings restarts
+  the reader screen for a few seconds.
+* **Volume in the START + SELECT menu** (on by default): a Volume line at the
+  top of the menu, changed with left and right (5% steps). It is the volume
+  of the whole Recalbox (games, music, cartridge sounds), like the one of the
+  Recalbox menu: applied at once, and written to `audio.volume` in
+  `recalbox.conf` when the menu closes.
 * **Turn off and restart from the reader screen** (on by default): START and
   SELECT together on a controller, when no game runs, open a menu with
   **Turn off**, **Restart** and **Cancel** (D-pad to choose, any button to

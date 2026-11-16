@@ -158,15 +158,47 @@ def hat(*names):
 
 
 class PowerControlTest(unittest.TestCase):
-    def make(self, menu="both", state=None):
+    def make(self, menu="both", state=None, volume=False):
         self.sent = []
         self.state = state
         self.clock = Clock()
-        with mock.patch.object(screen, "setting", return_value=menu):
+        self.volume = {"now": 72, "applied": [], "saved": []}
+        sound = (lambda: self.volume["now"], self.volume["applied"].append, self.volume["saved"].append)
+        values = {"power_menu": menu, "volume_menu": "1" if volume else "0"}
+        with mock.patch.object(screen, "setting", side_effect=lambda home, section, key, default="": values.get(key, default)):
             control = screen.PowerControl("/nulle-part", "fr", FakePads(), clock=self.clock, wall=Clock(),
-                                          send=self.sent.append, read=lambda: self.state)
+                                          send=self.sent.append, read=lambda: self.state, sound=sound)
             control.refresh_actions()
         return control
+
+    def test_volume_dans_le_menu(self):
+        control = self.make(volume=True)
+        control.handle(press("start", combo=True))
+        self.assertEqual(control.menu.items, ["volume", "poweroff", "reboot", "cancel"])
+        self.assertEqual(control.view()[3][0], "Volume : ‹ 72 % ›")
+        control.handle(hat("right"))
+        control.handle(hat("right"))
+        self.assertEqual(self.volume["applied"], [75, 80], "au multiple de 5, applique tout de suite")
+        control.handle(hat("left"))
+        self.assertEqual(control.menu.volume, 75)
+        self.assertEqual(self.volume["saved"], [], "enregistre a la fermeture seulement")
+        self.clock.now += 1
+        control.handle(press("a"))
+        self.assertIsNone(control.menu)
+        self.assertEqual(self.volume["saved"], [75])
+        self.assertEqual(self.sent[-1], "activity", "valider le volume n'eteint rien")
+
+    def test_volume_seul(self):
+        control = self.make(menu="off", volume=True)
+        self.assertTrue(control.handle(press("start", combo=True)))
+        self.assertEqual(control.menu.items, ["volume", "cancel"])
+        self.assertEqual(control.view()[1], "Menu")
+        for _ in range(30):
+            control.handle(hat("right"))
+        self.assertEqual(control.menu.volume, 100)
+        control.handle(hat("down"))
+        control.handle(hat("right"))
+        self.assertEqual(control.menu.volume, 100, "gauche/droite seulement sur la ligne Volume")
 
     def test_start_select_ouvre_le_menu(self):
         control = self.make()
