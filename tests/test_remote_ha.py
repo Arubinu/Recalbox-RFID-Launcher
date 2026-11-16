@@ -192,17 +192,45 @@ class WeekSummaryTest(unittest.TestCase):
 
 class CartridgeSoundTest(unittest.TestCase):
     def test_son(self):
+        from rfid.feedback import CARD_SOUNDS, SOUNDS_DIR
+
         feedback = Feedback(enabled=False, player="none")
         self.assertGreater(len(Feedback._clack_wave()), 1000)
         spawned = []
-        feedback._spawn = lambda make: spawned.append(make)
+        feedback._spawn = lambda make: spawned.append(make())
         feedback.cartridge()
-        self.assertEqual(spawned, [], "option desactivee")
-        feedback.card_sound, feedback._player = True, "/usr/bin/paplay"
+        feedback.cartridge_out()
+        self.assertEqual(spawned, [], "options desactivees")
+        feedback.card_sound, feedback.card_out_sound, feedback._player = "ds_insert", "snes_dry", "/usr/bin/paplay"
         feedback.cartridge()
-        self.assertEqual(len(spawned), 1)
+        feedback.cartridge_out()
+        self.assertEqual([os.path.basename(path) for path in spawned], ["ds-insert.wav", "snes-dry.wav"])
         feedback.play([(440.0, 0.1)])
-        self.assertEqual(len(spawned), 1, "les bips restent coupes")
+        self.assertEqual(len(spawned), 2, "les bips restent coupes")
+        for name in CARD_SOUNDS.values():
+            if name:
+                self.assertTrue(os.path.isfile(os.path.join(SOUNDS_DIR, name)), "son livre : %s" % name)
+
+    def test_volume(self):
+        from rfid.feedback import SOUNDS_DIR, scaled_wav
+
+        cache = tempfile.mkdtemp(prefix="rfid-vol-")
+        self.addCleanup(shutil.rmtree, cache, True)
+        source = os.path.join(SOUNDS_DIR, "ds-insert.wav")
+        self.assertEqual(scaled_wav(source, 100, cache), source, "100 % : le fichier tel quel")
+        half = scaled_wav(source, 50, cache)
+        read = lambda path: struct.unpack("<%dh" % ((os.path.getsize(path) - 44) // 2), open(path, "rb").read()[44:])
+        original, scaled = read(source), read(half)
+        self.assertEqual(len(original), len(scaled))
+        self.assertEqual(max(abs(v) for v in scaled), int(max(abs(v) for v in original) * 0.5))
+
+    def test_ancien_reglage(self):
+        from rfid.feedback import card_sound_style
+
+        self.assertEqual(card_sound_style("1"), "ds_insert")
+        self.assertEqual(card_sound_style("0"), "off")
+        self.assertEqual(card_sound_style("", "ds_remove"), "ds_remove")
+        self.assertEqual(card_sound_style("snes_full"), "snes_full")
 
 
 class AudioEnvTest(unittest.TestCase):

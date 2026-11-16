@@ -276,7 +276,9 @@ class Service:
             enabled=self.cfg.get_bool("feedback", "sound", True),
             player=self.cfg.get("feedback", "sound_player", "auto"),
             log=self.log,
-            card_sound=self.cfg.get_bool("feedback", "card_sound", False),
+            card_sound=self.cfg.get("feedback", "card_sound", "ds_insert"),
+            card_out_sound=self.cfg.get("feedback", "card_out_sound", "ds_remove"),
+            card_volume=self.cfg.get_int("feedback", "card_volume", 60),
         )
 
         self.gpio = build_gpio(self.cfg, self.log)
@@ -955,6 +957,10 @@ class Service:
         self._absent_since = None
         self._absent_hits = 0
         self._launched_uid = None
+        if lance and badge:
+            out = getattr(getattr(self, "feedback", None), "cartridge_out", None)
+            if out is not None:
+                out()  # the game card is pulled out (sound of the DS)
         players = getattr(self, "players", None)
         current = players.current if players is not None else None
         if current is not None and current.get("via") == "reader" and current.get("uid") == badge:
@@ -2308,8 +2314,13 @@ class Service:
                     )
                 if self.feedback is not None:
                     wanted = self.cfg.get_bool("feedback", "sound", True)
-                    self.feedback.card_sound = self.cfg.get_bool("feedback", "card_sound", False)
-                    if (wanted or self.feedback.card_sound) and not getattr(self.feedback, "_player", None):
+                    from .feedback import DEFAULT_IN, DEFAULT_OUT, card_sound_style
+
+                    self.feedback.card_sound = card_sound_style(self.cfg.get("feedback", "card_sound", DEFAULT_IN), DEFAULT_IN)
+                    self.feedback.card_out_sound = card_sound_style(
+                        self.cfg.get("feedback", "card_out_sound", DEFAULT_OUT), DEFAULT_OUT)
+                    self.feedback.card_volume = self.cfg.get_int("feedback", "card_volume", 60)
+                    if (wanted or self.feedback.cards_on()) and not getattr(self.feedback, "_player", None):
                         self.feedback._detect_player()
                     self.feedback.enabled = wanted and bool(getattr(self.feedback, "_player", None))
                 if self.store and self.launcher and self.feedback:

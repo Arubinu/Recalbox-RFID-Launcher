@@ -537,15 +537,23 @@ changes.
 | 1 high beep | pairing mode armed (also the 5 and 1 minute warnings) |
 | 2 rising beeps | badge paired, special card done |
 | 1 medium beep | badge recognized without action (`action = none`) |
-| no sound | a game starts: its loading screen is enough (or a cartridge "clack", option) |
+| cartridge pushed in | a game card starts its game (setting) |
+| cartridge pulled out | the card of the running game is removed (setting) |
 | 2 low beeps | erase mode armed |
 | 2 falling low beeps | unknown badge or refused action |
 | 3 falling beeps | time out (10 s to place the badge), end of play time |
 
 The beeps are generated on the fly and played by `paplay` (PulseAudio) or
-`aplay` (ALSA). Settings › Beeps turns them off. **Cartridge sound**
-(Settings › Sounds, off by default): a small "clack" when a game card starts
-its game; the Sound card mutes it with the rest.
+`aplay` (ALSA). Settings › Beeps turns them off.
+
+**Cartridge sounds** (Settings › Sounds): one when a game card starts its
+game (Nintendo DS insertion by default) and one when the card of the running
+game is removed (Nintendo DS removal by default). Each can be any of the
+sounds: Nintendo DS insertion or removal, Super Nintendo (short, very short
+or full), a synthetic clack, or none. **Volume of the cartridge sounds** (%,
+60 by default) keeps them below the sound of the games; the play button next
+to each choice plays it on the Recalbox, at the volume being typed. The
+Sound card mutes them with the rest. The files are in `app/rfid/sounds/`.
 
 ## Commands (SSH)
 

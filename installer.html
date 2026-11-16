@@ -3453,6 +3453,7 @@ const ICONS = {
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
   player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>',
   guest: '<circle cx="9.5" cy="8" r="3.4"/><path d="M3.5 20a6 6 0 0 1 12 0"/><path d="M18.5 8v6M15.5 11h6"/>',
   reward: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   pause: '<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
@@ -5712,6 +5713,7 @@ const CHOIX_TEXTES = {
   "led.type=none": "aucun voyant", "led.type=rgb": "LED RGB (3 couleurs)", "led.type=ws2812": "LED programmables (WS2812)",
   "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
   "players.guest_period=day": "par jour", "players.guest_period=week": "par semaine",
+  "feedback.card_sound=off": "aucun", "feedback.card_sound=ds_insert": "Nintendo DS, insertion", "feedback.card_sound=ds_remove": "Nintendo DS, retrait", "feedback.card_sound=snes": "Super Nintendo, court", "feedback.card_sound=snes_dry": "Super Nintendo, très court", "feedback.card_sound=snes_full": "Super Nintendo, complet", "feedback.card_sound=synth": "« clac » synthétique", "feedback.card_out_sound=off": "aucun", "feedback.card_out_sound=ds_insert": "Nintendo DS, insertion", "feedback.card_out_sound=ds_remove": "Nintendo DS, retrait", "feedback.card_out_sound=snes": "Super Nintendo, court", "feedback.card_out_sound=snes_dry": "Super Nintendo, très court", "feedback.card_out_sound=snes_full": "Super Nintendo, complet", "feedback.card_out_sound=synth": "« clac » synthétique",
   "display.theme=dark": "sombre", "display.theme=light": "clair",
   "display.text_size=normal": "normaux", "display.text_size=large": "grands",
   "players.multi=off": "non, une carte remplace l'autre", "players.multi=remove": "oui, reposer une carte la retire",
@@ -5890,7 +5892,7 @@ async function renderOptions(force) {
       el("span", { className: "option-label", text: t(option.label || option.full) }),
       option.help ? el("span", { className: "option-help", text: t(option.help) }) : null,
     ]),
-    el("div", { className: "option-control" }, [controlerOption(option)]),
+    el("div", { className: "option-control" }, [option.test ? testableOption(option) : controlerOption(option)]),
   ]);
   /* Everyday settings by group; technical ones ("advanced") folded at the end. */
   const groupes = new Map();
@@ -6081,6 +6083,21 @@ function clearable(input) {
   input.addEventListener("change", sync);
   sync();
   return el("div", { className: "clearable" }, [input, clear]);
+}
+
+/* A setting with a button to try its value on the Recalbox (the sounds). */
+function testableOption(option) {
+  const control = controlerOption(option);
+  const play = el("button", { className: "icon-btn", title: t("Écouter sur la Recalbox"), attrs: { type: "button", "aria-label": t("Écouter sur la Recalbox") } }, [icon("play", 16)]);
+  const sync = () => { play.style.visibility = control.value && control.value !== "off" ? "visible" : "hidden"; };
+  control.addEventListener("change", sync);
+  play.addEventListener("click", () => {
+    /* The volume being typed counts too, before it is saved. */
+    const volume = document.querySelector('[data-option="feedback.card_volume"] input');
+    return run(() => agent.send(option.test, { value: control.value, volume: volume ? volume.value : undefined }), "Écoute impossible :");
+  });
+  sync();
+  return el("div", { className: "clearable" }, [control, play]);
 }
 
 /* Small form builder for the card dialog. */

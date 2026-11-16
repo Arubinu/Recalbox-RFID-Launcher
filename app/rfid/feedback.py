@@ -22,6 +22,72 @@ import tempfile
 SAMPLE_RATE = 22050
 
 
+#: Sounds of the cartridges (files of the "sounds" folder; None: synthetic).
+CARD_SOUNDS = {
+    "ds_insert": "ds-insert.wav",
+    "ds_remove": "ds-remove.wav",
+    "snes": "snes.wav",
+    "snes_dry": "snes-dry.wav",
+    "snes_full": "snes-full.wav",
+    "synth": None,
+}
+SOUNDS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sounds")
+#: [feedback] card_sound (a game card starts its game) and card_out_sound
+#: (the card of the running game is removed): defaults.
+DEFAULT_IN, DEFAULT_OUT = "ds_insert", "ds_remove"
+
+
+def card_sound_style(value, default: str = DEFAULT_IN) -> str:
+    """A key of CARD_SOUNDS or "off" (1 and 0 of the first version: the
+    default sound and "off"; "ds": the DS sound)."""
+    text = str(value if value is not None else "").strip().lower()
+    if text in CARD_SOUNDS or text == "off":
+        return text
+    if text == "ds":
+        return default
+    if text in ("1", "true", "yes", "on", "oui"):
+        return default
+    if text in ("0", "false", "no", "non"):
+        return "off"
+    return default
+
+
+def scaled_wav(path: str, volume, cache_dir: str) -> str:
+    """A 16-bit PCM WAV at ``volume`` percent (written once in ``cache_dir``)."""
+    try:
+        volume = max(0, min(100, int(volume)))
+    except (TypeError, ValueError):
+        volume = 100
+    if volume >= 100:
+        return path
+    target = os.path.join(cache_dir, "%s-v%d.wav" % (os.path.splitext(os.path.basename(path))[0], volume))
+    if os.path.isfile(target) and os.path.getmtime(target) >= os.path.getmtime(path):
+        return target
+    from array import array
+    import sys
+
+    with open(path, "rb") as handle:
+        data = handle.read()
+    start = data.find(b"data")
+    if data[:4] != b"RIFF" or start < 0:
+        return path
+    size = struct.unpack("<I", data[start + 4:start + 8])[0]
+    samples = array("h")
+    samples.frombytes(data[start + 8:start + 8 + size - size % 2])
+    if sys.byteorder != "little":
+        samples.byteswap()
+    factor = volume / 100.0
+    scaled = array("h", (int(value * factor) for value in samples))
+    if sys.byteorder != "little":
+        scaled.byteswap()
+    os.makedirs(cache_dir, exist_ok=True)
+    temporary = target + ".tmp"
+    with open(temporary, "wb") as handle:
+        handle.write(data[:start + 8] + scaled.tobytes() + data[start + 8 + len(scaled) * 2:])
+    os.replace(temporary, target)
+    return target
+
+
 def audio_env(environ=None, runtime_root: str = "/run/user") -> dict:
     """Environment for paplay: the PulseAudio of Recalbox runs for root with
     XDG_RUNTIME_DIR=/run/user/0. A service started without it (by the
@@ -39,16 +105,20 @@ def audio_env(environ=None, runtime_root: str = "/run/user") -> dict:
 class Feedback:
     """Confirmation beeps, silent when no audio player is available."""
 
-    def __init__(self, enabled: bool = True, player: str = "auto", log=None, card_sound: bool = False):
+    def __init__(self, enabled: bool = True, player: str = "auto", log=None, card_sound="off", card_out_sound="off",
+                 card_volume: int = 100):
         self.log = log
         self.enabled = bool(enabled)
         #: The "clack" of a cartridge when a game card starts its game (its own setting).
-        self.card_sound = bool(card_sound)
+        self.card_sound = card_sound_style(card_sound, DEFAULT_IN)
+        self.card_out_sound = card_sound_style(card_out_sound, DEFAULT_OUT)
+        #: Volume of the cartridge sounds, in percent of the files.
+        self.card_volume = card_volume
         self.requested_player = (player or "auto").lower()
         self._player = None
         self._cache_dir = os.path.join(tempfile.gettempdir(), "rfid-launcher")
         self._failed = 0
-        if self.enabled or self.card_sound:
+        if self.enabled or self.cards_on():
             wanted = self.enabled
             self._detect_player()
             self.enabled = wanted and bool(self._player)
@@ -155,10 +225,33 @@ class Feedback:
         os.replace(temporary, path)
         return path
 
+    def cards_on(self) -> bool:
+        return self.card_sound != "off" or self.card_out_sound != "off"
+
+    def _card_file(self, style: str, volume=None):
+        """Path of a cartridge sound (the synthetic clack when its file is
+        missing), at ``volume`` percent (default: self.card_volume)."""
+        name = CARD_SOUNDS.get(style)
+        path = None
+        if name:
+            path = os.path.join(SOUNDS_DIR, name)
+            if not os.path.isfile(path):
+                path = None
+        path = path or self._clack_file()
+        volume = self.card_volume if volume is None else volume
+        return scaled_wav(path, volume, self._cache_dir)
+
     def cartridge(self) -> None:
         """A game card starts its game (option [feedback] card_sound)."""
-        if self.card_sound and self._player:
-            self._spawn(self._clack_file)
+        style = self.card_sound
+        if style != "off" and self._player:
+            self._spawn(lambda: self._card_file(style))
+
+    def cartridge_out(self) -> None:
+        """The game card of the running game is removed (option [feedback] card_out_sound)."""
+        style = self.card_out_sound
+        if style != "off" and self._player:
+            self._spawn(lambda: self._card_file(style))
 
     def play(self, tones) -> None:
         """Plays a sequence of beeps; never blocks the caller."""
