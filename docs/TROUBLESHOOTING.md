@@ -207,6 +207,21 @@ to share when asking for help.
 The service takes a lock: a second instance stops at once ("Une autre instance
 du service tourne deja"). `$RFID restart` cleans up.
 
+### Black screen after the boot (reader screen)
+
+With the reader screen, the Recalbox interface does not start at boot: the
+reader service shows its own screen. If the service cannot start, the
+Recalbox interface comes back on its own after two minutes. To bring it
+back by hand (SSH):
+
+```sh
+sed -i 's/^system.es.atstartup=0$/system.es.atstartup=1/' /recalbox/share/system/recalbox.conf
+/etc/init.d/S31emulationstation start
+```
+
+and remove the block between the `rfid-reader: reader screen at boot` lines
+of `/recalbox/share/system/custom.sh`.
+
 ## 14. Full reset
 
 ```sh

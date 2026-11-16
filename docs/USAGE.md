@@ -381,6 +381,15 @@ interface would run (core, ratio and resolution of the console or the game,
 controllers in the order chosen in Recalbox). When the game ends, the screen
 comes back. The switch takes a few seconds.
 
+**At boot**, the reader screen comes straight after the Recalbox splash: the
+Recalbox interface does not start first. The reader sets
+`system.es.atstartup=0` in `recalbox.conf` (the value before is kept) and
+starts its service from `/recalbox/share/system/custom.sh` (a marked block;
+your own lines stay). Leaving the reader screen (setting, Unlock card,
+service stopped, uninstall) gives both back. Safety: if the service is not
+running two minutes after the boot, the block starts the Recalbox interface
+on its own.
+
 * The **Unlock card** shows the Recalbox interface (every game, the START
   menu) for as long as needed; placed again, the reader screen comes back.
 * **Turn off the hotkey that quits the games**: the controller hotkey and the

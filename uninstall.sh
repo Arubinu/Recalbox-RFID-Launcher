@@ -112,6 +112,16 @@ if [ -f "$HOME_DIR/frontend-lock.json" ] && [ -d "$HOME_DIR/app" ]; then
     fi
 fi
 
+# Reader screen straight at boot: Recalbox's interface starts at boot again,
+# and the block of custom.sh goes away.
+if [ -d "$HOME_DIR/app" ]; then
+    if (cd "$HOME_DIR/app" && python3 -c "from rfid import bootmode; bootmode.restore_interface('$HOME_DIR')") 2>/dev/null; then
+        say "  demarrage de l'interface de Recalbox retabli"
+    else
+        warn "verifiez system.es.atstartup dans recalbox.conf (1 ou absent) et /recalbox/share/system/custom.sh"
+    fi
+fi
+
 # 3. SPI (optional).
 # Removes from $1 the lines added at install time. The old full backup is
 # never restored: it would wipe the settings changed since then.

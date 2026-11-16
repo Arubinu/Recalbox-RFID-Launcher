@@ -188,8 +188,15 @@ class ReaderMode:
 
     def __init__(self, home: str, log, run=None, running=None, popen=None, clock=None, sleep=None,
                  python=None, hotkey_path: str = OVERRIDES, state_path: str = ES_STATE_FILE, uptime=None,
-                 age=None, pids=None, kill=None, target_path: str = None):
+                 age=None, pids=None, kill=None, target_path: str = None, boot=None):
         self.home = home
+        #: Straight to the reader screen at boot (bootmode): skip(), restore(), skipping().
+        if boot is None and running is None:
+            from . import bootmode
+
+            boot = {"skip": lambda: bootmode.skip_interface(home), "restore": lambda: bootmode.restore_interface(home),
+                    "skipping": bootmode.skipping}
+        self._boot = boot or {}
         self.target_path = target_path
         #: Options: show the game before it starts; wait for the controller.
         self.preview = False
@@ -272,8 +279,8 @@ class ReaderMode:
         """At boot, Recalbox's interface starts after the service: wait for it,
         otherwise it would take the screen back a few seconds later."""
         left = BOOT_WINDOW_S - self._uptime()
-        if left <= 0 or self._running():
-            return
+        if left <= 0 or self._running() or self._boot_call("skipping"):
+            return  # (Recalbox's interface does not start at boot: nothing to wait for)
         self._info("Demarrage : attente de l'interface de Recalbox pour la remplacer")
         deadline = self._clock() + min(BOOT_WAIT_S, left)
         while self._clock() < deadline:
@@ -316,7 +323,20 @@ class ReaderMode:
                 self._sleep(0.5)
         return not self._running()
 
+    def _boot_call(self, name: str):
+        action = self._boot.get(name)
+        if action is None:
+            return None
+        try:
+            return action()
+        except Exception as exc:  # noqa: BLE001 - the boot stays as it was
+            self._info("Demarrage direct de l'ecran du lecteur : %s" % exc)
+            return None
+
     def start_frontend(self) -> None:
+        # Its start at boot comes back first: the start script reads it.
+        if self._boot_call("restore"):
+            self._info("Demarrage : l'interface de Recalbox se lancera de nouveau")
         if self._running():
             return
         self._run([ES_SERVICE, "start"])
@@ -341,6 +361,9 @@ class ReaderMode:
         self.start_screen()
         self.state = "screen"
         self._info("Mode lecteur : l'ecran du lecteur remplace l'interface de Recalbox")
+        # The next boots show the reader screen straight away.
+        if self._boot_call("skip"):
+            self._info("Demarrage : l'ecran du lecteur s'affichera sans passer par l'interface de Recalbox")
 
     def leave(self) -> None:
         with self.lock:
