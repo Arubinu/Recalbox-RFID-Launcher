@@ -219,8 +219,8 @@ sed -i 's/^system.es.atstartup=0$/system.es.atstartup=1/' /recalbox/share/system
 /etc/init.d/S31emulationstation start
 ```
 
-and remove the block between the `rfid-reader: reader screen at boot` lines
-of `/recalbox/share/system/custom.sh`.
+and remove the `Recalbox RFID Launcher` comment and the line under it from
+`/recalbox/share/system/custom.sh`.
 
 ## 14. Full reset
 

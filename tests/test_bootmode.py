@@ -42,14 +42,20 @@ class BootModeTest(unittest.TestCase):
         self.assertTrue(self.skip())
         self.assertIn("system.es.atstartup=0", self.read(self.conf))
         self.assertTrue(bootmode.skipping(self.conf))
-        script = self.read(self.custom)
-        self.assertTrue(script.startswith("#!/bin/bash"))
+        custom = self.read(self.custom).splitlines()
+        boot = os.path.join(self.home, "boot.sh")
+        self.assertEqual(custom[0], "#!/bin/bash")
+        self.assertEqual(custom[-2], bootmode.COMMENT, "un commentaire en anglais")
+        self.assertIn('sh "%s" "$1"' % boot, custom[-1], "une seule ligne qui appelle notre fichier")
+        self.assertIn("S31emulationstation start", custom[-1], "sans boot.sh, l'interface revient")
+        script = self.read(boot)
         self.assertIn('"/u/recalbox-rfid(permanent).py3"', script)
-        self.assertIn("S31emulationstation start", script, "securite : l'interface revient")
+        self.assertIn("pgrep -f 'main.py daemon'", script, "securite : l'interface revient")
         self.assertFalse(self.skip(), "deja fait")
         self.assertTrue(self.restore())
         self.assertEqual(self.read(self.conf), before, "le fichier redevient identique")
         self.assertFalse(os.path.exists(self.custom), "custom.sh n'existait pas")
+        self.assertFalse(os.path.exists(boot))
         self.assertFalse(bootmode.skipping(self.conf))
 
     def test_valeur_d_avant_rendue(self):
@@ -64,6 +70,17 @@ class BootModeTest(unittest.TestCase):
         self.assertIn("echo bonjour", self.read(self.custom))
         self.restore()
         self.assertEqual(self.read(self.custom), "#!/bin/bash\necho bonjour\n")
+
+    def test_ancien_bloc_remplace(self):
+        old = [bootmode.OLD_BEGIN, 'if [ "$1" = "start" ]; then', "  true", "fi", bootmode.OLD_END]
+        self.write(self.custom, "\n".join(["#!/bin/bash", "echo bonjour"] + old) + "\n")
+        self.skip()
+        text = self.read(self.custom)
+        self.assertNotIn(bootmode.OLD_BEGIN, text)
+        self.assertEqual(text.count(bootmode.COMMENT), 1)
+        self.assertIn("echo bonjour", text)
+        self.skip()
+        self.assertEqual(self.read(self.custom).count(bootmode.COMMENT), 1, "une seule fois")
 
     def test_reglage_de_l_utilisateur_non_touche(self):
         """atstartup=0 set by the user (not by the reader): left as it is."""
