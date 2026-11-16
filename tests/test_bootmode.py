@@ -104,6 +104,60 @@ class ReaderModeBootTest(unittest.TestCase):
         self.assertEqual(calls, ["skip"])
         mode.leave()
         self.assertEqual(calls, ["skip", "restore"], "rendu avant de relancer l'interface")
+        mode.enter()
+        boot["stopping"] = lambda: True
+        mode.shutdown()
+        self.assertEqual(calls[-1], "skip", "la Recalbox s'arrete : rien n'est rendu")
+        self.assertEqual(mode.state, "screen")
+
+    def test_bloc_arret(self):
+        lines = "\n".join(bootmode.boot_lines("/u", "/c"))
+        self.assertIn('if [ "$1" = "stop" ]; then', lines)
+        self.assertIn("touch %s" % bootmode.STOPPING_FLAG, lines)
+        self.assertIn("pgrep -f 'main.py daemon'", lines, "ps tronque les lignes : pgrep")
+
+
+class IntruderTest(unittest.TestCase):
+    def test_interface_lancee_derriere_l_ecran(self):
+        from rfid.reader_mode import ES_SERVICE, ReaderMode
+
+        home = tempfile.mkdtemp(prefix="rfid-intruder-")
+        self.addCleanup(shutil.rmtree, home, True)
+        commands, skips = [], []
+        es = {"on": False}
+
+        class Process:
+            def poll(self):
+                return None
+
+            def send_signal(self, sig):
+                pass
+
+            def wait(self, timeout=None):
+                return 0
+
+        def run(args):
+            commands.append(list(args))
+            if args[-1] == "stop":
+                es["on"] = False
+
+        clock = support.FakeClock()
+        mode = ReaderMode(home, None, run=run, running=lambda: es["on"], popen=lambda *a, **k: Process(),
+                          clock=clock, sleep=clock.advance, uptime=lambda: 1000.0,
+                          hotkey_path=os.path.join(home, "o.cfg"), state_path=os.path.join(home, "es_state.inf"),
+                          boot={"skip": lambda: skips.append(1) or True})
+        mode.enter()
+        commands.clear()
+        mode.step()
+        self.assertEqual(commands, [], "rien a arreter")
+        es["on"] = True
+        clock.advance(11)
+        mode.step()
+        mode._thread.join(5)
+        self.assertIn([ES_SERVICE, "stop"], commands)
+        self.assertFalse(es["on"])
+        self.assertEqual(mode.state, "screen")
+        self.assertGreaterEqual(len(skips), 2, "le demarrage direct est remis")
 
 
 if __name__ == "__main__":

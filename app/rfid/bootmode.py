@@ -30,6 +30,9 @@ BEGIN = "# --- rfid-reader: reader screen at boot (begin) ---"
 END = "# --- rfid-reader: reader screen at boot (end) ---"
 #: Seconds after the boot when the block checks that the service runs.
 GUARD_S = 120
+#: Written by the block when the Recalbox stops (custom.sh stop runs first):
+#: the service stopping then is not leaving the reader screen. In RAM (/tmp).
+STOPPING_FLAG = "/tmp/rfid-system-stopping"
 
 
 def boot_lines(userscripts: str = USERSCRIPTS, conf: str = RECALBOX_CONF) -> list:
@@ -44,10 +47,14 @@ def boot_lines(userscripts: str = USERSCRIPTS, conf: str = RECALBOX_CONF) -> lis
         "  done",
         "  # Safety: no reader service two minutes later, the interface comes back.",
         "  ( sleep %d" % GUARD_S,
-        "    if ! ps | grep -v grep | grep -q 'main.py daemon'; then",
+        "    if ! pgrep -f 'main.py daemon' >/dev/null; then",
         "      sed -i 's/^%s=0$/%s=1/' %s" % (KEY, KEY, conf),
         "      /etc/init.d/S31emulationstation start",
         "    fi ) >/dev/null 2>&1 &",
+        "fi",
+        "# The Recalbox stops: the reader screen stays for the next boot.",
+        'if [ "$1" = "stop" ]; then',
+        "  touch %s" % STOPPING_FLAG,
         "fi",
     ]
 
@@ -154,3 +161,16 @@ def skipping(conf: str = RECALBOX_CONF) -> bool:
     """True when Recalbox's interface does not start at boot."""
     text = _read(conf)
     return text is not None and read_values(text, [KEY])[KEY] == "0"
+
+
+def mark_stopping(path: str = STOPPING_FLAG) -> None:
+    """The Recalbox is about to turn off or restart (our own power menu, card...)."""
+    try:
+        with open(path, "w", encoding="ascii") as handle:
+            handle.write("1\n")
+    except OSError:
+        pass
+
+
+def system_stopping(path: str = STOPPING_FLAG) -> bool:
+    return os.path.exists(path)

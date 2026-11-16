@@ -44,7 +44,7 @@ from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
 from .reader_mode import ReaderMode
-from . import avatars, bedtime, es_command, frontend_lock, pads, power, refusals, trophies
+from . import avatars, bedtime, bootmode, es_command, frontend_lock, pads, power, refusals, trophies
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -352,6 +352,7 @@ class Service:
 
     def _before_power(self, action: str) -> None:
         """Just before turning off: a game running is quit first (and saved, if set)."""
+        bootmode.mark_stopping()  # the reader screen stays for the next boot
         controller = self.controller
         try:
             if controller is not None and controller.game_running():

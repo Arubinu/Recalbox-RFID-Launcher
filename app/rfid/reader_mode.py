@@ -195,7 +195,7 @@ class ReaderMode:
             from . import bootmode
 
             boot = {"skip": lambda: bootmode.skip_interface(home), "restore": lambda: bootmode.restore_interface(home),
-                    "skipping": bootmode.skipping}
+                    "skipping": bootmode.skipping, "stopping": bootmode.system_stopping}
         self._boot = boot or {}
         self.target_path = target_path
         #: Options: show the game before it starts; wait for the controller.
@@ -214,6 +214,8 @@ class ReaderMode:
         self._kill = kill or os.kill
         self._uptime = uptime or system_uptime
         self._restart_at = None
+        #: Next check that Recalbox's interface did not start behind the reader screen.
+        self._intruder_check = 0.0
         self.log = log
         self._run = run or (lambda args: subprocess.run(args, stdout=subprocess.DEVNULL,
                                                         stderr=subprocess.DEVNULL, timeout=60))
@@ -524,6 +526,16 @@ class ReaderMode:
                 self._restart_at = None
                 self.start_screen()
             return
+        if (self.state == "screen" and self.screen is not None and self.screen.poll() is None
+                and self._clock() >= self._intruder_check):
+            self._intruder_check = self._clock() + 10.0
+            if self._running() and (self._thread is None or not self._thread.is_alive()):
+                # Started by something else (boot safety, a script...): it cannot
+                # get the display and would restart in a loop. Stopped.
+                self._info("L'interface de Recalbox a demarre derriere l'ecran du lecteur : elle est arretee")
+                self._thread = threading.Thread(target=self._stop_intruder, name="rfid-reader-mode", daemon=True)
+                self._thread.start()
+            return
         if self.state == "screen" and self.screen is not None and self.screen.poll() is not None:
             self.screen = None
             if self._running():
@@ -543,8 +555,28 @@ class ReaderMode:
             self._info("Ecran du lecteur arrete : relance")
             self._restart_at = now + RESTART_DELAY_S
 
+    def _stop_intruder(self) -> None:
+        try:
+            self._run([ES_SERVICE, "stop"])
+            deadline = self._clock() + STOP_TIMEOUT_S
+            while self._running() and self._clock() < deadline:
+                self._sleep(0.5)
+            for pid in self._pids():
+                try:
+                    self._kill(pid, getattr(signal, "SIGKILL", 9))
+                except OSError:
+                    pass
+            self._boot_call("skip")  # the next boots skip it again
+        except Exception as exc:  # noqa: BLE001 - checked again in 10 s
+            self._info("Arret de l'interface de Recalbox impossible : %s" % exc)
+
     def shutdown(self) -> None:
         """The service stops: Recalbox's interface comes back."""
+        if self._boot_call("stopping"):
+            # The Recalbox itself turns off or restarts: the reader screen
+            # (and its start at boot) stays for the next boot.
+            self._info("Arret de la Recalbox : l'ecran du lecteur reviendra au prochain demarrage")
+            return
         if self.state != "recalbox":
             self.wanted = False
             self.leave()
