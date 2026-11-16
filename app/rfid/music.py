@@ -10,6 +10,11 @@ shown like Recalbox's popup (``MusicPopupTime``, seconds, 0 = never).
 
 The screen quits before each game: the music stops with it, and another
 track starts when the screen comes back.
+
+While the music plays, the short sounds of the service (cartridge sounds,
+beeps) are played by the screen too, in the same mixer (``SOUND_QUEUE``):
+started by paplay, a new PulseAudio stream makes the Pi's output rewind,
+and the music jumps a little.
 """
 
 from __future__ import annotations
@@ -26,6 +31,10 @@ THEMES = "/recalbox/share_init/system/.emulationstation/themes"
 ES_SETTINGS = "/recalbox/share/system/.emulationstation/es_settings.cfg"
 USER_MUSIC = "/recalbox/share/music"
 EXTENSIONS = (".ogg", ".mp3", ".flac", ".wav", ".mod", ".xm", ".s3m", ".it", ".opus")
+#: Written while the music plays (the pid of the screen); RAM.
+MIXER_FLAG = "/tmp/rfid-screen-mixer.pid"
+#: Paths of WAV files to play, one per line (added by the service).
+SOUND_QUEUE = "/tmp/rfid-screen-sounds.txt"
 FADE_IN_MS = 1000
 FADE_OUT_MS = 300
 SDL_INIT_AUDIO = 0x10
@@ -81,10 +90,46 @@ def settings(enabled: str, volume: str, conf: dict):
     return on, max(0, min(100, percent))
 
 
+def screen_mixing(flag: str = MIXER_FLAG) -> bool:
+    """True while the reader screen plays music (and takes the short sounds)."""
+    try:
+        with open(flag, "r", encoding="ascii") as handle:
+            pid = int(handle.read().strip())
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def queue_sound(path: str, queue: str = SOUND_QUEUE) -> None:
+    with open(queue, "a", encoding="utf-8") as handle:
+        handle.write(path + "\n")
+
+
+def take_sounds(queue: str = SOUND_QUEUE) -> list:
+    """The sounds waiting (the queue is emptied)."""
+    taking = queue + ".taking"
+    try:
+        os.replace(queue, taking)
+    except OSError:
+        return []
+    try:
+        with open(taking, "r", encoding="utf-8") as handle:
+            return [line.strip() for line in handle if line.strip()]
+    except OSError:
+        return []
+    finally:
+        try:
+            os.remove(taking)
+        except OSError:
+            pass
+
+
 class Music:
     """One track after the other, at random (never the same twice in a row)."""
 
-    def __init__(self, files, volume: int, popup_s: float = 0.0, loader=None, rng=None, clock=None):
+    def __init__(self, files, volume: int, popup_s: float = 0.0, loader=None, rng=None, clock=None,
+                 flag: str = MIXER_FLAG, queue: str = SOUND_QUEUE):
         self.files = list(files)
         self.volume = volume
         self.popup_s = popup_s
@@ -97,6 +142,8 @@ class Music:
         self.next_check = 0.0
         self.announce = None
         self._loader = loader
+        self.flag, self.queue = flag, queue
+        self.chunks = {}
 
     def _load_libraries(self):
         if self._loader is not None:
@@ -107,6 +154,11 @@ class Music:
         mix.Mix_LoadMUS.argtypes = [ctypes.c_char_p]
         mix.Mix_FadeInMusic.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
         mix.Mix_FreeMusic.argtypes = [ctypes.c_void_p]
+        sdl.SDL_RWFromFile.restype = ctypes.c_void_p
+        sdl.SDL_RWFromFile.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        mix.Mix_LoadWAV_RW.restype = ctypes.c_void_p
+        mix.Mix_LoadWAV_RW.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        mix.Mix_PlayChannelTimed.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
         return sdl, mix
 
     def start(self) -> bool:
@@ -122,7 +174,24 @@ class Music:
         self.lib, self.mix = sdl, mix
         self.set_volume(self.volume)
         self._next()
+        take_sounds(self.queue)  # old requests: not played now
+        try:
+            with open(self.flag, "w", encoding="ascii") as handle:
+                handle.write("%d\n" % os.getpid())
+        except OSError:
+            pass
         return True
+
+    def play_sound(self, path: str) -> None:
+        """A short sound over the music (same mixer: no new output stream)."""
+        chunk = self.chunks.get(path)
+        if chunk is None:
+            rw = self.lib.SDL_RWFromFile(path.encode("utf-8"), b"rb")
+            chunk = self.mix.Mix_LoadWAV_RW(rw, 1) if rw else None
+            if not chunk:
+                return
+            self.chunks[path] = chunk
+        self.mix.Mix_PlayChannelTimed(-1, chunk, 0, -1)
 
     def set_volume(self, percent: int) -> None:
         self.volume = max(0, min(100, int(percent)))
@@ -148,6 +217,8 @@ class Music:
         """To call often: the next track when one ends."""
         if self.mix is None:
             return
+        for path in take_sounds(self.queue):
+            self.play_sound(path)
         now = self.clock()
         if now < self.next_check:
             return
@@ -164,6 +235,10 @@ class Music:
         if self.mix is None:
             return
         try:
+            os.remove(self.flag)  # the service plays its sounds itself again
+        except OSError:
+            pass
+        try:
             self.mix.Mix_FadeOutMusic(FADE_OUT_MS)
             time.sleep(FADE_OUT_MS / 1000.0)
             self.mix.Mix_HaltMusic()
@@ -173,3 +248,18 @@ class Music:
         except Exception:  # noqa: BLE001 - the screen quits anyway
             pass
         self.mix = self.track = None
+        self.chunks = {}
+        # Asked while the screen was quitting: played the usual way.
+        for path in take_sounds(self.queue):
+            try:
+                import shutil
+                import subprocess
+
+                from .feedback import audio_env
+
+                player = shutil.which("paplay") or shutil.which("aplay")
+                if player:
+                    subprocess.Popen([player, path], env=audio_env(), stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, start_new_session=True)
+            except OSError:
+                pass
