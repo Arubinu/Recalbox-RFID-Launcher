@@ -142,6 +142,7 @@ class ReaderModeTest(unittest.TestCase):
                                            clock=self.clock, sleep=self.clock.advance, python="python3",
                                            hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0,
                                            target_path=os.path.join(self.home, "last-target.json"))
+        self.mode.handover_path = os.path.join(self.home, "handover")
         patcher = mock.patch.object(es_command, "build", side_effect=lambda system, rom: ["python", "launcher", "-rom", rom])
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -282,6 +283,51 @@ class ReaderModeTest(unittest.TestCase):
         self.processes[1].code = 0
         self.mode.step()
         self.assertIsNone(esbridge.current_target(esbridge.read_state(self.state)), "rien apres la partie non plus")
+
+    def test_mise_a_jour_sans_detour_par_recalbox(self):
+        self.enter()
+        screen = self.processes[0]
+        reader_mode.ask_handover(self.mode.handover_path)
+        self.mode.shutdown()
+        self.assertEqual(screen.signals, [reader_mode.signal.SIGTERM], "l'ecran libere l'affichage")
+        self.assertEqual(self.calls, ["stop"], "l'interface de Recalbox n'est pas relancee")
+        self.assertTrue(os.path.exists(self.mode.handover_path), "pour le service suivant")
+        following = reader_mode.ReaderMode(self.home, None, run=self.fake_run, running=self.running,
+                                           popen=self.popen, clock=self.clock, sleep=self.clock.advance,
+                                           hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0)
+        following.handover_path = self.mode.handover_path
+        following.configure(True)
+        following._thread.join(5)
+        self.assertEqual(following.state, "screen")
+        self.assertEqual(self.calls, ["stop"])
+        self.assertFalse(os.path.exists(self.mode.handover_path), "utilise une fois")
+
+    def test_mise_a_jour_mode_lecteur_coupe_entre_temps(self):
+        self.enter()
+        reader_mode.ask_handover(self.mode.handover_path)
+        self.mode.shutdown()
+        following = reader_mode.ReaderMode(self.home, None, run=self.fake_run, running=self.running,
+                                           popen=self.popen, clock=self.clock, sleep=self.clock.advance,
+                                           hotkey_path=self.hotkeys, state_path=self.state, uptime=lambda: 3600.0)
+        following.handover_path = self.mode.handover_path
+        following.configure(False)
+        following._thread.join(5)
+        self.assertEqual(self.calls[-1], "start", "l'interface de Recalbox revient")
+
+    def test_arret_simple_retour_a_recalbox(self):
+        self.enter()
+        self.mode.shutdown()
+        self.assertEqual(self.calls[-1], "start")
+
+    def test_relance_ratee_interface_relancee(self):
+        calls = []
+        path = os.path.join(self.home, "handover")
+        self.assertFalse(reader_mode.recover_frontend(path, run=calls.append))
+        reader_mode.ask_handover(path)
+        self.assertTrue(reader_mode.recover_frontend(path, run=calls.append))
+        self.assertEqual(calls, [[reader_mode.ES_SERVICE, "start"]])
+        reader_mode.ask_handover(path, wall=lambda: 0.0)
+        self.assertFalse(reader_mode.handover_asked(path), "trop ancien")
 
     def test_lancement_puis_retour_a_l_ecran(self):
         self.enter()

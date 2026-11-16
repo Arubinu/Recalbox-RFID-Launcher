@@ -56,6 +56,44 @@ CONFIRM_TIMEOUT_S = 120.0
 RESTART_DELAY_S = 2.0
 #: Back from a game: seconds of black before the fade (the TV syncing again).
 AFTER_GAME_HOLD_S = 3.0
+#: Written by ``main.py restart`` (an update, the page): the service that
+#: stops leaves the reader screen to the next one instead of starting
+#: Recalbox's interface again. RAM; older than this, ignored.
+HANDOVER_FILE = "/tmp/rfid-screen-handover"
+HANDOVER_MAX_AGE_S = 120.0
+
+
+def ask_handover(path: str = HANDOVER_FILE, wall=None) -> None:
+    try:
+        with open(path, "w", encoding="ascii") as handle:
+            handle.write("%f\n" % (wall or time.time)())
+    except OSError:
+        pass
+
+
+def handover_asked(path: str = HANDOVER_FILE, wall=None, take: bool = False) -> bool:
+    """A restart is under way (``take``: the flag is used up)."""
+    try:
+        with open(path, "r", encoding="ascii") as handle:
+            at = float(handle.read().strip() or 0)
+    except (OSError, ValueError):
+        return False
+    if take:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return 0 <= (wall or time.time)() - at <= HANDOVER_MAX_AGE_S
+
+
+def recover_frontend(path: str = HANDOVER_FILE, run=None) -> bool:
+    """The restart failed after the reader screen was left: Recalbox's
+    interface comes back (never a black screen)."""
+    if not handover_asked(path, take=True):
+        return False
+    (run or (lambda args: subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                          timeout=60)))([ES_SERVICE, "start"])
+    return True
 #: The system started less than this ago: Recalbox's interface may still be
 #: about to start (the service starts before it); it is waited for.
 BOOT_WINDOW_S = 240.0
@@ -238,6 +276,8 @@ class ReaderMode:
         self.crashes = []
         self.lock = threading.Lock()
         self._thread = None
+        self.handover_path = HANDOVER_FILE
+        self._first_configure = True
 
     # ---------------------------------------------------------------- state
     @property
@@ -248,6 +288,14 @@ class ReaderMode:
     def configure(self, wanted: bool, no_quit_hotkey: bool = False) -> None:
         """Settings changed: enter or leave the mode (in the background)."""
         self.no_quit_hotkey = bool(no_quit_hotkey)
+        if self._first_configure:
+            self._first_configure = False
+            # The previous service left the reader screen to this one: taken
+            # back (enter), or Recalbox's interface if the mode is now off.
+            if handover_asked(self.handover_path, take=True) and not wanted:
+                self._info("Relance du service : mode lecteur desactive, retour a l'interface de Recalbox")
+                self._switch(False)
+                return
         if bool(wanted) == self.wanted and self.state != "switching":
             if wanted and self.state == "recalbox":
                 self._switch(True)
@@ -583,6 +631,17 @@ class ReaderMode:
             # (and its start at boot) stays for the next boot.
             self._info("Arret de la Recalbox : l'ecran du lecteur reviendra au prochain demarrage")
             return
+        if self.state != "recalbox" and self.wanted and handover_asked(self.handover_path):
+            # A restart (update): the next service shows the reader screen
+            # again at once; Recalbox's interface is not started in between.
+            self.state = "switching"
+            self.stop_screen()
+            self._stop_game()
+            set_hotkey_block(False, self.hotkey_path)
+            self.state = "recalbox"
+            self._info("Relance du service : l'ecran du lecteur revient tout de suite (sans l'interface de Recalbox)")
+            return  # the flag stays: the next service reads it
+        handover_asked(self.handover_path, take=True)  # nothing handed over: the next service starts as usual
         if self.state != "recalbox":
             self.wanted = False
             self.leave()
