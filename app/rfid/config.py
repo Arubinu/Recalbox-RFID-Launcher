@@ -74,6 +74,12 @@ dim_min = recalbox
 # Reader screen: now and then, the favourite game and trophies of the active
 # player, the game of the week, the controller shortcut (instead of the hint)
 show_info = 1
+# Background music of Recalbox's interface: recalbox (its own setting), on or
+# off; its volume in percent, or recalbox (audio.music.volume)
+music = recalbox
+music_volume = recalbox
+# Volume of the Recalbox in the START + SELECT menu (0/1)
+volume_menu = 1
 # On the first day of the week: the time played last week and the new trophies
 weekly_summary = 1
 # Colours of the reader screen: dark or light; small texts: normal or large

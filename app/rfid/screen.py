@@ -6,9 +6,11 @@ spotlight (its drawing, its logo, its number of games, on a glow of its
 colour), a band with the logos of every console that has games, the clock,
 and the active player with their play time. Games start with the cards.
 
-No sound is opened. The controllers are read only (a game shown waits for a
-button, START + SELECT open the power menu); the screen quits before each
-game, so it never holds a device the game needs. It quits on SIGTERM (the
+The background music of Recalbox's interface plays here too (music.py, an
+option); START + SELECT open a menu with the volume of the Recalbox and the
+power choices. The controllers are read only (a game shown waits for a
+button); the screen quits before each game, so it never holds a device the
+game needs. It quits on SIGTERM (the
 service stops it before a game and starts it again afterwards).
 
 ``RFID_SCREEN_ASSETS`` points to a copy of the theme files (preview on a
@@ -84,6 +86,17 @@ TEXTS = {
     "reboot": {"fr": "Redémarrer", "en": "Restart", "de": "Neu starten", "es": "Reiniciar", "it": "Riavvia",
                "pt": "Reiniciar"},
     "cancel": {"fr": "Annuler", "en": "Cancel", "de": "Abbrechen", "es": "Cancelar", "it": "Annulla", "pt": "Cancelar"},
+    "now_playing": {"fr": "Musique : {title}", "en": "Music: {title}", "de": "Musik: {title}", "es": "Música: {title}",
+                    "it": "Musica: {title}", "pt": "Música: {title}"},
+    "menu_title": {"fr": "Menu", "en": "Menu", "de": "Menü", "es": "Menú", "it": "Menu", "pt": "Menu"},
+    "volume_row": {"fr": "Volume : ‹ {n} % ›", "en": "Volume: ‹ {n}% ›", "de": "Lautstärke: ‹ {n} % ›",
+                   "es": "Volumen: ‹ {n} % ›", "it": "Volume: ‹ {n}% ›", "pt": "Volume: ‹ {n}% ›"},
+    "menu_hint_volume": {"fr": "Croix : haut et bas pour choisir, gauche et droite pour le volume",
+                         "en": "D-pad: up and down to choose, left and right for the volume",
+                         "de": "Steuerkreuz: hoch und runter zum Wählen, links und rechts für die Lautstärke",
+                         "es": "Cruceta: arriba y abajo para elegir, izquierda y derecha para el volumen",
+                         "it": "Croce: su e giù per scegliere, sinistra e destra per il volume",
+                         "pt": "Cruz: cima e baixo para escolher, esquerda e direita para o volume"},
     "menu_hint": {"fr": "Croix pour choisir, un bouton pour valider", "en": "D-pad to choose, a button to confirm",
                   "de": "Steuerkreuz zum Wählen, eine Taste zum Bestätigen",
                   "es": "Cruceta para elegir, un botón para aceptar",
@@ -409,7 +422,8 @@ AXIS_DEAD = 0.6
 #: Hat bits in Recalbox's settings (SDL): up, right, down, left.
 HAT_BITS = {1: (0, 1), 2: (1, 0), 4: (0, -1), 8: (-1, 0)}
 #: Without settings for a controller: the usual layout of the directions.
-FALLBACK_INPUTS = {"up": [("hat", 0, 1), ("axis", 1, -1)], "down": [("hat", 0, 4), ("axis", 1, 1)]}
+FALLBACK_INPUTS = {"up": [("hat", 0, 1), ("axis", 1, -1)], "down": [("hat", 0, 4), ("axis", 1, 1)],
+                   "left": [("hat", 0, 8), ("axis", 0, -1)], "right": [("hat", 0, 2), ("axis", 0, 1)]}
 
 
 def pad_settings(path: str = ES_INPUT) -> list:
@@ -473,6 +487,8 @@ def event_names(event_type: str, number: int, value, inputs: dict) -> set:
                 names.add(name)
             if name == "joystick1up" and kind == "axis" == event_type and ident == number and expected and value:
                 names.add("up" if (expected > 0) == (value > 0) else "down")  # the left stick moves too
+            if name == "joystick1left" and kind == "axis" == event_type and ident == number and expected and value:
+                names.add("left" if (expected > 0) == (value > 0) else "right")
     if event_type == "button" and not inputs:
         names.add("a")  # a controller unknown to Recalbox: any button confirms
     return names
@@ -491,11 +507,29 @@ class PowerMenu:
     #: Closed by itself after this long without a button.
     TIMEOUT_S = 20.0
 
-    def __init__(self, actions, clock=None):
+    def __init__(self, actions, clock=None, volume=None):
         self.clock = clock or time.monotonic
-        self.items = list(actions) + ["cancel"]
+        #: The volume of the Recalbox (percent), or None: no volume line.
+        self.volume = volume
+        self.items = (["volume"] if volume is not None else []) + list(actions) + ["cancel"]
         self.selected = 0
         self.touched = self.clock()
+
+    def adjust(self, step: int) -> bool:
+        """Left or right on the volume line: True when the volume changed."""
+        if self.volume is None or self.choice() != "volume":
+            return False
+        from .volume import STEP
+
+        before = self.volume
+        # To the next multiple of STEP (a volume of 72 % goes to 75 or 70).
+        if step > 0:
+            target = (self.volume // STEP + 1) * STEP
+        else:
+            target = ((self.volume - 1) // STEP) * STEP if self.volume > 0 else 0
+        self.volume = max(0, min(100, target))
+        self.touched = self.clock()
+        return self.volume != before
 
     def move(self, step: int) -> None:
         self.selected = (self.selected + step) % len(self.items)
@@ -587,10 +621,18 @@ class PowerControl:
     #: Presses ignored just after the menu opens (the other button of the pair).
     SETTLE_S = 0.4
 
-    def __init__(self, home: str, language: str, pads, clock=None, wall=None, send=None, read=None):
+    def __init__(self, home: str, language: str, pads, clock=None, wall=None, send=None, read=None, sound=None):
         from . import power
 
         self.power = power
+        #: The volume of the Recalbox: (read, apply, save) (volume.py).
+        if sound is None:
+            from . import volume
+
+            sound = (volume.current, volume.apply, volume.save)
+        self.sound = sound
+        self.volume_on = True
+        self.saved_volume = None
         self.home = home
         self.language = language
         self.pads = pads
@@ -616,6 +658,7 @@ class PowerControl:
         if self.checked_at is None or now - self.checked_at >= 5.0:
             self.checked_at = now
             self.actions = self.power.menu_actions(setting(self.home, "display", "power_menu", "both"))
+            self.volume_on = setting(self.home, "display", "volume_menu", "1").strip().lower() not in ("0", "false", "no", "off")
 
     def handle(self, event, busy: bool = False) -> bool:
         """A controller event: True when it was for the power menu or the countdown."""
@@ -638,15 +681,24 @@ class PowerControl:
                 self.menu.move(-1)
             elif "down" in names:
                 self.menu.move(1)
+            elif names & {"left", "right"}:
+                if self.menu.adjust(-1 if "left" in names else 1):
+                    self.sound[1](self.menu.volume)
             elif pressed:
                 choice = self.menu.choice()
-                self.menu = None
-                if choice != "cancel":
+                self.close_menu()
+                if choice not in ("cancel", "volume"):
                     self._send(choice)
             return True
         self.refresh_actions()
-        if pressed and self.actions and not busy and self.pads.combo(event):
-            self.menu = PowerMenu(self.actions, clock=self.clock)
+        if pressed and (self.actions or self.volume_on) and not busy and self.pads.combo(event):
+            volume = None
+            if self.volume_on:
+                try:
+                    volume = self.saved_volume = int(self.sound[0]())
+                except Exception:  # noqa: BLE001 - no volume line then
+                    volume = None
+            self.menu = PowerMenu(self.actions, clock=self.clock, volume=volume)
             self.opened_at = now
             self._send("activity")
             return True
@@ -654,13 +706,22 @@ class PowerControl:
             self._send("activity")
         return False
 
+    def close_menu(self) -> None:
+        """The menu closes: a new volume is written in recalbox.conf."""
+        menu, self.menu = self.menu, None
+        if menu is not None and menu.volume is not None and menu.volume != self.saved_volume:
+            try:
+                self.sound[2](menu.volume)
+            except Exception:  # noqa: BLE001 - the volume stays for this session
+                pass
+
     def poll(self, busy: bool = False) -> None:
         now = self.clock()
         if self.polled_at is None or now - self.polled_at >= 0.25:
             self.polled_at = now
             self.state = self.read()
         if self.menu is not None and (busy or self.state is not None or self.menu.expired()):
-            self.menu = None
+            self.close_menu()
 
     def view(self):
         """(key, title, detail, items, selected, bar, until, total) of what to show, or None."""
@@ -669,9 +730,13 @@ class PowerControl:
             total = self.power.DELAYS.get(self.state.get("source"), 10.0)
             return ("count", title, detail), title, detail, (), 0, True, float(self.state.get("until") or 0), total
         if self.menu is not None:
-            title = text("power_title" if "reboot" in self.menu.items else "power_title_off", self.language)
-            items = [text(item, self.language) for item in self.menu.items]
-            detail = text("menu_hint", self.language)
+            if self.menu.volume is not None:
+                title, detail = text("menu_title", self.language), text("menu_hint_volume", self.language)
+            else:
+                title = text("power_title" if "reboot" in self.menu.items else "power_title_off", self.language)
+                detail = text("menu_hint", self.language)
+            items = [text("volume_row", self.language, n=self.menu.volume) if item == "volume" else text(item, self.language)
+                     for item in self.menu.items]
             return ("menu", tuple(items), self.menu.selected), title, detail, items, self.menu.selected, False, None, None
         return None
 
@@ -688,6 +753,48 @@ class PowerControl:
             _key, title, detail, items, selected, bar, until, total = view
             show(painter.power_panel(title, detail, items, selected, bar), until, total)
         return True
+
+
+class ScreenSound:
+    """The background music of the reader screen (options [display] music and
+    music_volume; "recalbox": like Recalbox's interface)."""
+
+    def __init__(self, home: str, conf=None):
+        from . import music
+        from .feedback import audio_env
+
+        self.player = None
+        conf = read_conf() if conf is None else conf
+        on, percent = music.settings(setting(home, "display", "music", "recalbox").strip().lower(),
+                                     setting(home, "display", "music_volume", "recalbox").strip().lower(), conf)
+        if not on:
+            return
+        os.environ["SDL_AUDIODRIVER"] = "pulseaudio"
+        os.environ.setdefault("XDG_RUNTIME_DIR", audio_env().get("XDG_RUNTIME_DIR", "/run/user/0"))
+        try:
+            popup = float(music.es_setting("MusicPopupTime") or 0)
+        except ValueError:
+            popup = 0.0
+        player = music.Music(music.tracks(conf), percent, popup_s=popup)
+        try:
+            if player.start():
+                self.player = player
+        except Exception as exc:  # noqa: BLE001 - the screen without music
+            print("music: %s" % exc, flush=True)
+
+    def step(self) -> None:
+        if self.player is not None:
+            self.player.step()
+
+    def popup(self, language: str):
+        """"Music: <title>" when a track starts (Recalbox's MusicPopupTime), or None."""
+        name = self.player.popup() if self.player is not None else None
+        return text("now_playing", language, title=name) if name else None
+
+    def stop(self) -> None:
+        if self.player is not None:
+            self.player.stop()
+            self.player = None
 
 
 #: The parent's message, written by the page (home/screen-note.json).
@@ -2159,6 +2266,7 @@ class Screen:
         launches, launch_page, waiting = Watcher(LAUNCH_FILE, max_age=CONFIRM_MAX_AGE_S), None, False
         pads = Pads(pygame)
         power_ui = PowerControl(self.home, self.language, pads)
+        sound = ScreenSound(self.home, conf)
         overlay = {"panel": None, "until": None, "total": None}
         dimmer = Dimmer(self.home)
         hints_at = None
@@ -2246,7 +2354,7 @@ class Screen:
                 continue
             if now - messages_at >= 0.25:
                 messages_at = now
-                message = messages.poll()
+                message = messages.poll() or sound.popup(self.language)
                 if message:
                     image = painter.toast_image(message, painter.hero(index)["accent"])
                     toast = (image, now)
@@ -2293,7 +2401,9 @@ class Screen:
                 if time.monotonic() - counted >= 5:
                     print("%.1f fps, slowest %.0f ms" % (frames / (time.monotonic() - counted), slowest * 1000), flush=True)
                     frames, slowest, counted = 0, 0.0, time.monotonic()
+            sound.step()
             time.sleep(0.004 if progress < 1.0 else 0.08)
+        sound.stop()
         pygame.display.quit()
         return 0
 
@@ -2341,6 +2451,7 @@ def _run_gpu(self, pygame, conf) -> int:
     show_player = wants(self.home, "player_games")
     pads = Pads(pygame)
     power_ui = PowerControl(self.home, self.language, pads)
+    sound = ScreenSound(self.home, conf)
     dimmer = Dimmer(self.home)
     hints_at, who = None, None
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
@@ -2381,13 +2492,14 @@ def _run_gpu(self, pygame, conf) -> int:
                 gpu.show_launch(launch, shown["waiting"])
         if now - messages_at >= 0.25:
             messages_at = now
-            message = messages.poll()
+            message = messages.poll() or sound.popup(self.language)
             if message:
                 gpu.show_toast(message, index)
                 dimmer.wake()
                 players_at = 0.0  # the message often comes with a new player state
         power_ui.poll(busy=shown["launch"] is not None)
         power_ui.update(painter, gpu.show_power)
+        sound.step()
         if shown["launch"] is not None or power_ui.state is not None or power_ui.menu is not None:
             dimmer.wake()
         current = (player_info(players, self.language) or {}).get("uid")
@@ -2424,6 +2536,7 @@ def _run_gpu(self, pygame, conf) -> int:
         if progress >= 1.0:
             # The pulse only: no need for every screen refresh (even less when dark).
             time.sleep(0.15 if dimmer.level >= 1.0 else 0.02)
+    sound.stop()
     gpu.toast = gpu.page = gpu.launch = gpu.power = None
     gpu._bar = gpu.chip = gpu.chip_out = None
     gpu.canvas = None

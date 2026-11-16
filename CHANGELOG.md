@@ -81,6 +81,13 @@ by `rfidctl version`.
   **weekly summary** on the first day of the week (time played by each
   player and new trophies; the first day of the week is the one of the
   player cards).
+* **Background music on the reader screen**, like the Recalbox interface:
+  the music of its theme and of `/recalbox/share/music`, at random, with the
+  track name (when Recalbox shows it); played with SDL2_mixer, the library of
+  the Recalbox interface. Like Recalbox (default), always or off, and its own
+  volume or Recalbox's.
+* **Volume of the Recalbox in the START + SELECT menu**: a Volume line
+  (left and right, 5% steps) for every sound, kept in `recalbox.conf`.
 * **Cartridge sounds**: when a game card starts its game, and when the card
   of the running game is removed. Nintendo DS insertion and removal by
   default; Nintendo 64 insertion and removal, Super Nintendo (short, very

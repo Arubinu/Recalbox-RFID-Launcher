@@ -1170,11 +1170,11 @@ class Service:
         reader.on_cancel = self._game_given_up
         reader.configure(wanted, no_hotkey)
         # Colours and text size are read when the reader screen starts.
-        look = (self.cfg.get("display", "theme", "dark").strip().lower(),
-                self.cfg.get("display", "text_size", "normal").strip().lower())
+        look = tuple(self.cfg.get("display", key, default).strip().lower() for key, default in
+                     (("theme", "dark"), ("text_size", "normal"), ("music", "recalbox"), ("music_volume", "recalbox")))
         previous, self._screen_look = getattr(self, "_screen_look", None), look
         if previous is not None and previous != look and getattr(reader, "state", "") == "screen":
-            self.log.info("Couleurs ou textes de l'ecran du lecteur changes : redemarrage de l'ecran")
+            self.log.info("Couleurs, textes ou musique de l'ecran du lecteur changes : redemarrage de l'ecran")
             reader.restart_screen()
 
     # A game shown on the reader screen waits for the controller: its time
