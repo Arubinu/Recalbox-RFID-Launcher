@@ -22,6 +22,20 @@ import tempfile
 SAMPLE_RATE = 22050
 
 
+def audio_env(environ=None, runtime_root: str = "/run/user") -> dict:
+    """Environment for paplay: the PulseAudio of Recalbox runs for root with
+    XDG_RUNTIME_DIR=/run/user/0. A service started without it (by the
+    installer, over SSH...) would not find the sound server."""
+    env = dict(os.environ if environ is None else environ)
+    if env.get("PULSE_SERVER") or env.get("XDG_RUNTIME_DIR"):
+        return env
+    getuid = getattr(os, "getuid", None)
+    folder = os.path.join(runtime_root, str(getuid() if getuid else 0))
+    if os.path.exists(os.path.join(folder, "pulse", "native")):
+        env["XDG_RUNTIME_DIR"] = folder
+    return env
+
+
 class Feedback:
     """Confirmation beeps, silent when no audio player is available."""
 
@@ -56,6 +70,7 @@ class Feedback:
                 sample = self._wav_file([(880.0, 0.01)])
                 result = subprocess.run(
                     [path, sample],
+                    env=audio_env(),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     timeout=3,
@@ -158,6 +173,7 @@ class Feedback:
             wav = make()
             subprocess.Popen(
                 [self._player, wav],
+                env=audio_env(),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,

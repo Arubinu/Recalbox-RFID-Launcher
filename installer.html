@@ -239,7 +239,7 @@
   .field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
   .field > small { font-size: 12.5px; color: var(--faint); }
   .field .field-title { font-size: 13px; font-weight: 600; color: var(--muted); }
-  input[type=text], input[type=password], input[type=number], input[type=time], input[type=search], select {
+  input[type=text], input[type=password], input[type=number], input[type=time], input[type=date], input[type=search], select {
     width: 100%; height: 44px; padding: 0 13px;
     background: var(--bg-2); color: var(--text);
     border: 1px solid var(--line-2); border-radius: var(--r-md);
@@ -488,6 +488,11 @@
   .option select { height: 38px; min-width: 180px; max-width: 260px; }
   .option input[type=number] { width: 112px; height: 38px; text-align: right; }
   .option input[type=time] { width: 128px; height: 38px; }
+  .option input[type=date] { width: 160px; height: 38px; }
+  /* A date or an hour, with a cross to empty it (empty = off). */
+  .clearable { display: flex; align-items: center; gap: 4px; }
+  .clearable > input { flex: 1 1 auto; min-width: 0; }
+  .clearable > .icon-btn { flex: 0 0 auto; }
   .switch {
     position: relative; width: 46px; height: 26px; padding: 0; flex: 0 0 auto;
     border-radius: 999px; border: 1px solid rgba(var(--ink-rgb), .18);
@@ -5801,13 +5806,15 @@ function controlerOption(option) {
     /* A day (YYYY-MM-DD), or empty = off. */
     const jour = el("input", { attrs: { type: "date", "aria-label": label, value: valeur } });
     jour.addEventListener("input", () => { optionsPending[option.full] = jour.value; majEtatOptions(); });
-    return jour;
+    jour.addEventListener("change", () => { optionsPending[option.full] = jour.value; majEtatOptions(); });
+    return clearable(jour);
   }
   if (option.type === "time") {
     /* An hour (HH:MM), or empty = off. */
     const heure = el("input", { attrs: { type: "time", "aria-label": label, value: valeur } });
     heure.addEventListener("input", () => { optionsPending[option.full] = heure.value; majEtatOptions(); });
-    return heure;
+    heure.addEventListener("change", () => { optionsPending[option.full] = heure.value; majEtatOptions(); });
+    return clearable(heure);
   }
   const champ = el("input", { attrs: { type: "number", inputmode: "decimal", "aria-label": label, value: valeur } });
   if (option.min !== undefined) champ.setAttribute("min", String(option.min));
@@ -6059,6 +6066,23 @@ function specialName(action, params) {
   return action || "";
 }
 
+/* An input with a cross that empties it (hidden while it is empty). */
+function clearable(input) {
+  const clear = el("button", { className: "icon-btn", title: t("Effacer"), attrs: { type: "button", "aria-label": t("Effacer") } }, [icon("x", 16)]);
+  /* Hidden but keeping its place: the fields stay aligned. */
+  const sync = () => { clear.style.visibility = input.value ? "visible" : "hidden"; };
+  clear.addEventListener("click", (event) => {
+    event.preventDefault();
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  });
+  input.addEventListener("input", sync);
+  input.addEventListener("change", sync);
+  sync();
+  return el("div", { className: "clearable" }, [input, clear]);
+}
+
 /* Small form builder for the card dialog. */
 function formField(label, control, help, full) {
   return el("label", { className: "field" + (full ? " full" : "") }, [
@@ -6121,8 +6145,8 @@ async function specialFields(action, values) {
     const to = el("input", { attrs: { type: "time", id: "f-to" } });
     from.value = p.from || "";
     to.value = p.to && p.to !== "24:00" ? p.to : (p.from ? "23:59" : "");
-    fields.push(formField(t("À partir de"), from, t("Vide : toute la journée.")));
-    fields.push(formField(t("Jusqu'à"), to, t("À l'heure de fin, la partie se termine (prévenue 5 et 1 minutes avant).")));
+    fields.push(formField(t("À partir de"), clearable(from), t("Vide : toute la journée.")));
+    fields.push(formField(t("Jusqu'à"), clearable(to), t("À l'heure de fin, la partie se termine (prévenue 5 et 1 minutes avant).")));
     await loadSystems();
     const allowed = new Set(p.systems || []);
     const systemsBox = el("div", { className: "checklist", attrs: { id: "f-systems" } }, (systemsList || []).map((system) => {
@@ -6140,7 +6164,7 @@ async function specialFields(action, values) {
     fields.push(formField(t("Temps de jeu par jour (minutes)"), numberInput("f-quota", p.quota_min === undefined ? 45 : p.quota_min, 0, 1440), t("0 = sans limite")));
     const until = el("input", { attrs: { type: "date", id: "f-until" } });
     until.value = p.until || "";
-    fields.push(formField(t("Valable jusqu'au"), until, t("Compris. Vide : toujours valable. Après, la carte est refusée avec un message.")));
+    fields.push(formField(t("Valable jusqu'au"), clearable(until), t("Compris. Vide : toujours valable. Après, la carte est refusée avec un message.")));
     if (!playersEnabled()) {
       fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
     }
