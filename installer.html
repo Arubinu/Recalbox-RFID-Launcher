@@ -646,6 +646,12 @@
   .special .sp-ico svg { width: 19px; height: 19px; }
   .special b { font-size: 14.5px; }
   .special span { font-size: 12.5px; color: var(--muted); }
+  .remote { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--primary-soft); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); }
+  .remote-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--primary-text); flex: none; }
+  .remote-ico svg { width: 20px; height: 20px; }
+  .remote-text { display: flex; flex-direction: column; min-width: 160px; }
+  .remote-text span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .remote-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .playtime { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent); }
   .playtime b { font-variant-numeric: tabular-nums; }
   .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
@@ -1142,6 +1148,16 @@
         </nav>
       </div>
       <div id="health-notice" hidden></div>
+      <section class="remote" id="remote" hidden aria-live="polite">
+        <span class="remote-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11a3.5 3.5 0 0 1 3.4 4.4l-1 3.9a2.5 2.5 0 0 1-4.2 1.1L13.8 15h-3.6l-1.9 2.4a2.5 2.5 0 0 1-4.2-1.1l-1-3.9A3.5 3.5 0 0 1 6.5 8z"/><path d="M8 10.5v3M6.5 12h3"/></svg></span>
+        <div class="grow remote-text"><b id="remote-title"></b><span id="remote-sub"></span></div>
+        <div class="remote-actions">
+          <button class="btn sm" type="button" id="remote-pause">Pause</button>
+          <button class="btn sm" type="button" id="remote-add">+10 min</button>
+          <button class="btn sm" type="button" id="remote-quit">Quitter</button>
+          <button class="btn sm danger" type="button" id="remote-off">Éteindre</button>
+        </div>
+      </section>
 
       <div class="panels">
         <!-- ------------------------------------------------------- badges -->
@@ -1278,6 +1294,9 @@
               <button class="special" type="button" data-special="player">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
                 <b>Carte joueur</b><span>Compte le temps de jeu d'une personne.</span></button>
+              <button class="special" type="button" data-special="guest">
+                <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="8" r="3.4"/><path d="M3.5 20a6 6 0 0 1 12 0"/><path d="M18.5 8v6M15.5 11h6"/></svg></span>
+                <b>Carte invité</b><span>Du temps de jeu pour un copain de passage.</span></button>
               <button class="special" type="button" data-special="unlock">
                 <span class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.6-1.8"/><path d="M12 14.5v2.5"/></svg></span>
                 <b>Déverrouiller</b><span>Ouvre tous les jeux du menu verrouillé, puis le referme.</span></button>
@@ -3429,6 +3448,7 @@ const ICONS = {
   quit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/>',
   poweroff: '<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
   player: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  guest: '<circle cx="9.5" cy="8" r="3.4"/><path d="M3.5 20a6 6 0 0 1 12 0"/><path d="M18.5 8v6M15.5 11h6"/>',
   reward: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   pause: '<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
   save: '<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx="1"/>',
@@ -4681,6 +4701,7 @@ function render() {
   $("#dot-materiel").hidden = !problem;
   renderHealthNotice(problem);
   renderCurrent();
+  renderRemote();
   renderPlayers();
   renderCurrentForCard();
   renderMaintenance();
@@ -4992,6 +5013,7 @@ const REFUSAL_REASONS = {
   player_exhausted: "plus de temps de jeu",
   guest_exhausted: "plus de temps de jeu sans carte joueur",
   player_schedule: "en dehors de ses horaires",
+  guest_expired: "carte invité plus valable",
   player_not_allowed: "jeu non autorisé pour ce joueur",
   curfew: "heure du coucher",
 };
@@ -5094,6 +5116,42 @@ async function resetPlayer(uid, name) {
   }
 }
 
+/* ------------------------------------------------------------ remote control */
+function renderMqttState() {
+  const line = $("#mqtt-state");
+  if (!line) return;
+  const mqtt = serviceRunning() ? serviceStatus().mqtt : null;
+  line.hidden = !mqtt || (!mqtt.connected && !mqtt.error);
+  if (line.hidden) return;
+  line.textContent = mqtt.connected ? t("Connecté au serveur MQTT : le lecteur apparaît dans Home Assistant (Paramètres › Appareils).")
+    : t("Pas connecté au serveur MQTT : {error}. Nouvel essai dans un moment.", { error: mqtt.error });
+}
+function renderRemote() {
+  renderMqttState();
+  const now = serviceRunning() ? (serviceStatus().now_playing || {}) : {};
+  const box = $("#remote");
+  box.hidden = !now.name;
+  if (box.hidden) return;
+  $("#remote-title").textContent = now.paused ? t("En pause : {game}", { game: now.name }) : t("En cours : {game}", { game: now.name });
+  const parts = [systemName(now.system)];
+  if (now.players) parts.push(now.players);
+  if (now.remaining_s !== undefined) parts.push(t("reste {d}", { d: formatDuration(now.remaining_s) }));
+  $("#remote-sub").textContent = parts.filter(Boolean).join(" · ");
+  $("#remote-pause").textContent = now.paused ? t("Reprendre") : t("Pause");
+  $$("#remote button").forEach((node) => { node.disabled = busy; });
+}
+async function remoteAction(action) {
+  if (action === "poweroff") {
+    const ok = await ask({ title: t("Éteindre la Recalbox ?"), text: t("La partie en cours est quittée (et sauvegardée si c'est réglé), puis la Recalbox s'éteint."), ok: t("Éteindre"), danger: true });
+    if (!ok) return;
+  }
+  const done = await run(() => agent.send("remote", { action, minutes: 10 }), "Action impossible :");
+  if (!done) return;
+  const said = { quit: t("Le jeu se quitte…"), pause: t("C'est fait."), add: t("10 minutes de plus."), poweroff: t("La Recalbox s'éteint…") };
+  toast(action === "poweroff" ? "info" : "ok", said[action]);
+  setTimeout(refresh, 1500);
+}
+
 /* ------------------------------------------------------------ association */
 function renderCurrent() {
   const current = state.current;
@@ -5183,7 +5241,7 @@ function renderTags(before) {
     ];
     const isNew = before && before.length && !previous.has(tag.uid);
     const row = el("li", { className: "tag" + (isNew ? " flash" : "") }, [
-      el("span", { className: "tag-ico" }, [icon(special ? (tag.action || "tag") : "tag", 19)]),
+      el("span", { className: "tag-ico" }, [icon(special ? (tag.action === "player" && tag.params && tag.params.guest ? "guest" : (tag.action || "tag")) : "tag", 19)]),
       el("div", { attrs: { style: "min-width:0" } }, [el("div", { className: "tag-name", text: label, title: special ? "" : tag.game }), el("div", { className: "tag-meta" }, meta)]),
       el("div", { className: "tag-actions" }, [
         el("button", {
@@ -5639,6 +5697,7 @@ const OPTION_GROUPES = [
   ["led", "Voyant"],
   ["agent", "Connexion"],
   ["feedback", "Sons"],
+  ["mqtt", "Home Assistant"],
   ["general", "Journal et diagnostic"],
 ];
 /* Choice texts: "section.key=value" first (same value, different meaning), then the value alone. */
@@ -5648,6 +5707,8 @@ const CHOIX_TEXTES = {
   "led.type=none": "aucun voyant", "led.type=rgb": "LED RGB (3 couleurs)", "led.type=ws2812": "LED programmables (WS2812)",
   "led.common=cathode": "cathode commune (vers la masse)", "led.common=anode": "anode commune (vers le 3,3 V)",
   "players.guest_period=day": "par jour", "players.guest_period=week": "par semaine",
+  "display.theme=dark": "sombre", "display.theme=light": "clair",
+  "display.text_size=normal": "normaux", "display.text_size=large": "grands",
   "players.multi=off": "non, une carte remplace l'autre", "players.multi=remove": "oui, reposer une carte la retire",
   "players.multi=solo": "oui, reposer une carte la garde seule", "players.multi=chain": "oui, les cartes posées à la suite",
   "players.pads=all": "toutes", "players.pads=players": "une par joueur actif",
@@ -5726,6 +5787,21 @@ function controlerOption(option) {
     }
     choix.addEventListener("change", () => { optionsPending[option.full] = choix.value; majEtatOptions(); });
     return choix;
+  }
+  if (option.type === "text" || option.type === "password") {
+    /* One line of text; a password is never shown again (empty = kept). */
+    const secret = option.type === "password";
+    const ligne = el("input", { attrs: { type: secret ? "password" : "text", "aria-label": label, value: secret ? "" : valeur,
+      autocomplete: secret ? "new-password" : "off", spellcheck: "false", maxlength: 200,
+      placeholder: secret && option.filled ? t("enregistré (inchangé)") : "" } });
+    ligne.addEventListener("input", () => { optionsPending[option.full] = ligne.value; majEtatOptions(); });
+    return ligne;
+  }
+  if (option.type === "date") {
+    /* A day (YYYY-MM-DD), or empty = off. */
+    const jour = el("input", { attrs: { type: "date", "aria-label": label, value: valeur } });
+    jour.addEventListener("input", () => { optionsPending[option.full] = jour.value; majEtatOptions(); });
+    return jour;
   }
   if (option.type === "time") {
     /* An hour (HH:MM), or empty = off. */
@@ -5821,7 +5897,8 @@ async function renderOptions(force) {
   for (const cle of groupes.keys()) if (!ordre.includes(cle)) ordre.push(cle);
   const blocs = ordre.map((cle) => {
     const connue = OPTION_GROUPES.find((entree) => entree[0] === cle);
-    return el("section", { className: "option-group" }, [el("h3", { text: t(connue ? connue[1] : cle) })].concat(groupes.get(cle).map(ligne)));
+    const etat = cle === "mqtt" ? [el("p", { className: "muted small", attrs: { id: "mqtt-state", "aria-live": "polite" } })] : [];
+    return el("section", { className: "option-group" }, [el("h3", { text: t(connue ? connue[1] : cle) })].concat(groupes.get(cle).map(ligne), etat));
   });
   if (avances.length) {
     const ouvert = Boolean($("#options-advanced") && $("#options-advanced").open)
@@ -5971,6 +6048,10 @@ function specialName(action, params) {
   if (action === "time") return t("Temps restant");
   if (action === "continue") return t("Continuer");
   if (action === "reward") return t("Récompense +{n} min", { n: p.minutes || 15 });
+  if (action === "guest" || (action === "player" && p.guest)) {
+    if (p.quota_min === undefined) return t("Carte invité");
+    return p.quota_min ? t("Carte invité · {n} min par jour", { n: p.quota_min }) : t("Carte invité · sans limite");
+  }
   if (action === "player") {
     if (!p.quota_min) return t("Carte joueur · sans limite");
     return t("Carte joueur · {n} min par {p}", { n: p.quota_min, p: t(p.period === "week" ? "semaine" : "jour") });
@@ -6026,13 +6107,15 @@ async function specialFields(action, values) {
     ]);
     period.value = p.period === "week" ? "week" : "day";
     fields.push(formField(t("Période"), period, t("Le compteur repart à zéro chaque jour, ou chaque semaine, à l'heure et au jour choisis dans Réglages › Cartes joueurs.")));
-    const days = p.days && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6];
-    const dayNames = [t("lun."), t("mar."), t("mer."), t("jeu."), t("ven."), t("sam."), t("dim.")];
-    const dayBox = el("div", { className: "chips", attrs: { id: "f-days" } }, dayNames.map((label, index) => {
-      const chip = el("button", { className: "chip-toggle", text: label, attrs: { type: "button", "data-day": index, "aria-pressed": days.includes(index) ? "true" : "false" } });
-      chip.addEventListener("click", () => chip.setAttribute("aria-pressed", chip.getAttribute("aria-pressed") === "true" ? "false" : "true"));
-      return chip;
-    }));
+    const altField = formField(t("Autre temps par jour (minutes)"), numberInput("f-alt", p.alt_min, 0, 1440, t("le même tous les jours")),
+      t("Par exemple plus de temps le week-end. Vide : le même temps tous les jours. 0 = sans limite ces jours-là. Pendant les vacances (Réglages › Cartes joueurs), cet autre temps vaut tous les jours."));
+    const altDays = el("div", { className: "chips", attrs: { id: "f-alt-days" } }, dayChips(p.alt_days && p.alt_days.length ? p.alt_days : [5, 6]));
+    const altDaysField = formField(t("Jours de l'autre temps"), altDays, "", true);
+    const showAlt = () => { altField.hidden = altDaysField.hidden = period.value === "week"; };
+    period.addEventListener("change", showAlt);
+    showAlt();
+    fields.push(altField, altDaysField);
+    const dayBox = el("div", { className: "chips", attrs: { id: "f-days" } }, dayChips(p.days && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6]));
     fields.push(formField(t("Jours où il peut jouer"), dayBox, "", true));
     const from = el("input", { attrs: { type: "time", id: "f-from" } });
     const to = el("input", { attrs: { type: "time", id: "f-to" } });
@@ -6053,6 +6136,14 @@ async function specialFields(action, values) {
     if (!playersEnabled()) {
       fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
     }
+  } else if (action === "guest") {
+    fields.push(formField(t("Temps de jeu par jour (minutes)"), numberInput("f-quota", p.quota_min === undefined ? 45 : p.quota_min, 0, 1440), t("0 = sans limite")));
+    const until = el("input", { attrs: { type: "date", id: "f-until" } });
+    until.value = p.until || "";
+    fields.push(formField(t("Valable jusqu'au"), until, t("Compris. Vide : toujours valable. Après, la carte est refusée avec un message.")));
+    if (!playersEnabled()) {
+      fields.push(el("small", { className: "field full", text: t("Activez « Cartes joueurs » dans Réglages pour que cette carte compte le temps.") }));
+    }
   } else if (action === "reward") {
     const who = el("select", { attrs: { id: "f-reward-player" } }, [el("option", { text: t("Le joueur actif"), attrs: { value: "" } })]
       .concat(tags.filter((tag) => tag.kind === "action" && tag.action === "player")
@@ -6066,6 +6157,18 @@ async function specialFields(action, values) {
     fields.push(formField(t("Période"), period, t("Le compteur repart à zéro après cette durée."), true));
   }
   return fields;
+}
+/* Monday to Sunday chips (``data-day`` 0 = Monday), pressed for the days given. */
+function dayChips(days) {
+  const dayNames = [t("lun."), t("mar."), t("mer."), t("jeu."), t("ven."), t("sam."), t("dim.")];
+  return dayNames.map((label, index) => {
+    const chip = el("button", { className: "chip-toggle", text: label, attrs: { type: "button", "data-day": index, "aria-pressed": days.includes(index) ? "true" : "false" } });
+    chip.addEventListener("click", () => chip.setAttribute("aria-pressed", chip.getAttribute("aria-pressed") === "true" ? "false" : "true"));
+    return chip;
+  });
+}
+function pressedDays(selector) {
+  return $$(selector + " [data-day]").filter((chip) => chip.getAttribute("aria-pressed") === "true").map((chip) => Number(chip.dataset.day));
 }
 /* A collection: the random card picks among these games only. */
 let collectionGames = [];
@@ -6110,11 +6213,16 @@ function collectionField(games, systemSelect, label, help) {
 function readSpecialParams(action) {
   if (action === "random") return { system: $("#f-system").value, favorites: $("#f-fav").getAttribute("aria-checked") === "true", games: collectionGames.slice() };
   if (action === "bonus") return { minutes: Number($("#f-minutes").value) || 10, uses: Number($("#f-uses").value) || 0, period_h: Number($("#f-period").value) || 24 };
+  if (action === "guest") {
+    return { guest: true, quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)), period: "day", until: $("#f-until").value };
+  }
   if (action === "player") {
-    const days = $$("#f-days [data-day]").filter((chip) => chip.getAttribute("aria-pressed") === "true").map((chip) => Number(chip.dataset.day));
+    const days = pressedDays("#f-days");
+    const alt = $("#f-alt").value.trim();
     return {
       quota_min: Math.max(0, Math.round(Number($("#f-quota").value) || 0)),
       period: $("#f-player-period").value === "week" ? "week" : "day",
+      alt_min: alt === "" ? null : Math.max(0, Math.round(Number(alt) || 0)), alt_days: pressedDays("#f-alt-days"),
       days, from: $("#f-from").value, to: $("#f-to").value,
       systems: $$("#f-systems input:checked").map((box) => box.value),
       games: collectionGames.slice(),
@@ -6140,6 +6248,7 @@ const SPECIAL_HELP = {
   save: "Pendant une partie (jeux RetroArch) : sauvegarde la partie tout de suite, au même endroit que la sauvegarde avant de quitter (elle est reprise au prochain lancement). Ne fonctionne que si les jeux ne se quittent pas au retrait de la carte.",
   sound: "Coupe le son de la Recalbox (jeux et menus) ; posée encore, le son revient. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
   reward: "Ajoute du temps de jeu à un joueur pour aujourd'hui (ou cette semaine, selon sa carte), par exemple quand les devoirs sont faits. Pendant sa partie, elle dure aussi plus longtemps.",
+  guest: "Une carte joueur pour un copain de passage, avec son temps par jour et une date de fin. Elle ne compte pas dans les trophées ni le résumé de la semaine. Elle se règle et s'utilise comme une carte joueur.",
   continue: "Relance le dernier jeu du joueur actif (carte joueur posée, ou joueur gardé actif) ; sans joueur, le dernier jeu joué. Avec « Sauvegarder la partie avant de quitter », la partie reprend là où elle s'était arrêtée. Pratique quand la carte du jeu est rangée.",
   time: "Affiche à l'écran le temps de jeu qui reste au joueur actif (ou à l'invité). Le bip confirme seulement que la carte est lue. Pendant une partie, seulement si les jeux ne se quittent pas au retrait de la carte.",
 };
@@ -6170,13 +6279,15 @@ function cardDialog(title, text, fields, okLabel) {
 
 async function createSpecial(action) {
   const fields = await specialFields(action, null);
-  const name = el("input", { attrs: { type: "text", id: "f-name", placeholder: action === "player" ? t("Prénom") : specialName(action, {}), maxlength: 60 } });
+  const name = el("input", { attrs: { type: "text", id: "f-name", placeholder: action === "player" ? t("Prénom") : (action === "guest" ? t("Invité") : specialName(action, {})), maxlength: 60 } });
   if (action === "player") name.required = true;
   fields.unshift(formField(action === "player" ? t("Prénom du joueur") : t("Nom affiché"), name, "", true));
   const ok = await cardDialog(specialName(action, {}), t(SPECIAL_HELP[action]), fields, t("Poser le badge"));
   if (!ok) return;
   const params = readSpecialParams(action);
-  const entry = { kind: "action", action, params, name: $("#f-name").value.trim() || specialName(action, params) };
+  /* A guest card is a player card with "guest" set. */
+  const entry = { kind: "action", action: action === "guest" ? "player" : action, params,
+    name: $("#f-name").value.trim() || (action === "guest" ? t("Invité") : specialName(action, params)) };
   if (action === "random") entry.limit_min = readLimit();
   const done = await run(() => agent.send("associate", { mode: "card", entry }), "Création impossible :");
   if (done) { toast("info", t("Posez le badge sur le lecteur : il deviendra « {name} ».", { name: entry.name }), 6000); refresh(); }
@@ -6184,8 +6295,9 @@ async function createSpecial(action) {
 
 async function editTag(tag) {
   const special = tag.kind === "action";
+  const form = special && tag.action === "player" && tag.params && tag.params.guest ? "guest" : tag.action;
   const fields = [formField(t("Nom affiché"), el("input", { attrs: { type: "text", id: "f-name", value: tagTitle(tag), maxlength: 80 } }), "", true)];
-  if (special) fields.push(...await specialFields(tag.action, tag));
+  if (special) fields.push(...await specialFields(form, tag));
   else {
     fields.push(limitField(tag.limit_min));
     fields.push(el("div", { className: "field full" }, [
@@ -6194,11 +6306,11 @@ async function editTag(tag) {
       el("div", { className: "row" }, [button(t("Écrire le jeu dans le badge"), () => writeTag(tag))]),
     ]));
   }
-  const ok = await cardDialog(t("Modifier le badge"), special ? t(SPECIAL_HELP[tag.action] || "") : tag.game, fields, t("Enregistrer"));
+  const ok = await cardDialog(t("Modifier le badge"), special ? t(SPECIAL_HELP[form] || "") : tag.game, fields, t("Enregistrer"));
   if (!ok) return;
   const changes = { name: $("#f-name").value.trim() };
   if (!special || tag.action === "random") changes.limit_min = readLimit();
-  if (special) changes.params = readSpecialParams(tag.action);
+  if (special) changes.params = readSpecialParams(form);
   const done = await run(() => agent.send("tags.update", { uid: tag.uid, changes }), "Enregistrement impossible :");
   if (done) { toast("ok", t("Badge enregistré.")); lastTagsJson = ""; refresh(); }
 }
@@ -9217,6 +9329,10 @@ function wire() {
       onclick: () => { $("#picker-dialog").close(); if (pickerTarget) pickerTarget(game); } })],
   });
   $$("[data-special]").forEach((node) => node.addEventListener("click", () => createSpecial(node.dataset.special)));
+  $("#remote-pause").addEventListener("click", () => remoteAction("pause"));
+  $("#remote-add").addEventListener("click", () => remoteAction("add"));
+  $("#remote-quit").addEventListener("click", () => remoteAction("quit"));
+  $("#remote-off").addEventListener("click", () => remoteAction("poweroff"));
   $("#btn-phone").addEventListener("click", showPhoneDialog);
   $("#phone-copy").addEventListener("click", async () => {
     const copied = await copyText(phoneUrl());

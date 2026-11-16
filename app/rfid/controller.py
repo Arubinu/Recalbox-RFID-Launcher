@@ -138,6 +138,9 @@ class Controller:
                 self.players.reset_hour = min(23, max(0, cfg.get_int("players", "reset_hour", 0)))
                 day = cfg.get("players", "week_start", "monday").strip().lower()
                 self.players.week_start = WEEK_DAYS.index(day) if day in WEEK_DAYS else 0
+                start = cfg.get("players", "holidays_from", "").strip()
+                end = cfg.get("players", "holidays_to", "").strip()
+                self.players.holidays = (start, end or start) if start else None
                 self.players.keep = cfg.get_bool("players", "keep_active", False)
                 if not self.players.keep:
                     self.players.kept = None
@@ -518,7 +521,7 @@ class Controller:
         from .players import schedule_left
 
         params = entry.get("params") or {}
-        left = self.players.remaining_s(uid, int(params.get("quota_min") or 0), params.get("period") or "day")
+        left = self.players.remaining_s(uid, self.players.quota_of(params), params.get("period") or "day")
         slot = schedule_left(params, time.time())
         if slot is not None:
             left = slot if left is None else min(left, slot)
@@ -526,10 +529,12 @@ class Controller:
 
     def player_rule(self, uid: str, entry: dict, game=None):
         """Why this player cannot play now (or this game): (key, values) or None."""
-        from .players import game_allowed, schedule_left
+        from .players import game_allowed, guest_expired, schedule_left
 
         params = entry.get("params") or {}
         name = self.players.player_name(entry)
+        if params.get("guest") and guest_expired(params, time.time(), self.players.reset_hour):
+            return "guest_expired", {"name": name}
         if schedule_left(params, time.time()) == 0:
             when = ""
             if params.get("from"):
@@ -809,7 +814,11 @@ class Controller:
                     self.store.touch(uid)
                 except StorageError as exc:
                     self._log("warning", "Statistiques non mises a jour : %s" % exc)
-            # No beep: the launch is visible on screen (game splash).
+            # No beep: the launch is visible on screen (game splash). As an
+            # option, the "clack" of a cartridge.
+            cartridge = getattr(self.feedback, "cartridge", None)
+            if cartridge is not None:
+                cartridge()
             self.last_action = "launched"
             self.launched_uid = uid
             self._flash("launch")
@@ -1054,7 +1063,49 @@ class Controller:
         self._log("info", "Carte recompense : +%d min pour %s" % (minutes, name))
         return "reward"
 
+    def remote(self, action: str, minutes: int = 10) -> str:
+        """The remote control of the page: "quit", "pause" (or resume) and "add" (minutes)."""
+        if action == "quit":
+            return "quit" if self.stop_game("quit") else "nothing"
+        if action == "pause":
+            return self._pause_card("")
+        if action == "add":
+            return self._add_time(minutes)
+        return "unknown"
+
+    def _add_time(self, minutes: int) -> str:
+        """More time for the running game: its time limit, and the time of its players."""
+        if not self.game_running():
+            return "nothing"
+        done = False
+        session = self.playtime.session if self.playtime is not None else None
+        if session is not None:
+            session["deadline"] += minutes * 60.0
+            session["minutes"] += minutes
+            done = True
+        current = self.players.current if self.counting_players else None
+        names = ""
+        if current is not None and current["uid"] != "guest":
+            group = self.players.group(current)
+            for uid, entry in group:
+                params = entry.get("params") or {}
+                if self.players.quota_of(params):
+                    self.players.add_extra(uid, minutes, params.get("period") or "day")
+                    done = True
+            names = self.players.group_names(group)
+        if not done:
+            return "unlimited"
+        self._flash("bonus")
+        if names:
+            self._say("reward", n=minutes, name=names)
+        else:
+            self._say("bonus", n=minutes)
+        self._log("info", "Page : +%d min" % minutes)
+        return "added"
+
     def _touch(self, uid: str) -> None:
+        if not uid:
+            return
         try:
             self.store.touch(uid)
         except StorageError:

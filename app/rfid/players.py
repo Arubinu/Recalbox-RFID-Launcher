@@ -77,6 +77,48 @@ def schedule_left(params: dict, now: float):
     return (last - current) * 60.0
 
 
+#: Days of the other time of a player card when none are chosen: the weekend.
+WEEKEND = (5, 6)
+
+
+def play_date(now: float, reset_hour: int = 0) -> datetime.date:
+    """The play day of a moment (it starts at ``reset_hour``)."""
+    return datetime.date.fromtimestamp(now - reset_hour * 3600)
+
+
+def in_holidays(day: datetime.date, holidays) -> bool:
+    """holidays: ("YYYY-MM-DD", "YYYY-MM-DD") from/to included, or None."""
+    if not holidays:
+        return False
+    start, end = holidays
+    if not start:
+        return False
+    return start <= day.isoformat() <= (end or start)
+
+
+def day_quota(params: dict, now: float, reset_hour: int = 0, holidays=None) -> int:
+    """Minutes allowed in the current period (0 = no limit).
+
+    A card with a time per day may have another time (``alt_min``) on some
+    days (``alt_days``, the weekend by default) and during the holidays.
+    """
+    params = params or {}
+    quota = int(params.get("quota_min") or 0)
+    if (params.get("period") or "day") != "day" or params.get("alt_min") is None:
+        return quota
+    today = play_date(now, reset_hour)
+    days = params.get("alt_days") or WEEKEND
+    if today.weekday() in days or in_holidays(today, holidays):
+        return int(params.get("alt_min") or 0)
+    return quota
+
+
+def guest_expired(params: dict, now: float, reset_hour: int = 0) -> bool:
+    """A guest card past its last day ("until")."""
+    until = (params or {}).get("until")
+    return bool(until) and play_date(now, reset_hour).isoformat() > str(until)
+
+
 def game_allowed(params: dict, system: str, path: str = "") -> bool:
     """The game is among the player's allowed games (all when none is set)."""
     params = params or {}
@@ -169,6 +211,12 @@ class Players:
         #: Time counters restart at this hour, and the week on this day (0 = Monday).
         self.reset_hour = 0
         self.week_start = 0
+        #: Holidays ("YYYY-MM-DD", "YYYY-MM-DD"): the other time of the cards every day.
+        self.holidays = None
+
+    def quota_of(self, params: dict) -> int:
+        """Minutes allowed to a player card now (0 = no limit)."""
+        return day_quota(params, self.wall(), self.reset_hour, self.holidays)
 
     # ------------------------------------------------------------ persistence
     def _path(self) -> str:
@@ -427,7 +475,7 @@ class Players:
         for uid, entry in players:
             params = entry.get("params") or {}
             period = params.get("period") or "day"
-            quota = int(params.get("quota_min") or 0)
+            quota = self.quota_of(params)
             result.append({
                 "uid": uid,
                 "name": self.player_name(entry),
@@ -436,6 +484,7 @@ class Players:
                 "used_s": int(self.used_s(uid, period)),
                 "remaining_s": None if not quota else int(self.remaining_s(uid, quota, period)),
                 "playing": uid in self.playing_uids(),
+                "guest": bool(params.get("guest")),
             })
         current = self.current
         waiting = self.pending if self.pending is not None and self.clock() <= self.pending["until"] else None

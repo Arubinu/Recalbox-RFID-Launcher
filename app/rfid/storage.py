@@ -31,6 +31,7 @@ File structure ::
 from __future__ import annotations
 
 import csv
+import datetime
 import json
 import os
 import shutil
@@ -150,6 +151,29 @@ def clean_params(action: str, params) -> dict:
         if period not in PLAYER_PERIODS:
             raise StorageError("periode du joueur : jour ou semaine")
         result = {"quota_min": quota, "period": period}
+        # Another time per day on some days (the weekend by default) and in the holidays.
+        alt = params.get("alt_min")
+        if alt not in (None, "") and period == "day":
+            try:
+                alt = int(float(alt))
+            except (TypeError, ValueError):
+                raise StorageError("autre temps du joueur invalide")
+            if not 0 <= alt <= 24 * 60:
+                raise StorageError("autre temps du joueur : 0 a 1440 minutes (0 = illimite)")
+            result["alt_min"] = alt
+            alt_days = sorted({int(day) for day in (params.get("alt_days") or []) if str(day).isdigit() and 0 <= int(day) <= 6})
+            if alt_days and alt_days != [5, 6]:
+                result["alt_days"] = alt_days
+        # Guest card: for a friend passing by, until a day (included).
+        if params.get("guest"):
+            result["guest"] = True
+            until = str(params.get("until") or "").strip()
+            if until:
+                try:
+                    datetime.date.fromisoformat(until)
+                except ValueError:
+                    raise StorageError("carte invite : date de fin invalide")
+                result["until"] = until
         # Time slots: the days (0 = Monday) and the hours the player may play.
         days = sorted({int(day) for day in (params.get("days") or []) if str(day).isdigit() and 0 <= int(day) <= 6})
         if days and len(days) < 7:

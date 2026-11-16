@@ -148,6 +148,7 @@ Badges › **Special cards**: choose the card, set it up, then place the badge.
 | **Save** | saves the game right away, where "Save the game before quitting" saves it (resumed at the next start). RetroArch games |
 | **Sound** | mutes the Recalbox (games and menus); placed again, the sound comes back |
 | **Time left** | shows the play time left to the active player (or the guest) on the screen |
+| **Guest card** | a player card for a friend dropping by: a time per day and a "valid until" day; it does not count in the trophies or the weekly summary |
 | **Continue** | starts again the last game of the active player (player card placed, or player kept active), or the last game played without a player; with "Save the game before quitting", it resumes where it stopped |
 
 During a game, a special card can only be placed if the games are **not**
@@ -257,6 +258,12 @@ Options:
 * **Block games without a player card**: a game started without one, even from
   the menu, is quit about two seconds after it starts, with a message on the
   screen (Recalbox itself cannot refuse to start a game).
+* **Another time per day** (on a player card with a time per day): another
+  number of minutes on chosen days (Saturday and Sunday by default), for
+  example 30 minutes on school days and 1 h 30 at the weekend. Empty: the
+  same time every day; 0: no limit on those days.
+* **Holidays** (Settings › Player cards, two dates): from the first to the
+  last day (included), the cards with another time have it every day.
 * **Time slots** (on the player card): the days and hours the player may
   play. Outside them the card and its games are refused, with a message;
   a game ends at the end of the slot, warned 5 and 1 minutes before.
@@ -371,6 +378,13 @@ Options of the reader screen (Settings › TV display):
   than the facts, until you remove it.
 * **Restart the reader screen** (Updates tab): when the TV shows something
   wrong, without restarting the service or the Recalbox.
+* **Weekly summary** (on by default): on the first day of the week (the one
+  chosen for the player cards, Monday by default), the hint line shows now
+  and then the time each player played last week and their new trophies.
+* **Colours** (dark, the default, or light) and **size of the small texts**
+  (normal or large: the hint, the player, the messages and the power menu,
+  for a TV far from the sofa). The reader screen restarts for a few seconds
+  when they change.
 
 The messages that appear at the bottom of a game (player card needed, no
 time left, bonus...) appear at the top of the reader screen too, when no
@@ -480,6 +494,32 @@ where the game picture goes.
   **Download** gives the original picture back, to share it: whoever imports
   it gets the same window.
 
+## Remote control and Home Assistant
+
+While a game runs, the page shows a **Playing** bar at the top of every tab:
+the game, the console, the players and the time left, with **Pause** (or
+**Resume**; RetroArch games), **+10 min** (the game's time limit and the
+time of its players), **Quit** and **Turn off** (after a confirmation; the
+game is quit, and saved if set, first).
+
+**Home Assistant** (Settings › Home Assistant, off by default): the reader
+connects to an MQTT broker, for example the Mosquitto add-on of Home
+Assistant (give it a Home Assistant user). Home Assistant finds it by itself
+(MQTT discovery): a **Recalbox RFID** device with
+
+* sensors: game running, player, time left (minutes), last refused game
+  (who, why and what, its time in the attributes);
+* binary sensors: playing, paused, bedtime;
+* buttons: Quit the game, Pause / resume, +10 minutes, Turn off.
+
+The state is published on `recalbox_rfid/state` (JSON, retained), the
+commands are read on `recalbox_rfid/cmd/quit` (`pause`, `add`, `poweroff`),
+and `recalbox_rfid/availability` says `online` or `offline`. The topic can be
+changed in the advanced settings (several Recalboxes). The password is kept
+in `config.ini` on the Recalbox and never shown again by the page. Example
+of an automation: notify the phone when the "Last refused game" sensor
+changes.
+
 ## Status light and on-screen messages
 
 * **Status light** (optional): see [WIRING.md](WIRING.md) for the wiring and
@@ -497,13 +537,15 @@ where the game picture goes.
 | 1 high beep | pairing mode armed (also the 5 and 1 minute warnings) |
 | 2 rising beeps | badge paired, special card done |
 | 1 medium beep | badge recognized without action (`action = none`) |
-| no sound | a game starts: its loading screen is enough |
+| no sound | a game starts: its loading screen is enough (or a cartridge "clack", option) |
 | 2 low beeps | erase mode armed |
 | 2 falling low beeps | unknown badge or refused action |
 | 3 falling beeps | time out (10 s to place the badge), end of play time |
 
 The beeps are generated on the fly and played by `paplay` (PulseAudio) or
-`aplay` (ALSA). Settings › Beeps turns them off.
+`aplay` (ALSA). Settings › Beeps turns them off. **Cartridge sound**
+(Settings › Sounds, off by default): a small "clack" when a game card starts
+its game; the Sound card mutes it with the rest.
 
 ## Commands (SSH)
 

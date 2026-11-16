@@ -64,6 +64,25 @@ by `rfidctl version`.
   one click (option).
 * **Add several cards** to the print sheet: paired games, favourites or
   every game of a console.
+* **Another time per day** on a player card (for example more at the
+  weekend, on chosen days) and **holidays** (two dates in the settings) when
+  that other time applies every day.
+* **Guest card**: a player card for a friend dropping by, with its time per
+  day and an end date; left out of the trophies and the weekly summary.
+* **Remote control in the page**: a "Playing" bar with the game, the
+  player and the time left, and Pause, +10 min, Quit and Turn off buttons.
+* **Home Assistant** (MQTT, option): the reader shows up by itself (MQTT
+  discovery) with the game, the player, the time left, bedtime, the last
+  refused game, and Quit, Pause, +10 minutes and Turn off buttons. A small
+  MQTT client is included (no package to install).
+* **Status light**: purple at bedtime, orange when the active player has no
+  time left (option).
+* **Reader screen**: light colours and large small texts (options); a
+  **weekly summary** on the first day of the week (time played by each
+  player and new trophies; the first day of the week is the one of the
+  player cards).
+* **Cartridge sound** (option): a small "clack" when a game card starts its
+  game, muted with the Recalbox sound.
 
 ## [1.1.0]
 

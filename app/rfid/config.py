@@ -74,6 +74,11 @@ dim_min = recalbox
 # Reader screen: now and then, the favourite game and trophies of the active
 # player, the game of the week, the controller shortcut (instead of the hint)
 show_info = 1
+# On the first day of the week: the time played last week and the new trophies
+weekly_summary = 1
+# Colours of the reader screen: dark or light; small texts: normal or large
+theme = dark
+text_size = normal
 # Reader screen: power menu opened with START + SELECT (no game running):
 #   both = turn off or restart, poweroff = turn off only, off = no menu
 power_menu = both
@@ -108,6 +113,9 @@ action = launch
 sound = 1
 # auto, paplay, aplay or none
 sound_player = auto
+# The "clack" of a cartridge when a game card starts its game (0/1); muted
+# with the Recalbox sound (Sound card)
+card_sound = 0
 
 [time]
 # Play time allowed by a game card that has no limit of its own
@@ -143,6 +151,8 @@ brightness = 40
 spi_device = /dev/spidev1.0
 # Light on (green) when nothing happens (0 = off at rest)
 idle = 1
+# Purple at bedtime, orange when the active player has no time left (0 = no)
+signals = 1
 
 [agent]
 # WebSocket agent used by installer.html (ws://recalbox.local:8765)
@@ -169,6 +179,10 @@ guest_period = day
 # weekly ones on this day (monday ... sunday).
 reset_hour = 0
 week_start = monday
+# Holidays (YYYY-MM-DD, both days included): the player cards with another
+# time (weekend) have it every day. Empty = no holidays.
+holidays_from =
+holidays_to =
 # The player of a card stays active for the next games (no need to place the
 # card again), until their time is up, another player card or the unlock card.
 keep_active = 0
@@ -190,6 +204,19 @@ lock_frontend = 0
 # from the libretro thumbnail server (needs internet, no account).
 # 0 = only the pictures of the Recalbox.
 online_art = 1
+
+[mqtt]
+# Home Assistant: the reader publishes its state and takes commands through
+# an MQTT broker (Home Assistant finds it by itself: MQTT discovery).
+enabled = 0
+host =
+port = 1883
+user =
+password =
+# Base of the topics: <topic>/state, <topic>/cmd/quit...
+topic = recalbox_rfid
+# Discovery prefix of Home Assistant
+discovery = homeassistant
 
 [update]
 # URL of the update ZIP file (see docs/UPDATING.md). Optional.

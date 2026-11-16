@@ -25,15 +25,19 @@ SAMPLE_RATE = 22050
 class Feedback:
     """Confirmation beeps, silent when no audio player is available."""
 
-    def __init__(self, enabled: bool = True, player: str = "auto", log=None):
+    def __init__(self, enabled: bool = True, player: str = "auto", log=None, card_sound: bool = False):
         self.log = log
         self.enabled = bool(enabled)
+        #: The "clack" of a cartridge when a game card starts its game (its own setting).
+        self.card_sound = bool(card_sound)
         self.requested_player = (player or "auto").lower()
         self._player = None
         self._cache_dir = os.path.join(tempfile.gettempdir(), "rfid-launcher")
         self._failed = 0
-        if self.enabled:
+        if self.enabled or self.card_sound:
+            wanted = self.enabled
             self._detect_player()
+            self.enabled = wanted and bool(self._player)
 
     # ------------------------------------------------------------------ interne
     def _candidates(self):
@@ -101,12 +105,57 @@ class Feedback:
         os.replace(temporary, path)
         return path
 
+    @staticmethod
+    def _clack_wave() -> bytes:
+        """A cartridge pushed into its slot: a click, a low thump, then the latch."""
+        import random
+
+        rng = random.Random(7)  # the same sound every time
+        frames = int(SAMPLE_RATE * 0.16)
+        latch = int(SAMPLE_RATE * 0.075)
+        data = bytearray()
+        for index in range(frames):
+            t = index / SAMPLE_RATE
+            sample = 0.55 * rng.uniform(-1, 1) * math.exp(-t / 0.004)              # click
+            sample += 0.5 * math.sin(2 * math.pi * 110 * t) * math.exp(-t / 0.03)  # thump
+            if index >= latch:
+                tl = (index - latch) / SAMPLE_RATE
+                sample += 0.35 * rng.uniform(-1, 1) * math.exp(-tl / 0.003)        # latch
+                sample += 0.25 * math.sin(2 * math.pi * 1800 * tl) * math.exp(-tl / 0.006)
+            data += struct.pack("<h", int(max(-1.0, min(1.0, sample * 0.6)) * 32767))
+        return bytes(data)
+
+    def _clack_file(self) -> str:
+        path = os.path.join(self._cache_dir, "cartridge-1.wav")
+        if os.path.isfile(path):
+            return path
+        os.makedirs(self._cache_dir, exist_ok=True)
+        samples = self._clack_wave()
+        header = b"RIFF" + struct.pack("<I", 36 + len(samples)) + b"WAVE"
+        header += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, SAMPLE_RATE, SAMPLE_RATE * 2, 2, 16)
+        header += b"data" + struct.pack("<I", len(samples))
+        temporary = path + ".tmp"
+        with open(temporary, "wb") as handle:
+            handle.write(header + samples)
+        os.replace(temporary, path)
+        return path
+
+    def cartridge(self) -> None:
+        """A game card starts its game (option [feedback] card_sound)."""
+        if self.card_sound and self._player:
+            self._spawn(self._clack_file)
+
     def play(self, tones) -> None:
         """Plays a sequence of beeps; never blocks the caller."""
-        if not self.enabled or not self._player or self._failed >= 3:
+        if not self.enabled:
+            return
+        self._spawn(lambda: self._wav_file(tones))
+
+    def _spawn(self, make) -> None:
+        if not self._player or self._failed >= 3:
             return
         try:
-            wav = self._wav_file(tones)
+            wav = make()
             subprocess.Popen(
                 [self._player, wav],
                 stdout=subprocess.DEVNULL,

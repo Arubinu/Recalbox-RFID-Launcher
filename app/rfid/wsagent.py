@@ -32,6 +32,7 @@ Server -> client events: ``{"event": "log"}``, ``{"event": "install"}``,
 from __future__ import annotations
 
 import base64
+import datetime
 import hashlib
 import json
 import os
@@ -1107,6 +1108,21 @@ class Agent:
         refusals.clear(self.home)
         return {"cleared": True}
 
+    def _cmd_remote(self, client, message):
+        """Remote control of the page: quit, pause, add (minutes) or poweroff."""
+        action = str(message.get("action") or "")
+        if action not in ("quit", "pause", "add", "poweroff"):
+            raise ValueError("action inconnue : %s" % action)
+        extra = {"action": action}
+        if action == "add":
+            extra["minutes"] = max(1, min(120, int(message.get("minutes") or 10)))
+        if action == "poweroff":
+            from . import bootmode
+
+            bootmode.mark_stopping()  # the reader screen stays for the next boot
+        self._write_command("remote", **extra)
+        return {"requested": True}
+
     def _cmd_screen_restart(self, client, message):
         """Starts the reader screen again (a display stuck on the TV)."""
         self._write_command("screen_restart")
@@ -1431,6 +1447,7 @@ class Agent:
                     option,
                     value=option_value(cfg, option),
                     full="%s.%s" % (option["section"], option["key"]),
+                    filled=bool(cfg.get(option["section"], option["key"], "")) if option["type"] == "password" else None,
                 )
             )
         return {"path": cfg.path, "options": options}
@@ -1447,6 +1464,8 @@ class Agent:
             option = connues.get(str(cle))
             if option is None:
                 raise ValueError("option inconnue : %s" % cle)
+            if option["type"] == "password" and not str(valeur).strip():
+                continue  # empty: the saved password stays
             a_ecrire[cle] = validate_option(option, valeur)
         # Menu lock: applied to recalbox.conf first (it may be refused while
         # a game runs, and then nothing is saved).
@@ -1800,6 +1819,17 @@ OPTIONS = (
     {"section": "display", "key": "show_info", "type": "bool", "default": True, "when": "display.mode=reader",
      "label": "Infos et trophées sur l'écran du lecteur",
      "help": "De temps en temps, à la place de « Pose une carte pour jouer » : le jeu préféré du joueur actif, ses trophées (consoles et jeux découverts, jours de jeu d'affilée…), le jeu le plus joué de la semaine, et comment éteindre avec la manette. Un nouveau trophée s'affiche aussi à la fin de la partie."},
+    {"section": "display", "key": "weekly_summary", "type": "bool", "default": True, "when": "display.mode=reader",
+     "label": "Résumé de la semaine sur l'écran du lecteur",
+     "help": "Le premier jour de la semaine (celui choisi dans Cartes joueurs, lundi par défaut), l'écran du lecteur montre de temps en temps le temps joué par chacun la semaine passée et ses nouveaux trophées. Les cartes invité n'y figurent pas."},
+    {"section": "display", "key": "theme", "type": "choice", "choices": ["dark", "light"],
+     "default": "dark", "when": "display.mode=reader",
+     "label": "Couleurs de l'écran du lecteur",
+     "help": "Sombre : comme l'interface de Recalbox. Clair : fond clair et textes foncés, plus lisible dans une pièce éclairée. L'écran du lecteur redémarre quelques secondes au changement."},
+    {"section": "display", "key": "text_size", "type": "choice", "choices": ["normal", "large"],
+     "default": "normal", "when": "display.mode=reader",
+     "label": "Taille des petits textes",
+     "help": "Grands : les petits textes de l'écran du lecteur (aide, joueur, messages, menu) sont plus grands, pour une TV loin du canapé. L'écran du lecteur redémarre quelques secondes au changement."},
     {"section": "display", "key": "power_menu", "type": "choice", "choices": ["both", "poweroff", "off"],
      "default": "both", "when": "display.mode=reader",
      "label": "Éteindre et redémarrer depuis l'écran du lecteur",
@@ -1826,6 +1856,9 @@ OPTIONS = (
     {"section": "feedback", "key": "sound", "type": "bool", "default": True,
      "label": "Bips sonores",
      "help": "Confirment l'association d'un badge et signalent les erreurs."},
+    {"section": "feedback", "key": "card_sound", "type": "bool", "default": False,
+     "label": "Bruit de cartouche",
+     "help": "Un petit « clac » de cartouche qu'on enfonce quand une carte de jeu lance son jeu. Il se coupe avec le son de la Recalbox (carte « Son »)."},
     {"section": "time", "key": "default_limit_min", "type": "number", "min": 0, "max": 600,
      "default": 0, "label": "Temps de jeu par partie (minutes)",
      "help": "Pour les badges sans limite à eux. 0 = pas de limite. Prévient 5 minutes puis 1 minute avant la fin, puis quitte le jeu."},
@@ -1858,6 +1891,12 @@ OPTIONS = (
      "default": "monday", "when": "players.enabled=1",
      "label": "Jour de remise à zéro du temps par semaine",
      "help": "Pour les cartes joueurs avec un temps par semaine : la semaine commence ce jour-là, à l'heure de remise à zéro."},
+    {"section": "players", "key": "holidays_from", "type": "date", "default": "", "when": "players.enabled=1",
+     "label": "Vacances : du",
+     "help": "Pendant les vacances, les cartes joueurs qui ont un autre temps pour le week-end l'ont tous les jours. Vide = pas de vacances."},
+    {"section": "players", "key": "holidays_to", "type": "date", "default": "", "when": "players.holidays_from!=",
+     "label": "Vacances : au",
+     "help": "Dernier jour des vacances (compris). Vide : seulement le premier jour."},
     {"section": "players", "key": "keep_active", "type": "bool", "default": False, "when": "players.enabled=1",
      "label": "Garder le joueur actif jusqu'à la fin de son temps",
      "help": "Après une partie, le joueur reste actif : les cartes de jeu suivantes comptent pour lui sans reposer sa carte joueur. Il cesse d'être actif quand son temps est écoulé, quand une autre carte joueur est posée, ou avec la carte « Déverrouiller ». Un redémarrage de la Recalbox l'oublie aussi."},
@@ -1887,12 +1926,32 @@ OPTIONS = (
     {"section": "cards", "key": "online_art", "type": "bool", "default": True,
      "label": "Images en ligne pour les cartes",
      "help": "Pochette, capture, écran titre et logo du jeu téléchargés depuis la base d'images de RetroArch (libretro), sans compte. Il faut Internet sur la Recalbox ; seuls la console et le nom du jeu sont envoyés."},
+    {"section": "mqtt", "key": "enabled", "type": "bool", "default": False,
+     "label": "Home Assistant (MQTT)",
+     "help": "Le lecteur se montre dans Home Assistant (découverte MQTT) : jeu en cours, joueur, temps restant, heure du coucher, dernier jeu refusé, et des boutons Quitter, Pause, +10 minutes, Éteindre. Il faut un serveur MQTT (par exemple le module Mosquitto de Home Assistant)."},
+    {"section": "mqtt", "key": "host", "type": "text", "default": "", "when": "mqtt.enabled=1",
+     "label": "Serveur MQTT",
+     "help": "Nom ou adresse IP du serveur MQTT, par exemple homeassistant.local ou 192.168.1.10."},
+    {"section": "mqtt", "key": "port", "type": "number", "min": 1, "max": 65535, "default": 1883, "when": "mqtt.enabled=1",
+     "label": "Port du serveur MQTT", "help": "1883 en général."},
+    {"section": "mqtt", "key": "user", "type": "text", "default": "", "when": "mqtt.enabled=1",
+     "label": "Utilisateur MQTT",
+     "help": "Avec Mosquitto de Home Assistant : un utilisateur de Home Assistant (de préférence un compte créé pour ça)."},
+    {"section": "mqtt", "key": "password", "type": "password", "default": "", "when": "mqtt.enabled=1",
+     "label": "Mot de passe MQTT",
+     "help": "Enregistré sur la Recalbox ; la page ne le réaffiche jamais. Laissez vide pour garder celui enregistré."},
+    {"section": "mqtt", "key": "topic", "type": "text", "default": "recalbox_rfid", "when": "mqtt.enabled=1", "advanced": True,
+     "label": "Sujet MQTT",
+     "help": "Début des sujets : <sujet>/state pour l'état, <sujet>/cmd/quit (pause, add, poweroff) pour les commandes. À changer s'il y a plusieurs Recalbox."},
     {"section": "led", "key": "type", "type": "choice", "choices": ["none", "rgb", "ws2812"],
      "default": "none", "label": "Voyant",
      "help": "Une LED qui montre ce que fait le lecteur : prêt, association, erreur, fin du temps de jeu."},
     {"section": "led", "key": "idle", "type": "bool", "default": True, "when": "led.type!=none",
      "label": "Voyant allumé au repos",
      "help": "Vert quand tout est prêt. Désactivé : le voyant ne s'allume que pour signaler quelque chose."},
+    {"section": "led", "key": "signals", "type": "bool", "default": True, "when": "led.type!=none",
+     "label": "Voyant pour l'heure du coucher et le temps écoulé",
+     "help": "Violet pendant l'heure du coucher, orange quand le joueur actif (ou l'invité) n'a plus de temps aujourd'hui : on le voit même TV éteinte."},
     {"section": "led", "key": "common", "type": "choice", "choices": ["cathode", "anode"], "when": "led.type=rgb",
      "default": "cathode", "label": "LED RGB : patte commune",
      "help": "La plus longue patte de la LED : reliée à la masse (cathode commune, le plus courant) ou au 3,3 V (anode commune)."},
@@ -1939,6 +1998,8 @@ def option_value(cfg, option) -> str:
     defaut = option.get("default")
     if option["type"] == "bool":
         return "1" if cfg.get_bool(section, key, bool(defaut)) else "0"
+    if option["type"] == "password":
+        return ""  # never sent back to the page
     if option["type"] == "number":
         valeur = cfg.get_float(section, key, float(defaut or 0))
         if float(valeur).is_integer() and float(defaut or 0).is_integer():
@@ -1965,6 +2026,17 @@ def validate_option(option, valeur) -> str:
         if minutes is None:
             raise ValueError("%s : heure attendue (HH:MM)" % option["label"])
         return bedtime.clock_text(minutes)
+    if option["type"] in ("text", "password"):
+        if any(char in brut for char in "\r\n") or len(brut) > 200:
+            raise ValueError("%s : texte d'une ligne, 200 caractères au plus" % option["label"])
+        return brut
+    if option["type"] == "date":
+        if not brut:
+            return ""
+        try:
+            return datetime.date.fromisoformat(brut).isoformat()
+        except ValueError:
+            raise ValueError("%s : date attendue (AAAA-MM-JJ)" % option["label"])
     if option["type"] == "choice":
         choix = [str(item) for item in option["choices"]]
         if brut not in choix:
