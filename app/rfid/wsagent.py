@@ -1232,6 +1232,9 @@ class Agent:
 
     def _cmd_reboot(self, client, message):
         def reboot():
+            from . import bootmode
+
+            bootmode.mark_stopping()  # the reader screen stays for the next boot
             subprocess.Popen(
                 ["sh", "-c", "sync; reboot"],
                 stdout=subprocess.DEVNULL,
