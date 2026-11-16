@@ -168,6 +168,7 @@ class ReaderModeTest(unittest.TestCase):
 
     def popen(self, argv, **kwargs):
         process = FakeProcess(argv)
+        process.env = kwargs.get("env") or {}
         self.processes.append(process)
         return process
 
@@ -298,6 +299,9 @@ class ReaderModeTest(unittest.TestCase):
         self.assertEqual(self.mode.state, "screen")
         self.assertIn("State=selected", open(self.state, encoding="utf-8").read())
         self.assertEqual(len(self.processes), 3, "l'ecran revient")
+        self.assertNotIn("RFID_SCREEN_HOLD", screen.env, "au demarrage : fondu tout de suite")
+        self.assertEqual(self.processes[2].env.get("RFID_SCREEN_HOLD"), str(reader_mode.AFTER_GAME_HOLD_S),
+                         "apres un jeu : noir le temps que la tele se cale")
 
     def test_raccourci_desactive_seulement_pendant_le_jeu(self):
         self.mode.no_quit_hotkey = True

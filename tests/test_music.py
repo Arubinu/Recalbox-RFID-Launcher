@@ -142,6 +142,14 @@ class MusicTest(unittest.TestCase):
         self.assertEqual(black_alpha(0.45, 0.45, True), 255)
         self.assertEqual(black_alpha(0, 0.45, True, start=200), 200, "depuis un fondu d'entree coupe")
 
+    def test_noir_avant_le_fondu(self):
+        from rfid.screen import screen_hold
+
+        self.assertEqual(screen_hold({}), 0.0)
+        self.assertEqual(screen_hold({"RFID_SCREEN_HOLD": "3.0"}), 3.0)
+        self.assertEqual(screen_hold({"RFID_SCREEN_HOLD": "99"}), 10.0)
+        self.assertEqual(screen_hold({"RFID_SCREEN_HOLD": "x"}), 0.0)
+
     def test_sans_musique(self):
         self.assertFalse(music.Music([], 60, loader=lambda: (FakeMixer(), FakeMixer())).start())
         self.assertFalse(music.Music(["a.ogg"], 0, loader=lambda: (FakeMixer(), FakeMixer())).start())

@@ -1843,6 +1843,15 @@ def ease(value: float) -> float:
     return value * value * (3 - 2 * value)
 
 
+def screen_hold(env=None) -> float:
+    """Seconds of black before the fade in (``RFID_SCREEN_HOLD``, set by the
+    service when the screen comes back from a game), 0 to 10."""
+    try:
+        return max(0.0, min(10.0, float((env if env is not None else os.environ).get("RFID_SCREEN_HOLD") or 0)))
+    except ValueError:
+        return 0.0
+
+
 def black_alpha(elapsed: float, length: float, going_out: bool = False, start: int = 0) -> int:
     """Opacity (0-255) of the black veil of a fade: from black (``going_out``
     False) or to black, from ``start`` (a fade-in cut short)."""
@@ -2303,6 +2312,12 @@ class Screen:
             """From black or to black over the picture drawn (a short pause)."""
             picture = surface.copy()
             veil = pygame.Surface((width, height), pygame.SRCALPHA)
+            if not going_out:
+                black_until = time.monotonic() + screen_hold()  # back from a game: the TV syncs first
+                while self.running and time.monotonic() < black_until:
+                    surface.fill((0, 0, 0))
+                    flip()
+                    time.sleep(0.1)
             length = FADE_OUT_S if going_out else FADE_IN_S
             elapsed, last = 0.0, time.monotonic()
             hold = 0.0 if going_out else FADE_HOLD_S
@@ -2514,6 +2529,7 @@ def _run_gpu(self, pygame, conf) -> int:
     hints_at, who = None, None
     fades = wants(self.home, "fade", True)
     shown_at, faded, fade_frames, opened = None, 0.0, 0, time.monotonic()  # the fade from black
+    black_until = opened + screen_hold()  # back from a game: the TV syncs again first
     gpu.fade_alpha = 255 if fades else 0
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
@@ -2591,13 +2607,14 @@ def _run_gpu(self, pygame, conf) -> int:
             # Slow first frames (textures, the TV syncing) slow the fade down
             # instead of skipping it: at most 1/30 s of fade per frame.
             tick = time.monotonic()
-            if shown_at is not None:
+            if shown_at is not None and tick >= black_until:
                 faded += min(tick - shown_at, 1 / 30.0)
                 fade_frames += 1
             shown_at = tick
             gpu.fade_alpha = black_alpha(faded - FADE_HOLD_S, FADE_IN_S) if faded > FADE_HOLD_S else 255
             if gpu.fade_alpha <= 0:
-                print("fade in: %d frames in %.1f s" % (fade_frames, tick - opened), flush=True)
+                print("%s fade in: %d frames, done %.1f s after the window opened (black %.1f s first)"
+                      % (time.strftime("%H:%M:%S"), fade_frames, tick - opened, black_until - opened), flush=True)
         gpu.draw(index, previous, progress, players, time.time(), highlight)  # waits for the screen (vsync)
         if debug:
             frames += 1

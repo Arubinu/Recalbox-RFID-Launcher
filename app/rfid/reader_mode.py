@@ -54,6 +54,8 @@ PREVIEW_S = 2.0
 CONFIRM_TIMEOUT_S = 120.0
 #: Time between a crash of the screen and its restart.
 RESTART_DELAY_S = 2.0
+#: Back from a game: seconds of black before the fade (the TV syncing again).
+AFTER_GAME_HOLD_S = 3.0
 #: The system started less than this ago: Recalbox's interface may still be
 #: about to start (the service starts before it); it is waited for.
 BOOT_WINDOW_S = 240.0
@@ -378,11 +380,15 @@ class ReaderMode:
         self._info("Mode lecteur quitte : interface de Recalbox relancee")
 
     # --------------------------------------------------------------- screen
-    def start_screen(self) -> None:
+    def start_screen(self, after_game: bool = False) -> None:
         if self.screen is not None and self.screen.poll() is None:
             return
         main = os.path.join(self.home, "app", "main.py")
         env = es_command.launch_env()
+        if after_game:
+            # The game often leaves another refresh rate: the TV syncs again
+            # (a few seconds of black), so the fade from black waits for it.
+            env = dict(env, RFID_SCREEN_HOLD=str(AFTER_GAME_HOLD_S))
         log_path = os.path.join(self.home, "logs", "screen.log")
         try:
             output = open(log_path, "ab")
@@ -510,7 +516,7 @@ class ReaderMode:
             clear_selection(self.state_path, self.target_path)
         self.game_info = None
         if self.wanted:
-            self.start_screen()
+            self.start_screen(after_game=True)
             self.state = "screen"
 
     def step(self) -> None:
