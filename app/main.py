@@ -397,9 +397,18 @@ def cmd_stop(options) -> int:
 
 
 def cmd_restart(options) -> int:
+    from rfid import reader_mode
+
+    if process_alive(read_pid(options.home)):
+        # On the reader screen, it is left to the next service (no detour by
+        # Recalbox's interface during an update).
+        reader_mode.ask_handover()
     cmd_stop(options)
     time.sleep(0.5)
-    return cmd_start(options)
+    code = cmd_start(options)
+    if code != 0 and reader_mode.recover_frontend():
+        print("Interface de Recalbox relancee.")
+    return code
 
 
 def cmd_test(options) -> int:
