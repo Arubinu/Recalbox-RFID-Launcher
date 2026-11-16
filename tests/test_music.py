@@ -114,6 +114,34 @@ class MusicTest(unittest.TestCase):
         player.stop()
         self.assertFalse(music.screen_mixing(flag))
 
+    def test_fondu_de_sortie(self):
+        mixer = FakeMixer()
+        mixer.Mix_FadeOutMusic = lambda ms: mixer.calls.append(("fade", ms))
+        clock = support.FakeClock()
+        player = music.Music(["a.ogg", "b.ogg"], 60, loader=lambda: (mixer, mixer), clock=clock,
+                             flag=os.path.join(self.dir, "f.pid"), queue=os.path.join(self.dir, "q.txt"))
+        player.start()
+        player.fade_out(450)
+        player.fade_out(450)
+        self.assertEqual([c for c in mixer.calls if c[0] == "fade"], [("fade", 450)], "une seule fois")
+        mixer.playing = False
+        clock.advance(1)
+        played = len([c for c in mixer.calls if c[0] == "play"])
+        player.step()
+        self.assertEqual(len([c for c in mixer.calls if c[0] == "play"]), played, "pas d'autre morceau")
+        player.stop()
+        self.assertEqual([c for c in mixer.calls if c[0] == "fade"], [("fade", 450)], "pas de second fondu")
+
+    def test_voile_noir(self):
+        from rfid.screen import black_alpha
+
+        self.assertEqual(black_alpha(0, 0.6), 255)
+        self.assertEqual(black_alpha(0.6, 0.6), 0)
+        self.assertTrue(0 < black_alpha(0.3, 0.6) < 255)
+        self.assertEqual(black_alpha(0, 0.45, True), 0)
+        self.assertEqual(black_alpha(0.45, 0.45, True), 255)
+        self.assertEqual(black_alpha(0, 0.45, True, start=200), 200, "depuis un fondu d'entree coupe")
+
     def test_sans_musique(self):
         self.assertFalse(music.Music([], 60, loader=lambda: (FakeMixer(), FakeMixer())).start())
         self.assertFalse(music.Music(["a.ogg"], 0, loader=lambda: (FakeMixer(), FakeMixer())).start())

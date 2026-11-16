@@ -82,6 +82,8 @@ music_volume = recalbox
 volume_menu = 1
 # On the first day of the week: the time played last week and the new trophies
 weekly_summary = 1
+# Reader screen: fade from black when it shows, to black when a game starts (0/1)
+fade = 1
 # Colours of the reader screen: dark or light; small texts: normal or large
 theme = dark
 text_size = normal

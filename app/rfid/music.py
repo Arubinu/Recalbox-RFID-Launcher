@@ -144,6 +144,7 @@ class Music:
         self._loader = loader
         self.flag, self.queue = flag, queue
         self.chunks = {}
+        self.faded = False
 
     def _load_libraries(self):
         if self._loader is not None:
@@ -223,8 +224,18 @@ class Music:
         if now < self.next_check:
             return
         self.next_check = now + 0.5
-        if not self.mix.Mix_PlayingMusic():
+        if not self.faded and not self.mix.Mix_PlayingMusic():
             self._next()
+
+    def fade_out(self, ms: int = FADE_OUT_MS) -> None:
+        """The music goes down (the screen is quitting): no other track after it."""
+        if self.mix is None or self.faded:
+            return
+        self.faded = True
+        try:
+            self.mix.Mix_FadeOutMusic(max(1, int(ms)))
+        except Exception:  # noqa: BLE001 - stopped at once instead
+            pass
 
     def popup(self):
         """The title of the track that just started (once), or None."""
@@ -239,8 +250,9 @@ class Music:
         except OSError:
             pass
         try:
-            self.mix.Mix_FadeOutMusic(FADE_OUT_MS)
-            time.sleep(FADE_OUT_MS / 1000.0)
+            if not self.faded:
+                self.mix.Mix_FadeOutMusic(FADE_OUT_MS)
+                time.sleep(FADE_OUT_MS / 1000.0)
             self.mix.Mix_HaltMusic()
             if self.track:
                 self.mix.Mix_FreeMusic(self.track)

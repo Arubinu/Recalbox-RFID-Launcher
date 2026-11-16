@@ -45,6 +45,13 @@ HOLD_S = 7.0
 FADE_S = 0.9
 #: The chosen logo of the band lights up over this time, once the band has stopped.
 HIGHLIGHT_S = 0.35
+#: Fade from black when the screen starts (boot, back from a game), and to
+#: black when it quits (a game starts, Recalbox's interface comes back).
+FADE_IN_S = 0.8
+FADE_OUT_S = 0.45
+#: Black first for this long (counted in frames shown): the TV can take a
+#: moment to show the picture after the switch.
+FADE_HOLD_S = 0.4
 
 TEXTS = {
     "hint": {"fr": "Pose une carte pour jouer", "en": "Place a card to play", "de": "Leg eine Karte auf, um zu spielen",
@@ -790,6 +797,11 @@ class ScreenSound:
         """"Music: <title>" when a track starts (Recalbox's MusicPopupTime), or None."""
         name = self.player.popup() if self.player is not None else None
         return text("now_playing", language, title=name) if name else None
+
+    def fade_out(self, seconds: float) -> None:
+        """The music goes down with the picture (the screen quits)."""
+        if self.player is not None:
+            self.player.fade_out(int(seconds * 1000))
 
     def stop(self) -> None:
         if self.player is not None:
@@ -1831,6 +1843,15 @@ def ease(value: float) -> float:
     return value * value * (3 - 2 * value)
 
 
+def black_alpha(elapsed: float, length: float, going_out: bool = False, start: int = 0) -> int:
+    """Opacity (0-255) of the black veil of a fade: from black (``going_out``
+    False) or to black, from ``start`` (a fade-in cut short)."""
+    done = ease(elapsed / length) if length > 0 else 1.0
+    if going_out:
+        return int(round(start + (255 - start) * done))
+    return int(round(255 * (1.0 - done)))
+
+
 # ------------------------------------------------------------------ screen
 def screen_size(conf: dict, native: bool = False):
     """The resolution of the reader screen, or (0, 0): the screen's own.
@@ -1927,6 +1948,7 @@ class GpuScreen:
         self.launch = None  # (texture, started): the game placed, before it starts
         self.power = None  # the power menu or a countdown, over everything
         self.dim_alpha = 0  # dark veil when nobody uses the reader (Dimmer)
+        self.fade_alpha = 0  # black over everything: fade in and out of the screen
 
     def texture(self, surface):
         return self.Texture.from_surface(self.renderer, surface)
@@ -2056,6 +2078,10 @@ class GpuScreen:
             renderer.fill_rect(full)
         if self.power is not None:
             self.draw_power(full)
+        if self.fade_alpha > 0:
+            renderer.draw_blend_mode = 1
+            renderer.draw_color = (0, 0, 0, min(255, self.fade_alpha))
+            renderer.fill_rect(full)
         if self.canvas is not None:
             renderer.target = None
             renderer.draw_color = BACKGROUND + (255,)
@@ -2271,7 +2297,33 @@ class Screen:
         dimmer = Dimmer(self.home)
         hints_at = None
         print("screen %dx%d, %d consoles" % (width, height, len(consoles)), flush=True)
+        fades = wants(self.home, "fade", True)
+
+        def fade(going_out: bool) -> None:
+            """From black or to black over the picture drawn (a short pause)."""
+            picture = surface.copy()
+            veil = pygame.Surface((width, height), pygame.SRCALPHA)
+            length = FADE_OUT_S if going_out else FADE_IN_S
+            elapsed, last = 0.0, time.monotonic()
+            hold = 0.0 if going_out else FADE_HOLD_S
+            while True:
+                tick = time.monotonic()
+                elapsed += min(tick - last, 1 / 30.0)  # slow frames: a slower fade, never skipped
+                last = tick
+                alpha = 255 if elapsed < hold else black_alpha(elapsed - hold, length, going_out)
+                if going_out:
+                    alpha = black_alpha(elapsed, length, True)
+                veil.fill((0, 0, 0, alpha))
+                surface.blit(picture, (0, 0))
+                surface.blit(veil, (0, 0))
+                flip()
+                if elapsed >= length + hold or (not going_out and not self.running):
+                    return
+                time.sleep(0.02)
+
         painter.compose(surface, index, None, 1.0, players, time.time())
+        if fades:
+            fade(False)
         flip()
         while self.running:
             started = time.monotonic()
@@ -2403,6 +2455,12 @@ class Screen:
                     frames, slowest, counted = 0, 0.0, time.monotonic()
             sound.step()
             time.sleep(0.004 if progress < 1.0 else 0.08)
+        if fades:
+            sound.fade_out(FADE_OUT_S)
+            try:
+                fade(True)
+            except Exception:  # noqa: BLE001 - quits anyway
+                pass
         sound.stop()
         pygame.display.quit()
         return 0
@@ -2454,6 +2512,9 @@ def _run_gpu(self, pygame, conf) -> int:
     sound = ScreenSound(self.home, conf)
     dimmer = Dimmer(self.home)
     hints_at, who = None, None
+    fades = wants(self.home, "fade", True)
+    shown_at, faded, fade_frames, opened = None, 0.0, 0, time.monotonic()  # the fade from black
+    gpu.fade_alpha = 255 if fades else 0
     print("screen %dx%d (rotation %d), %d consoles, graphics chip" % (size[0], size[1], angle, len(consoles)), flush=True)
     while self.running:
         started = time.monotonic()
@@ -2526,6 +2587,17 @@ def _run_gpu(self, pygame, conf) -> int:
                 worker["thread"].start()
         # The chosen logo lights up once the band has stopped moving.
         highlight = ease((now - changed - FADE_S) / HIGHLIGHT_S) if previous is None and now - changed < FADE_S + HIGHLIGHT_S else (0.0 if previous is not None else 1.0)
+        if fades and gpu.fade_alpha > 0:
+            # Slow first frames (textures, the TV syncing) slow the fade down
+            # instead of skipping it: at most 1/30 s of fade per frame.
+            tick = time.monotonic()
+            if shown_at is not None:
+                faded += min(tick - shown_at, 1 / 30.0)
+                fade_frames += 1
+            shown_at = tick
+            gpu.fade_alpha = black_alpha(faded - FADE_HOLD_S, FADE_IN_S) if faded > FADE_HOLD_S else 255
+            if gpu.fade_alpha <= 0:
+                print("fade in: %d frames in %.1f s" % (fade_frames, tick - opened), flush=True)
         gpu.draw(index, previous, progress, players, time.time(), highlight)  # waits for the screen (vsync)
         if debug:
             frames += 1
@@ -2533,9 +2605,25 @@ def _run_gpu(self, pygame, conf) -> int:
             if time.monotonic() - counted >= 5:
                 print("%.1f fps, slowest %.0f ms" % (frames / (time.monotonic() - counted), slowest * 1000), flush=True)
                 frames, slowest, counted = 0, 0.0, time.monotonic()
-        if progress >= 1.0:
+        if progress >= 1.0 and gpu.fade_alpha <= 0:
             # The pulse only: no need for every screen refresh (even less when dark).
             time.sleep(0.15 if dimmer.level >= 1.0 else 0.02)
+    if fades:
+        # To black (and the music down) before the game or Recalbox's interface.
+        sound.fade_out(FADE_OUT_S)
+        start, began = gpu.fade_alpha, time.monotonic()
+        while time.monotonic() - began < FADE_OUT_S:
+            gpu.fade_alpha = black_alpha(time.monotonic() - began, FADE_OUT_S, True, start)
+            sound.step()  # the cartridge sound of the game placed
+            try:
+                gpu.draw(index, None, 1.0, players, time.time(), 1.0)
+            except Exception:  # noqa: BLE001 - quits anyway
+                break
+        gpu.fade_alpha = 255
+        try:
+            gpu.draw(index, None, 1.0, players, time.time(), 1.0)
+        except Exception:  # noqa: BLE001
+            pass
     sound.stop()
     gpu.toast = gpu.page = gpu.launch = gpu.power = None
     gpu._bar = gpu.chip = gpu.chip_out = None

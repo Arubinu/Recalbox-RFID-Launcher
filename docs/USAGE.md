@@ -356,6 +356,9 @@ Options of the reader screen (Settings › TV display):
   (or two minutes) cancels. The play time counts from the start only.
 * **Show the active player's games**: their last games, with box art, in
   place of the consoles.
+* **Fades to black** (on by default): the reader screen fades in from black
+  when it shows (at startup, back from a game) and fades out to black when a
+  game starts or Recalbox's interface comes back; the music goes down with it.
 * **Background music** (like Recalbox, the default): the music of the
   Recalbox interface (its theme's, and yours in `/recalbox/share/music`),
   at random, with the name of each new track for a few seconds when Recalbox
