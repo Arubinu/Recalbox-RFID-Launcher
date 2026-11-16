@@ -81,8 +81,11 @@ by `rfidctl version`.
   **weekly summary** on the first day of the week (time played by each
   player and new trophies; the first day of the week is the one of the
   player cards).
-* **Cartridge sound** (option): a small "clack" when a game card starts its
-  game, muted with the Recalbox sound.
+* **Cartridge sounds**: when a game card starts its game, and when the card
+  of the running game is removed. Nintendo DS insertion and removal by
+  default; Super Nintendo (short, very short, full) or a synthetic clack to
+  choose for each; a volume in percent and a Listen button in the settings.
+  Muted with the Recalbox sound.
 
 ## [1.1.0]
 

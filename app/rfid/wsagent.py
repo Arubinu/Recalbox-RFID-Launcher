@@ -37,6 +37,7 @@ import hashlib
 import json
 import os
 import secrets
+import shutil
 import signal
 import socket
 import socketserver
@@ -1123,6 +1124,29 @@ class Agent:
         self._write_command("remote", **extra)
         return {"requested": True}
 
+    def _cmd_sound_test(self, client, message):
+        """Plays a cartridge sound on the Recalbox (settings: Listen)."""
+        from .feedback import CARD_SOUNDS, Feedback, audio_env
+
+        style = str(message.get("value") or "")
+        if style not in CARD_SOUNDS:
+            raise ValueError("aucun son a ecouter")
+        player = None
+        for name in ("paplay", "aplay"):
+            player = shutil.which(name)
+            if player:
+                break
+        if not player:
+            raise RuntimeError("aucun lecteur audio sur la Recalbox")
+        try:
+            volume = int(float(message.get("volume")))
+        except (TypeError, ValueError):
+            volume = Config(self.config_path()).get_int("feedback", "card_volume", 60)
+        path = Feedback(enabled=False)._card_file(style, max(5, min(100, volume)))
+        subprocess.Popen([player, path], env=audio_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        return {"played": style}
+
     def _cmd_screen_restart(self, client, message):
         """Starts the reader screen again (a display stuck on the TV)."""
         self._write_command("screen_restart")
@@ -1856,9 +1880,19 @@ OPTIONS = (
     {"section": "feedback", "key": "sound", "type": "bool", "default": True,
      "label": "Bips sonores",
      "help": "Confirment l'association d'un badge et signalent les erreurs."},
-    {"section": "feedback", "key": "card_sound", "type": "bool", "default": False,
-     "label": "Bruit de cartouche",
-     "help": "Un petit « clac » de cartouche qu'on enfonce quand une carte de jeu lance son jeu. Il se coupe avec le son de la Recalbox (carte « Son »)."},
+    {"section": "feedback", "key": "card_sound", "type": "choice", "test": "sound.test",
+     "choices": ["off", "ds_insert", "ds_remove", "snes", "snes_dry", "snes_full", "synth"], "default": "ds_insert",
+     "legacy": {"1": "ds_insert", "0": "off", "ds": "ds_insert", "": "ds_insert"},
+     "label": "Bruit de cartouche à l'insertion",
+     "help": "Joué quand une carte de jeu lance son jeu : le bruit d'une cartouche qu'on enfonce (Nintendo DS, Super Nintendo court, très court ou complet), ou un « clac » synthétique. Il se coupe avec le son de la Recalbox (carte « Son »)."},
+    {"section": "feedback", "key": "card_out_sound", "type": "choice", "test": "sound.test",
+     "choices": ["off", "ds_insert", "ds_remove", "snes", "snes_dry", "snes_full", "synth"], "default": "ds_remove",
+     "legacy": {"": "ds_remove"},
+     "label": "Bruit de cartouche au retrait",
+     "help": "Joué quand on retire du lecteur la carte du jeu en cours. Tous les bruits peuvent servir ici aussi."},
+    {"section": "feedback", "key": "card_volume", "type": "number", "min": 5, "max": 100, "default": 60,
+     "label": "Volume des bruits de cartouche (%)",
+     "help": "100 % : le son tel quel ; plus bas, il est plus discret par rapport au son des jeux. Le bouton Écouter en tient compte avant même d'enregistrer."},
     {"section": "time", "key": "default_limit_min", "type": "number", "min": 0, "max": 600,
      "default": 0, "label": "Temps de jeu par partie (minutes)",
      "help": "Pour les badges sans limite à eux. 0 = pas de limite. Prévient 5 minutes puis 1 minute avant la fin, puis quitte le jeu."},
@@ -2005,7 +2039,8 @@ def option_value(cfg, option) -> str:
         if float(valeur).is_integer() and float(defaut or 0).is_integer():
             return str(int(valeur))
         return ("%g" % valeur)
-    return cfg.get(section, key, str(defaut or ""))
+    value = cfg.get(section, key, str(defaut or ""))
+    return option.get("legacy", {}).get(value.strip().lower(), value)
 
 
 def validate_option(option, valeur) -> str:

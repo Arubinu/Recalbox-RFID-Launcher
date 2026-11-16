@@ -113,9 +113,14 @@ action = launch
 sound = 1
 # auto, paplay, aplay or none
 sound_player = auto
-# The "clack" of a cartridge when a game card starts its game (0/1); muted
-# with the Recalbox sound (Sound card)
-card_sound = 0
+# Cartridge sounds: when a game card starts its game (card_sound) and when the
+# card of the running game is removed (card_out_sound). off, ds_insert,
+# ds_remove, snes, snes_dry, snes_full or synth; muted with the Recalbox sound
+# (Sound card)
+card_sound = ds_insert
+card_out_sound = ds_remove
+# Their volume, in percent (5-100)
+card_volume = 60
 
 [time]
 # Play time allowed by a game card that has no limit of its own
