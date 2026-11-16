@@ -727,6 +727,22 @@ COMMANDS = {
 }
 
 
+def stable_cwd(home: str) -> None:
+    """The long-running commands work from their data folder.
+
+    An update replaces the program folder (app -> app.old, removed): a process
+    started from it (or from a process started there, like Recalbox's
+    interface brought back by the service) would keep a deleted current
+    directory, and os.getcwd() fails (RPi.GPIO then cannot open the button).
+    """
+    for folder in (home, "/"):
+        try:
+            os.chdir(folder)
+            return
+        except OSError:
+            continue
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     try:
@@ -739,6 +755,8 @@ def main(argv=None) -> int:
     if options.command in ("help", "-h", "--help", ""):
         print(USAGE)
         return 0
+    if options.command in ("daemon", "agent", "screen"):
+        stable_cwd(options.home)
 
     if options.command == "daemon":
         from rfid.daemon import run

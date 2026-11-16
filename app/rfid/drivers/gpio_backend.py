@@ -48,7 +48,10 @@ def _writable_dir() -> str:
 @contextlib.contextmanager
 def _workdir(folder: str):
     """Temporarily changes the directory (and HOME when needed)."""
-    previous_dir = os.getcwd()
+    try:
+        previous_dir = os.getcwd()
+    except OSError:
+        previous_dir = None  # deleted (program folder replaced by an update)
     previous_home = os.environ.get("HOME", "")
     try:
         if folder:
@@ -57,8 +60,9 @@ def _workdir(folder: str):
                 os.environ["HOME"] = folder
         yield
     finally:
-        with contextlib.suppress(OSError):
-            os.chdir(previous_dir)
+        if previous_dir:
+            with contextlib.suppress(OSError):
+                os.chdir(previous_dir)
         if previous_home:
             os.environ["HOME"] = previous_home
 
@@ -152,6 +156,32 @@ class LgpioBackend:
 # ---------------------------------------------------------------------------
 # sysfs (last resort)
 # ---------------------------------------------------------------------------
+def chip_base(root: str = "/sys/class/gpio") -> int:
+    """Number of BCM pin 0 in /sys/class/gpio: 0 on old kernels, 512 on recent
+    ones (gpiochip512). The chip of the Pi's pins is the "pinctrl-bcm..." one,
+    else the lowest."""
+    chips = []
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return 0
+    for name in names:
+        if not name.startswith("gpiochip"):
+            continue
+        try:
+            with open(os.path.join(root, name, "base"), encoding="ascii") as handle:
+                base = int(handle.read().strip())
+        except (OSError, ValueError):
+            continue
+        try:
+            with open(os.path.join(root, name, "label"), encoding="ascii", errors="replace") as handle:
+                label = handle.read().strip()
+        except OSError:
+            label = ""
+        chips.append((not label.startswith("pinctrl-bcm"), base))
+    return min(chips)[1] if chips else 0
+
+
 class SysfsBackend:
     name = "/sys/class/gpio"
 
@@ -161,16 +191,17 @@ class SysfsBackend:
             raise GpioError("interface /sys/class/gpio absente")
         self._claimed = set()
         self._cached_value = {}
+        self.base = chip_base(root)
 
     def _path(self, pin: int, leaf: str) -> str:
-        return os.path.join(self.root, "gpio%d" % pin, leaf)
+        return os.path.join(self.root, "gpio%d" % (self.base + pin), leaf)
 
     def _export(self, pin: int) -> None:
-        if os.path.isdir(os.path.join(self.root, "gpio%d" % pin)):
+        if os.path.isdir(os.path.join(self.root, "gpio%d" % (self.base + pin))):
             return
         try:
             with open(os.path.join(self.root, "export"), "w", encoding="ascii") as handle:
-                handle.write(str(pin))
+                handle.write(str(self.base + pin))
             time.sleep(0.05)
         except OSError as exc:
             raise GpioError("export de la broche %d impossible : %s" % (pin, exc))
@@ -222,7 +253,7 @@ class SysfsBackend:
         for pin in list(self._claimed):
             try:
                 with open(os.path.join(self.root, "unexport"), "w", encoding="ascii") as handle:
-                    handle.write(str(pin))
+                    handle.write(str(self.base + pin))
             except OSError:
                 pass
         self._claimed.clear()
@@ -270,7 +301,7 @@ def open_gpio(prefer: str = "auto", log=None):
             else:
                 backend = SysfsBackend()
             if log:
-                log.info("GPIO : backend %s" % backend.name)
+                log.info("GPIO : backend %s%s" % (backend.name, (" (%s)" % " ; ".join(errors)) if errors else ""))
             return backend
         except (GpioError, OSError) as exc:
             errors.append("%s: %s" % (candidate, exc))
