@@ -232,6 +232,10 @@ def player_info(players: dict, language: str):
     if uid or waiting:
         row = rows.get(uid, {})
         name = current.get("name") or players.get("pending") or row.get("name") or ""
+        others = [other.get("name") or "" for other in current.get("others") or ()]
+        if current.get("name") and others:
+            names = [name] + others
+            name = ", ".join(names[:-1]) + " & " + names[-1]  # the whole group playing
         info = {"name": name, "uid": uid or "", "ratio": None, "avatar": row.get("avatar", 0)}
         quota = (row.get("quota_min") or 0) * 60
         if quota and row.get("remaining_s") is not None:

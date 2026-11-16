@@ -154,6 +154,18 @@ MESSAGES = {
         "fr": "{name} joue la prochaine partie", "en": "{name} plays the next game",
         "de": "{name} spielt das nächste Spiel", "es": "{name} juega la próxima partida",
         "it": "{name} gioca la prossima partita", "pt": "{name} joga o próximo jogo"},
+    "players_next": {
+        "fr": "{names} : prochaine partie à plusieurs", "en": "{names}: next game together",
+        "de": "{names}: nächstes Spiel zusammen", "es": "{names}: próxima partida juntos",
+        "it": "{names}: prossima partita insieme", "pt": "{names}: próximo jogo juntos"},
+    "player_removed": {
+        "fr": "{name} ne joue pas : prochaine partie pour {names}", "en": "{name} is out: next game for {names}",
+        "de": "{name} spielt nicht mit: nächstes Spiel für {names}", "es": "{name} no juega: próxima partida para {names}",
+        "it": "{name} non gioca: prossima partita per {names}", "pt": "{name} não joga: próximo jogo para {names}"},
+    "player_solo": {
+        "fr": "{name} : prochaine partie en solo", "en": "{name}: next game solo",
+        "de": "{name}: nächstes Spiel allein", "es": "{name}: próxima partida en solitario",
+        "it": "{name}: prossima partita da solo", "pt": "{name}: próximo jogo a solo"},
     "player_schedule": {
         "fr": "{name} : pas de jeu à cette heure-ci{when}", "en": "{name}: no games at this time{when}",
         "de": "{name}: zu dieser Zeit kein Spiel{when}", "es": "{name}: no se juega a esta hora{when}",

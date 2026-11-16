@@ -172,6 +172,12 @@ week_start = monday
 # The player of a card stays active for the next games (no need to place the
 # card again), until their time is up, another player card or the unlock card.
 keep_active = 0
+# Several players per game: off = a player card replaces the previous one;
+# remove / solo = a second card adds up, placed again it leaves the group /
+# stays alone; chain = cards placed less than 15 s apart make the group.
+multi = off
+# Controllers in RetroArch games: all, or players (one per active player)
+pads = all
 # A player card placed during another player's game takes the game over: the
 # time counts for the new player from then on (0 = it is for the next game).
 switch_on_card = 1
