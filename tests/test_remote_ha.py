@@ -205,6 +205,20 @@ class CartridgeSoundTest(unittest.TestCase):
         self.assertEqual(len(spawned), 1, "les bips restent coupes")
 
 
+class AudioEnvTest(unittest.TestCase):
+    def test_serveur_de_son_trouve(self):
+        from rfid.feedback import audio_env
+
+        root = tempfile.mkdtemp(prefix="rfid-run-")
+        self.addCleanup(shutil.rmtree, root, True)
+        uid = str(os.getuid()) if hasattr(os, "getuid") else "0"
+        os.makedirs(os.path.join(root, uid, "pulse"))
+        open(os.path.join(root, uid, "pulse", "native"), "w").close()
+        self.assertEqual(audio_env({}, root)["XDG_RUNTIME_DIR"], os.path.join(root, uid))
+        self.assertEqual(audio_env({"XDG_RUNTIME_DIR": "/x"}, root)["XDG_RUNTIME_DIR"], "/x", "garde le sien")
+        self.assertNotIn("XDG_RUNTIME_DIR", audio_env({}, os.path.join(root, "absent")))
+
+
 class LookTest(unittest.TestCase):
     def tearDown(self):
         screen.set_theme("dark")
