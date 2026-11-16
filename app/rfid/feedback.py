@@ -26,6 +26,8 @@ SAMPLE_RATE = 22050
 CARD_SOUNDS = {
     "ds_insert": "ds-insert.wav",
     "ds_remove": "ds-remove.wav",
+    "n64_insert": "n64-insert.wav",
+    "n64_remove": "n64-remove.wav",
     "snes": "snes.wav",
     "snes_dry": "snes-dry.wav",
     "snes_full": "snes-full.wav",
