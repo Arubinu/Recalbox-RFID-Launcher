@@ -93,6 +93,27 @@ class MusicTest(unittest.TestCase):
         player.stop()
         self.assertEqual(mixer.calls[-1], ("close",))
 
+    def test_sons_courts_par_l_ecran(self):
+        mixer = FakeMixer()
+        played = []
+        mixer.SDL_RWFromFile = lambda path, mode: path
+        mixer.Mix_LoadWAV_RW = lambda rw, free: rw
+        mixer.Mix_PlayChannelTimed = lambda channel, chunk, loops, ticks: played.append(chunk)
+        flag, queue = os.path.join(self.dir, "mixer.pid"), os.path.join(self.dir, "sounds.txt")
+        self.assertFalse(music.screen_mixing(flag))
+        player = music.Music(["a.ogg"], 60, loader=lambda: (mixer, mixer), flag=flag, queue=queue,
+                             clock=support.FakeClock())
+        self.assertTrue(player.start())
+        self.assertTrue(music.screen_mixing(flag), "le service sait que l'ecran mixe")
+        music.queue_sound("/s/ds-insert.wav", queue)
+        music.queue_sound("/s/beep.wav", queue)
+        player.step()
+        self.assertEqual(played, [b"/s/ds-insert.wav", b"/s/beep.wav"])
+        player.step()
+        self.assertEqual(len(played), 2, "joues une seule fois")
+        player.stop()
+        self.assertFalse(music.screen_mixing(flag))
+
     def test_sans_musique(self):
         self.assertFalse(music.Music([], 60, loader=lambda: (FakeMixer(), FakeMixer())).start())
         self.assertFalse(music.Music(["a.ogg"], 0, loader=lambda: (FakeMixer(), FakeMixer())).start())

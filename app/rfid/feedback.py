@@ -266,6 +266,11 @@ class Feedback:
             return
         try:
             wav = make()
+            from . import music
+
+            if music.screen_mixing():
+                music.queue_sound(wav)  # played over the music by the reader screen
+                return
             subprocess.Popen(
                 [self._player, wav],
                 env=audio_env(),
