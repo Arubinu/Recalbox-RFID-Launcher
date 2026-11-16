@@ -391,7 +391,7 @@
   .pair .row { justify-content: center; }
 
   /* -------------------------------------------------------------- dashboard */
-  .app-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 16px; }
+  .app-head { position: relative; z-index: 30; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 16px; }
   .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
   .tabs button {
     display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 15px; border-radius: 10px;
@@ -478,6 +478,58 @@
   /* Settings */
   .option-group { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
   .option-group + .option-group { margin-top: 12px; }
+  .option-note { padding: 0 16px 12px; }
+  /* Topics of the settings: the list beside, one topic at a time. */
+  .settings { display: grid; grid-template-columns: 228px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .settings-nav { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 2px; padding: 6px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .settings-nav button { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 11px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+  .settings-nav button svg { flex: 0 0 auto; }
+  .settings-nav button:hover { color: var(--text); background: rgba(var(--ink-rgb), .04); }
+  .settings-nav button[aria-selected="true"] { background: var(--primary-soft); color: var(--text); }
+  .settings-nav button[aria-selected="true"] svg { color: var(--primary-text); }
+  .nav-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--warn-soft); color: var(--warn-text);
+    font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+  .nav-count[hidden] { display: none; }
+  .cat-head { display: flex; gap: 13px; align-items: flex-start; margin: 4px 2px 14px; }
+  .cat-ico { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary-text); }
+  .cat-head h2 { font-size: 19px; letter-spacing: -.01em; }
+  .cat-head p { color: var(--muted); font-size: 14px; margin-top: 2px; max-width: 62ch; }
+  .option.flash, .card.flash { animation: flash 1.9s ease-out; }
+  @keyframes flash { 0%, 35% { background: var(--primary-soft); } 100% { background: transparent; } }
+  .card.flash { animation-name: flash-card; }
+  @keyframes flash-card { 0%, 35% { box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow); } 100% { box-shadow: var(--shadow); } }
+  /* Search of the page (tabs, sections, settings). */
+  .search { position: relative; order: 2; flex: 1 1 240px; min-width: 200px; max-width: 400px; margin-left: auto; }
+  .search > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--faint); pointer-events: none; }
+  .search input[type=search] { width: 100%; height: 46px; padding: 0 40px 0 39px; border-radius: 14px; background: var(--surface); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .search kbd { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .search input:focus ~ kbd, .search input:not(:placeholder-shown) ~ kbd { display: none; }
+  .search-results { position: absolute; z-index: 80; top: calc(100% + 6px); right: 0; width: min(520px, calc(100vw - 32px)); max-height: min(62vh, 520px);
+    overflow-y: auto; padding: 6px; background: var(--surface); border: 1px solid var(--line-2, var(--line)); border-radius: var(--r-lg);
+    box-shadow: 0 18px 50px -20px rgba(0, 0, 0, .55); }
+  .result { display: flex; gap: 11px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--text);
+    font: inherit; text-align: left; cursor: pointer; }
+  .result[aria-selected="true"], .result:hover { background: var(--primary-soft); }
+  .result-ico { flex: 0 0 auto; width: 17px; height: 17px; color: var(--primary-text); margin-top: 2px; }
+  .result-ico svg { position: static; display: block; transform: none; }
+  .result-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .result-title { font-weight: 620; }
+  .result-path { font-size: 12px; color: var(--faint); }
+  .result-help { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .result mark { background: transparent; color: var(--primary-text); font-weight: 750; }
+  .result-none { padding: 12px; color: var(--muted); font-size: 14px; }
+  @media (max-width: 760px) {
+    .settings { grid-template-columns: 1fr; gap: 12px; }
+    .settings-nav { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: none; }
+    .settings-nav button { white-space: nowrap; flex: 0 0 auto; }
+    .settings-nav button .grow { flex: 0 0 auto; }
+    .search { flex-basis: 100%; max-width: none; margin-left: 0; }
+    .search-results { left: 0; right: 0; width: auto; }
+    .search kbd { display: none; }
+  }
   .option-group > h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); padding: 13px 16px 4px; }
   .option { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 1px solid var(--line); }
   .option:first-of-type { border-top: 0; }
@@ -1134,6 +1186,13 @@
     <section class="view view-app" aria-labelledby="t-app">
       <h1 id="t-app" class="sr-only" tabindex="-1">Gestion du lecteur</h1>
       <div class="app-head">
+        <div class="search" id="search" role="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+          <input type="search" id="search-input" placeholder="Rechercher un réglage, une section…" aria-label="Rechercher dans la page"
+            autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results">
+          <kbd aria-hidden="true">/</kbd>
+          <div class="search-results" id="search-results" role="listbox" aria-label="Résultats de la recherche" hidden></div>
+        </div>
         <nav class="tabs" role="tablist" aria-label="Sections">
           <button type="button" role="tab" data-tab="badges" aria-selected="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 8.5A2.5 2.5 0 0 1 7 6h5.6l5.4 5.4V16a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 16z"/><circle cx="9" cy="11" r="1.7"/></svg>
@@ -1547,7 +1606,7 @@
           </div>
           <section class="option-group" id="access-group" style="margin-bottom:12px">
             <h3>Sécurité</h3>
-            <div class="option">
+            <div class="option" id="opt-access">
               <div class="option-text">
                 <span class="option-label">Mot de passe de la page</span>
                 <span class="option-help" id="access-help">Demandé après l'appui de 3 s sur le bouton : seuls ceux qui le connaissent peuvent changer les badges, le temps de jeu et les réglages. Les autres appareils devront se reconnecter.</span>
@@ -1557,7 +1616,7 @@
           </section>
           <section class="option-group" id="backup-group" style="margin-bottom:12px">
             <h3>Sauvegarde</h3>
-            <div class="option">
+            <div class="option" id="opt-backup">
               <div class="option-text">
                 <span class="option-label">Tout sauvegarder dans un fichier</span>
                 <span class="option-help">Badges, réglages, modèles et cadres de cartes, joueurs et temps de jeu. Le mot de passe n'est jamais inclus. Utile avant de réinstaller Recalbox ou pour passer sur une autre console.</span>
@@ -3465,6 +3524,13 @@ const ICONS = {
   link: '<path d="M12 5v14M5 12h14"/>',
   rotl: '<path d="M4 4v5h5"/><path d="M5.5 15a7 7 0 1 0 1.6-7.3L4 9"/>',
   rotr: '<path d="M20 4v5h-5"/><path d="M18.5 15a7 7 0 1 1-1.6-7.3L20 9"/>',
+  tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/>',
+  bulb: '<path d="M9 17.5h6M10 20.5h4"/><path d="M8.6 14.5a6 6 0 1 1 6.8 0c-.9.6-1.4 1.6-1.4 2.6v.4h-4v-.4c0-1-.5-2-1.4-2.6z"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/>',
+  chip: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/>',
+  settings: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  section: '<path d="M5 6h14M5 12h14M5 18h9"/>',
+  arrow: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
 };
 function icon(name, size) {
   const span = document.createElement("span");
@@ -5691,21 +5757,63 @@ async function refreshCalibration() {
 /* ----------------------------------------------------------------- settings */
 /* The agent describes each setting (section, key, type, bounds, label): the
    page has no hard-coded list, adding a setting to the service shows it here. */
-const OPTION_GROUPES = [
-  ["display", "Affichage sur la TV"],
-  ["launch", "Lancement des jeux"],
-  ["button", "Bouton du boîtier"],
-  ["rfid", "Lecteur de badges"],
-  ["time", "Temps de jeu"],
-  ["players", "Cartes joueurs"],
-  ["screen", "Messages à l'écran"],
-  ["cards", "Cartes"],
-  ["led", "Voyant"],
-  ["agent", "Connexion"],
-  ["feedback", "Sons"],
-  ["mqtt", "Home Assistant"],
-  ["general", "Journal et diagnostic"],
+/* Settings by what they are for (not by section of the file): one topic at a
+   time, chosen in a list. "#id": a group of the page itself (password,
+   backup). A setting of the service missing here goes to "Autres réglages". */
+const OPTION_CATEGORIES = [
+  { id: "jeux", icone: "tag", titre: "Badges et jeux", texte: "Ce qui se passe quand on pose ou retire un badge.", groupes: [
+    ["Quand on pose un badge", ["launch.action", "display.show_game", "launch.ignore_when_game_running", "button.arm_timeout_s"]],
+    ["Quand on retire le badge", ["launch.stop_on_remove", "launch.save_on_quit", "display.no_quit_hotkey"]],
+    ["Pendant les parties", ["screen.messages"]],
+    ["Cartes à imprimer", ["cards.online_art"]],
+  ] },
+  { id: "ecran", icone: "tv", titre: "Écran du lecteur", texte: "Ce que montre la TV à la place de l'interface de Recalbox.", groupes: [
+    ["Affichage sur la TV", ["display.mode", "display.resolution"]],
+    ["Apparence", ["display.theme", "display.text_size", "display.fade", "display.dim_min"]],
+    ["Ce qui est montré", ["display.player_games", "display.show_info", "display.weekly_summary"]],
+  ] },
+  { id: "sons", icone: "sound", titre: "Sons et musique", texte: "Bips, bruits de cartouche, musique de fond et volume.", groupes: [
+    ["Bruits du lecteur", ["feedback.sound", "feedback.card_sound", "feedback.card_out_sound", "feedback.card_volume"]],
+    ["Musique et volume", ["display.music", "display.music_volume", "display.volume_menu"]],
+  ] },
+  { id: "joueurs", icone: "player", titre: "Joueurs", texte: "Les cartes joueurs, les manettes et le menu de Recalbox.", groupes: [
+    ["Cartes joueurs", ["players.enabled", "players.require", "players.multi", "players.switch_on_card", "players.keep_active"]],
+    ["Manettes et menu", ["players.pads", "players.lock_frontend"]],
+  ] },
+  { id: "temps", icone: "time", titre: "Temps de jeu", texte: "Limites, remise à zéro, vacances et heure du coucher.", groupes: [
+    ["Limites", ["time.default_limit_min", "players.block_exhausted", "players.guest_quota_min", "players.guest_period"]],
+    ["Remise à zéro et vacances", ["players.reset_hour", "players.week_start", "players.holidays_from", "players.holidays_to"]],
+    ["Heure du coucher", ["time.curfew_from", "time.curfew_to", "time.curfew_poweroff"]],
+  ] },
+  { id: "extinction", icone: "poweroff", titre: "Allumage et extinction", texte: "Éteindre depuis la manette, quand personne ne joue, avec la carte.", groupes: [
+    ["Extinction", ["display.power_menu", "display.idle_off_min", "display.poweroff_countdown"]],
+  ] },
+  { id: "voyant", icone: "bulb", titre: "Voyant", texte: "La lumière du boîtier : ce qu'elle montre et son branchement.", groupes: [
+    ["Voyant", ["led.type", "led.idle", "led.signals", "led.count", "led.brightness"]],
+    ["Branchement", ["led.common", "led.pin_red", "led.pin_green", "led.pin_blue"]],
+  ] },
+  { id: "acces", icone: "unlock", titre: "Accès et sauvegarde", texte: "La page sur téléphone, son mot de passe et la sauvegarde.", groupes: [
+    ["Page web", ["agent.web", "button.hold_press_s"]],
+    "#access-group",
+    "#backup-group",
+  ] },
+  { id: "maison", icone: "home", titre: "Home Assistant", texte: "Le lecteur dans votre maison connectée (MQTT).", groupes: [
+    ["Home Assistant", ["mqtt.enabled", "mqtt.host", "mqtt.port", "mqtt.user", "mqtt.password", "mqtt.topic"]],
+  ] },
+  { id: "avance", icone: "chip", titre: "Réglages avancés", texte: "Les valeurs d'origine conviennent presque toujours. Le réglage automatique de l'onglet Matériel les ajuste pour vous.", groupes: [
+    ["Lecteur de badges", ["rfid.poll_interval_ms", "rfid.same_tag_cooldown_s", "rfid.rearm_absent_ms", "rfid.spi_speed_hz"]],
+    ["Journal et diagnostic", ["general.log_level"]],
+  ] },
 ];
+let optionsCategorie = (() => { try { return sessionStorage.getItem("rfid-options-cat") || "jeux"; } catch (error) { return "jeux"; } })();
+/* Asked by the search: the topic and the setting to show once drawn. */
+let optionsFocus = null;
+function categorieDe(full) {
+  for (const categorie of OPTION_CATEGORIES) {
+    for (const groupe of categorie.groupes) if (Array.isArray(groupe) && groupe[1].includes(full)) return categorie;
+  }
+  return null;
+}
 /* Choice texts: "section.key=value" first (same value, different meaning), then the value alone. */
 const CHOIX_TEXTES = {
   launch: "lancer le jeu", confirm: "le montrer, lancer avec la manette", none: "biper seulement",
@@ -5764,8 +5872,21 @@ function appliquerConditions() {
     if (row) row.hidden = !optionVisible(option);
   }
   $$(".option-group").forEach((group) => {
+    if (group.id === "access-group" && group.dataset.off) { group.hidden = true; return; }
     const rows = $$(".option", group);
     if (rows.length) group.hidden = rows.every((row) => row.hidden);
+  });
+  /* Changes not saved yet: counted on each topic of the list. */
+  $$(".settings-nav [data-cat]").forEach((bouton) => {
+    const page = $('.settings-main .settings-cat[data-cat="' + bouton.dataset.cat + '"]');
+    const compte = page ? $$(".option[data-option]", page).filter((row) => {
+      const option = optionsData.options.find((item) => item.full === row.dataset.option);
+      return option && optionValeur(option) !== option.value;
+    }).length : 0;
+    const badge = $(".nav-count", bouton);
+    badge.hidden = !compte;
+    badge.textContent = compte ? String(compte) : "";
+    badge.title = compte ? t("{n} modification(s) non enregistrée(s)", { n: compte }) : "";
   });
 }
 function majEtatOptions() {
@@ -5841,7 +5962,12 @@ function controlerOption(option) {
 async function renderAccess() {
   const box = $("#access-actions");
   let status;
-  try { status = await agent.send("access.status", {}, 8000); } catch (error) { $("#access-group").hidden = true; return; }
+  try { status = await agent.send("access.status", {}, 8000); } catch (error) {
+    $("#access-group").dataset.off = "1";
+    $("#access-group").hidden = true;
+    return;
+  }
+  delete $("#access-group").dataset.off;
   $("#access-group").hidden = false;
   box.replaceChildren(...(status.password
     ? [button(t("Changer"), () => changePassword(true)), button(t("Retirer"), removePassword, "ghost")]
@@ -5899,37 +6025,296 @@ async function renderOptions(force) {
     ]),
     el("div", { className: "option-control" }, [option.test ? testableOption(option) : controlerOption(option)]),
   ]);
-  /* Everyday settings by group; technical ones ("advanced") folded at the end. */
-  const groupes = new Map();
-  const avances = [];
-  for (const option of data.options) {
-    if (option.advanced) { avances.push(option); continue; }
-    if (!groupes.has(option.section)) groupes.set(option.section, []);
-    groupes.get(option.section).push(option);
+  /* One topic at a time (OPTION_CATEGORIES), chosen in the list beside. */
+  const parCle = new Map(data.options.map((option) => [option.full, option]));
+  const places = new Set();
+  const categories = OPTION_CATEGORIES.map((categorie) => ({ categorie, blocs: categorie.groupes.map((groupe) => {
+    if (typeof groupe === "string") {
+      const fixe = $(groupe);
+      if (fixe) fixe.style.marginBottom = "";
+      return fixe;
+    }
+    const options = groupe[1].map((cle) => parCle.get(cle)).filter(Boolean);
+    options.forEach((option) => places.add(option.full));
+    if (!options.length) return null;
+    const etat = options.some((option) => option.section === "mqtt") ? [el("p", { className: "muted small option-note", attrs: { id: "mqtt-state", "aria-live": "polite" } })] : [];
+    return el("section", { className: "option-group" }, [el("h3", { text: t(groupe[0]) })].concat(options.map(ligne), etat));
+  }).filter(Boolean) }));
+  const autres = data.options.filter((option) => !places.has(option.full));
+  if (autres.length) {
+    categories.push({ categorie: { id: "autres", icone: "chip", titre: "Autres réglages", texte: "" },
+      blocs: [el("section", { className: "option-group" }, autres.map(ligne))] });
   }
-  const ordre = OPTION_GROUPES.map((entree) => entree[0]).filter((cle) => groupes.has(cle));
-  for (const cle of groupes.keys()) if (!ordre.includes(cle)) ordre.push(cle);
-  const blocs = ordre.map((cle) => {
-    const connue = OPTION_GROUPES.find((entree) => entree[0] === cle);
-    const etat = cle === "mqtt" ? [el("p", { className: "muted small", attrs: { id: "mqtt-state", "aria-live": "polite" } })] : [];
-    return el("section", { className: "option-group" }, [el("h3", { text: t(connue ? connue[1] : cle) })].concat(groupes.get(cle).map(ligne), etat));
-  });
-  if (avances.length) {
-    const ouvert = Boolean($("#options-advanced") && $("#options-advanced").open)
-      || avances.some((option) => Object.prototype.hasOwnProperty.call(optionsPending, option.full));
-    const details = el("details", { className: "more", attrs: { id: "options-advanced" } }, [
-      el("summary", { text: t("Réglages avancés") }),
-      el("div", { className: "more-body" }, [
-        el("p", { className: "muted small", text: t("Les valeurs d'origine conviennent presque toujours. Le réglage automatique de l'onglet Matériel les ajuste pour vous.") }),
-        el("section", { className: "option-group" }, avances.map(ligne)),
+  if (!categories.some((entree) => entree.categorie.id === optionsCategorie)) optionsCategorie = categories[0].categorie.id;
+  const nav = el("nav", { className: "settings-nav", attrs: { role: "tablist", "aria-label": t("Thèmes des réglages") } });
+  const pages = el("div", { className: "settings-main" });
+  for (const { categorie, blocs } of categories) {
+    const choisi = categorie.id === optionsCategorie;
+    const bouton = el("button", { attrs: { type: "button", role: "tab", "data-cat": categorie.id, "aria-selected": choisi ? "true" : "false" } },
+      [icon(categorie.icone, 18), el("span", { className: "grow", text: t(categorie.titre) }), el("span", { className: "nav-count", attrs: { hidden: "" } })]);
+    bouton.addEventListener("click", () => choisirCategorie(categorie.id, true));
+    nav.appendChild(bouton);
+    pages.appendChild(el("section", { className: "settings-cat", attrs: { "data-cat": categorie.id, role: "tabpanel" } }, [
+      el("header", { className: "cat-head" }, [
+        el("span", { className: "cat-ico" }, [icon(categorie.icone, 21)]),
+        el("div", {}, [el("h2", { text: t(categorie.titre) }), categorie.texte ? el("p", { text: t(categorie.texte) }) : null]),
       ]),
-    ]);
-    details.open = ouvert;
-    blocs.push(details);
+    ].concat(blocs)));
   }
-  $("#options-body").replaceChildren(...blocs);
+  $("#options-body").replaceChildren(el("div", { className: "settings" }, [nav, pages]));
+  choisirCategorie(optionsCategorie, false);
   $("#options-hint").textContent = serviceRunning() ? "" : t("Le service est arrêté : les réglages serviront à son prochain démarrage.");
   majEtatOptions();
+  if (optionsFocus) montrerFocus();
+}
+function choisirCategorie(id, utilisateur) {
+  optionsCategorie = id;
+  try { sessionStorage.setItem("rfid-options-cat", id); } catch (error) { /* ignore */ }
+  $$(".settings-nav [data-cat]").forEach((bouton) => {
+    const choisi = bouton.dataset.cat === id;
+    bouton.setAttribute("aria-selected", choisi ? "true" : "false");
+    const liste = bouton.parentElement;
+    if (choisi && liste.scrollWidth > liste.clientWidth) {
+      /* Phone: the list scrolls sideways, the topic chosen stays in view. */
+      const ici = bouton.getBoundingClientRect();
+      const cadre = liste.getBoundingClientRect();
+      liste.scrollLeft += ici.left - cadre.left - (cadre.width - ici.width) / 2;
+    }
+  });
+  $$(".settings-main .settings-cat").forEach((page) => { page.hidden = page.dataset.cat !== id; });
+  if (utilisateur && window.matchMedia("(max-width: 760px)").matches) {
+    const page = $('.settings-main .settings-cat[data-cat="' + id + '"]');
+    if (page) page.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+}
+/* The setting found by the search: its topic, then the setting itself, lit
+   for a moment (a hidden one: the setting that shows it). */
+function montrerFocus() {
+  const focus = optionsFocus;
+  optionsFocus = null;
+  if (!focus) return;
+  let cible = focus.selector ? $(focus.selector) : null;
+  if (focus.full && optionsData) {
+    let option = optionsData.options.find((item) => item.full === focus.full);
+    for (let tour = 0; option && !optionVisible(option) && tour < 3; tour++) {
+      const match = /^([\w.]+)!?=/.exec(option.when || "");
+      option = match ? optionsData.options.find((item) => item.full === match[1]) : null;
+    }
+    if (option) cible = $('.option[data-option="' + option.full + '"]');
+  }
+  const page = cible ? cible.closest(".settings-cat") : null;
+  choisirCategorie(page ? page.dataset.cat : (focus.cat || optionsCategorie), false);
+  if (!cible) cible = $('.settings-main .settings-cat[data-cat="' + optionsCategorie + '"]');
+  if (!cible) return;
+  cible.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (cible.classList.contains("option")) {
+    cible.classList.remove("flash");
+    void cible.offsetWidth;
+    cible.classList.add("flash");
+    const champ = $("button, select, input", cible);
+    if (champ) champ.focus({ preventScroll: true });
+  }
+}
+
+/* ------------------------------------------------------------------ search */
+/* Tabs, sections, topics and settings of the page, found by their words in
+   the language shown (accents and case ignored). Built at each search from
+   the translated texts, so it always follows the language. */
+const SEARCH_MAX = 8;
+function plier(texte) {
+  return String(texte || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+function texteVisible(node) {
+  const copie = node.cloneNode(true);
+  copie.querySelectorAll(".muted, .tab-dot, svg").forEach((enfant) => enfant.remove());
+  return normaliserTexte(copie.textContent);
+}
+function indexRecherche() {
+  const entrees = [];
+  const nomOnglet = {};
+  $$(".tabs [data-tab]").forEach((bouton) => {
+    nomOnglet[bouton.dataset.tab] = texteVisible(bouton);
+    entrees.push({ titre: nomOnglet[bouton.dataset.tab], chemin: t("Onglet"), icone: "arrow", poids: 4,
+      aller: () => setTab(bouton.dataset.tab) });
+  });
+  $$(".panels [data-panel] h2").forEach((titre) => {
+    const panneau = titre.closest("[data-panel]").dataset.panel;
+    const carte = titre.closest(".card") || titre;
+    if (panneau === "options" || titre.closest(".settings")) return;
+    const aide = $(".card-head p, p.muted", carte);
+    entrees.push({ titre: texteVisible(titre), aide: aide ? normaliserTexte(aide.textContent) : "", chemin: nomOnglet[panneau] || "",
+      icone: "section", poids: 3, aller: () => { setTab(panneau); allerA(carte); } });
+  });
+  const reglages = nomOnglet.options || t("Réglages");
+  for (const categorie of OPTION_CATEGORIES) {
+    entrees.push({ titre: t(categorie.titre), aide: t(categorie.texte), chemin: reglages, icone: categorie.icone, poids: 3,
+      aller: () => ouvrirReglage({ cat: categorie.id }) });
+  }
+  const options = optionsData ? optionsData.options : [];
+  for (const option of options) {
+    const categorie = categorieDe(option.full);
+    const choix = (option.choices || []).map((valeur) => t(CHOIX_TEXTES[option.full + "=" + valeur] || CHOIX_TEXTES[valeur] || valeur)).join(" · ");
+    entrees.push({ titre: t(option.label || option.full), aide: t(option.help || ""), plus: choix,
+      chemin: reglages + " › " + (categorie ? t(categorie.titre) : t("Autres réglages")), icone: "settings", poids: 2,
+      aller: () => ouvrirReglage({ full: option.full }) });
+  }
+  [["#opt-access", "acces"], ["#opt-backup", "acces"]].forEach(([selecteur, cat]) => {
+    const ligne = $(selecteur);
+    if (!ligne || ligne.closest("[hidden]#access-group")) return;
+    const categorie = OPTION_CATEGORIES.find((item) => item.id === cat);
+    entrees.push({ titre: normaliserTexte($(".option-label", ligne).textContent), aide: normaliserTexte($(".option-help", ligne).textContent),
+      chemin: reglages + " › " + t(categorie.titre), icone: "settings", poids: 2, aller: () => ouvrirReglage({ selector: selecteur }) });
+  });
+  return entrees;
+}
+function chercher(question) {
+  const mots = plier(question).split(/\s+/).filter(Boolean);
+  if (!mots.length) return [];
+  const resultats = [];
+  for (const entree of indexRecherche()) {
+    const titre = plier(entree.titre);
+    const tout = titre + " " + plier(entree.aide) + " " + plier(entree.plus);
+    if (!mots.every((mot) => tout.includes(mot))) continue;
+    let score = entree.poids;
+    for (const mot of mots) {
+      if (titre.includes(mot)) score += 6;
+      if (new RegExp("(^|[^a-z0-9])" + mot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(titre)) score += 3;
+    }
+    if (titre.startsWith(mots[0])) score += 4;
+    resultats.push(Object.assign({ score }, entree));
+  }
+  return resultats.sort((a, b) => b.score - a.score || a.titre.length - b.titre.length).slice(0, SEARCH_MAX);
+}
+/* The text, with the words searched in bold (accents ignored). */
+function surligner(texte, mots) {
+  let plie = "";
+  const positions = [];
+  for (let i = 0; i < texte.length; i++) {
+    const morceau = plier(texte[i]);
+    for (let j = 0; j < morceau.length; j++) positions.push(i);
+    plie += morceau;
+  }
+  const marque = new Array(texte.length).fill(false);
+  for (const mot of mots) {
+    let depart = plie.indexOf(mot);
+    while (depart >= 0) {
+      for (let k = depart; k < depart + mot.length; k++) marque[positions[k]] = true;
+      depart = plie.indexOf(mot, depart + mot.length);
+    }
+  }
+  const noeud = document.createDocumentFragment();
+  let i = 0;
+  while (i < texte.length) {
+    let j = i;
+    while (j < texte.length && marque[j] === marque[i]) j++;
+    noeud.appendChild(marque[i] ? el("mark", { text: texte.slice(i, j) }) : document.createTextNode(texte.slice(i, j)));
+    i = j;
+  }
+  return noeud;
+}
+function extrait(texte, mots, longueur) {
+  if (!texte || texte.length <= longueur) return texte || "";
+  const plie = plier(texte);
+  const trouve = mots.map((mot) => plie.indexOf(mot)).filter((position) => position >= 0).sort((a, b) => a - b)[0];
+  const debut = trouve === undefined || trouve < longueur / 2 ? 0 : Math.max(0, trouve - Math.floor(longueur / 3));
+  return (debut ? "…" : "") + texte.slice(debut, debut + longueur).trim() + (debut + longueur < texte.length ? "…" : "");
+}
+function allerA(noeud) {
+  if (!noeud) return;
+  requestAnimationFrame(() => {
+    noeud.scrollIntoView({ block: "start", behavior: "smooth" });
+    noeud.classList.remove("flash");
+    void noeud.offsetWidth;
+    noeud.classList.add("flash");
+  });
+}
+function ouvrirReglage(focus) {
+  optionsFocus = focus;
+  if ($('[data-panel="options"]').classList.contains("is-active") && optionsData) montrerFocus();
+  else setTab("options");  /* drawn, then montrerFocus() */
+}
+let rechercheChoix = -1;
+function fermerRecherche() {
+  $("#search-results").hidden = true;
+  $("#search-input").setAttribute("aria-expanded", "false");
+  $("#search-input").removeAttribute("aria-activedescendant");
+  rechercheChoix = -1;
+}
+function marquerChoix(index) {
+  const lignes = $$("#search-results .result");
+  rechercheChoix = lignes.length ? (index + lignes.length) % lignes.length : -1;
+  lignes.forEach((ligne, numero) => ligne.setAttribute("aria-selected", numero === rechercheChoix ? "true" : "false"));
+  const choisie = lignes[rechercheChoix];
+  if (choisie) {
+    $("#search-input").setAttribute("aria-activedescendant", choisie.id);
+    choisie.scrollIntoView({ block: "nearest" });
+  }
+}
+function afficherRecherche() {
+  const champ = $("#search-input");
+  const boite = $("#search-results");
+  const question = champ.value.trim();
+  if (!question) { fermerRecherche(); return; }
+  if (!optionsData && agent.isOpen && !afficherRecherche.charge) {
+    /* The settings come from the Recalbox: asked once, then searched again. */
+    afficherRecherche.charge = true;
+    renderOptions(false).then(() => { if (champ.value.trim()) afficherRecherche(); }).catch(() => {});
+  }
+  const mots = plier(question).split(/\s+/).filter(Boolean);
+  const resultats = chercher(question);
+  boite.replaceChildren();
+  resultats.forEach((resultat, numero) => {
+    const ligne = el("button", { className: "result", attrs: { type: "button", role: "option", id: "search-result-" + numero, "aria-selected": "false" } }, [
+      el("span", { className: "result-ico" }, [icon(resultat.icone, 17)]),
+      el("span", { className: "result-text" }, [
+        el("span", { className: "result-title" }, [surligner(resultat.titre, mots)]),
+        resultat.chemin ? el("span", { className: "result-path", text: resultat.chemin }) : null,
+        resultat.aide ? el("span", { className: "result-help" }, [surligner(extrait(resultat.aide, mots, 110), mots)]) : null,
+      ]),
+    ]);
+    ligne.addEventListener("mousedown", (event) => event.preventDefault());
+    ligne.addEventListener("click", () => choisirResultat(resultat));
+    boite.appendChild(ligne);
+  });
+  if (!resultats.length) boite.appendChild(el("p", { className: "result-none", text: t("Aucun résultat pour « {q} »", { q: question }) }));
+  boite.hidden = false;
+  champ.setAttribute("aria-expanded", "true");
+  afficherRecherche.resultats = resultats;
+  marquerChoix(resultats.length ? 0 : -1);
+}
+function choisirResultat(resultat) {
+  const champ = $("#search-input");
+  fermerRecherche();
+  champ.value = "";
+  champ.blur();
+  resultat.aller();
+}
+function initRecherche() {
+  const champ = $("#search-input");
+  champ.addEventListener("input", afficherRecherche);
+  champ.addEventListener("focus", () => { if (champ.value.trim()) afficherRecherche(); });
+  champ.addEventListener("blur", () => setTimeout(fermerRecherche, 120));
+  champ.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") { event.preventDefault(); marquerChoix(rechercheChoix + 1); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); marquerChoix(rechercheChoix - 1); }
+    else if (event.key === "Enter") {
+      const resultat = (afficherRecherche.resultats || [])[rechercheChoix];
+      if (resultat && !$("#search-results").hidden) { event.preventDefault(); choisirResultat(resultat); }
+    } else if (event.key === "Escape") {
+      if (champ.value) { champ.value = ""; fermerRecherche(); } else champ.blur();
+    }
+  });
+  /* "/" or Ctrl+K: the search, from anywhere in the page (not while typing). */
+  document.addEventListener("keydown", (event) => {
+    const cible = event.target;
+    const saisie = cible && (cible.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(cible.tagName));
+    const raccourci = (event.key === "/" && !saisie && !event.ctrlKey && !event.metaKey && !event.altKey)
+      || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k");
+    if (!raccourci || document.body.dataset.view !== "app" || $("dialog[open]")) return;
+    event.preventDefault();
+    champ.focus();
+    champ.select();
+  });
 }
 async function enregistrerOptions() {
   if (!optionsData) return;
@@ -9277,6 +9662,7 @@ function rerender() {
    Wiring and startup
    ===================================================================== */
 function wire() {
+  initRecherche();
   $$("[data-goto]").forEach((node) => node.addEventListener("click", () => {
     const target = node.dataset.goto;
     if (target === "install") { setView("install"); setStep(wizard.step || 1); return; }

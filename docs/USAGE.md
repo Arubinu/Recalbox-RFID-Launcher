@@ -30,8 +30,14 @@ Either way, the device is authorized once by **holding the case button for
 | **Badges** | game selected on the TV and "Pair a badge with this game"; **search a game** of the Recalbox and pair it without the TV; the badge list (rename, time limit, card, delete, CSV backup); **special cards** |
 | **Cards** | design and print the cards to put on the badges |
 | **Hardware** | state of the reader, the button and the game launch; **Test with a badge**; **automatic tuning** of the reader |
-| **Settings** | every setting, saved and applied at once |
+| **Settings** | every setting, saved and applied at once, by topic: Tags and games, Reader screen, Sounds and music, Players, Play time, Power on and off, Status light, Access and backup, Home Assistant, Advanced settings (one topic at a time; the number on a topic counts its unsaved changes) |
 | **Updates** | one-click update (from the page, or the latest version on GitHub), service, restart of the reader screen or of the Recalbox, logs |
+
+The **search field** beside the tabs (or the `/` key, or Ctrl+K) finds tabs,
+sections, setting topics and settings by their words, in the language shown
+(accents ignored; the choices of a setting count too, so "Nintendo 64" finds
+the cartridge sounds). Enter or a click opens the place and lights the
+setting up; a setting hidden by another one leads to the one that shows it.
 
 The **`EN` / `FR` / `DE` / `ES` / `IT` / `PT`** button switches the language:
 a click picks the next one and keeps it; a **long press** goes back to the

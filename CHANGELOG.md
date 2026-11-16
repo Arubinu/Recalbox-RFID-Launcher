@@ -81,6 +81,15 @@ by `rfidctl version`.
   **weekly summary** on the first day of the week (time played by each
   player and new trophies; the first day of the week is the one of the
   player cards).
+* **Settings by topic**: the Settings tab shows one topic at a time (tags and
+  games, reader screen, sounds, players, play time, power, light, access,
+  Home Assistant, advanced), each with its sub-groups and its count of
+  unsaved changes, instead of one long list by file section.
+* **Search of the page**: tabs, sections and settings found by their words,
+  in the language of the page; `/` or Ctrl+K.
+* **Updates keep the reader screen**: the service restarted by an update
+  hands the reader screen to the next one, with no detour by the Recalbox
+  interface (which comes back if the new service does not start).
 * **Fades to black on the reader screen** (option, on by default): from black
   when it shows, to black (with the music) when a game starts.
 * **Background music on the reader screen**, like the Recalbox interface:
