@@ -8,4 +8,4 @@ The project only uses the Python 3 standard library: no package needs to be
 installed on Recalbox.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
