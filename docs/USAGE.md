@@ -549,7 +549,7 @@ The beeps are generated on the fly and played by `paplay` (PulseAudio) or
 **Cartridge sounds** (Settings › Sounds): one when a game card starts its
 game (Nintendo DS insertion by default) and one when the card of the running
 game is removed (Nintendo DS removal by default). Each can be any of the
-sounds: Nintendo DS insertion or removal, Super Nintendo (short, very short
+sounds: Nintendo DS or Nintendo 64 insertion or removal, Super Nintendo (short, very short
 or full), a synthetic clack, or none. **Volume of the cartridge sounds** (%,
 60 by default) keeps them below the sound of the games; the play button next
 to each choice plays it on the Recalbox, at the volume being typed. The

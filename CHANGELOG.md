@@ -83,7 +83,8 @@ by `rfidctl version`.
   player cards).
 * **Cartridge sounds**: when a game card starts its game, and when the card
   of the running game is removed. Nintendo DS insertion and removal by
-  default; Super Nintendo (short, very short, full) or a synthetic clack to
+  default; Nintendo 64 insertion and removal, Super Nintendo (short, very
+  short, full) or a synthetic clack to
   choose for each; a volume in percent and a Listen button in the settings.
   Muted with the Recalbox sound.
 

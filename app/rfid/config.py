@@ -115,7 +115,8 @@ sound = 1
 sound_player = auto
 # Cartridge sounds: when a game card starts its game (card_sound) and when the
 # card of the running game is removed (card_out_sound). off, ds_insert,
-# ds_remove, snes, snes_dry, snes_full or synth; muted with the Recalbox sound
+# ds_remove, n64_insert, n64_remove, snes, snes_dry, snes_full or synth;
+# muted with the Recalbox sound
 # (Sound card)
 card_sound = ds_insert
 card_out_sound = ds_remove
