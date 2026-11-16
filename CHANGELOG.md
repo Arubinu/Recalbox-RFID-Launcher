@@ -81,6 +81,8 @@ by `rfidctl version`.
   **weekly summary** on the first day of the week (time played by each
   player and new trophies; the first day of the week is the one of the
   player cards).
+* **Fades to black on the reader screen** (option, on by default): from black
+  when it shows, to black (with the music) when a game starts.
 * **Background music on the reader screen**, like the Recalbox interface:
   the music of its theme and of `/recalbox/share/music`, at random, with the
   track name (when Recalbox shows it); played with SDL2_mixer, the library of
