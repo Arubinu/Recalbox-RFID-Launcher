@@ -52,6 +52,10 @@ by `rfidctl version`.
   written in the page; restart of the reader screen from the page.
 * **Trophies** for the players (consoles, games, days in a row, hours).
 * **Refused games** in the statistics: who, what, when and why.
+* **Several players per game** (option): player cards add up before a game
+  (placed again, a card leaves the group or stays alone; or cards placed one
+  after the other); the time counts for each. **Controllers allowed**: all,
+  or one per active player (RetroArch games).
 * **Updates from GitHub**: the page offers the latest published version in
   one click (option).
 * **Add several cards** to the print sheet: paired games, favourites or

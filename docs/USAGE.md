@@ -275,6 +275,24 @@ Options:
   on, and the screen says so); otherwise the card is for the next game.
 * Placing the card of the active player again (no game running) makes them
   no longer active.
+* **Several players per game** (off by default): a second player card placed
+  before the game joins the first one ("Lea & Tom: next game together"). The
+  game's time counts for each of them, the game is refused if one of them has
+  no time left (or is outside their time slot), and it stops when the first
+  one runs out. Placing a card of the group again:
+  * **takes it out** ("yes, placing a card again takes it out"): to go from
+    Lea to Tom, place Tom, then Lea again;
+  * **keeps it alone** ("keeps it alone"): place Tom, then Tom again; placed
+    once more, nobody is active;
+  * **placed one after the other**: cards placed less than 15 seconds apart
+    make the group, a card placed later starts a new group (to change player,
+    just wait a little before placing yours).
+* **Controllers allowed**: all (the default; several people can play with a
+  single player card, the time counts for that card only), or one per active
+  player (with two player cards, only the first two controllers in Recalbox's
+  order play; without a card, only one). RetroArch games only: the block
+  `input_max_users` of `retroarchcustom.cfg.overrides.cfg` is removed when
+  the service stops.
 * **Keep the player active until their time is up**: after a game, the
   player stays active; the next game cards count for them without placing
   their card again. They stop being active when their time is used up, when
@@ -543,6 +561,8 @@ Settings tab of the page; by hand, run `sh rfidctl restart` afterwards.
 | `[screen] messages` | `1` | messages on the game screen (RetroArch) |
 | `[players] reset_hour` / `week_start` | `0` / `monday` | when the play time counters restart |
 | `[players] switch_on_card` | `1` | a player card placed during a game takes it over |
+| `[players] multi` | `off` | several players per game: `off`, `remove`, `solo` or `chain` |
+| `[players] pads` | `all` | controllers in RetroArch games: `all`, or `players` (one per active player) |
 | `[players] keep_active` | `0` | the player stays active after a game, until their time is up |
 | `[display] mode` | `recalbox` | `reader` = reader screen instead of the Recalbox interface (drawn at the screen's resolution, vertical when Recalbox's screen is rotated) |
 | `[display] resolution` | `recalbox` | `native` = the screen's own resolution |

@@ -265,9 +265,16 @@ class Players:
         days = self.usage.get(uid, {})
         total = sum(days.get(day, 0.0) for day in period_days(period, self.wall(), self.reset_hour, self.week_start))
         current = self.current
-        if current is not None and current["uid"] == uid and not current.get("paused"):
+        if current is not None and uid in self.playing_uids() and not current.get("paused"):
             total += max(0.0, self.clock() - current["saved_at"])
         return total
+
+    def playing_uids(self) -> list:
+        """Players of the running game: the first one, then the others of the group."""
+        current = self.current
+        if current is None:
+            return []
+        return [current["uid"]] + [other["uid"] for other in current.get("others") or ()]
 
     def pause(self) -> None:
         """The game is paused: its time is no longer counted."""
@@ -297,13 +304,14 @@ class Players:
             current["saved_at"] = now
             if elapsed <= 0 or current.get("paused"):
                 return
-            days = self.usage.setdefault(current["uid"], {})
             key = _day_key(self.wall(), self.reset_hour)
-            days[key] = days.get(key, 0.0) + elapsed
             game = game_key(current.get("game"))
-            if game:
-                played = self.games.setdefault(current["uid"], {}).setdefault(key, {})
-                played[game] = played.get(game, 0.0) + elapsed
+            for uid in self.playing_uids():
+                days = self.usage.setdefault(uid, {})
+                days[key] = days.get(key, 0.0) + elapsed
+                if game:
+                    played = self.games.setdefault(uid, {}).setdefault(key, {})
+                    played[game] = played.get(game, 0.0) + elapsed
             self._save()
 
     def tick(self) -> None:
@@ -313,11 +321,24 @@ class Players:
             self.checkpoint()
 
     # -------------------------------------------------------------- sessions
-    def arm(self, uid: str, entry: dict) -> None:
-        """A player card was placed: it counts for the next game."""
-        self.pending = {"uid": uid, "entry": dict(entry), "until": self.clock() + ARM_WINDOW_S}
+    def arm(self, uid: str, entry: dict, others=None) -> None:
+        """A player card was placed: it counts for the next game.
+
+        others: [{"uid", "entry"}] playing with this player (several players per game).
+        """
+        now = self.clock()
+        group = [{"uid": other["uid"], "entry": dict(other["entry"])} for other in others or ()]
+        self.pending = {"uid": uid, "entry": dict(entry), "until": now + ARM_WINDOW_S, "others": group,
+                        "added_at": now}
         if self.keep:
-            self.kept = {"uid": uid, "entry": dict(entry)}  # replaces the previous player
+            self.kept = {"uid": uid, "entry": dict(entry), "others": group}  # replaces the previous players
+
+    def group(self, record) -> list:
+        """[(uid, entry)] of a pending, kept or current record: the first player, then the others."""
+        if record is None:
+            return []
+        return [(record["uid"], record["entry"])] + [(other["uid"], other["entry"])
+                                                     for other in record.get("others") or ()]
 
     def take_pending(self):
         """The waiting player card, if still valid (it is used only once),
@@ -326,10 +347,11 @@ class Players:
         self.pending = None
         if pending is None or self.clock() > pending["until"]:
             if self.keep and self.kept is not None:
-                return {"uid": self.kept["uid"], "entry": self.kept["entry"], "until": self.clock(), "kept": True}
+                return {"uid": self.kept["uid"], "entry": self.kept["entry"], "until": self.clock(), "kept": True,
+                        "others": list(self.kept.get("others") or ())}
             return None
         if self.keep:
-            self.kept = {"uid": pending["uid"], "entry": pending["entry"]}
+            self.kept = {"uid": pending["uid"], "entry": pending["entry"], "others": list(pending.get("others") or ())}
         return pending
 
     def release(self, reason: str = "") -> bool:
@@ -340,15 +362,17 @@ class Players:
                                                                (" (%s)" % reason) if reason else ""))
         return kept is not None
 
-    def begin(self, uid: str, entry: dict, via: str = "card", game=None) -> None:
+    def begin(self, uid: str, entry: dict, via: str = "card", game=None, others=None) -> None:
         """A game starts for this player ("" = guest). via: "card", "reader" or "menu".
 
         game: {"system", "name"} of the game played (for the statistics).
+        others: [{"uid", "entry"}] playing too: their time is counted as well.
         """
         self.finish()
         now = self.clock()
+        group = [{"uid": other["uid"], "entry": dict(other["entry"])} for other in others or () if uid]
         self.current = {"uid": uid or GUEST, "entry": dict(entry or {}), "via": via,
-                        "since": now, "saved_at": now, "game": dict(game) if game else None}
+                        "since": now, "saved_at": now, "game": dict(game) if game else None, "others": group}
         if self.log:
             self.log.info("Partie de %s" % (self.player_name(entry) if uid else "l'invite"))
 
@@ -357,9 +381,10 @@ class Players:
         if self.current is None:
             return
         self.checkpoint()
-        self.last = {"uid": self.current["uid"], "entry": self.current["entry"], "ended": self.clock()}
+        others = list(self.current.get("others") or ())
+        self.last = {"uid": self.current["uid"], "entry": self.current["entry"], "ended": self.clock(), "others": others}
         if self.keep and self.current["uid"] != GUEST:
-            self.kept = {"uid": self.current["uid"], "entry": self.current["entry"]}
+            self.kept = {"uid": self.current["uid"], "entry": self.current["entry"], "others": others}
         self.current = None
 
     def give_back(self):
@@ -372,7 +397,8 @@ class Players:
         self.current = None
         if current["uid"] == GUEST:
             return None
-        self.pending = {"uid": current["uid"], "entry": current["entry"], "until": self.clock() + ARM_WINDOW_S}
+        self.pending = {"uid": current["uid"], "entry": current["entry"], "until": self.clock() + ARM_WINDOW_S,
+                        "others": list(current.get("others") or ()), "added_at": self.clock()}
         return current["entry"]
 
     def resume_player(self):
@@ -382,6 +408,14 @@ class Players:
         if last is None or self.clock() - last["ended"] > RESUME_WINDOW_S or last["uid"] == GUEST:
             return ("", {})
         return (last["uid"], last["entry"])
+
+    @classmethod
+    def group_names(cls, group) -> str:
+        """'Lea', 'Lea & Tom', 'Lea, Tom & Max': the same in every language."""
+        names = [cls.player_name(entry) for _uid, entry in group]
+        if len(names) <= 1:
+            return "".join(names)
+        return ", ".join(names[:-1]) + " & " + names[-1]
 
     @staticmethod
     def player_name(entry) -> str:
@@ -401,7 +435,7 @@ class Players:
                 "quota_min": quota,
                 "used_s": int(self.used_s(uid, period)),
                 "remaining_s": None if not quota else int(self.remaining_s(uid, quota, period)),
-                "playing": self.current is not None and self.current["uid"] == uid,
+                "playing": uid in self.playing_uids(),
             })
         current = self.current
         waiting = self.pending if self.pending is not None and self.clock() <= self.pending["until"] else None
@@ -409,9 +443,12 @@ class Players:
             waiting = self.kept
         return {
             "players": result,
-            "current": None if current is None else {"uid": current["uid"], "name": self.player_name(current["entry"]) if current["uid"] != GUEST else "", "via": current["via"]},
-            "pending": None if waiting is None else self.player_name(waiting["entry"]),
+            "current": None if current is None else {"uid": current["uid"], "name": self.player_name(current["entry"]) if current["uid"] != GUEST else "", "via": current["via"],
+                                                     "others": [{"uid": other["uid"], "name": self.player_name(other["entry"])} for other in current.get("others") or ()]},
+            "pending": None if waiting is None else self.group_names(self.group(waiting)),
             "pending_uid": None if waiting is None else waiting["uid"],
+            "pending_group": [] if waiting is None else [{"uid": uid, "name": self.player_name(entry)}
+                                                         for uid, entry in self.group(waiting)],
             "kept": bool(self.keep and self.kept is not None),
         }
 

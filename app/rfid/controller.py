@@ -46,6 +46,13 @@ ACTION_CONFIRM = "confirm"  # reader screen: the game is shown, a controller but
 #: Special cards that act even while a game is running.
 ACTIONS_DURING_GAME = ("quit", "bonus", "poweroff", "player")
 
+#: Several players per game (players.multi): "off" = a player card replaces
+#: the previous one; "remove" = it adds up, placed again it leaves the group;
+#: "solo" = it adds up, placed again it stays alone; "chain" = cards placed
+#: less than CHAIN_S apart add up, a later one starts a new group.
+MULTI_MODES = ("off", "remove", "solo", "chain")
+CHAIN_S = 15.0
+
 
 class Controller:
     """Machine a etats : repos <-> association / suppression."""
@@ -108,6 +115,9 @@ class Controller:
         self.guest_quota_min = 0
         self.guest_period = "day"
         self.switch_player = False
+        self.multi = "off"
+        #: Controllers in RetroArch games: "all", or "players" (one per active player).
+        self.pads_mode = "all"
         #: The game was paused by the pause card.
         self.paused = False
         #: Mutes the Recalbox or not (audio.toggle_mute): True, False, None.
@@ -120,6 +130,9 @@ class Controller:
             period = cfg.get("players", "guest_period", "day").strip()
             self.guest_period = "week" if period == "week" else "day"
             self.switch_player = cfg.get_bool("players", "switch_on_card", True)
+            multi = cfg.get("players", "multi", "off").strip().lower()
+            self.multi = multi if multi in MULTI_MODES else "off"
+            self.pads_mode = "players" if cfg.get("players", "pads", "all").strip().lower() == "players" else "all"
             if self.players is not None:
                 from .players import WEEK_DAYS
                 self.players.reset_hour = min(23, max(0, cfg.get_int("players", "reset_hour", 0)))
@@ -592,24 +605,30 @@ class Controller:
         if player is not None and player[0]:
             pending = {"uid": player[0], "entry": player[1]}
         free = self.unlocked
+        others = []
         if pending is not None:
             player = (pending["uid"], pending["entry"])
-            name = self.players.player_name(pending["entry"])
-            rule = None if free else self.player_rule(*player, game={"system": entry.get("system", ""),
-                                                                      "path": entry.get("path", "")})
-            if rule is not None:
-                if pending.get("until") is not None and not pending.get("kept"):
-                    self.players.pending = pending  # still waiting: another game may be allowed
-                self._refuse(rule[0], "Jeu refuse pour %s (%s)" % (name, rule[0]), **rule[1])
-                return rule[0]
-            left = self.player_left(*player)
-            if free:
-                left = None
-            if left is not None and left <= 0:
-                if pending.get("kept"):
-                    self.players.release("temps ecoule")
-                self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
-                return "exhausted"
+            others = list(pending.get("others") or ()) if self.multi != "off" else []
+            left = None
+            for member in [player] + [(other["uid"], other["entry"]) for other in others]:
+                name = self.players.player_name(member[1])
+                rule = None if free else self.player_rule(*member, game={"system": entry.get("system", ""),
+                                                                          "path": entry.get("path", "")})
+                if rule is not None:
+                    if pending.get("until") is not None and not pending.get("kept"):
+                        self.players.pending = pending  # still waiting: another game may be allowed
+                    self._refuse(rule[0], "Jeu refuse pour %s (%s)" % (name, rule[0]), **rule[1])
+                    return rule[0]
+                member_left = None if free else self.player_left(*member)
+                if member_left is not None and member_left <= 0:
+                    if pending.get("kept") and member is player:
+                        self.players.release("temps ecoule")
+                    elif pending.get("until") is not None and not pending.get("kept"):
+                        self.players.pending = pending
+                    self._refuse("player_exhausted", "Carte joueur %s : plus de temps de jeu" % name, name=name)
+                    return "exhausted"
+                if member_left is not None:
+                    left = member_left if left is None else min(left, member_left)
         else:
             if self.require_player and not free:
                 self._refuse("player_needed", "Jeu refuse : posez d'abord une carte joueur")
@@ -623,7 +642,7 @@ class Controller:
         if left is not None:
             card = self.limit_for(entry)
             minutes = left / 60.0 if not card else min(float(card), left / 60.0)
-        return self._launch(entry, uid, touch=touch, minutes=minutes, player=player)
+        return self._launch(entry, uid, touch=touch, minutes=minutes, player=player, others=others)
 
     def _player_card(self, uid: str, entry: dict) -> str:
         """Player card: counts for the next game, or the game just started from the menu."""
@@ -633,6 +652,10 @@ class Controller:
             self._log("info", "Carte joueur : les cartes joueurs sont desactivees dans les reglages")
             return "disabled"
         name = self.players.player_name(entry)
+        if not self.game_running() and self.multi != "off":
+            group, _record = self.waiting_group()
+            if any(member[0] == uid for member in group):
+                return self._leave_group(uid, name, group)
         if not self.game_running():
             active = self._active_player()
             if active is not None and active[0] == uid:
@@ -680,6 +703,19 @@ class Controller:
             self._say("player_switched", name=name)
             self._log("info", "Carte joueur %s : la partie en cours lui est maintenant comptee" % name)
             return "player_switched"
+        group, record = self.waiting_group() if self.multi != "off" and not self.game_running() else ([], None)
+        if group and (self.multi != "chain" or (record is not None and record.get("added_at") is not None
+                                                 and self.clock() - record["added_at"] <= CHAIN_S)):
+            # Several players: this one joins the group of the next game.
+            group = group + [(uid, entry)]
+            self._set_group(group)
+            self.feedback.ok()
+            self._flash("ok")
+            names = self.players.group_names(group)
+            self._say("players_next", names=names)
+            self._log("info", "Carte joueur %s : la prochaine partie est pour %s" % (name, names))
+            self.sync_pads()
+            return "player_added"
         self.players.arm(uid, entry)
         self.feedback.ok()
         self._flash("ok")
@@ -688,7 +724,67 @@ class Controller:
         else:
             self._say("player_next", name=name)
         self._log("info", "Carte joueur %s : pour la prochaine partie" % name)
+        self.sync_pads()
         return "player"
+
+    # --------------------------------------------------- several players
+    def waiting_group(self):
+        """([(uid, entry)], record) of the players of the next game (card placed, or kept)."""
+        players = self.players
+        pending = players.pending
+        if pending is not None and self.clock() <= pending["until"]:
+            return players.group(pending), pending
+        if players.keep and players.kept is not None:
+            return players.group(players.kept), players.kept
+        return [], None
+
+    def _set_group(self, group) -> None:
+        """The players of the next game (empty: nobody)."""
+        players = self.players
+        if not group:
+            players.pending = None
+            players.kept = None
+            return
+        players.arm(group[0][0], group[0][1], others=[{"uid": uid, "entry": entry} for uid, entry in group[1:]])
+
+    def _leave_group(self, uid: str, name: str, group) -> str:
+        """A player card of the group placed again: it leaves, or stays alone ("solo")."""
+        self._touch(uid)
+        self.feedback.ok()
+        self._flash("ok")
+        if self.multi == "solo" and len(group) > 1:
+            rest = [member for member in group if member[0] == uid]
+            self._set_group(rest)
+            self._say("player_solo", name=name)
+            self._log("info", "Carte joueur %s reposee : elle joue seule la prochaine partie" % name)
+            result = "player_solo"
+        else:
+            rest = [member for member in group if member[0] != uid]
+            self._set_group(rest)
+            if rest:
+                names = self.players.group_names(rest)
+                self._say("player_removed", name=name, names=names)
+                self._log("info", "Carte joueur %s reposee : la prochaine partie est pour %s" % (name, names))
+                result = "player_removed"
+            else:
+                self._say("player_off", name=name)
+                self._log("info", "Carte joueur %s reposee : plus de joueur actif" % name)
+                result = "player_off"
+        self.sync_pads()
+        return result
+
+    def sync_pads(self) -> None:
+        """Option "one controller per active player": RetroArch accepts that many."""
+        from . import pads
+
+        if self.pads_mode != "players" or not self.counting_players:
+            pads.set_max_users(None)
+            return
+        if self.players.current is not None:
+            count = len(self.players.playing_uids())
+        else:
+            count = len(self.waiting_group()[0])
+        pads.set_max_users(max(1, count))
 
     def _greet(self, name: str, left) -> None:
         if left is None:
@@ -696,8 +792,12 @@ class Controller:
         else:
             self._say("player_hello", name=name, n=max(1, int(round(left / 60.0))))
 
-    def _launch(self, entry, uid: str, touch: bool = True, minutes=None, player=None) -> str:
+    def _launch(self, entry, uid: str, touch: bool = True, minutes=None, player=None, others=None) -> str:
         system = entry.get("system", "")
+        if self.counting_players and self.pads_mode == "players":
+            from . import pads
+
+            pads.set_max_users(max(1, 1 + len(others or ())))
         # The frontend identifies a game by its FULL PATH, as it writes it itself
         # in /tmp/es_state.inf (e.g. /recalbox/share_init/roms/...). The file name
         # alone is refused since Recalbox 10 ("Couldn't find game ..."). The
@@ -718,7 +818,8 @@ class Controller:
             if self.counting_players:
                 who = player if player is not None else self.players.resume_player()
                 name = entry.get("name") or os.path.splitext(os.path.basename(str(game)))[0]
-                self.players.begin(who[0], who[1], via="card", game={"system": system, "name": name})
+                self.players.begin(who[0], who[1], via="card", game={"system": system, "name": name},
+                                   others=others if player is not None else None)
             if self.players is not None and entry.get("path"):
                 who = self.players.current["uid"] if self.players.current is not None else ""
                 self.players.remember(who, system, entry.get("name") or os.path.splitext(

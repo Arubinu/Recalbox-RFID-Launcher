@@ -44,7 +44,7 @@ from .playtime import PlayTimer
 from .players import Players
 from .savegame import GameSaver
 from .reader_mode import ReaderMode
-from . import avatars, bedtime, es_command, frontend_lock, power, refusals, trophies
+from . import avatars, bedtime, es_command, frontend_lock, pads, power, refusals, trophies
 from .drivers.rc522 import PICC_REQA, PICC_WUPA, Rc522, Rc522Error
 from .drivers.spi_port import open_spi
 from .hardware import build_button, build_gpio, build_reader
@@ -737,8 +737,11 @@ class Service:
         # game, the card stays on the reader (unless the player is kept active).
         players.pending = None
         holder = self._active_player()
+        others = []
         if holder is None and players.keep and players.kept is not None:
             holder = (players.kept["uid"], players.kept["entry"])
+            if controller.multi != "off":
+                others = list(players.kept.get("others") or ())  # the group kept active plays too
         if holder is not None:
             uid, entry = holder
             name = players.player_name(entry)
@@ -753,7 +756,7 @@ class Service:
             if left is not None and left <= 0 and controller.block_exhausted:
                 self._refuse_game("player_exhausted", "Jeu du menu refuse : plus de temps pour %s" % name, name=name)
                 return
-            players.begin(uid, entry, via="reader", game=controller.running_game())
+            players.begin(uid, entry, via="reader", game=controller.running_game(), others=others)
             self._remember_menu_game(uid)
             self._limit_menu_game(uid, name, left)
             if self.screen is not None:
@@ -796,6 +799,10 @@ class Service:
         if now < self._next_player_check:
             return
         self._next_player_check = now + 2.0
+        try:
+            controller.sync_pads()
+        except Exception as exc:  # noqa: BLE001 - never blocking
+            self.log.warning("Nombre de manettes non regle : %s" % exc)
         try:
             running = bool(controller.game_running())
         except Exception:  # noqa: BLE001 - never blocking
@@ -1983,6 +1990,10 @@ class Service:
 
     def _shutdown(self, lock: int) -> None:
         self.log.info("Arret du service")
+        try:
+            pads.set_max_users(None)  # every controller plays again
+        except Exception:  # noqa: BLE001
+            pass
         reader_mode = getattr(self, "reader_mode", None)
         if reader_mode is not None:
             try:
